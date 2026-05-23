@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateLengthExercises } from '@/lib/exercises/lengths';
@@ -10,7 +10,7 @@ import {
   validateAnswerInput,
 } from '@/lib/validation';
 
-export default function TestPage() {
+function TestPageContent() {
   const params = useSearchParams();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -19,7 +19,10 @@ export default function TestPage() {
   const difficulty = (params.get('difficulty') || 'Lihtne') as Difficulty;
   const count = Number(params.get('count') || 5);
 
-  const [seed] = useState(() => Number(params.get('seed') || Date.now()));
+  const seedParam = params.get('seed');
+  const [fallbackSeed] = useState(() => Date.now());
+  const seed = Number(seedParam ?? fallbackSeed);
+
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -179,5 +182,19 @@ export default function TestPage() {
         </button>
       </div>
     </main>
+  );
+}
+
+export default function TestPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="container">
+          <div className="card">Laadin küsimusi...</div>
+        </main>
+      }
+    >
+      <TestPageContent />
+    </Suspense>
   );
 }
