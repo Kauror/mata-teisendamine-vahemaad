@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateSession } from '@/lib/exercises/lengths';
+import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
 
 function ShapeVisual({ question }: { question: GeneratedQuestion }) {
@@ -27,34 +28,41 @@ function TestPageContent() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const category = (params.get('category') || 'Teisendamine') as Category;
+  const learner = params.get('learner') || '';
+  const subject = params.get('subject') || '';
+  const topic = params.get('topic') || '';
+  const categoryParam = params.get('category') || 'Teisendamine';
+  const category = categoryParam as Category;
   const difficulty = (params.get('difficulty') || 'Lihtne') as Difficulty;
   const rawCount = Number(params.get('count') || 5);
   const count = [3, 5, 10].includes(rawCount) ? rawCount : 5;
   const seed = Number(params.get('seed') || Date.now());
-  const learner = params.get('learner') || '';
-  const subject = params.get('subject') || '';
-  const topic = params.get('topic') || '';
-  const baseSelectionUrl = learner === 'kiur' && subject === 'matemaatika' && topic === 'pikkused' ? '/kiur/matemaatika' : '/';
+
+  const isKirsiMath = learner === 'kirsi' && subject === 'matemaatika' && topic === 'arvutamine';
+  const baseSelectionUrl = isKirsiMath ? '/kirsi/matemaatika' : learner === 'kiur' && subject === 'matemaatika' && topic === 'pikkused' ? '/kiur/matemaatika' : '/';
 
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [orderingAnswers, setOrderingAnswers] = useState<string[][]>([]);
+  const [choiceAnswers, setChoiceAnswers] = useState<string[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const generated = generateSession(category, difficulty, count, seed);
+    const generated = isKirsiMath
+      ? generateKirsiSession(categoryParam as never, count, seed)
+      : generateSession(category, difficulty, count, seed);
     setQuestions(generated);
     setAnswers(Array(generated.length).fill(''));
+    setChoiceAnswers(Array(generated.length).fill(''));
     setOrderingAnswers(Array.from({ length: generated.length }, () => []));
     setIndex(0);
     setElapsed(0);
     setError('');
     setIsSaving(false);
-  }, [category, difficulty, count, seed]);
+  }, [category, categoryParam, difficulty, count, seed, isKirsiMath]);
 
   useEffect(() => {
     if (!questions.length) return;
@@ -62,39 +70,38 @@ function TestPageContent() {
     return () => clearInterval(timer);
   }, [questions.length]);
 
-  useEffect(() => {
-    setError('');
-  }, [index]);
+  useEffect(() => setError(''), [index]);
 
   const current = questions[index];
   const cards = current?.orderingCards ?? [];
   const selected = orderingAnswers[index] ?? [];
   const selectedSet = new Set(selected);
+  const isChoiceQuestion = isKirsiMath && current?.question.includes('___');
 
-  if (!current) {
-    return <main className='container'><div className='card'>Laadin küsimusi...</div></main>;
-  }
+  if (!current) return <main className='container'><div className='card'>Laadin küsimusi...</div></main>;
 
   const finalizeResults = () => {
     return questions.map((question, i) => {
       if (question.kind === 'ordering') {
-        const orderedIds = [...(question.orderingCards ?? [])]
-          .sort((a, b) => (question.orderingDirection === 'desc' ? b.valueMm - a.valueMm : a.valueMm - b.valueMm))
-          .map((c) => c.id);
+        const orderedCards = [...(question.orderingCards ?? [])].sort((a, b) => (question.orderingDirection === 'desc' ? b.valueMm - a.valueMm : a.valueMm - b.valueMm));
+        const orderedIds = orderedCards.map((c) => c.id);
         const userOrder = orderingAnswers[i] ?? [];
+        const labelMap = new Map((question.orderingCards ?? []).map((c) => [c.id, c.label]));
         return {
           ...question,
-          userAnswer: userOrder.join(' > '),
+          userAnswer: userOrder.map((id) => labelMap.get(id) ?? id).join(' > '),
           isCorrect: JSON.stringify(userOrder) === JSON.stringify(orderedIds),
           correctAnswer: 0
         };
       }
 
-      return {
-        ...question,
-        userAnswer: answers[i],
-        isCorrect: isAnswerCorrect(answers[i], question.correctAnswer)
-      };
+      if (isKirsiMath && question.question.includes('___')) {
+        const answer = choiceAnswers[i] ?? '';
+        const c = question.correctAnswer === -1 ? '<' : question.correctAnswer === 0 ? '=' : '>';
+        return { ...question, userAnswer: answer, isCorrect: answer === c };
+      }
+
+      return { ...question, userAnswer: answers[i], isCorrect: isAnswerCorrect(answers[i], question.correctAnswer) };
     });
   };
 
@@ -102,10 +109,9 @@ function TestPageContent() {
     if (isSaving) return;
 
     if (current.kind === 'ordering') {
-      if (selected.length !== cards.length) {
-        setError('Vali kõik kaardid õigesse järjekorda.');
-        return;
-      }
+      if (selected.length !== cards.length) return setError('Vali kõik kaardid õigesse järjekorda.');
+    } else if (isChoiceQuestion) {
+      if (!choiceAnswers[index]) return setError('Vali sobiv märk.');
     } else {
       const err = validateAnswerInput(answers[index] ?? '');
       if (err) {
@@ -116,11 +122,7 @@ function TestPageContent() {
     }
 
     setError('');
-
-    if (index < count - 1) {
-      setIndex((v) => v + 1);
-      return;
-    }
+    if (index < count - 1) return setIndex((v) => v + 1);
 
     setIsSaving(true);
     const results = finalizeResults();
@@ -128,157 +130,57 @@ function TestPageContent() {
 
     try {
       const res = await fetch('/api/history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          createdAt: new Date().toISOString(),
-          category,
-          difficulty,
-          questionCount: count,
-          score,
-          elapsedSeconds: elapsed,
-          questions: results
-        })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ createdAt: new Date().toISOString(), category: categoryParam, difficulty: isKirsiMath ? 'Lihtne' : difficulty, questionCount: count, score, elapsedSeconds: elapsed, questions: results })
       });
       const body = await res.json();
       router.push(`/history/${body.id}`);
-    } finally {
-      setIsSaving(false);
-    }
+    } finally { setIsSaving(false); }
   };
 
   return (
     <main className='container'>
       <div className='card'>
-        <p>{category} · {difficulty} · {count} küsimust</p>
-
+        <p>{categoryParam} · {isKirsiMath ? '' : difficulty} {count} küsimust</p>
         <p>Küsimus {index + 1} / {count}</p>
         <p>Aeg {formatElapsed(elapsed)}</p>
         <div className='progress'><span style={{ width: `${((index + 1) / count) * 100}%` }} /></div>
         <h2>{current.question}</h2>
 
-        <ShapeVisual question={current} />
-
+        {!isKirsiMath && <ShapeVisual question={current} />}
 
         {current.kind === 'ordering' ? (
           <>
             <p>Sinu järjestus</p>
             <p>Vali kõik kaardid õigesse järjekorda.</p>
             <div className='row ordering-available'>
-              {cards.filter((c) => !selectedSet.has(c.id)).map((c) => (
-                <button
-                  type='button'
-                  key={c.id}
-                  className='chip'
-                  onClick={() => {
-                    setOrderingAnswers((prev) => {
-                      const next = [...prev];
-                      next[index] = [...(next[index] ?? []), c.id];
-                      return next;
-                    });
-                  }}
-                >
-                  {c.label}
-                </button>
-              ))}
+              {cards.filter((c) => !selectedSet.has(c.id)).map((c) => <button type='button' key={c.id} className='chip' onClick={() => setOrderingAnswers((prev) => { const next = [...prev]; next[index] = [...(next[index] ?? []), c.id]; return next; })}>{c.label}</button>)}
             </div>
-
-            <div className='row ordering-selected'>
+            <div className='ordering-list'>
               {selected.map((id, pos) => {
-                const card = cards.find((c) => c.id === id);
-                if (!card) return null;
-
-                return (
-                  <div key={id} className='chip active ordering-chip'>
-                    {card.label}
-                    <button
-                      type='button'
-                      onClick={() => {
-                        setOrderingAnswers((prev) => {
-                          const next = [...prev];
-                          const arr = [...(next[index] ?? [])];
-                          if (pos > 0) [arr[pos - 1], arr[pos]] = [arr[pos], arr[pos - 1]];
-                          next[index] = arr;
-                          return next;
-                        });
-                      }}
-                    >
-                      ←
-                    </button>
-                    <button
-                      type='button'
-                      onClick={() => {
-                        setOrderingAnswers((prev) => {
-                          const next = [...prev];
-                          const arr = [...(next[index] ?? [])];
-                          if (pos < arr.length - 1) [arr[pos + 1], arr[pos]] = [arr[pos], arr[pos + 1]];
-                          next[index] = arr;
-                          return next;
-                        });
-                      }}
-                    >
-                      →
-                    </button>
-                    <button
-                      type='button'
-                      onClick={() => {
-                        setOrderingAnswers((prev) => {
-                          const next = [...prev];
-                          next[index] = (next[index] ?? []).filter((x) => x !== id);
-                          return next;
-                        });
-                      }}
-                    >
-                      Eemalda
-                    </button>
-                  </div>
-                );
+                const card = cards.find((c) => c.id === id); if (!card) return null;
+                return <div key={id} className='ordering-item'><strong>{pos + 1}. {card.label}</strong><div className='row'><button type='button' className='chip' onClick={() => setOrderingAnswers((prev) => { const next=[...prev]; const arr=[...(next[index]??[])]; if(pos>0)[arr[pos-1],arr[pos]]=[arr[pos],arr[pos-1]]; next[index]=arr; return next; })}>Üles</button><button type='button' className='chip' onClick={() => setOrderingAnswers((prev) => { const next=[...prev]; const arr=[...(next[index]??[])]; if(pos<arr.length-1)[arr[pos+1],arr[pos]]=[arr[pos],arr[pos+1]]; next[index]=arr; return next; })}>Alla</button><button type='button' className='chip danger' onClick={() => setOrderingAnswers((prev) => { const next=[...prev]; next[index]=(next[index]??[]).filter((x)=>x!==id); return next; })}>Eemalda</button></div></div>;
               })}
             </div>
-
-            <button
-              type='button'
-              className='danger'
-              onClick={() => {
-                setOrderingAnswers((prev) => {
-                  const next = [...prev];
-                  next[index] = [];
-                  return next;
-                });
-              }}
-            >
-              Tühjenda valik
-            </button>
+            <button type='button' className='danger' onClick={() => setOrderingAnswers((prev) => { const next = [...prev]; next[index] = []; return next; })}>Tühjenda valik</button>
           </>
+        ) : isChoiceQuestion ? (
+          <div className='row'>
+            {['<', '=', '>'].map((sign) => (
+              <button type='button' key={sign} className={choiceAnswers[index] === sign ? 'chip active choice-btn' : 'chip choice-btn'} onClick={() => { const next = [...choiceAnswers]; next[index] = sign; setChoiceAnswers(next); }}>{sign}</button>
+            ))}
+          </div>
         ) : (
           <div className='answer'>
-            <input
-              ref={inputRef}
-              aria-label='Vastus'
-              aria-describedby={error ? 'vastuse-viga' : undefined}
-              className={error ? 'input-error' : ''}
-              inputMode='decimal'
-              value={answers[index] ?? ''}
-              onChange={(e) => {
-                const next = e.target.value;
-                if (/^\d*([,.]\d*)?$/.test(next)) {
-                  const copy = [...answers];
-                  copy[index] = next;
-                  setAnswers(copy);
-                }
-              }}
-              placeholder='Sisesta number'
-            />
-            <strong>{current.expectedUnit}</strong>
+            <input ref={inputRef} aria-label='Vastus' aria-describedby={error ? 'vastuse-viga' : undefined} className={error ? 'input-error' : ''} inputMode='decimal' value={answers[index] ?? ''} onChange={(e) => { const next = e.target.value; if (/^\d*([,.]\d*)?$/.test(next)) { const copy = [...answers]; copy[index] = next; setAnswers(copy); } }} placeholder='Sisesta number' />
+            {!isKirsiMath && <strong>{current.expectedUnit}</strong>}
           </div>
         )}
 
         {error && <p id='vastuse-viga' className='error'>{error}</p>}
         <div className='test-actions'>
           <button type='button' className='btn-stop' onClick={() => { if (confirm('Kas soovid harjutuse lõpetada? Tulemusi ei salvestata.')) router.push(baseSelectionUrl); }}>Lõpeta</button>
-          <button type='button' className='btn-next' onClick={handleSubmit} disabled={isSaving}>
-            {isSaving ? 'Salvestan...' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}
-          </button>
+          <button type='button' className='btn-next' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}</button>
         </div>
       </div>
     </main>

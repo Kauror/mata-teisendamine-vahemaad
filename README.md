@@ -41,3 +41,8 @@ Rakendus on aadressil `http://localhost:3000`.
 - `GET /api/history/[id]`
 - `POST /api/history`
 - `DELETE /api/history`
+
+
+## TypeScripti kontroll
+- `npm run build` genereerib Next.js route/types failid (`.next/types`).
+- Täielik tüübikontroll: `npm run typecheck`.

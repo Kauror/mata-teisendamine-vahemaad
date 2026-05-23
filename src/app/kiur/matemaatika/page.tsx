@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { CATEGORIES, DIFFICULTIES, QUESTION_COUNTS, Category, Difficulty } from '@/lib/types';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
 
 type H = { id:number; createdAt:string; category:string; difficulty:string; questionCount:number; score:number; elapsedSeconds:number };
 
 export default function MatemaatikaPage() {
+  const router = useRouter();
   const [history, setHistory] = useState<H[]>([]);
   const [category, setCategory] = useState<Category>('Segaharjutus');
-  const [difficulty, setDifficulty] = useState<Difficulty>('Keskmine');
+  const [difficulty, setDifficulty] = useState<Difficulty>('Lihtne');
   const [count, setCount] = useState(3);
   const [filter, setFilter] = useState('Kõik');
 
@@ -34,7 +36,6 @@ export default function MatemaatikaPage() {
     return map;
   }, [history]);
 
-  const seed = Date.now();
   const keys = ['Kõik', ...Array.from(groups.keys())];
 
   const deleteOne = async (id:number) => {
@@ -47,11 +48,8 @@ export default function MatemaatikaPage() {
     <main className='container'>
       <section className='card'>
         <h1>Matemaatika</h1>
-        <p>Vali teema</p>
-        <div className='card'>
-          <h2>Pikkuste teisendamine</h2>
-          <p>Harjuta millimeetreid, sentimeetreid, detsimeetreid, meetreid ja kilomeetreid.</p>
-        </div>
+        <h2>Pikkuste teisendamine</h2>
+        <p>Harjuta millimeetreid, sentimeetreid, detsimeetreid, meetreid ja kilomeetreid.</p>
 
         <h3>1. Harjutuse tüüp</h3>
         <div className='grid'>{CATEGORIES.map((c) => <button type='button' key={c} className={category===c?'chip active':'chip'} onClick={()=>setCategory(c)}>{c}</button>)}</div>
@@ -60,7 +58,7 @@ export default function MatemaatikaPage() {
         <h3>3. Küsimuste arv</h3>
         <div className='row'>{QUESTION_COUNTS.map((q) => <button type='button' key={q} className={count===q?'chip active':'chip'} onClick={()=>setCount(q)}>{q}</button>)}</div>
 
-        <Link className='btn' href={`/test?learner=kiur&subject=matemaatika&topic=pikkused&category=${encodeURIComponent(category)}&difficulty=${difficulty}&count=${count}&seed=${seed}`}>Alusta</Link>
+        <button type='button' className='btn' onClick={() => router.push(`/test?learner=kiur&subject=matemaatika&topic=pikkused&category=${encodeURIComponent(category)}&difficulty=${difficulty}&count=${count}&seed=${Date.now()}`)}>Alusta</button>
         <div className='row'>
           <Link className='chip' href='/kiur'>Tagasi Kiuri juurde</Link>
           <Link className='chip' href='/'>Tagasi avalehele</Link>

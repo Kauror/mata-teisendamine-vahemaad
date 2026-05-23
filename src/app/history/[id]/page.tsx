@@ -65,7 +65,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
         <p>{formatDateTime(row.createdAt)}</p>
       </section>
 
-      <section className='card'><Link className='chip' href='/history'>Tagasi ajalukku</Link>
+      <section className='card'>
         {questions.map((q, i) => {
           const order = (q.orderingCards ?? [])
             .slice()

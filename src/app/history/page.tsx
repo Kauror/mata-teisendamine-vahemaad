@@ -16,5 +16,26 @@ export default function HistoryPage() {
     setHistory((h) => h.filter((x) => x.id !== id));
   };
 
-  return <main className='container'><section className='card'><h1>Testide ajalugu</h1><Link className='chip' href='/kiur/matemaatika'>Tagasi Pikkuste teisendamise juurde</Link><ul>{history.map((h)=><li key={h.id}><Link href={`/history/${h.id}`}>{formatDateTime(h.createdAt)} • {h.category} • {h.difficulty} • {h.score}/{h.questionCount} • {typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub'}</Link> <button type='button' className='danger' onClick={()=>deleteOne(h.id)}>Kustuta</button></li>)}</ul></section></main>;
+  return (
+    <main className='container'>
+      <section className='card'>
+        <h1>Testide ajalugu</h1>
+        <Link className='chip' href='/kiur/matemaatika'>Tagasi Pikkuste teisendamise juurde</Link>
+        {history.length === 0 && <p>Ajalugu puudub.</p>}
+        <div className='history-list'>
+          {history.map((h) => (
+            <article key={h.id} className='history-item'>
+              <p><strong>{h.category}</strong> · {h.difficulty}</p>
+              <p>{h.score}/{h.questionCount} · {typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub'}</p>
+              <p>{formatDateTime(h.createdAt)}</p>
+              <div className='row'>
+                <Link className='chip' href={`/history/${h.id}`}>Vaata</Link>
+                <button type='button' className='danger' onClick={() => deleteOne(h.id)}>Kustuta</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
 }
