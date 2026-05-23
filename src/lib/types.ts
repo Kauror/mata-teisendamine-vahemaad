@@ -14,6 +14,9 @@ export const QUESTION_COUNTS = [3, 5, 10] as const;
 
 export type Category = (typeof CATEGORIES)[number];
 export type Difficulty = (typeof DIFFICULTIES)[number];
+export type QuestionKind = 'numeric' | 'ordering';
+
+export type OrderingCard = { id: string; label: string; valueMm: number };
 
 export type GeneratedQuestion = {
   id: string;
@@ -22,6 +25,9 @@ export type GeneratedQuestion = {
   question: string;
   expectedUnit: 'mm' | 'cm' | 'dm' | 'm' | 'km';
   correctAnswer: number;
+  kind?: QuestionKind;
+  orderingCards?: OrderingCard[];
+  orderingDirection?: 'asc' | 'desc';
 };
 
 export type QuestionResult = GeneratedQuestion & {
