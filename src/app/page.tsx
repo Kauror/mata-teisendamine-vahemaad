@@ -11,15 +11,11 @@ export default function Home() {
           <Link className='profile-card' href='/kiur'>
             <span className='profile-avatar' aria-hidden>👦</span>
             <strong>Kiur</strong>
-            <span>Matemaatika ja harjutused</span>
-            <span className='chip active'>Vali Kiur</span>
           </Link>
 
           <Link className='profile-card' href='/kirsi'>
             <span className='profile-avatar' aria-hidden>👧</span>
             <strong>Kirsi</strong>
-            <span>Tegevused tulevad hiljem</span>
-            <span className='chip active'>Vali Kirsi</span>
           </Link>
         </div>
       </section>

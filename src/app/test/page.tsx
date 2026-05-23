@@ -76,7 +76,7 @@ function TestPageContent() {
   const cards = current?.orderingCards ?? [];
   const selected = orderingAnswers[index] ?? [];
   const selectedSet = new Set(selected);
-  const isChoiceQuestion = isKirsiMath && current?.question.includes('___');
+  const isChoiceQuestion = isKirsiMath && current?.kind === 'choice';
 
   if (!current) return <main className='container'><div className='card'>Laadin küsimusi...</div></main>;
 
@@ -95,7 +95,7 @@ function TestPageContent() {
         };
       }
 
-      if (isKirsiMath && question.question.includes('___')) {
+      if (isKirsiMath && question.kind === 'choice') {
         const answer = choiceAnswers[i] ?? '';
         const c = question.correctAnswer === -1 ? '<' : question.correctAnswer === 0 ? '=' : '>';
         return { ...question, userAnswer: answer, isCorrect: answer === c };
@@ -173,7 +173,7 @@ function TestPageContent() {
         ) : (
           <div className='answer'>
             <input ref={inputRef} aria-label='Vastus' aria-describedby={error ? 'vastuse-viga' : undefined} className={error ? 'input-error' : ''} inputMode='decimal' value={answers[index] ?? ''} onChange={(e) => { const next = e.target.value; if (/^\d*([,.]\d*)?$/.test(next)) { const copy = [...answers]; copy[index] = next; setAnswers(copy); } }} placeholder='Sisesta number' />
-            {!isKirsiMath && <strong>{current.expectedUnit}</strong>}
+            {!isKirsiMath && current.expectedUnit && <strong>{current.expectedUnit}</strong>}
           </div>
         )}
 

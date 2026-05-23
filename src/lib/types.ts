@@ -14,7 +14,7 @@ export const QUESTION_COUNTS = [3, 5, 10] as const;
 
 export type Category = (typeof CATEGORIES)[number];
 export type Difficulty = (typeof DIFFICULTIES)[number];
-export type QuestionKind = 'numeric' | 'ordering';
+export type QuestionKind = 'numeric' | 'ordering' | 'choice';
 
 export type OrderingCard = { id: string; label: string; valueMm: number };
 

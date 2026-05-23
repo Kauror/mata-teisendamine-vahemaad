@@ -53,7 +53,7 @@ function compare100(rng: RNG, i: number): GeneratedQuestion {
     question: `${a} ___ ${b}`,
     expectedUnit: 'cm',
     correctAnswer: correct === '<' ? -1 : correct === '=' ? 0 : 1,
-    kind: 'numeric'
+    kind: 'choice'
   };
 }
 

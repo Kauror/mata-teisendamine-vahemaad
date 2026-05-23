@@ -60,8 +60,8 @@ export default function MatemaatikaPage() {
 
         <button type='button' className='btn' onClick={() => router.push(`/test?learner=kiur&subject=matemaatika&topic=pikkused&category=${encodeURIComponent(category)}&difficulty=${difficulty}&count=${count}&seed=${Date.now()}`)}>Alusta</button>
         <div className='row'>
-          <Link className='chip' href='/kiur'>Tagasi Kiuri juurde</Link>
-          <Link className='chip' href='/'>Tagasi avalehele</Link>
+          <Link className='back-link' href='/kiur'>Tagasi Kiuri juurde</Link>
+          <Link className='back-link' href='/'>Tagasi avalehele</Link>
           <Link className='chip' href='/history'>Ajalugu</Link>
         </div>
       </section>

@@ -12,7 +12,7 @@ type SavedQuestion = {
   expectedUnit: string;
   correctAnswer: number;
   isCorrect: boolean;
-  kind?: 'numeric' | 'ordering';
+  kind?: 'numeric' | 'ordering' | 'choice';
   orderingCards?: OrderingCard[];
   orderingDirection?: 'asc' | 'desc';
 };
@@ -45,10 +45,13 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   }
 
   const questions = safeParseQuestions(row.questions);
+
+  const isKirsi = row.category === 'Arvutamine 10 piires' || row.category === 'Arvutamine 20 piires' || row.category === 'Suurem või väiksem kuni 100' || row.category === 'Segaülesanded';
+
   const retryParams = new URLSearchParams({
-    learner: 'kiur',
+    learner: isKirsi ? 'kirsi' : 'kiur',
     subject: 'matemaatika',
-    topic: 'pikkused',
+    topic: isKirsi ? 'arvutamine' : 'pikkused',
     category: row.category,
     difficulty: row.difficulty,
     count: String(row.questionCount),
@@ -58,7 +61,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   return (
     <main className='container'>
       <h1>Tulemus</h1>
-      <section className='card'><Link className='chip' href='/history'>Tagasi ajalukku</Link>
+      <section className='card'><Link className='back-link' href='/history'>Tagasi ajalukku</Link>
         <h2>{row.score} / {row.questionCount} õige</h2>
         <p>Aeg: {typeof row.elapsedSeconds === 'number' && Number.isFinite(row.elapsedSeconds) ? formatElapsed(row.elapsedSeconds) : 'aeg puudub'}</p>
         <p>Teema: {row.category} · Raskus: {row.difficulty}</p>
@@ -78,7 +81,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
               <p><strong>{i + 1}. {q.question}</strong></p>
               {q.kind === 'ordering'
                 ? <><p>Sinu järjestus: {q.userAnswer || '—'}</p><p>Õige järjestus: {order || '—'}</p></>
-                : <><p>Sinu vastus: {q.userAnswer || '—'} {q.expectedUnit || ''}</p><p>Õige vastus: {String(q.correctAnswer ?? '—')} {q.expectedUnit || ''}</p></>}
+                : <><p>Sinu vastus: {q.userAnswer || '—'}{isKirsi ? '' : ` ${q.expectedUnit || ''}`}</p><p>Õige vastus: {isKirsi && q.kind === 'choice' ? (q.correctAnswer === -1 ? '<' : q.correctAnswer === 0 ? '=' : '>') : String(q.correctAnswer ?? '—')}{isKirsi ? '' : ` ${q.expectedUnit || ''}`}</p></>}
               <p className={q.isCorrect ? 'ok' : 'bad'}>{q.isCorrect ? 'Õige! Tubli!' : 'Veel harjutamist — järgmine kord läheb paremini!'}</p>
             </article>
           );
@@ -87,7 +90,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
 
       <div className='row'>
         <Link className='btn' href={`/test?${retryParams.toString()}`}>Tee {row.category.toLowerCase()} uuesti</Link>
-        <Link className='btn chip active' href='/kiur/matemaatika'>Vali uus harjutus</Link>
+        <Link className='btn chip active' href={isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika'}>Vali uus harjutus</Link>
       </div>
     </main>
   );
