@@ -4,6 +4,24 @@ import { formatDateTime, formatElapsed } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
+type OrderingCard = {
+  id: string;
+  label: string;
+  valueMm: number;
+};
+
+type SavedQuestion = {
+  id?: string;
+  question: string;
+  userAnswer: string;
+  expectedUnit: string;
+  correctAnswer: number;
+  isCorrect: boolean;
+  kind?: 'numeric' | 'ordering';
+  orderingCards?: OrderingCard[];
+  orderingDirection?: 'asc' | 'desc';
+};
+
 type AttemptRow = {
   id: number;
   createdAt: string;
@@ -15,14 +33,14 @@ type AttemptRow = {
   questions: string;
 };
 
-type SavedQuestion = {
-  id?: string;
-  question: string;
-  userAnswer: string;
-  expectedUnit: string;
-  correctAnswer: number;
-  isCorrect: boolean;
-};
+function safeParseQuestions(raw: string): SavedQuestion[] {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as SavedQuestion[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 export default async function HistoryDetail({
   params,
@@ -48,7 +66,7 @@ export default async function HistoryDetail({
     );
   }
 
-  const questions = JSON.parse(row.questions) as SavedQuestion[];
+  const questions = safeParseQuestions(row.questions);
 
   const retryParams = new URLSearchParams({
     category: row.category,
@@ -78,26 +96,49 @@ export default async function HistoryDetail({
       </section>
 
       <section className="card">
-        {questions.map((q, i) => (
-          <article key={q.id ?? `${i}-${q.question}`}>
-            <p>
-              <strong>
-                {i + 1}. {q.question}
-              </strong>
-            </p>
-            <p>
-              Sinu vastus: {q.userAnswer || '—'} {q.expectedUnit}
-            </p>
-            <p>
-              Õige vastus: {q.correctAnswer} {q.expectedUnit}
-            </p>
-            <p className={q.isCorrect ? 'ok' : 'bad'}>
-              {q.isCorrect
-                ? 'Õige! Tubli!'
-                : 'Veel harjutamist — järgmine kord läheb paremini!'}
-            </p>
-          </article>
-        ))}
+        {questions.map((q, i) => {
+          const correctOrdering = (q.orderingCards ?? [])
+            .slice()
+            .sort((a, b) =>
+              q.orderingDirection === 'desc'
+                ? b.valueMm - a.valueMm
+                : a.valueMm - b.valueMm
+            )
+            .map((card) => card.label)
+            .join(' > ');
+
+          return (
+            <article key={q.id ?? `${i}-${q.question}`}>
+              <p>
+                <strong>
+                  {i + 1}. {q.question}
+                </strong>
+              </p>
+
+              {q.kind === 'ordering' ? (
+                <>
+                  <p>Sinu järjestus: {q.userAnswer || '—'}</p>
+                  <p>Õige järjestus: {correctOrdering}</p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    Sinu vastus: {q.userAnswer || '—'} {q.expectedUnit}
+                  </p>
+                  <p>
+                    Õige vastus: {q.correctAnswer} {q.expectedUnit}
+                  </p>
+                </>
+              )}
+
+              <p className={q.isCorrect ? 'ok' : 'bad'}>
+                {q.isCorrect
+                  ? 'Õige! Tubli!'
+                  : 'Veel harjutamist — järgmine kord läheb paremini!'}
+              </p>
+            </article>
+          );
+        })}
       </section>
 
       <div className="row">

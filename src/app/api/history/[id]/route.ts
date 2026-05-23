@@ -7,3 +7,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!row) return NextResponse.json({ message: 'Ei leitud' }, { status: 404 });
   return NextResponse.json({ ...row, questions: JSON.parse(row.questions as string) });
 }
+
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  db.prepare('DELETE FROM attempts WHERE id = ?').run(id);
+  return NextResponse.json({ ok: true });
+}
