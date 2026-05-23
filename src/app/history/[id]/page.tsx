@@ -1,0 +1,81 @@
+import Link from 'next/link';
+import db from '@/lib/db';
+import { formatDateTime, formatElapsed } from '@/lib/validation';
+
+export const dynamic = 'force-dynamic';
+
+type SavedQuestion = {
+  id: string;
+  question: string;
+  userAnswer: string;
+  expectedUnit: string;
+  correctAnswer: number;
+  isCorrect: boolean;
+};
+
+type AttemptRow = {
+  id: number;
+  createdAt: string;
+  category: string;
+  difficulty: string;
+  questionCount: number;
+  score: number;
+  elapsedSeconds: number | null;
+  questions: string;
+};
+
+export default async function HistoryDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const row = db.prepare('SELECT * FROM attempts WHERE id = ?').get(id) as AttemptRow | undefined;
+
+  if (!row) {
+    return (
+      <main className='container'>
+        <div className='card'>
+          <p>Testi ei leitud.</p>
+          <Link href='/'>Tagasi</Link>
+        </div>
+      </main>
+    );
+  }
+
+  const questions = JSON.parse(row.questions) as SavedQuestion[];
+  const retryParams = new URLSearchParams({
+    category: row.category,
+    difficulty: row.difficulty,
+    count: String(row.questionCount),
+    seed: String(Date.now())
+  });
+
+  return (
+    <main className='container'>
+      <h1>Tulemus</h1>
+      <section className='card'>
+        <h2>{row.score} / {row.questionCount} õige</h2>
+        <p>Aeg: {typeof row.elapsedSeconds === 'number' && Number.isFinite(row.elapsedSeconds) ? formatElapsed(row.elapsedSeconds) : 'aeg puudub'}</p>
+        <p>Teema: {row.category} · Raskus: {row.difficulty}</p>
+        <p>{formatDateTime(row.createdAt)}</p>
+      </section>
+
+      <section className='card'>
+        {questions.map((q, i) => (
+          <article key={q.id}>
+            <p><strong>{i + 1}. {q.question}</strong></p>
+            <p>Sinu vastus: {q.userAnswer || '—'} {q.expectedUnit}</p>
+            <p>Õige vastus: {q.correctAnswer} {q.expectedUnit}</p>
+            <p className={q.isCorrect ? 'ok' : 'bad'}>{q.isCorrect ? 'Õige! Tubli!' : 'Veel harjutamist — järgmine kord läheb paremini!'}</p>
+          </article>
+        ))}
+      </section>
+
+      <div className='row'>
+        <Link className='btn' href={`/test?${retryParams.toString()}`}>
+          Tee uuesti
+        </Link>
+        <Link className='btn chip active' href='/'>
+          Vali uus harjutus
+        </Link>
+      </div>
+    </main>
+  );
+}
