@@ -50,6 +50,13 @@ export default async function HistoryDetail({
 
   const questions = JSON.parse(row.questions) as SavedQuestion[];
 
+  const retryParams = new URLSearchParams({
+    category: row.category,
+    difficulty: row.difficulty,
+    count: String(row.questionCount),
+    seed: String(Date.now()),
+  });
+
   return (
     <main className="container">
       <h1>Tulemus</h1>
@@ -94,8 +101,13 @@ export default async function HistoryDetail({
       </section>
 
       <div className="row">
-        <Link
-          className="btn"
-          href={`/test?category=${encodeURIComponent(
-            row.category
-          )}&difficulty
+        <Link className="btn" href={`/test?${retryParams.toString()}`}>
+          Tee uuesti
+        </Link>
+        <Link className="btn secondary" href="/">
+          Vali uus harjutus
+        </Link>
+      </div>
+    </main>
+  );
+}
