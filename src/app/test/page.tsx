@@ -6,6 +6,17 @@ import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateSession } from '@/lib/exercises/lengths';
 import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
 
+const HINTS = [
+  '1 cm = 10 mm',
+  '10 mm = 1 cm',
+  '1 dm = 10 cm',
+  '10 cm = 1 dm',
+  '1 m = 100 cm',
+  '100 cm = 1 m',
+  '1 km = 1000 m',
+  '1000 m = 1 km'
+];
+
 function ShapeVisual({ question }: { question: GeneratedQuestion }) {
   if (question.category !== 'Ümbermõõt') return null;
   if (question.question.includes('Ruudu')) {
@@ -31,10 +42,6 @@ function TestPageContent() {
   const difficulty = (params.get('difficulty') || 'Lihtne') as Difficulty;
   const count = Number(params.get('count') || 5);
   const seed = Number(params.get('seed') || Date.now());
-  const learner = params.get('learner') || '';
-  const subject = params.get('subject') || '';
-  const topic = params.get('topic') || '';
-  const baseSelectionUrl = learner === 'kiur' && subject === 'matemaatika' && topic === 'pikkused' ? '/kiur/matemaatika' : '/';
 
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [index, setIndex] = useState(0);
@@ -42,6 +49,7 @@ function TestPageContent() {
   const [orderingAnswers, setOrderingAnswers] = useState<string[][]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState('');
+  const [showHint, setShowHint] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -52,6 +60,7 @@ function TestPageContent() {
     setIndex(0);
     setElapsed(0);
     setError('');
+    setShowHint(false);
     setIsSaving(false);
   }, [category, difficulty, count, seed]);
 
@@ -63,6 +72,7 @@ function TestPageContent() {
 
   useEffect(() => {
     setError('');
+    setShowHint(false);
   }, [index]);
 
   const current = questions[index];
@@ -149,7 +159,18 @@ function TestPageContent() {
   return (
     <main className='container'>
       <div className='card'>
-        <p>{category} · {difficulty} · {count} küsimust</p>
+        <div className='row'>
+          <p>{category} · {difficulty} · {count} küsimust</p>
+          <button
+            type='button'
+            className='danger'
+            onClick={() => {
+              if (confirm('Kas soovid harjutuse lõpetada? Tulemusi ei salvestata.')) router.push('/');
+            }}
+          >
+            Lõpeta
+          </button>
+        </div>
 
         <p>Küsimus {index + 1} / {count}</p>
         <p>Aeg {formatElapsed(elapsed)}</p>
@@ -158,6 +179,14 @@ function TestPageContent() {
 
         <ShapeVisual question={current} />
 
+        {current.category === 'Teisendamine' && (
+          <>
+            <button type='button' className='chip' onClick={() => setShowHint((v) => !v)}>
+              {showHint ? 'Peida vihje' : 'Näita vihjet'}
+            </button>
+            {showHint && <p>{HINTS.join(' · ')}</p>}
+          </>
+        )}
 
         {current.kind === 'ordering' ? (
           <>
@@ -272,12 +301,9 @@ function TestPageContent() {
         )}
 
         {error && <p id='vastuse-viga' className='error'>{error}</p>}
-        <div className='test-actions'>
-          <button type='button' className='btn-stop' onClick={() => { if (confirm('Kas soovid harjutuse lõpetada? Tulemusi ei salvestata.')) router.push(baseSelectionUrl); }}>Lõpeta</button>
-          <button type='button' className='btn-next' onClick={handleSubmit} disabled={isSaving}>
-            {isSaving ? 'Salvestan...' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}
-          </button>
-        </div>
+        <button type='button' onClick={handleSubmit} disabled={isSaving}>
+          {isSaving ? 'Salvestan...' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}
+        </button>
       </div>
     </main>
   );
