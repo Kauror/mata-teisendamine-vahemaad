@@ -1,0 +1,8 @@
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:#f5f7ff;color:#1c2442}
+.container{max-width:740px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.card{background:white;border-radius:16px;padding:16px;box-shadow:0 4px 20px #0001;display:flex;flex-direction:column;gap:10px}
+.btn,button{background:#5b6cff;color:white;border:none;border-radius:12px;padding:12px 14px;text-decoration:none;text-align:center;font-weight:700}
+.secondary{background:#22a6b3}.danger{background:#e74c3c}.row{display:flex;gap:8px;flex-wrap:wrap}.chip{background:#dfe3ff;color:#1c2442}.chip.active{background:#5b6cff;color:white}
+input,select{padding:10px;border-radius:10px;border:1px solid #cfd5ff;font-size:16px}
+.answer{display:flex;align-items:center;gap:10px}.error{color:#c23616}.ok{color:#2e7d32}.bad{color:#c62828}
+ul{padding-left:16px}
