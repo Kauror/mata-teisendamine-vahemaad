@@ -9,9 +9,10 @@ function seededRng(seed: number): RNG { let t = seed >>> 0; return () => { t += 
 
 const DIV_CATS = ['Jagamine', 'Kontroll korrutamisega', 'Tähe väärtus', 'Võrratused'] as const;
 const NUM_CATS = ['Arvkiir', 'Loendamine', 'Eelnev ja järgnev arv', 'Järjestamine', 'Võrdlemine', 'Arvu koostis', 'Nuputa'] as const;
-const CIRCLE_CATS = ['Mõisted', 'Raadius', 'Diameeter', 'Võrdlemine', 'Kraadid', 'Mustrid'] as const;
+const CIRCLE_CATS = ['Mõisted', 'Raadius', 'Diameeter', 'Võrdlemine', 'Kraadid'] as const;
+const PATTERN_CATS = ['Segaharjutus'] as const;
 
-type TopicCategory = (typeof DIV_CATS)[number] | (typeof NUM_CATS)[number] | (typeof CIRCLE_CATS)[number] | 'Segaharjutus';
+type TopicCategory = (typeof DIV_CATS)[number] | (typeof NUM_CATS)[number] | (typeof CIRCLE_CATS)[number] | (typeof PATTERN_CATS)[number] | 'Segaharjutus';
 
 function mixedPlan(rng: RNG, count: number, types: readonly TopicCategory[]) {
   const out: TopicCategory[] = [];
@@ -61,19 +62,23 @@ function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Genera
   ] as const; const it = pick(rng, qs); return { id: `cm-${i}`, category: cat as unknown as Category, difficulty: d, question: it.q, correctAnswer: it.a, visual: it.v }; }
   if (cat === 'Raadius' || cat === 'Diameeter') { const r = rInt(rng, d === 'Lihtne' ? 2 : 4, d === 'Raske' ? 20 : 14); if (rInt(rng, 0, 1) === 0) return { id: `cr-${i}`, category: cat as unknown as Category, difficulty: d, question: `Ringjoone raadius on ${r} cm. Kui pikk on diameeter?`, expectedUnit: 'cm', correctAnswer: r * 2 }; const dia = r * 2; return { id: `cd-${i}`, category: cat as unknown as Category, difficulty: d, question: `Diameeter on ${dia} cm. Kui pikk on raadius?`, expectedUnit: 'cm', correctAnswer: r }; }
   if (cat === 'Võrdlemine') { if (rInt(rng, 0, 1) === 0) { const a = rInt(rng, 2, 15), b = rInt(rng, 2, 15); const sign = a === b ? 0 : a > b ? 1 : -1; return { id: `cv-${i}`, category: cat as unknown as Category, difficulty: d, question: `${a} cm ___ ${b} cm`, expectedUnit: 'cm', correctAnswer: sign, kind: 'choice' }; } const a = rInt(rng, 2, 15), b = rInt(rng, 2, 15); return { id: `cvn-${i}`, category: cat as unknown as Category, difficulty: d, question: `Ühe ringi raadius on ${a} cm ja teise ringi raadius on ${b} cm. Mitu cm on erinevus?`, expectedUnit: 'cm', correctAnswer: Math.abs(a - b) }; }
-  if (cat === 'Mustrid') {
-    const pattern = rInt(rng, 0, 2);
-    if (pattern === 0) return { id: `cp-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Jätka mustrit: 1, 2, 3, ___', correctAnswer: 4 };
-    if (pattern === 1) return { id: `cp-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Jätka mustrit: 2, 4, 6, ___', correctAnswer: 8 };
-    return { id: `cp-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Jätka mustrit: 5, 10, 15, ___', correctAnswer: 20 };
-  }
   return { id: `cs-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Mitu kraadi on täisringis?', correctAnswer: 360, visual: 'circle-full' };
+}
+
+
+function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+  const pattern = rInt(rng, 0, 3);
+  if (pattern === 0) return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Jätka mustrit: 1, 2, 3, ___', correctAnswer: 4 };
+  if (pattern === 1) return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Jätka mustrit: 2, 4, 6, ___', correctAnswer: 8 };
+  if (pattern === 2) return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Jätka mustrit: 5, 10, 15, ___', correctAnswer: 20 };
+  return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Mitu ringi tuleb järgmises sammus: 3, 6, 9, ___?', correctAnswer: 12 };
 }
 
 export function generateKiurMathSession(topic: string, category: string, difficulty: Difficulty, count: number, seed: number): GeneratedQuestion[] {
   if (isKiurLengthTopic(topic)) return generateLengthSession(category as Category, difficulty, count, seed);
   const rng = seededRng(seed);
-  const topicTypes = topic === 'jagamine-kahekohaline-uhekohaline' ? DIV_CATS : topic === 'arvud-10000' ? NUM_CATS : topic === 'ring-ja-ringjoon' ? CIRCLE_CATS : DIV_CATS;
+  const normalizedTopic = topic === 'ring-ja-ringjoon' && category === 'Mustrid' ? 'mustrid' : topic;
+  const topicTypes = normalizedTopic === 'jagamine-kahekohaline-uhekohaline' ? DIV_CATS : normalizedTopic === 'arvud-10000' ? NUM_CATS : normalizedTopic === 'ring-ja-ringjoon' ? CIRCLE_CATS : normalizedTopic === 'mustrid' ? PATTERN_CATS : DIV_CATS;
   const types = category === 'Segaharjutus' ? mixedPlan(rng, count, topicTypes) : Array.from({ length: count }, () => category as TopicCategory);
   const out: GeneratedQuestion[] = [];
   const used = new Set<string>();
@@ -81,7 +86,7 @@ export function generateKiurMathSession(topic: string, category: string, difficu
     let tries = 0;
     let q: GeneratedQuestion;
     do {
-      q = topic === 'jagamine-kahekohaline-uhekohaline' ? divisionQ(types[i], difficulty, rng, i + tries * 17) : topic === 'arvud-10000' ? numbersQ(types[i], difficulty, rng, i + tries * 17) : circleQ(types[i], difficulty, rng, i + tries * 17);
+      q = normalizedTopic === 'jagamine-kahekohaline-uhekohaline' ? divisionQ(types[i], difficulty, rng, i + tries * 17) : normalizedTopic === 'arvud-10000' ? numbersQ(types[i], difficulty, rng, i + tries * 17) : normalizedTopic === 'mustrid' ? patternQ(types[i], difficulty, rng, i + tries * 17) : circleQ(types[i], difficulty, rng, i + tries * 17);
       tries++;
     } while (used.has(`${q.kind}|${q.question}|${q.correctAnswer}`) && tries < 20);
     used.add(`${q.kind}|${q.question}|${q.correctAnswer}`);

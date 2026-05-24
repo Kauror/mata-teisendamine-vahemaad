@@ -59,11 +59,15 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
 
   const isKirsi = isKirsiAttempt(row.category);
 
+  const isOldRingPattern = (row.topic === 'ring-ja-ringjoon' || !row.topic) && row.category === 'Mustrid';
+  const retryTopic = isOldRingPattern ? 'mustrid' : (row.topic || (isKirsi ? 'arvutamine' : KIUR_LENGTH_TOPIC_ID));
+  const retryCategory = (retryTopic === 'ring-ja-ringjoon' || retryTopic === 'mustrid') ? 'Segaharjutus' : row.category;
+
   const retryParams = new URLSearchParams({
     learner: row.learner || (isKirsi ? 'kirsi' : 'kiur'),
     subject: row.subject || 'matemaatika',
-    topic: row.topic || (isKirsi ? 'arvutamine' : KIUR_LENGTH_TOPIC_ID),
-    category: row.category,
+    topic: retryTopic,
+    category: retryCategory,
     difficulty: row.difficulty,
     count: String(row.questionCount),
     seed: String(Date.now())

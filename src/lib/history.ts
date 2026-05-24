@@ -39,6 +39,7 @@ export function compactTopicLabel(topic?: string | null, category?: string | nul
   if (topic === 'arvud-10000') return 'Arvud 10k piires';
   if (topic === 'ring-ja-ringjoon') return 'Ring';
   if (topic === 'arvutamine') return 'Arvutamine';
+  if (topic === 'mustrid') return 'Mustrid';
   return category || '';
 }
 

@@ -1,4 +1,4 @@
-import { CATEGORIES, DIFFICULTIES, QUESTION_COUNTS } from '@/lib/types';
+import { CATEGORIES, QUESTION_COUNTS } from '@/lib/types';
 
 export const KIUR_MATH_TOPICS = [
   {
@@ -8,8 +8,12 @@ export const KIUR_MATH_TOPICS = [
     accent: 'teal',
     description: 'mm, cm, dm, m, km, teisendamine, võrdlemine, ümbermõõt ja tekstülesanded',
     implemented: true,
+    hideExerciseTypeSelector: false,
+    defaultCategory: 'Segaharjutus' as const,
+    hideDifficultySelector: true,
+    defaultDifficulty: 'Lihtne' as const,
     exerciseTypes: CATEGORIES,
-    difficulties: DIFFICULTIES,
+    difficulties: ['Lihtne'] as const,
     questionCounts: QUESTION_COUNTS
   },
   {
@@ -19,8 +23,12 @@ export const KIUR_MATH_TOPICS = [
     accent: 'blue',
     description: 'Jagamine, korrutamisega kontroll, tähe väärtus ja võrratused',
     implemented: true,
+    hideExerciseTypeSelector: false,
+    defaultCategory: 'Segaharjutus' as const,
+    hideDifficultySelector: true,
+    defaultDifficulty: 'Lihtne' as const,
     exerciseTypes: ['Jagamine', 'Kontroll korrutamisega', 'Tähe väärtus', 'Võrratused', 'Segaharjutus'] as const,
-    difficulties: DIFFICULTIES,
+    difficulties: ['Lihtne'] as const,
     questionCounts: QUESTION_COUNTS
   },
   {
@@ -30,8 +38,12 @@ export const KIUR_MATH_TOPICS = [
     accent: 'purple',
     description: 'Arvkiir, järjestamine, võrdlemine ja arvu koostis',
     implemented: true,
+    hideExerciseTypeSelector: false,
+    defaultCategory: 'Segaharjutus' as const,
+    hideDifficultySelector: true,
+    defaultDifficulty: 'Lihtne' as const,
     exerciseTypes: ['Arvkiir', 'Eelnev ja järgnev arv', 'Järjestamine', 'Võrdlemine', 'Arvu koostis', 'Nuputa', 'Segaharjutus'] as const,
-    difficulties: DIFFICULTIES,
+    difficulties: ['Lihtne'] as const,
     questionCounts: QUESTION_COUNTS
   },
   {
@@ -41,8 +53,26 @@ export const KIUR_MATH_TOPICS = [
     accent: 'violet',
     description: 'Ring, ringjoon, keskpunkt, raadius ja diameeter',
     implemented: true,
-    exerciseTypes: ['Mõisted', 'Raadius', 'Diameeter', 'Võrdlemine', 'Mustrid', 'Segaharjutus'] as const,
-    difficulties: DIFFICULTIES,
+    hideExerciseTypeSelector: true,
+    defaultCategory: 'Segaharjutus' as const,
+    hideDifficultySelector: true,
+    defaultDifficulty: 'Lihtne' as const,
+    exerciseTypes: ['Segaharjutus'] as const,
+    difficulties: ['Lihtne'] as const,
+    questionCounts: QUESTION_COUNTS
+  },
+  {
+    id: 'mustrid',
+    name: 'Mustrid',
+    emoji: '🧩',
+    accent: 'purple',
+    implemented: true,
+    hideExerciseTypeSelector: true,
+    defaultCategory: 'Segaharjutus' as const,
+    hideDifficultySelector: true,
+    defaultDifficulty: 'Lihtne' as const,
+    exerciseTypes: ['Segaharjutus'] as const,
+    difficulties: ['Lihtne'] as const,
     questionCounts: QUESTION_COUNTS
   }
 ] as const;

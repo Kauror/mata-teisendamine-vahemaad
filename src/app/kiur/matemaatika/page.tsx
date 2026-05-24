@@ -2,20 +2,24 @@
 
 import { useMemo, useState } from 'react';
 import PracticeSetupPage from '@/app/components/PracticeSetupPage';
-import { Category, DIFFICULTIES, Difficulty } from '@/lib/types';
+import { Category, Difficulty } from '@/lib/types';
 import { KIUR_LENGTH_TOPIC_ID, KIUR_MATH_TOPICS, KiurMathTopicId } from '@/lib/kiurMathTopics';
 
 export default function MatemaatikaPage() {
   const [topicId, setTopicId] = useState<KiurMathTopicId>(KIUR_LENGTH_TOPIC_ID);
   const [category, setCategory] = useState<Category>('Segaharjutus');
-  const [difficulty, setDifficulty] = useState<Difficulty>('Lihtne');
+  const [difficulty] = useState<Difficulty>('Lihtne');
   const [count, setCount] = useState<number>(10);
 
   const selectedTopic = KIUR_MATH_TOPICS.find((t) => t.id === topicId) ?? KIUR_MATH_TOPICS[0];
 
+  const resolvedCategory = selectedTopic.hideExerciseTypeSelector ? selectedTopic.defaultCategory : category;
+
+  const resolvedDifficulty = selectedTopic.hideDifficultySelector ? selectedTopic.defaultDifficulty : difficulty;
+
   const startUrl = useMemo(() => (
-    `/test?learner=kiur&subject=matemaatika&topic=${selectedTopic.id}&category=${encodeURIComponent(category)}&difficulty=${difficulty}&count=${count}`
-  ), [selectedTopic.id, category, difficulty, count]);
+    `/test?learner=kiur&subject=matemaatika&topic=${selectedTopic.id}&category=${encodeURIComponent(resolvedCategory)}&difficulty=${resolvedDifficulty}&count=${count}`
+  ), [selectedTopic.id, resolvedCategory, resolvedDifficulty, count]);
 
   return (
     <PracticeSetupPage
@@ -27,9 +31,8 @@ export default function MatemaatikaPage() {
       onSelectTopic={(t) => setTopicId(t as KiurMathTopicId)}
       setupTitle={selectedTopic.implemented ? 'Harjutuse seadistus' : selectedTopic.name}
       optionGroups={selectedTopic.implemented ? [
-        { id: 'category', title: 'Harjutuse tüüp', options: selectedTopic.exerciseTypes, value: category, onChange: (v) => setCategory(v as Category) },
-        { id: 'difficulty', title: 'Raskus', options: DIFFICULTIES, value: difficulty, onChange: (v) => setDifficulty(v as Difficulty), compact: true },
-        { id: 'count', title: 'Küsimuste arv', options: ['10', '25'], value: String(count), onChange: (v) => setCount(Number(v)), compact: true }
+        ...(!selectedTopic.hideExerciseTypeSelector ? [{ id: 'category', title: 'Harjutuse tüüp', options: selectedTopic.exerciseTypes, value: category, onChange: (v: string) => setCategory(v as Category) }] : []),
+        { id: 'count', title: 'Küsimuste arv', options: ['10', '25'], value: String(count), onChange: (v: string) => setCount(Number(v)), compact: true }
       ] : []}
       startUrl={startUrl}
       disabledStart={!selectedTopic.implemented}
