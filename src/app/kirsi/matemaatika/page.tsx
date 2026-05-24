@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
+import { isKirsiAttempt, KIRSI_CATEGORIES } from '@/lib/history';
 
 const MODES = ['Arvutamine 10 piires', 'Arvutamine 20 piires', 'Suurem või väiksem kuni 100', 'Segaülesanded'] as const;
 const COUNTS = [3, 5, 10] as const;
 type H = { id:number; createdAt:string; category:string; difficulty:string; questionCount:number; score:number; elapsedSeconds:number | null; learner?: string | null };
-const KIRSI_CATEGORIES = new Set(MODES);
 
 export default function KirsiMathPage() {
   const router = useRouter();
@@ -17,7 +17,7 @@ export default function KirsiMathPage() {
   const [history, setHistory] = useState<H[]>([]);
   const [loadError, setLoadError] = useState('');
 
-  useEffect(() => { fetch('/api/history').then((r) => r.json()).then((rows: H[]) => setHistory(rows.filter((h) => h.learner === 'kirsi' || (!h.learner && KIRSI_CATEGORIES.has(h.category as (typeof MODES)[number]))))).catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.')); }, []);
+  useEffect(() => { fetch('/api/history').then((r) => r.json()).then((rows: H[]) => setHistory(rows.filter((h) => isKirsiAttempt(h.category, h.learner) && KIRSI_CATEGORIES.has(h.category)))).catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.')); }, []);
 
   const deleteOne = async (id:number) => {
     if (!confirm('Kas kustutada see test ajaloost?')) return;
@@ -62,7 +62,7 @@ export default function KirsiMathPage() {
         <button type='button' className='btn' onClick={() => router.push(`/test?learner=kirsi&subject=matemaatika&topic=arvutamine&category=${encodeURIComponent(mode)}&count=${count}&seed=${Date.now()}`)}>Alusta</button>
 
         <div className='row'>
-          <Link className='back-link' href='/kirsi'>Tagasi aine valiku juurde</Link>
+          <Link className='back-link' href='/kirsi'>Tagasi aine juurde</Link>
           <Link className='back-link' href='/'>Tagasi avalehele</Link>
         </div>
       </section>

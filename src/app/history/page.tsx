@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
+import { learnerLabel } from '@/lib/history';
 
 type H = { id:number; createdAt:string; category:string; difficulty:string; questionCount:number; score:number; elapsedSeconds:number | null; learner?: string | null };
 
@@ -26,7 +27,7 @@ export default function HistoryPage() {
         {history.length === 0 && <p>Ajalugu puudub.</p>}
         <div className='history-list'>
           {history.map((h) => {
-            const learner = h.learner === 'kirsi' ? 'Kirsi' : h.learner === 'kiur' ? 'Kiur' : ['Arvutamine 10 piires','Arvutamine 20 piires','Suurem või väiksem kuni 100','Segaülesanded'].includes(h.category) ? 'Kirsi' : 'Kiur';
+            const learner = learnerLabel(h.category, h.learner);
             return (
             <article key={h.id} className='history-item'>
               <p><strong>{learner}</strong> · Matemaatika</p>

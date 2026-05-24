@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import db from '@/lib/db';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
+import { isKirsiAttempt } from '@/lib/history';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
 
   const questions = safeParseQuestions(row.questions);
 
-  const isKirsi = row.category === 'Arvutamine 10 piires' || row.category === 'Arvutamine 20 piires' || row.category === 'Suurem või väiksem kuni 100' || row.category === 'Segaülesanded';
+  const isKirsi = isKirsiAttempt(row.category);
 
   const retryParams = new URLSearchParams({
     learner: isKirsi ? 'kirsi' : 'kiur',
@@ -77,7 +78,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             .join(' > ');
 
           return (
-            <article key={q.id || `q-${i}`}>
+            <article key={q.id || `q-${i}`} className={q.isCorrect ? 'result-item result-correct' : 'result-item result-wrong'}>
               <p><strong>{i + 1}. {q.question}</strong></p>
               {q.kind === 'ordering'
                 ? <><p>Sinu järjestus: {q.userAnswer || '—'}</p><p>Õige järjestus: {order || '—'}</p></>

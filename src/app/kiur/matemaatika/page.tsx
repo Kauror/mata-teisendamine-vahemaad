@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CATEGORIES, DIFFICULTIES, QUESTION_COUNTS, Category, Difficulty } from '@/lib/types';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
+import { isKirsiAttempt } from '@/lib/history';
 
-type H = { id:number; createdAt:string; category:string; difficulty:string; questionCount:number; score:number; elapsedSeconds:number; learner?: string | null; topic?: string | null };
-const KIRSI_CATEGORIES = new Set(['Arvutamine 10 piires', 'Arvutamine 20 piires', 'Suurem või väiksem kuni 100', 'Segaülesanded']);
+type H = { id:number; createdAt:string; category:string; difficulty:string; questionCount:number; score:number; elapsedSeconds:number; learner?: string | null };
 
 export default function MatemaatikaPage() {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function MatemaatikaPage() {
   const [filter, setFilter] = useState('Kõik');
   const [loadError, setLoadError] = useState('');
 
-  useEffect(() => { fetch('/api/history').then((r) => r.json()).then((rows: H[]) => setHistory(rows.filter((h) => h.learner === 'kiur' || (!h.learner && !KIRSI_CATEGORIES.has(h.category))))).catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.')); }, []);
+  useEffect(() => { fetch('/api/history').then((r) => r.json()).then((rows: H[]) => setHistory(rows.filter((h) => !isKirsiAttempt(h.category, h.learner)))).catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.')); }, []);
 
   const groups = useMemo(() => {
     const map = new Map<string, H[]>();
@@ -62,7 +62,7 @@ export default function MatemaatikaPage() {
 
         <button type='button' className='btn' onClick={() => router.push(`/test?learner=kiur&subject=matemaatika&topic=pikkused&category=${encodeURIComponent(category)}&difficulty=${difficulty}&count=${count}&seed=${Date.now()}`)}>Alusta</button>
         <div className='row'>
-          <Link className='back-link' href='/kiur'>Tagasi aine valiku juurde</Link>
+          <Link className='back-link' href='/kiur'>Tagasi aine juurde</Link>
           <Link className='back-link' href='/'>Tagasi avalehele</Link>
         </div>
       </section>
