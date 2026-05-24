@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
 import { isKirsiAttempt } from '@/lib/history';
+import { KIUR_LENGTH_TOPIC_ID } from '@/lib/kiurMathTopics';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -58,7 +59,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   const retryParams = new URLSearchParams({
     learner: isKirsi ? 'kirsi' : 'kiur',
     subject: 'matemaatika',
-    topic: isKirsi ? 'arvutamine' : 'pikkused',
+    topic: isKirsi ? 'arvutamine' : KIUR_LENGTH_TOPIC_ID,
     category: row.category,
     difficulty: row.difficulty,
     count: String(row.questionCount),

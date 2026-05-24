@@ -10,9 +10,9 @@ export default function KiurEnglishPage() {
         </div>
 
         <div className='child-header'>
-          <span className='child-avatar' aria-hidden>🇬🇧</span>
+          <span className='child-avatar' aria-hidden>🔤</span>
           <h1 className='page-title'>Inglise keel</h1>
-          <p className='page-subtitle'>Harjutused tulevad peagi.</p>
+          <p>Harjutused tulevad peagi.</p>
         </div>
       </section>
     </main>

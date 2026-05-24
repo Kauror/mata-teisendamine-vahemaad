@@ -6,6 +6,7 @@ import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateSession } from '@/lib/exercises/lengths';
 import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
+import { isKiurLengthTopic } from '@/lib/kiurMathTopics';
 
 function ShapeVisual({ question }: { question: GeneratedQuestion }) {
   if (question.category !== 'Ümbermõõt') return null;
@@ -47,7 +48,8 @@ function TestPageContent() {
   const seed = Number(params.get('seed') || Date.now());
 
   const isKirsiMath = learner === 'kirsi' && subject === 'matemaatika' && topic === 'arvutamine';
-  const baseSelectionUrl = isKirsiMath ? '/kirsi/matemaatika' : learner === 'kiur' && subject === 'matemaatika' && topic === 'pikkused' ? '/kiur/matemaatika' : '/';
+  const isKiurLengths = learner === 'kiur' && subject === 'matemaatika' && isKiurLengthTopic(topic);
+  const baseSelectionUrl = isKirsiMath ? '/kirsi/matemaatika' : isKiurLengths ? '/kiur/matemaatika' : '/';
 
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [index, setIndex] = useState(0);
