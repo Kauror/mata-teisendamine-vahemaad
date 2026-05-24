@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import PracticeSetupPage from '@/app/components/PracticeSetupPage';
-import { CATEGORIES, DIFFICULTIES, Category, Difficulty } from '@/lib/types';
+import { Category, DIFFICULTIES, Difficulty } from '@/lib/types';
 import { KIUR_LENGTH_TOPIC_ID, KIUR_MATH_TOPICS, KiurMathTopicId } from '@/lib/kiurMathTopics';
 
 export default function MatemaatikaPage() {
@@ -27,7 +27,7 @@ export default function MatemaatikaPage() {
       onSelectTopic={(t) => setTopicId(t as KiurMathTopicId)}
       setupTitle={selectedTopic.implemented ? 'Harjutuse seadistus' : selectedTopic.name}
       optionGroups={selectedTopic.implemented ? [
-        { id: 'category', title: 'Harjutuse tüüp', options: CATEGORIES, value: category, onChange: (v) => setCategory(v as Category) },
+        { id: 'category', title: 'Harjutuse tüüp', options: selectedTopic.exerciseTypes, value: category, onChange: (v) => setCategory(v as Category) },
         { id: 'difficulty', title: 'Raskus', options: DIFFICULTIES, value: difficulty, onChange: (v) => setDifficulty(v as Difficulty), compact: true },
         { id: 'count', title: 'Küsimuste arv', options: ['10', '25'], value: String(count), onChange: (v) => setCount(Number(v)), compact: true }
       ] : []}

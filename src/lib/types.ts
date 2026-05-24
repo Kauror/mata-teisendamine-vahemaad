@@ -23,7 +23,7 @@ export type GeneratedQuestion = {
   category: Category;
   difficulty: Difficulty;
   question: string;
-  expectedUnit: 'mm' | 'cm' | 'dm' | 'm' | 'km';
+  expectedUnit?: 'mm' | 'cm' | 'dm' | 'm' | 'km';
   correctAnswer: number;
   kind?: QuestionKind;
   orderingCards?: OrderingCard[];

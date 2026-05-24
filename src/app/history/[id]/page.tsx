@@ -11,7 +11,7 @@ type SavedQuestion = {
   id: string;
   question: string;
   userAnswer: string;
-  expectedUnit: string;
+  expectedUnit?: string;
   correctAnswer: number;
   isCorrect: boolean;
   kind?: 'numeric' | 'ordering' | 'choice';

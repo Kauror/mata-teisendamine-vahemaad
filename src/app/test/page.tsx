@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
-import { generateSession } from '@/lib/exercises/lengths';
+import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
 import { isKiurLengthTopic } from '@/lib/kiurMathTopics';
@@ -64,7 +64,7 @@ function TestPageContent() {
   useEffect(() => {
     const generated = isKirsiMath
       ? generateKirsiSession(categoryParam as never, count, seed)
-      : generateSession(category, difficulty, count, seed);
+      : generateKiurMathSession(topic, categoryParam, difficulty, count, seed);
     setQuestions(generated);
     setAnswers(Array(generated.length).fill(''));
     setChoiceAnswers(Array(generated.length).fill(''));
@@ -74,7 +74,7 @@ function TestPageContent() {
     setError('');
     setIsSaving(false);
     setSaveError('');
-  }, [category, categoryParam, difficulty, count, seed, isKirsiMath]);
+  }, [category, categoryParam, difficulty, count, seed, isKirsiMath, topic]);
 
   useEffect(() => {
     if (!questions.length) return;
@@ -88,7 +88,7 @@ function TestPageContent() {
   const cards = current?.orderingCards ?? [];
   const selected = orderingAnswers[index] ?? [];
   const selectedSet = new Set(selected);
-  const isChoiceQuestion = isKirsiMath && current?.kind === 'choice';
+  const isChoiceQuestion = current?.kind === 'choice';
 
   const getCurrentAnswer = () => {
     if (current.kind === 'ordering' || isChoiceQuestion) return answers[index] ?? '';

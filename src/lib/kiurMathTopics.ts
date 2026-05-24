@@ -18,7 +18,7 @@ export const KIUR_MATH_TOPICS = [
     emoji: '➗',
     accent: 'blue',
     description: 'Jagamine, korrutamisega kontroll, tähe väärtus ja võrratused',
-    implemented: false,
+    implemented: true,
     exerciseTypes: ['Jagamine', 'Kontroll korrutamisega', 'Tähe väärtus', 'Võrratused', 'Segaharjutus'] as const,
     difficulties: DIFFICULTIES,
     questionCounts: QUESTION_COUNTS
@@ -29,7 +29,7 @@ export const KIUR_MATH_TOPICS = [
     emoji: '🔢',
     accent: 'purple',
     description: 'Arvkiir, järjestamine, võrdlemine ja arvu koostis',
-    implemented: false,
+    implemented: true,
     exerciseTypes: ['Arvkiir', 'Eelnev ja järgnev arv', 'Järjestamine', 'Võrdlemine', 'Arvu koostis', 'Nuputa', 'Segaharjutus'] as const,
     difficulties: DIFFICULTIES,
     questionCounts: QUESTION_COUNTS
@@ -40,7 +40,7 @@ export const KIUR_MATH_TOPICS = [
     emoji: '⭕',
     accent: 'violet',
     description: 'Ring, ringjoon, keskpunkt, raadius ja diameeter',
-    implemented: false,
+    implemented: true,
     exerciseTypes: ['Mõisted', 'Raadius', 'Diameeter', 'Võrdlemine', 'Mustrid', 'Segaharjutus'] as const,
     difficulties: DIFFICULTIES,
     questionCounts: QUESTION_COUNTS
