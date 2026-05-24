@@ -188,3 +188,19 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .result-status{margin:0;font-size:15px;font-weight:900}.result-status.correct{color:#15803d}.result-status.wrong{color:#b91c1c}
 .result-actions{display:flex;flex-wrap:wrap;gap:12px}.result-actions .btn{min-height:52px;flex:1}
 @media (max-width:640px){.result-page{padding:16px 10px}.result-summary-card{border-radius:24px;padding:18px}.answer-review-grid{grid-template-columns:1fr}.result-review-card{padding:14px;border-radius:18px}.result-actions{flex-direction:column}}
+
+.english-page{min-height:100vh;padding:20px;background:radial-gradient(circle at top left,rgba(219,234,254,.9),transparent 32%),linear-gradient(180deg,#eef5ff,#f8fbff);color:#0b1b45}
+.english-shell{display:grid;gap:14px}
+.english-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.english-mode-card{background:#f8fbff;border:1px solid #dfe8f6;border-radius:18px;padding:16px;display:grid;gap:6px;text-decoration:none;color:#0b1b45;font-weight:800}
+.pack-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.pack-card{background:#fff;border:1px solid #dfe8f6;border-radius:16px;padding:14px;display:grid;gap:6px;text-decoration:none;color:#0b1b45;min-height:88px}
+.matching-hud{display:flex;flex-wrap:wrap;gap:10px;font-weight:800}
+.matching-board{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.word-column{display:grid;gap:8px}
+.word-card{min-height:52px;background:#fff;border:1px solid #dfe8f6;border-radius:14px;padding:10px;text-align:left;color:#0b1b45;font-weight:700}
+.word-card-selected{outline:3px solid #93c5fd}
+.word-card-correct{background:#dcfce7;border-color:#86efac}
+.matching-feedback{grid-column:1/-1;margin:0;color:#be123c;font-weight:800}
+.english-result-card{background:#fff;border:1px solid #dfe8f6;border-radius:18px;padding:16px;display:grid;gap:8px}
+@media (max-width:768px){.english-mode-grid,.pack-grid{grid-template-columns:1fr}.matching-board{grid-template-columns:1fr}}

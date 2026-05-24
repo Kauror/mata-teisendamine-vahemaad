@@ -2,8 +2,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Pikkuste teisendamine',
-  description: 'Lõbus pikkusühikute harjutamise mäng'
+  title: 'Harjutamine',
+  description: 'Kiuri ja Kirsi harjutuste äpp'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
