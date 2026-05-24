@@ -16,6 +16,14 @@ function ShapeVisual({ question }: { question: GeneratedQuestion }) {
       </svg>
     );
   }
+  if (question.question.includes('Kolmnurga')) {
+    return (
+      <svg width='180' height='120' aria-label='Kolmnurga joonis'>
+        <polygon points='90,18 20,105 160,105' fill='#fff4e6' stroke='#c56a00' />
+      </svg>
+    );
+  }
+  if (!question.question.includes('Ristküliku')) return null;
   return (
     <svg width='180' height='120' aria-label='Ristküliku joonis'>
       <rect x='20' y='20' width='140' height='70' fill='#e9ffe9' stroke='#2e7d32' />
