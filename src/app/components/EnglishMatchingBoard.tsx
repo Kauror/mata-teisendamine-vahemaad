@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { EnglishVocabularyWord } from '@/lib/englishVocabulary';
 import { shuffle } from '@/lib/englishGame';
 
@@ -8,6 +8,13 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete }:
   const [selectedEt, setSelectedEt] = useState<string | null>(null);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState('');
+
+  useEffect(() => {
+    setSelectedEn(null);
+    setSelectedEt(null);
+    setDone(new Set());
+    setFeedback('');
+  }, [words]);
 
   const left = useMemo(() => shuffle(words, words.length * 13), [words]);
   const right = useMemo(() => shuffle(words, words.length * 31), [words]);
@@ -20,9 +27,12 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete }:
     const ok = en.id === et.id;
     onPair(ok, en);
     if (ok) {
-      setDone((prev) => new Set([...prev, en.id]));
+      setDone((prev) => {
+        const next = new Set([...prev, en.id]);
+        if (next.size >= words.length) setTimeout(onBoardComplete, 250);
+        return next;
+      });
       setFeedback('Õige!');
-      if (done.size + 1 >= words.length) setTimeout(onBoardComplete, 250);
     } else {
       setFeedback('Proovi uuesti');
     }

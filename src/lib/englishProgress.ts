@@ -18,3 +18,11 @@ export function saveEnglishProgress(progress: EnglishProgress) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(ENGLISH_PROGRESS_KEY, JSON.stringify(progress));
 }
+
+export function isEnglishPackUnlocked(packId: string, completedPacks: string[]) {
+  const match = /^pack-(\d+)$/.exec(packId);
+  if (!match) return false;
+  const index = Number(match[1]);
+  if (index <= 1) return true;
+  return completedPacks.includes(`pack-${index - 1}`);
+}

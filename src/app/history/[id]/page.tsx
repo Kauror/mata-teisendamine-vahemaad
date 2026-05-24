@@ -17,6 +17,7 @@ type SavedQuestion = {
   kind?: 'numeric' | 'ordering' | 'choice';
   orderingCards?: OrderingCard[];
   orderingDirection?: 'asc' | 'desc';
+  estonian?: string;
 };
 
 async function getDb() {
@@ -63,6 +64,8 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   const retryTopic = isOldRingPattern ? 'mustrid' : (row.topic || (isKirsi ? 'arvutamine' : KIUR_LENGTH_TOPIC_ID));
   const retryCategory = (retryTopic === 'ring-ja-ringjoon' || retryTopic === 'mustrid') ? 'Segaharjutus' : row.category;
 
+  const isEnglish = row.subject === 'inglise-keel';
+
   const retryParams = new URLSearchParams({
     learner: row.learner || (isKirsi ? 'kirsi' : 'kiur'),
     subject: row.subject || 'matemaatika',
@@ -72,6 +75,12 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
     count: String(row.questionCount),
     seed: String(Date.now())
   });
+
+  const retryHref = isEnglish
+    ? row.topic === 'sprint'
+      ? '/kiur/inglise-keel/sprint'
+      : '/kiur/inglise-keel/harjutamine'
+    : `/test?${retryParams.toString()}`;
 
   return (
     <main className='result-page'>
@@ -97,12 +106,13 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             .map((c) => c.label)
             .join(' → ');
 
+          const isEnglishPair = isEnglish && (q.estonian || q.question.includes('—'));
           return (
             <article key={q.id || `q-${i}`} className={q.isCorrect ? 'result-review-card correct' : 'result-review-card wrong'}>
-              <p className='result-question'>{i + 1}. {q.question}</p>
+              <p className='result-question'>{i + 1}. {isEnglishPair ? q.question.replace('—', '↔') : q.question}</p>
               {q.kind === 'ordering'
                 ? <div className='answer-review-grid'><p className='answer-line'><span>Sinu järjestus:</span> <strong>{q.userAnswer || '—'}</strong></p><p className='answer-line'><span>Õige järjestus:</span> <strong>{order || '—'}</strong></p></div>
-                : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{q.kind === 'choice' || isKirsi ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{q.kind === 'choice' ? (q.correctAnswer === -1 ? '<' : q.correctAnswer === 0 ? '=' : '>') : String(q.correctAnswer ?? '—')}{q.kind === 'choice' || isKirsi ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}
+                : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{q.kind === 'choice' && !isEnglish ? (q.correctAnswer === -1 ? '<' : q.correctAnswer === 0 ? '=' : '>') : (isEnglish ? 'Sõnapaar sobib' : String(q.correctAnswer ?? '—'))}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}
               <p className={q.isCorrect ? 'result-status correct' : 'result-status wrong'}>{q.isCorrect ? 'Õige' : 'Vale vastus'}</p>
             </article>
           );
@@ -110,8 +120,8 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
       </section>
 
       <div className='result-actions'>
-        <Link className='btn' href={`/test?${retryParams.toString()}`}>Tee {row.category.toLowerCase()} uuesti</Link>
-        <Link className='btn chip active' href={isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika'}>Vali uus harjutus</Link>
+        <Link className='btn' href={retryHref}>Tee {row.category.toLowerCase()} uuesti</Link>
+        <Link className='btn chip active' href={isEnglish ? '/kiur/inglise-keel' : (isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika')}>Vali uus harjutus</Link>
       </div>
       </section>
     </main>
