@@ -1,0 +1,173 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { formatElapsed } from '@/lib/validation';
+import { dayLabel, groupAttemptsByDay, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
+
+type H = {
+  id: number;
+  createdAt: string;
+  category: string;
+  difficulty: string;
+  questionCount: number;
+  score: number;
+  elapsedSeconds: number | null;
+  learner?: string | null;
+  subject?: string | null;
+  topic?: string | null;
+};
+
+type ChildFilter = 'all' | 'kiur' | 'kirsi';
+type SubjectFilter = 'all' | 'matemaatika' | 'inglise-keel';
+
+function avgPercent(items: H[]) {
+  if (!items.length) return null;
+  return Math.round(items.reduce((sum, a) => sum + scorePercent(a.score, a.questionCount), 0) / items.length);
+}
+
+function tone(avg: number | null) {
+  if (avg === null) return 'average-neutral';
+  if (avg >= 80) return 'average-good';
+  if (avg >= 60) return 'average-medium';
+  return 'average-low';
+}
+
+function subjectKey(a: H): SubjectFilter {
+  const subj = (a.subject || '').toLowerCase();
+  const topic = (a.topic || '').toLowerCase();
+  const cat = (a.category || '').toLowerCase();
+  if (subj.includes('inglise') || topic.includes('inglise') || cat.includes('inglise')) return 'inglise-keel';
+  return 'matemaatika';
+}
+
+function subjectDisplay(a: H) {
+  return subjectKey(a) === 'inglise-keel' ? '🔤 Inglise keel' : `🧮 ${subjectLabel(a.subject)}`;
+}
+
+export default function HistoryPage() {
+  const [history, setHistory] = useState<H[]>([]);
+  const [loadError, setLoadError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [childFilter, setChildFilter] = useState<ChildFilter>('all');
+  const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
+
+  useEffect(() => {
+    fetch('/api/history')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(setHistory)
+      .catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.'));
+  }, []);
+
+  const filtered = useMemo(() => {
+    return history.filter((a) => {
+      const learner = learnerLabel(a.category, a.learner).toLowerCase();
+      const childOk = childFilter === 'all' || learner === childFilter;
+      const subj = subjectKey(a);
+      const subjectOk = subjectFilter === 'all' || subj === subjectFilter;
+      return childOk && subjectOk;
+    });
+  }, [history, childFilter, subjectFilter]);
+
+  const todayItems = useMemo(() => filtered.filter((a) => dayLabel(a.createdAt) === 'Täna'), [filtered]);
+  const todayAvg = avgPercent(todayItems);
+
+  const groups = useMemo(() => groupAttemptsByDay(filtered), [filtered]);
+
+  const onDelete = async (id: number) => {
+    setDeleteError('');
+    try {
+      const res = await fetch(`/api/history/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('delete-failed');
+      setHistory((prev) => prev.filter((x) => x.id !== id));
+      setConfirmId(null);
+    } catch {
+      setDeleteError('Kustutamine ebaõnnestus.');
+    }
+  };
+
+  return (
+    <main className='history-page'>
+      <div className='history-shell'>
+        <Link className='subject-back-button' href='/'>← Rollivalik</Link>
+
+        <header className='history-header'>
+          <div>
+            <h1>Ajalugu</h1>
+            <p>Kõik tehtud harjutused</p>
+          </div>
+          <div className={`summary-pill ${tone(todayAvg)}`}>
+            <p>Täna — {todayItems.length} harjutust</p>
+            <p>Keskmine tulemus {todayAvg === null ? '—' : `${todayAvg}%`}</p>
+          </div>
+        </header>
+
+        <section className='filter-bar'>
+          <button type='button' className={childFilter === 'all' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('all')}>Kõik lapsed</button>
+          <button type='button' className={childFilter === 'kiur' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('kiur')}>Kiur</button>
+          <button type='button' className={childFilter === 'kirsi' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('kirsi')}>Kirsi</button>
+          <button type='button' className={subjectFilter === 'all' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('all')}>Kõik ained</button>
+          <button type='button' className={subjectFilter === 'matemaatika' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('matemaatika')}>🧮 Matemaatika</button>
+          <button type='button' className={subjectFilter === 'inglise-keel' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('inglise-keel')}>🔤 Inglise keel</button>
+        </section>
+
+        {loadError && <p className='error'>{loadError}</p>}
+        {deleteError && <p className='error'>{deleteError}</p>}
+
+        {history.length === 0 ? (
+          <p>Ajalugu puudub.</p>
+        ) : filtered.length === 0 ? (
+          <p>Selle valikuga tulemusi ei ole.</p>
+        ) : (
+          <section className='history-groups'>
+            {Array.from(groups.entries()).map(([day, items]) => {
+              const groupAvg = avgPercent(items);
+              return (
+                <div key={day} className='date-group'>
+                  <h2>{day} — {items.length} harjutust · Keskmine tulemus {groupAvg === null ? '—' : `${groupAvg}%`}</h2>
+                  <div className='history-list-compact'>
+                    {items.map((h) => {
+                      const learner = learnerLabel(h.category, h.learner);
+                      const time = new Date(h.createdAt).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
+                      return (
+                        <div key={h.id} className='history-row'>
+                          <div className='learner-cell'>{learner}</div>
+                          <div className='subject-cell'>
+                            <span className='subject-emoji' aria-hidden>{subjectKey(h) === 'inglise-keel' ? '🔤' : '🧮'}</span>
+                            <span>{subjectDisplay(h).replace(/^🔤 |^🧮 /, '')}</span>
+                          </div>
+                          <div className='exercise-cell'>
+                            <strong>{h.category}</strong>
+                            <span>{h.difficulty}</span>
+                          </div>
+                          <div className='meta-cell'>{time}</div>
+                          <div className='score-cell'>{h.score}/{h.questionCount}</div>
+                          <div className='meta-cell'>{typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub'}</div>
+                          <div className='row-actions'>
+                            <Link className='view-button' href={`/history/${h.id}`}>Vaata</Link>
+                            <button type='button' className='delete-button' onClick={() => setConfirmId(h.id)}>Kustuta</button>
+                          </div>
+                          {confirmId === h.id && (
+                            <div className='confirm-panel'>
+                              <strong>Kustuta tulemus?</strong>
+                              <p>Seda tegevust ei saa tagasi võtta.</p>
+                              <div className='confirm-actions'>
+                                <button type='button' className='filter-chip' onClick={() => setConfirmId(null)}>Tühista</button>
+                                <button type='button' className='delete-button' onClick={() => onDelete(h.id)}>Kustuta</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+        )}
+      </div>
+    </main>
+  );
+}
