@@ -78,7 +78,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             .join(' > ');
 
           return (
-            <article key={q.id || `q-${i}`} className={q.isCorrect ? 'result-card correct' : 'result-card wrong'}>
+            <article key={q.id || `q-${i}`} className={q.isCorrect ? 'result-item result-correct' : 'result-item result-wrong'}>
               <p><strong>{i + 1}. {q.question}</strong></p>
               {q.kind === 'ordering'
                 ? <><p>Sinu järjestus: {q.userAnswer || '—'}</p><p>Õige järjestus: {order || '—'}</p></>
