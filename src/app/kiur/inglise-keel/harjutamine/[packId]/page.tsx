@@ -1,10 +1,10 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import EnglishMatchingBoard from '@/app/components/EnglishMatchingBoard';
 import { buildMatchingBoardsForPack, calculatePracticeStars, getEnglishPack } from '@/lib/englishGame';
-import { isEnglishPackUnlocked, loadEnglishProgress, saveEnglishProgress } from '@/lib/englishProgress';
+import { EnglishProgress, isEnglishPackUnlocked, loadEnglishProgress, saveCompletedEnglishPack } from '@/lib/englishProgress';
 import { formatElapsed } from '@/lib/validation';
 
 export default function PackGame() {
@@ -12,11 +12,18 @@ export default function PackGame() {
   const pack = getEnglishPack(params.packId);
   const boards = useMemo(() => (pack ? buildMatchingBoardsForPack(pack) : []), [pack]);
   const [idx, setIdx] = useState(0); const [mistakes, setMistakes] = useState(0); const [correct, setCorrect] = useState(0); const [wrongWords, setWrongWords] = useState<string[]>([]); const [start] = useState(Date.now()); const [done, setDone] = useState(false); const [saved, setSaved] = useState(false);
-  const progress = loadEnglishProgress();
-  const isUnlocked = !!pack && isEnglishPackUnlocked(pack.id, progress.completedPacks);
+  const [progress, setProgress] = useState<EnglishProgress | null>(null);
+  useEffect(() => setProgress(loadEnglishProgress()), []);
+  const isUnlocked = !!pack && !!progress && isEnglishPackUnlocked(pack.id, progress.completedPacks);
   const timeSec = Math.max(0, Math.round((Date.now() - start)/1000));
   const current = boards[idx];
-  const finish = () => { if (!pack) return; setDone(true); const stars = calculatePracticeStars(mistakes); const p = loadEnglishProgress(); p.completedPacks = Array.from(new Set([...p.completedPacks, pack.id])); p.packResults[pack.id] = { bestStars: Math.max(stars, p.packResults[pack.id]?.bestStars || 0), bestTimeSeconds: Math.min(timeSec, p.packResults[pack.id]?.bestTimeSeconds || timeSec), completedAt: new Date().toISOString() }; saveEnglishProgress(p); };
+  const finish = useCallback(() => {
+    if (!pack) return;
+    const elapsedSeconds = Math.max(1, Math.round((Date.now() - start) / 1000));
+    const updatedProgress = saveCompletedEnglishPack(pack.id, calculatePracticeStars(mistakes), elapsedSeconds);
+    setProgress(updatedProgress);
+    setDone(true);
+  }, [mistakes, pack, start]);
 
   useEffect(() => {
     if (!pack || !isUnlocked || !done || saved) return;
@@ -51,6 +58,7 @@ export default function PackGame() {
   }, [correct, done, isUnlocked, pack, saved, start, wrongWords]);
 
   if (!pack) return <main className='container'><p>Pakki ei leitud.</p></main>;
+  if (!progress) return <main className='container english-page'><section className='practice-shell english-shell english-result-card'><p>Laadin pakki...</p></section></main>;
   if (!isUnlocked) return <main className='container english-page'><section className='practice-shell english-shell english-result-card'><h2>Pakk on lukus</h2><p>Ava eelmine pakk enne selle harjutuse alustamist.</p><Link className='btn chip' href='/kiur/inglise-keel/harjutamine'>Tagasi pakkide juurde</Link></section></main>;
   return <main className='container english-page'><section className='practice-shell english-shell'>
     {!done ? <>

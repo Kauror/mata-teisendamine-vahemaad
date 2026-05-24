@@ -1,11 +1,10 @@
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateSession as generateLengthSession } from '@/lib/exercises/lengths';
 import { isKiurLengthTopic } from '@/lib/kiurMathTopics';
+import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
 
-type RNG = () => number;
-const rInt = (rng: RNG, min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
-const pick = <T,>(rng: RNG, arr: readonly T[]) => arr[rInt(rng, 0, arr.length - 1)];
-function seededRng(seed: number): RNG { let t = seed >>> 0; return () => { t += 0x6D2B79F5; let x = Math.imul(t ^ (t >>> 15), 1 | t); x ^= x + Math.imul(x ^ (x >>> 7), 61 | x); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
+const rInt = randomInt;
+const pick = pickRandom;
 
 const DIV_CATS = ['Jagamine', 'Kontroll korrutamisega', 'Tähe väärtus', 'Võrratused'] as const;
 const NUM_CATS = ['Arvkiir', 'Loendamine', 'Eelnev ja järgnev arv', 'Järjestamine', 'Võrdlemine', 'Arvu koostis', 'Nuputa'] as const;
@@ -17,8 +16,7 @@ type TopicCategory = (typeof DIV_CATS)[number] | (typeof NUM_CATS)[number] | (ty
 function mixedPlan(rng: RNG, count: number, types: readonly TopicCategory[]) {
   const out: TopicCategory[] = [];
   for (let i = 0; i < count; i++) out.push(types[i % types.length]);
-  for (let i = out.length - 1; i > 0; i--) { const j = rInt(rng, 0, i); [out[i], out[j]] = [out[j], out[i]]; }
-  return out;
+  return shuffleWithRng(rng, out);
 }
 
 function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {

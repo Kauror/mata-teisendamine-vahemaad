@@ -1,16 +1,12 @@
 import { CATEGORIES, Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { LengthUnit, convert, mixedToMm } from '@/lib/units';
+import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
 
-type RNG = () => number;
 const NON_MIX = CATEGORIES.filter((c) => c !== 'Segaharjutus') as Exclude<Category, 'Segaharjutus'>[];
 
-function seededRng(seed: number): RNG {
-  let t = seed >>> 0;
-  return () => { t += 0x6D2B79F5; let x = Math.imul(t ^ (t >>> 15), 1 | t); x ^= x + Math.imul(x ^ (x >>> 7), 61 | x); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
-}
-const rInt = (rng: RNG, min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
-const shuffle = <T,>(rng: RNG, arr: T[]) => { const out = [...arr]; for (let i = out.length - 1; i > 0; i--) { const j = rInt(rng, 0, i); [out[i], out[j]] = [out[j], out[i]]; } return out; };
-const pick = <T,>(rng: RNG, arr: T[]) => arr[rInt(rng, 0, arr.length - 1)];
+const rInt = randomInt;
+const shuffle = shuffleWithRng;
+const pick = pickRandom;
 
 function conversion(d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
   const easy = [[1, 'm', 'cm'], [2, 'm', 'cm'], [1, 'cm', 'mm'], [5, 'cm', 'mm'], [1, 'dm', 'cm'], [4, 'dm', 'cm'], [20, 'mm', 'cm'], [30, 'cm', 'dm'], [100, 'cm', 'm'], [2, 'km', 'm']] as const;

@@ -3,20 +3,26 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EnglishMatchingBoard from '@/app/components/EnglishMatchingBoard';
 import { ENGLISH_PACKS, shuffle } from '@/lib/englishGame';
-import { loadEnglishProgress, saveEnglishProgress } from '@/lib/englishProgress';
+import { DEFAULT_ENGLISH_PROGRESS, loadEnglishProgress, saveEnglishSprintBestScore } from '@/lib/englishProgress';
 
 export default function SprintPage() {
-  const [progress, setProgress] = useState(loadEnglishProgress());
+  const [progress, setProgress] = useState(DEFAULT_ENGLISH_PROGRESS);
   const [time, setTime] = useState(90);
   const [score, setScore] = useState(0);
-  const [best, setBest] = useState(progress.sprintBestScore || 0);
+  const [best, setBest] = useState(0);
   const [combo, setCombo] = useState(0);
   const [maxCombo, setMaxCombo] = useState(0);
   const [mistakes, setMistakes] = useState(0);
   const [pairs, setPairs] = useState(0);
   const [boardSeed, setBoardSeed] = useState(1);
-  const [savedHistory, setSavedHistory] = useState(false);
   const boardStartRef = useRef(Date.now());
+  const savedResultRef = useRef(false);
+
+  useEffect(() => {
+    const storedProgress = loadEnglishProgress();
+    setProgress(storedProgress);
+    setBest(storedProgress.sprintBestScore || 0);
+  }, []);
 
   const sourceWords = useMemo(() => {
     const completed = new Set(progress.completedPacks);
@@ -34,16 +40,15 @@ export default function SprintPage() {
   }, [ended]);
 
   useEffect(() => {
-    if (!ended || savedHistory) return;
+    if (!ended || savedResultRef.current) return;
+    savedResultRef.current = true;
+
     if (score > best) {
-      const p = loadEnglishProgress();
-      p.sprintBestScore = score;
-      saveEnglishProgress(p);
-      setProgress(p);
-      setBest(score);
+      const updatedProgress = saveEnglishSprintBestScore(score);
+      setProgress(updatedProgress);
+      setBest(updatedProgress.sprintBestScore);
     }
 
-    setSavedHistory(true);
     void fetch('/api/history', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -60,7 +65,7 @@ export default function SprintPage() {
         questions: [{ id: 'sprint-summary', question: 'Sprinti kokkuvõte', userAnswer: `Õigeid paare: ${pairs}`, correctAnswer: score, isCorrect: true, kind: 'choice' }]
       })
     });
-  }, [best, ended, mistakes, pairs, savedHistory, score]);
+  }, [best, ended, mistakes, pairs, score]);
 
   if (ended) {
     const acc = pairs + mistakes > 0 ? Math.round((pairs / (pairs + mistakes)) * 100) : 0;
@@ -76,9 +81,9 @@ export default function SprintPage() {
         setCombo((v) => {
           const nv = v + 1;
           setMaxCombo((m) => Math.max(m, nv));
+          setScore((currentScore) => currentScore + 2 + (nv % 5 === 0 ? 1 : 0));
           return nv;
         });
-        setScore((v) => v + 2 + (((combo + 1) % 5 === 0) ? 1 : 0));
       } else {
         setMistakes((v) => v + 1);
         setCombo(0);
