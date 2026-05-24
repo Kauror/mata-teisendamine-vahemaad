@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import db from '@/lib/db';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
 import { isKirsiAttempt } from '@/lib/history';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 type OrderingCard = { id: string; label: string; valueMm: number };
 type SavedQuestion = {
@@ -17,6 +17,11 @@ type SavedQuestion = {
   orderingCards?: OrderingCard[];
   orderingDirection?: 'asc' | 'desc';
 };
+
+async function getDb() {
+  return (await import('@/lib/db')).default;
+}
+
 type AttemptRow = {
   id: number;
   createdAt: string;
@@ -39,6 +44,7 @@ function safeParseQuestions(raw: string): SavedQuestion[] {
 
 export default async function HistoryDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const db = await getDb();
   const row = db.prepare('SELECT * FROM attempts WHERE id = ?').get(id) as AttemptRow | undefined;
 
   if (!row) {

@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+async function getDb() {
+  return (await import('@/lib/db')).default;
+}
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const db = await getDb();
   const { id } = await params;
   const row = db.prepare('SELECT * FROM attempts WHERE id = ?').get(id) as { [key: string]: unknown } | undefined;
   if (!row) return NextResponse.json({ message: 'Ei leitud' }, { status: 404 });
@@ -9,6 +16,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const db = await getDb();
   const { id } = await params;
   db.prepare('DELETE FROM attempts WHERE id = ?').run(id);
   return NextResponse.json({ ok: true });
