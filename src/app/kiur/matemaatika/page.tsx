@@ -58,7 +58,7 @@ export default function MatemaatikaPage() {
         <h3>2. Raskus</h3>
         <div className='row'>{DIFFICULTIES.map((d) => <button type='button' key={d} className={difficulty===d?'chip active':'chip'} onClick={()=>setDifficulty(d)}>{d}</button>)}</div>
         <h3>3. Küsimuste arv</h3>
-        <div className='row'>{QUESTION_COUNTS.map((q) => <button type='button' key={q} className={count===q?'chip active':'chip'} onClick={()=>setCount(q)}>{q}</button>)}</div>
+        <div className='row question-count-row'>{QUESTION_COUNTS.map((q) => <button type='button' key={q} className={count===q?'chip active':'chip'} onClick={()=>setCount(q)}>{q}</button>)}</div>
 
         <button type='button' className='btn' onClick={() => router.push(`/test?learner=kiur&subject=matemaatika&topic=pikkused&category=${encodeURIComponent(category)}&difficulty=${difficulty}&count=${count}&seed=${Date.now()}`)}>Alusta</button>
         <div className='row'>
@@ -75,7 +75,7 @@ export default function MatemaatikaPage() {
           <div key={k}>
             <h3>{k}</h3>
             <div className='history-list'>
-              {items.map((h) => (
+              {items.slice(0,10).map((h) => (
                 <article key={h.id} className='history-item'>
                   <div className='history-main'>
                     <strong>{h.category}</strong>
@@ -91,6 +91,7 @@ export default function MatemaatikaPage() {
             </div>
           </div>
         ))}
+        {history.length > 10 && <Link className='back-link' href='/history'>Vaata kogu ajalugu</Link>}
       </section>
     </main>
   );

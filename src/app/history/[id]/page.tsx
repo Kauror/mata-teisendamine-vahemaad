@@ -78,7 +78,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             .join(' > ');
 
           return (
-            <article key={q.id || `q-${i}`} className={q.isCorrect ? 'result-item result-correct' : 'result-item result-wrong'}>
+            <article key={q.id || `q-${i}`} className={q.isCorrect ? 'result-card correct' : 'result-card wrong'}>
               <p><strong>{i + 1}. {q.question}</strong></p>
               {q.kind === 'ordering'
                 ? <><p>Sinu järjestus: {q.userAnswer || '—'}</p><p>Õige järjestus: {order || '—'}</p></>
@@ -89,7 +89,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
         })}
       </section>
 
-      <div className='row'>
+      <div className='row result-actions'>
         <Link className='btn' href={`/test?${retryParams.toString()}`}>Tee {row.category.toLowerCase()} uuesti</Link>
         <Link className='btn chip active' href={isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika'}>Vali uus harjutus</Link>
       </div>

@@ -37,7 +37,33 @@ function arithmetic(d:Difficulty,rng:RNG,i:number):GeneratedQuestion{const add=i
 
 function missing(d:Difficulty,rng:RNG,i:number):GeneratedQuestion{const easy=[['50 cm + ___ cm = 100 cm',50,'cm'],['5 cm + ___ cm = 10 cm',5,'cm'],['1 m = ___ cm',100,'cm'],['___ mm = 8 cm',80,'mm']] as const; const med=[['700 m + ___ m = 1 km',300,'m'],['2 m 4 dm = ___ cm',240,'cm'],['___ m = 300 cm',3,'m'],['3 dm 5 cm = ___ cm',35,'cm']] as const; const arr=d==='Lihtne'?easy:d==='Keskmine'?med:[...med,['1,5 km = ___ m',1500,'m'] as const]; const it=arr[i%arr.length]; return {id:`p-${i}`,category:'Puuduv arv',difficulty:d,question:it[0],expectedUnit:it[2] as LengthUnit,correctAnswer:it[1]};}
 
-function perimeter(d:Difficulty,rng:RNG,i:number):GeneratedQuestion{if(d==='Lihtne'){const s=pick(rng,[2,3,4,5]); return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ruudu külg on ${s} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:s*4};} if(d==='Raske'&&i%3===0){return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:'Jalgpalliväljaku pikkus on 105 m ja laius 68 m. Leia ümbermõõt meetrites.',expectedUnit:'m',correctAnswer:346};} const a=rInt(rng,2,d==='Keskmine'?12:35),b=rInt(rng,2,d==='Keskmine'?10:28),c=rInt(rng,2,d==='Keskmine'?10:28); if(i%2===0) return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ristküliku küljed on ${a} m ja ${b} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:2*(a+b)}; return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Kolmnurga küljed on ${a} m, ${b} m ja ${c} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:a+b+c};}
+function perimeter(d:Difficulty,rng:RNG,i:number):GeneratedQuestion{
+if(d==='Lihtne'){
+  const shape=i%3;
+  if(shape===0){
+    const s=rInt(rng,2,8);
+    return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ruudu külg on ${s} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:s*4};
+  }
+  if(shape===1){
+    const length=rInt(rng,3,9), width=rInt(rng,2,7);
+    return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ristküliku pikkus on ${length} m ja laius ${width} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:2*(length+width)};
+  }
+  const a=rInt(rng,3,7), b=rInt(rng,3,7), c=Math.max(Math.abs(a-b)+1,rInt(rng,3,7));
+  return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Kolmnurga küljed on ${a} m, ${b} m ja ${c} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:a+b+c};
+}
+if(d==='Keskmine'){
+  if(i%2===0){
+    const lm=rInt(rng,1,3), lcm=rInt(rng,10,90), wm=rInt(rng,1,2), wcm=rInt(rng,10,90);
+    const length=lm*100+lcm, width=wm*100+wcm;
+    return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ristküliku pikkus on ${lm} m ${lcm} cm ja laius ${wm} m ${wcm} cm. Leia ümbermõõt sentimeetrites.`,expectedUnit:'cm',correctAnswer:2*(length+width)};
+  }
+  const a=rInt(rng,70,180), b=rInt(rng,70,180), c=Math.max(Math.abs(a-b)+1,rInt(rng,70,180));
+  const l1m=Math.floor(a/100), l1c=a%100, l2m=Math.floor(b/100), l2c=b%100, l3m=Math.floor(c/100), l3c=c%100;
+  const f=(m:number,c:number)=>m>0?`${m} m ${c} cm`:`${c} cm`;
+  return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Kolmnurga küljed on ${f(l1m,l1c)}, ${f(l2m,l2c)} ja ${f(l3m,l3c)}. Leia ümbermõõt sentimeetrites.`,expectedUnit:'cm',correctAnswer:a+b+c};
+}
+if(d==='Raske'&&i%3===0){return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:'Jalgpalliväljaku pikkus on 105 m ja laius 68 m. Leia ümbermõõt meetrites.',expectedUnit:'m',correctAnswer:346};}
+const a=rInt(rng,2,35),b=rInt(rng,2,28),c=rInt(rng,2,28); if(i%2===0) return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ristküliku küljed on ${a} m ja ${b} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:2*(a+b)}; return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Kolmnurga küljed on ${a} m, ${b} m ja ${c} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:a+b+c};}
 
 function text(d:Difficulty,rng:RNG,i:number):GeneratedQuestion{const e=[['Jalgrattur sõidab 5 km. Siis sõidab veel 3 km. Kui palju ta kokku sõitis?',8,'km']] as const; const m=[['Buss sõidab 60 km/h ja sõidab 2 tundi. Kui pika maa ta läbib?',120,'km'],['Mari kõndis 1200 m ja siis veel 800 m. Kui palju kokku meetrites?',2000,'m']] as const; const h=[['Matkaja läks 2 km, siis veel 850 m ja tagasi 600 m. Mitu meetrit ta kokku edasi liikus?',2250,'m']] as const; const arr=d==='Lihtne'?e:d==='Keskmine'?m:h; const t=arr[i%arr.length]; return{id:`x-${i}`,category:'Tekstülesanded',difficulty:d,question:t[0],expectedUnit:t[2] as LengthUnit,correctAnswer:t[1]};}
 

@@ -55,7 +55,7 @@ export default function KirsiMathPage() {
         </div>
 
         <h3>Küsimuste arv</h3>
-        <div className='row'>
+        <div className='row question-count-row'>
           {COUNTS.map((c) => <button type='button' key={c} className={count === c ? 'chip active' : 'chip'} onClick={() => setCount(c)}>{c}</button>)}
         </div>
 
@@ -74,7 +74,7 @@ export default function KirsiMathPage() {
           <div key={k}>
             <h3>{k}</h3>
             <div className='history-list'>
-              {items.map((h) => (
+              {items.slice(0,10).map((h) => (
                 <article key={h.id} className='history-item'>
                   <div className='history-main'>
                     <strong>{h.category}</strong>
@@ -90,6 +90,7 @@ export default function KirsiMathPage() {
             </div>
           </div>
         ))}
+        {history.length > 10 && <Link className='back-link' href='/history'>Vaata kogu ajalugu</Link>}
       </section>
     </main>
   );
