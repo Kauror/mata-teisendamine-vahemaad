@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
 
-type H = { id:number; createdAt:string; category:string; difficulty:string; questionCount:number; score:number; elapsedSeconds:number | null };
+type H = { id:number; createdAt:string; category:string; difficulty:string; questionCount:number; score:number; elapsedSeconds:number | null; learner?: string | null };
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<H[]>([]);
   const [loadError, setLoadError] = useState('');
-  useEffect(() => { fetch('/api/history').then((r) => r.json()).then(setHistory).catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.')); }, []);
+  useEffect(() => { fetch('/api/history').then((r) => r.ok ? r.json() : Promise.reject()).then(setHistory).catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.')); }, []);
 
   const deleteOne = async (id:number) => {
     if (!confirm('Kas kustutada see test ajaloost?')) return;
@@ -26,7 +26,7 @@ export default function HistoryPage() {
         {history.length === 0 && <p>Ajalugu puudub.</p>}
         <div className='history-list'>
           {history.map((h) => {
-            const learner = ['Arvutamine 10 piires','Arvutamine 20 piires','Suurem või väiksem kuni 100','Segaülesanded'].includes(h.category) ? 'Kirsi' : 'Kiur';
+            const learner = h.learner === 'kirsi' ? 'Kirsi' : h.learner === 'kiur' ? 'Kiur' : ['Arvutamine 10 piires','Arvutamine 20 piires','Suurem või väiksem kuni 100','Segaülesanded'].includes(h.category) ? 'Kirsi' : 'Kiur';
             return (
             <article key={h.id} className='history-item'>
               <p><strong>{learner}</strong> · Matemaatika</p>

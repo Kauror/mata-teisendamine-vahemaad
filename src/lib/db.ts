@@ -22,4 +22,13 @@ db.exec(`
   )
 `);
 
+const cols = db.prepare('PRAGMA table_info(attempts)').all() as Array<{ name: string }>;
+const hasLearner = cols.some((c) => c.name === 'learner');
+const hasSubject = cols.some((c) => c.name === 'subject');
+const hasTopic = cols.some((c) => c.name === 'topic');
+
+if (!hasLearner) db.exec('ALTER TABLE attempts ADD COLUMN learner TEXT');
+if (!hasSubject) db.exec('ALTER TABLE attempts ADD COLUMN subject TEXT');
+if (!hasTopic) db.exec('ALTER TABLE attempts ADD COLUMN topic TEXT');
+
 export default db;

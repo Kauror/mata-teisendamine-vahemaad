@@ -133,7 +133,7 @@ function TestPageContent() {
     try {
       const res = await fetch('/api/history', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ createdAt: new Date().toISOString(), category: categoryParam, difficulty: isKirsiMath ? 'Lihtne' : difficulty, questionCount: count, score, elapsedSeconds: elapsed, questions: results })
+        body: JSON.stringify({ createdAt: new Date().toISOString(), category: categoryParam, difficulty: isKirsiMath ? 'Lihtne' : difficulty, questionCount: count, score, elapsedSeconds: elapsed, questions: results, learner: learner || null, subject: subject || null, topic: topic || null })
       });
       if (!res.ok) throw new Error('save-failed');
       const body = await res.json();
