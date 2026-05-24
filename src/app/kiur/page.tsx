@@ -9,7 +9,7 @@ export default function KiurPage() {
           <span className='avatar' aria-hidden>📘</span>
           <strong>Matemaatika</strong>
         </Link>
-        <Link className='back-link' href='/'>Tagasi avalehele</Link>
+        <Link className='back-link' href='/'>Avalehele</Link>
       </section>
     </main>
   );

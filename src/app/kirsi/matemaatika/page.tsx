@@ -62,8 +62,8 @@ export default function KirsiMathPage() {
         <button type='button' className='btn' onClick={() => router.push(`/test?learner=kirsi&subject=matemaatika&topic=arvutamine&category=${encodeURIComponent(mode)}&count=${count}&seed=${Date.now()}`)}>Alusta</button>
 
         <div className='row'>
-          <Link className='back-link' href='/kirsi'>Tagasi aine juurde</Link>
-          <Link className='back-link' href='/'>Tagasi avalehele</Link>
+          <Link className='back-link' href='/kirsi'>Aine valik</Link>
+          <Link className='back-link' href='/'>Avalehele</Link>
         </div>
       </section>
 

@@ -62,8 +62,8 @@ export default function MatemaatikaPage() {
 
         <button type='button' className='btn' onClick={() => router.push(`/test?learner=kiur&subject=matemaatika&topic=pikkused&category=${encodeURIComponent(category)}&difficulty=${difficulty}&count=${count}&seed=${Date.now()}`)}>Alusta</button>
         <div className='row'>
-          <Link className='back-link' href='/kiur'>Tagasi aine juurde</Link>
-          <Link className='back-link' href='/'>Tagasi avalehele</Link>
+          <Link className='back-link' href='/kiur'>Aine valik</Link>
+          <Link className='back-link' href='/'>Avalehele</Link>
         </div>
       </section>
 

@@ -22,7 +22,7 @@ export default function HistoryPage() {
     <main className='container'>
       <section className='card'>
         <h1>Testide ajalugu</h1>
-        <Link className='back-link' href='/'>Tagasi avalehele</Link>
+        <Link className='back-link' href='/'>Avalehele</Link>
         {loadError && <p className='error'>{loadError}</p>}
         {history.length === 0 && <p>Ajalugu puudub.</p>}
         <div className='history-list'>
