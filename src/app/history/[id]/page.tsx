@@ -32,6 +32,9 @@ type AttemptRow = {
   score: number;
   elapsedSeconds: number | null;
   questions: string;
+  learner?: string | null;
+  subject?: string | null;
+  topic?: string | null;
 };
 
 function safeParseQuestions(raw: string): SavedQuestion[] {
@@ -57,9 +60,9 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   const isKirsi = isKirsiAttempt(row.category);
 
   const retryParams = new URLSearchParams({
-    learner: isKirsi ? 'kirsi' : 'kiur',
-    subject: 'matemaatika',
-    topic: isKirsi ? 'arvutamine' : KIUR_LENGTH_TOPIC_ID,
+    learner: row.learner || (isKirsi ? 'kirsi' : 'kiur'),
+    subject: row.subject || 'matemaatika',
+    topic: row.topic || (isKirsi ? 'arvutamine' : KIUR_LENGTH_TOPIC_ID),
     category: row.category,
     difficulty: row.difficulty,
     count: String(row.questionCount),
@@ -67,39 +70,46 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   });
 
   return (
-    <main className='container'>
-      <h1>Tulemus</h1>
-      <section className='card'><Link className='back-link' href='/history'>Tagasi ajalukku</Link>
-        <h2>{row.score} / {row.questionCount} õige</h2>
-        <p>Aeg: {typeof row.elapsedSeconds === 'number' && Number.isFinite(row.elapsedSeconds) ? formatElapsed(row.elapsedSeconds) : 'aeg puudub'}</p>
-        <p>Teema: {row.category} · Raskus: {row.difficulty}</p>
-        <p>{formatDateTime(row.createdAt)}</p>
-      </section>
+    <main className='result-page'>
+      <section className='result-shell'>
+        <Link className='practice-back-button' href='/history'>← Tagasi ajalukku</Link>
 
-      <section className='card'>
+        <section className='result-summary-card'>
+          <h1>Tulemus</h1>
+          <p className='result-score'>{row.score} / {row.questionCount} õige</p>
+          <div className='result-meta-grid'>
+            <span>Teema: {row.category}</span>
+            <span>Raskus: {row.difficulty}</span>
+            <span>Aeg: {typeof row.elapsedSeconds === 'number' && Number.isFinite(row.elapsedSeconds) ? formatElapsed(row.elapsedSeconds) : 'aeg puudub'}</span>
+            <span>{formatDateTime(row.createdAt)}</span>
+          </div>
+        </section>
+
+        <section className='result-list'>
         {questions.map((q, i) => {
           const order = (q.orderingCards ?? [])
             .slice()
             .sort((a, b) => (q.orderingDirection === 'desc' ? b.valueMm - a.valueMm : a.valueMm - b.valueMm))
             .map((c) => c.label)
-            .join(' > ');
+            .join(' → ');
 
           return (
-            <article key={q.id || `q-${i}`} className={q.isCorrect ? 'result-card correct' : 'result-card wrong'}>
-              <p><strong>{i + 1}. {q.question}</strong></p>
+            <article key={q.id || `q-${i}`} className={q.isCorrect ? 'result-review-card correct' : 'result-review-card wrong'}>
+              <p className='result-question'>{i + 1}. {q.question}</p>
               {q.kind === 'ordering'
-                ? <><p>Sinu järjestus: {q.userAnswer || '—'}</p><p>Õige järjestus: {order || '—'}</p></>
-                : <><p>Sinu vastus: {q.userAnswer || '—'}{isKirsi ? '' : ` ${q.expectedUnit || ''}`}</p><p>Õige vastus: {isKirsi && q.kind === 'choice' ? (q.correctAnswer === -1 ? '<' : q.correctAnswer === 0 ? '=' : '>') : String(q.correctAnswer ?? '—')}{isKirsi ? '' : ` ${q.expectedUnit || ''}`}</p></>}
-              <p className={q.isCorrect ? 'ok' : 'bad'}>{q.isCorrect ? 'Õige! Tubli!' : 'Veel harjutamist — järgmine kord läheb paremini!'}</p>
+                ? <div className='answer-review-grid'><p className='answer-line'><span>Sinu järjestus:</span> <strong>{q.userAnswer || '—'}</strong></p><p className='answer-line'><span>Õige järjestus:</span> <strong>{order || '—'}</strong></p></div>
+                : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{q.kind === 'choice' || isKirsi ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{q.kind === 'choice' ? (q.correctAnswer === -1 ? '<' : q.correctAnswer === 0 ? '=' : '>') : String(q.correctAnswer ?? '—')}{q.kind === 'choice' || isKirsi ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}
+              <p className={q.isCorrect ? 'result-status correct' : 'result-status wrong'}>{q.isCorrect ? 'Õige' : 'Vale vastus'}</p>
             </article>
           );
         })}
       </section>
 
-      <div className='row result-actions'>
+      <div className='result-actions'>
         <Link className='btn' href={`/test?${retryParams.toString()}`}>Tee {row.category.toLowerCase()} uuesti</Link>
         <Link className='btn chip active' href={isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika'}>Vali uus harjutus</Link>
       </div>
+      </section>
     </main>
   );
 }

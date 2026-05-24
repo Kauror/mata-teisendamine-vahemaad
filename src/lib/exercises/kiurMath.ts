@@ -9,7 +9,7 @@ function seededRng(seed: number): RNG { let t = seed >>> 0; return () => { t += 
 
 const DIV_CATS = ['Jagamine', 'Kontroll korrutamisega', 'Tähe väärtus', 'Võrratused'] as const;
 const NUM_CATS = ['Arvkiir', 'Loendamine', 'Eelnev ja järgnev arv', 'Järjestamine', 'Võrdlemine', 'Arvu koostis', 'Nuputa'] as const;
-const CIRCLE_CATS = ['Mõisted', 'Raadius', 'Diameeter', 'Võrdlemine', 'Kraadid'] as const;
+const CIRCLE_CATS = ['Mõisted', 'Raadius', 'Diameeter', 'Võrdlemine', 'Kraadid', 'Mustrid'] as const;
 
 type TopicCategory = (typeof DIV_CATS)[number] | (typeof NUM_CATS)[number] | (typeof CIRCLE_CATS)[number] | 'Segaharjutus';
 
@@ -53,10 +53,21 @@ function numbersQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gener
 }
 
 function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
-  if (cat === 'Mõisted' || cat === 'Kraadid') { const qs = [['Mitu kraadi on täisringis?', 360], ['Mitu kraadi on poolringis?', 180], ['Mitu kraadi on veerandringis?', 90], ['Poolring on ___ kraadi.', 180]] as const; const it = pick(rng, qs); return { id: `cm-${i}`, category: cat as unknown as Category, difficulty: d, question: it[0], correctAnswer: it[1] }; }
+  if (cat === 'Mõisted' || cat === 'Kraadid') { const qs = [
+    { q: 'Mitu kraadi on täisringis?', a: 360, v: 'circle-full' as const },
+    { q: 'Mitu kraadi on poolringis?', a: 180, v: 'circle-half' as const },
+    { q: 'Mitu kraadi on veerandringis?', a: 90, v: 'circle-quarter' as const },
+    { q: 'Poolring on ___ kraadi.', a: 180, v: 'circle-half' as const }
+  ] as const; const it = pick(rng, qs); return { id: `cm-${i}`, category: cat as unknown as Category, difficulty: d, question: it.q, correctAnswer: it.a, visual: it.v }; }
   if (cat === 'Raadius' || cat === 'Diameeter') { const r = rInt(rng, d === 'Lihtne' ? 2 : 4, d === 'Raske' ? 20 : 14); if (rInt(rng, 0, 1) === 0) return { id: `cr-${i}`, category: cat as unknown as Category, difficulty: d, question: `Ringjoone raadius on ${r} cm. Kui pikk on diameeter?`, expectedUnit: 'cm', correctAnswer: r * 2 }; const dia = r * 2; return { id: `cd-${i}`, category: cat as unknown as Category, difficulty: d, question: `Diameeter on ${dia} cm. Kui pikk on raadius?`, expectedUnit: 'cm', correctAnswer: r }; }
   if (cat === 'Võrdlemine') { if (rInt(rng, 0, 1) === 0) { const a = rInt(rng, 2, 15), b = rInt(rng, 2, 15); const sign = a === b ? 0 : a > b ? 1 : -1; return { id: `cv-${i}`, category: cat as unknown as Category, difficulty: d, question: `${a} cm ___ ${b} cm`, expectedUnit: 'cm', correctAnswer: sign, kind: 'choice' }; } const a = rInt(rng, 2, 15), b = rInt(rng, 2, 15); return { id: `cvn-${i}`, category: cat as unknown as Category, difficulty: d, question: `Ühe ringi raadius on ${a} cm ja teise ringi raadius on ${b} cm. Mitu cm on erinevus?`, expectedUnit: 'cm', correctAnswer: Math.abs(a - b) }; }
-  return { id: `cs-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Mitu kraadi on täisringis?', correctAnswer: 360 };
+  if (cat === 'Mustrid') {
+    const pattern = rInt(rng, 0, 2);
+    if (pattern === 0) return { id: `cp-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Jätka mustrit: 1, 2, 3, ___', correctAnswer: 4 };
+    if (pattern === 1) return { id: `cp-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Jätka mustrit: 2, 4, 6, ___', correctAnswer: 8 };
+    return { id: `cp-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Jätka mustrit: 5, 10, 15, ___', correctAnswer: 20 };
+  }
+  return { id: `cs-${i}`, category: cat as unknown as Category, difficulty: d, question: 'Mitu kraadi on täisringis?', correctAnswer: 360, visual: 'circle-full' };
 }
 
 export function generateKiurMathSession(topic: string, category: string, difficulty: Difficulty, count: number, seed: number): GeneratedQuestion[] {
@@ -64,10 +75,19 @@ export function generateKiurMathSession(topic: string, category: string, difficu
   const rng = seededRng(seed);
   const topicTypes = topic === 'jagamine-kahekohaline-uhekohaline' ? DIV_CATS : topic === 'arvud-10000' ? NUM_CATS : topic === 'ring-ja-ringjoon' ? CIRCLE_CATS : DIV_CATS;
   const types = category === 'Segaharjutus' ? mixedPlan(rng, count, topicTypes) : Array.from({ length: count }, () => category as TopicCategory);
-  return types.map((t, i) => {
-    const q = topic === 'jagamine-kahekohaline-uhekohaline' ? divisionQ(t, difficulty, rng, i) : topic === 'arvud-10000' ? numbersQ(t, difficulty, rng, i) : circleQ(t, difficulty, rng, i);
-    return { ...q, id: `${topic}-${q.id}-${i}` };
-  });
+  const out: GeneratedQuestion[] = [];
+  const used = new Set<string>();
+  for (let i = 0; i < types.length; i++) {
+    let tries = 0;
+    let q: GeneratedQuestion;
+    do {
+      q = topic === 'jagamine-kahekohaline-uhekohaline' ? divisionQ(types[i], difficulty, rng, i + tries * 17) : topic === 'arvud-10000' ? numbersQ(types[i], difficulty, rng, i + tries * 17) : circleQ(types[i], difficulty, rng, i + tries * 17);
+      tries++;
+    } while (used.has(`${q.kind}|${q.question}|${q.correctAnswer}`) && tries < 20);
+    used.add(`${q.kind}|${q.question}|${q.correctAnswer}`);
+    out.push({ ...q, id: `${topic}-${q.id}-${i}` });
+  }
+  return out;
 }
 
 export const generateLengthExercises = generateLengthSession;

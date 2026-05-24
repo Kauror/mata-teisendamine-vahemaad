@@ -14,7 +14,7 @@ export const KIUR_MATH_TOPICS = [
   },
   {
     id: 'jagamine-kahekohaline-uhekohaline',
-    name: 'Kahekohalise arvu jagamine ühekohalise arvuga',
+    name: 'Kahekohalise arvu jagamine',
     emoji: '➗',
     accent: 'blue',
     description: 'Jagamine, korrutamisega kontroll, tähe väärtus ja võrratused',
@@ -25,7 +25,7 @@ export const KIUR_MATH_TOPICS = [
   },
   {
     id: 'arvud-10000',
-    name: 'Arvud 10 000 piires',
+    name: 'Arvud 10k piires',
     emoji: '🔢',
     accent: 'purple',
     description: 'Arvkiir, järjestamine, võrdlemine ja arvu koostis',
@@ -36,7 +36,7 @@ export const KIUR_MATH_TOPICS = [
   },
   {
     id: 'ring-ja-ringjoon',
-    name: 'Ring ja ringjoon',
+    name: 'Ring',
     emoji: '⭕',
     accent: 'violet',
     description: 'Ring, ringjoon, keskpunkt, raadius ja diameeter',

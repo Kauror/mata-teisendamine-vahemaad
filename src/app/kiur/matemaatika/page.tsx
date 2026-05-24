@@ -22,7 +22,7 @@ export default function MatemaatikaPage() {
       backHref='/kiur'
       subjectName='Matemaatika'
       subjectEmoji='🧮'
-      topics={KIUR_MATH_TOPICS.map((topic) => ({ id: topic.id, name: topic.name, emoji: topic.emoji, description: topic.description }))}
+      topics={KIUR_MATH_TOPICS.map((topic) => ({ id: topic.id, name: topic.name, emoji: topic.emoji }))}
       selectedTopicId={topicId}
       onSelectTopic={(t) => setTopicId(t as KiurMathTopicId)}
       setupTitle={selectedTopic.implemented ? 'Harjutuse seadistus' : selectedTopic.name}

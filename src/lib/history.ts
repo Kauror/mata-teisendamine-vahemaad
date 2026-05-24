@@ -28,7 +28,18 @@ export function isTodayIso(createdAt: string) {
 }
 
 export function subjectLabel(subject?: string | null) {
-  return subject || 'Matemaatika';
+  if (!subject || subject === 'matemaatika') return 'Matemaatika';
+  if (subject === 'inglise-keel') return 'Inglise keel';
+  return subject;
+}
+
+export function compactTopicLabel(topic?: string | null, category?: string | null) {
+  if (topic === 'mootuhikud-pikkused' || topic === 'pikkused') return 'Mõõtühikud ja pikkused';
+  if (topic === 'jagamine-kahekohaline-uhekohaline') return 'Kahekohalise arvu jagamine';
+  if (topic === 'arvud-10000') return 'Arvud 10k piires';
+  if (topic === 'ring-ja-ringjoon') return 'Ring';
+  if (topic === 'arvutamine') return 'Arvutamine';
+  return category || '';
 }
 
 

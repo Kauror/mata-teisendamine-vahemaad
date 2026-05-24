@@ -18,6 +18,8 @@ export type QuestionKind = 'numeric' | 'ordering' | 'choice';
 
 export type OrderingCard = { id: string; label: string; valueMm: number };
 
+export type QuestionVisual = 'circle-full' | 'circle-half' | 'circle-quarter';
+
 export type GeneratedQuestion = {
   id: string;
   category: Category;
@@ -28,6 +30,7 @@ export type GeneratedQuestion = {
   kind?: QuestionKind;
   orderingCards?: OrderingCard[];
   orderingDirection?: 'asc' | 'desc';
+  visual?: QuestionVisual;
 };
 
 export type QuestionResult = GeneratedQuestion & {

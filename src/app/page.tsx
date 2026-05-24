@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { isKirsiAttempt, isTodayIso, scorePercent, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, isKirsiAttempt, isTodayIso, scorePercent, subjectLabel } from '@/lib/history';
 
 type H = {
   id: number;
@@ -13,6 +13,7 @@ type H = {
   score: number;
   learner?: string | null;
   subject?: string | null;
+  topic?: string | null;
 };
 
 function getAverageTone(average: number | null) {
@@ -89,7 +90,8 @@ function ChildDashboardCard({
           <div className='exercise-list'>
             {latest.map((attempt) => (
               <p key={attempt.id} className='exercise-row'>
-                {subjectLabel(attempt.subject).toLowerCase()} · {' '}
+                {subjectLabel(attempt.subject)}
+                {compactTopicLabel(attempt.topic, attempt.category) ? ` · ${compactTopicLabel(attempt.topic, attempt.category)}` : ''} · {' '}
                 {new Date(attempt.createdAt).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' })} · {' '}
                 {attempt.score}/{attempt.questionCount}
               </p>
