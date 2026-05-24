@@ -33,7 +33,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .history-main{display:grid;gap:4px}
 .history-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .history-actions .chip,.history-actions button{padding:8px 12px;font-size:14px}
-.result-card{border-radius:14px;padding:12px;border:1px solid #dbe3ff;display:grid;gap:6px}
-.result-card.correct{background:#dcfce7;border-color:#86efac}
-.result-card.wrong{background:#ffe4e6;border-color:#fda4af}
+.result-item{padding:10px;border-radius:12px;border:1px solid transparent}
+.result-correct{background:#e8f7ee;border-color:#bde5cc}
+.result-wrong{background:#fdecec;border-color:#f2b8b8}
 @media (max-width:640px){.history-item{grid-template-columns:1fr}.history-actions{justify-content:flex-start}}
