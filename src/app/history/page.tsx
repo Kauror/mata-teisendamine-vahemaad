@@ -8,7 +8,8 @@ type H = { id:number; createdAt:string; category:string; difficulty:string; ques
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<H[]>([]);
-  useEffect(() => { fetch('/api/history').then((r) => r.json()).then(setHistory); }, []);
+  const [loadError, setLoadError] = useState('');
+  useEffect(() => { fetch('/api/history').then((r) => r.json()).then(setHistory).catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.')); }, []);
 
   const deleteOne = async (id:number) => {
     if (!confirm('Kas kustutada see test ajaloost?')) return;
@@ -21,6 +22,7 @@ export default function HistoryPage() {
       <section className='card'>
         <h1>Testide ajalugu</h1>
         <Link className='back-link' href='/'>Tagasi avalehele</Link>
+        {loadError && <p className='error'>{loadError}</p>}
         {history.length === 0 && <p>Ajalugu puudub.</p>}
         <div className='history-list'>
           {history.map((h) => {

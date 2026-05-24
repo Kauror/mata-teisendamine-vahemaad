@@ -1,16 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { formatDateTime, formatElapsed } from '@/lib/validation';
 
 const MODES = ['Arvutamine 10 piires', 'Arvutamine 20 piires', 'Suurem või väiksem kuni 100', 'Segaülesanded'] as const;
 const COUNTS = [3, 5, 10] as const;
+type H = { id:number; createdAt:string; category:string; difficulty:string; questionCount:number; score:number; elapsedSeconds:number | null };
+const KIRSI_CATEGORIES = new Set(MODES);
 
 export default function KirsiMathPage() {
   const router = useRouter();
   const [mode, setMode] = useState<(typeof MODES)[number]>('Arvutamine 10 piires');
   const [count, setCount] = useState<number>(3);
+  const [history, setHistory] = useState<H[]>([]);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => { fetch('/api/history').then((r) => r.json()).then((rows: H[]) => setHistory(rows.filter((h) => KIRSI_CATEGORIES.has(h.category as (typeof MODES)[number])))).catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.')); }, []);
+
+  const deleteOne = async (id:number) => {
+    if (!confirm('Kas kustutada see test ajaloost?')) return;
+    await fetch(`/api/history/${id}`, { method: 'DELETE' });
+    setHistory((h) => h.filter((x) => x.id !== id));
+  };
+
+  const groups = useMemo(() => {
+    const map = new Map<string, H[]>();
+    const now = new Date();
+    const today = now.toDateString();
+    const y = new Date(now);
+    y.setDate(now.getDate() - 1);
+    const yesterday = y.toDateString();
+
+    history.forEach((h) => {
+      const d = new Date(h.createdAt);
+      const key = d.toDateString() === today ? 'Täna' : d.toDateString() === yesterday ? 'Eile' : d.toLocaleDateString('et-EE');
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(h);
+    });
+    return map;
+  }, [history]);
 
   return (
     <main className='container'>
@@ -35,6 +65,31 @@ export default function KirsiMathPage() {
           <Link className='back-link' href='/kirsi'>Tagasi Kirsi juurde</Link>
           <Link className='back-link' href='/'>Tagasi avalehele</Link>
         </div>
+      </section>
+
+      <section className='card'>
+        <h2>Testide ajalugu</h2>{loadError && <p className='error'>{loadError}</p>}
+        {history.length === 0 && <p>Ajalugu puudub.</p>}
+        {Array.from(groups.entries()).map(([k, items]) => (
+          <div key={k}>
+            <h3>{k}</h3>
+            <div className='history-list'>
+              {items.map((h) => (
+                <article key={h.id} className='history-item'>
+                  <div className='history-main'>
+                    <strong>{h.category}</strong>
+                    <span>Kirsi · Matemaatika</span>
+                    <span>{formatDateTime(h.createdAt)} · {h.score}/{h.questionCount} · {typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub'}</span>
+                  </div>
+                  <div className='history-actions'>
+                    <Link className='chip' href={`/history/${h.id}`}>Vaata</Link>
+                    <button type='button' className='danger' onClick={() => deleteOne(h.id)}>Kustuta</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
     </main>
   );

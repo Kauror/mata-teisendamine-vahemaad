@@ -7,6 +7,7 @@ import { CATEGORIES, DIFFICULTIES, QUESTION_COUNTS, Category, Difficulty } from 
 import { formatDateTime, formatElapsed } from '@/lib/validation';
 
 type H = { id:number; createdAt:string; category:string; difficulty:string; questionCount:number; score:number; elapsedSeconds:number };
+const KIRSI_CATEGORIES = new Set(['Arvutamine 10 piires', 'Arvutamine 20 piires', 'Suurem või väiksem kuni 100', 'Segaülesanded']);
 
 export default function MatemaatikaPage() {
   const router = useRouter();
@@ -15,8 +16,9 @@ export default function MatemaatikaPage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('Lihtne');
   const [count, setCount] = useState(3);
   const [filter, setFilter] = useState('Kõik');
+  const [loadError, setLoadError] = useState('');
 
-  useEffect(() => { fetch('/api/history').then((r) => r.json()).then(setHistory); }, []);
+  useEffect(() => { fetch('/api/history').then((r) => r.json()).then((rows: H[]) => setHistory(rows.filter((h) => !KIRSI_CATEGORIES.has(h.category)))).catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.')); }, []);
 
   const groups = useMemo(() => {
     const map = new Map<string, H[]>();
@@ -62,17 +64,33 @@ export default function MatemaatikaPage() {
         <div className='row'>
           <Link className='back-link' href='/kiur'>Tagasi Kiuri juurde</Link>
           <Link className='back-link' href='/'>Tagasi avalehele</Link>
-          <Link className='chip' href='/history'>Ajalugu</Link>
         </div>
       </section>
 
       <section className='card'>
-        <h2>Testide ajalugu</h2>
+        <h2>Testide ajalugu</h2>{loadError && <p className='error'>{loadError}</p>}
+        {history.length === 0 && <p>Ajalugu puudub.</p>}
         <div className='row'>{keys.map((k)=><button type='button' key={k} className={filter===k?'chip active':'chip'} onClick={()=>setFilter(k)}>{k}</button>)}</div>
         {Array.from(groups.entries()).filter(([k]) => filter==='Kõik' || filter===k).map(([k, items]) => (
-          <div key={k}><h3>{k}</h3><ul>{items.map((h)=><li key={h.id}><Link href={`/history/${h.id}`}>{formatDateTime(h.createdAt)} • Kiur • Matemaatika • {h.category} • {h.difficulty} • {h.score}/{h.questionCount} • {Number.isFinite(h.elapsedSeconds)?formatElapsed(h.elapsedSeconds):'aeg puudub'}</Link> <button type='button' className='danger' onClick={()=>deleteOne(h.id)}>Kustuta</button></li>)}</ul></div>
+          <div key={k}>
+            <h3>{k}</h3>
+            <div className='history-list'>
+              {items.map((h) => (
+                <article key={h.id} className='history-item'>
+                  <div className='history-main'>
+                    <strong>{h.category}</strong>
+                    <span>Kiur · Matemaatika</span>
+                    <span>{formatDateTime(h.createdAt)} · {h.score}/{h.questionCount} · {Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub'}</span>
+                  </div>
+                  <div className='history-actions'>
+                    <Link className='chip' href={`/history/${h.id}`}>Vaata</Link>
+                    <button type='button' className='danger' onClick={() => deleteOne(h.id)}>Kustuta</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
         ))}
-        <button type='button' className='danger' onClick={async()=>{if(!confirm('Kas kustutame kogu ajaloo?')) return; await fetch('/api/history',{method:'DELETE'}); setHistory([]);}}>Kustuta kogu ajalugu</button>
       </section>
     </main>
   );

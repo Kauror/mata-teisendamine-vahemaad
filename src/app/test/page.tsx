@@ -49,6 +49,7 @@ function TestPageContent() {
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     const generated = isKirsiMath
@@ -62,6 +63,7 @@ function TestPageContent() {
     setElapsed(0);
     setError('');
     setIsSaving(false);
+    setSaveError('');
   }, [category, categoryParam, difficulty, count, seed, isKirsiMath]);
 
   useEffect(() => {
@@ -133,9 +135,14 @@ function TestPageContent() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ createdAt: new Date().toISOString(), category: categoryParam, difficulty: isKirsiMath ? 'Lihtne' : difficulty, questionCount: count, score, elapsedSeconds: elapsed, questions: results })
       });
+      if (!res.ok) throw new Error('save-failed');
       const body = await res.json();
       router.push(`/history/${body.id}`);
-    } finally { setIsSaving(false); }
+    } catch {
+      setSaveError('Salvestamine ebaõnnestus. Proovi uuesti.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -178,6 +185,7 @@ function TestPageContent() {
         )}
 
         {error && <p id='vastuse-viga' className='error'>{error}</p>}
+        {saveError && <p className='error'>{saveError}</p>}
         <div className='test-actions'>
           <button type='button' className='btn-stop' onClick={() => { if (confirm('Kas soovid harjutuse lõpetada? Tulemusi ei salvestata.')) router.push(baseSelectionUrl); }}>Lõpeta</button>
           <button type='button' className='btn-next' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}</button>
