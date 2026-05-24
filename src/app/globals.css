@@ -39,3 +39,5 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .result-card.correct{background:#dcfce7;border-color:#86efac}
 .result-card.wrong{background:#ffe4e6;border-color:#fda4af}
 @media (max-width:640px){.history-item{grid-template-columns:1fr}.history-actions{justify-content:flex-start}}
+
+.history-mini{display:grid;gap:4px;font-size:14px;color:#33416f}

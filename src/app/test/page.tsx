@@ -42,8 +42,8 @@ function TestPageContent() {
   const categoryParam = params.get('category') || 'Teisendamine';
   const category = categoryParam as Category;
   const difficulty = (params.get('difficulty') || 'Lihtne') as Difficulty;
-  const rawCount = Number(params.get('count') || 5);
-  const count = [3, 5, 10].includes(rawCount) ? rawCount : 5;
+  const rawCount = Number(params.get('count') || 10);
+  const count = [10, 25].includes(rawCount) ? rawCount : 10;
   const seed = Number(params.get('seed') || Date.now());
 
   const isKirsiMath = learner === 'kirsi' && subject === 'matemaatika' && topic === 'arvutamine';
@@ -88,6 +88,11 @@ function TestPageContent() {
   const selectedSet = new Set(selected);
   const isChoiceQuestion = isKirsiMath && current?.kind === 'choice';
 
+  const getCurrentAnswer = () => {
+    if (current.kind === 'ordering' || isChoiceQuestion) return answers[index] ?? '';
+    return inputRef.current?.value ?? answers[index] ?? '';
+  };
+
   if (!current) return <main className='container'><div className='card'>Laadin küsimusi...</div></main>;
 
   const finalizeResults = () => {
@@ -123,7 +128,11 @@ function TestPageContent() {
     } else if (isChoiceQuestion) {
       if (!choiceAnswers[index]) return setError('Vali sobiv märk.');
     } else {
-      const err = validateAnswerInput(answers[index] ?? '');
+      const currentAnswer = getCurrentAnswer();
+      const copy = [...answers];
+      copy[index] = currentAnswer;
+      setAnswers(copy);
+      const err = validateAnswerInput(currentAnswer);
       if (err) {
         setError(err === 'Palun sisesta vastus.' ? 'Sisesta vastus.' : err);
         inputRef.current?.focus();

@@ -4,18 +4,19 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
-import { isKirsiAttempt, KIRSI_CATEGORIES } from '@/lib/history';
+import { isKirsiAttempt, KIRSI_CATEGORIES, groupAttemptsByDay } from '@/lib/history';
 
 const MODES = ['Arvutamine 10 piires', 'Arvutamine 20 piires', 'Suurem või väiksem kuni 100', 'Segaülesanded'] as const;
-const COUNTS = [3, 5, 10] as const;
+const COUNTS = [10, 25] as const;
 type H = { id:number; createdAt:string; category:string; difficulty:string; questionCount:number; score:number; elapsedSeconds:number | null; learner?: string | null };
 
 export default function KirsiMathPage() {
   const router = useRouter();
   const [mode, setMode] = useState<(typeof MODES)[number]>('Arvutamine 10 piires');
-  const [count, setCount] = useState<number>(3);
+  const [count, setCount] = useState<number>(10);
   const [history, setHistory] = useState<H[]>([]);
   const [loadError, setLoadError] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => { fetch('/api/history').then((r) => r.json()).then((rows: H[]) => setHistory(rows.filter((h) => isKirsiAttempt(h.category, h.learner) && KIRSI_CATEGORIES.has(h.category)))).catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.')); }, []);
 
@@ -25,22 +26,7 @@ export default function KirsiMathPage() {
     setHistory((h) => h.filter((x) => x.id !== id));
   };
 
-  const groups = useMemo(() => {
-    const map = new Map<string, H[]>();
-    const now = new Date();
-    const today = now.toDateString();
-    const y = new Date(now);
-    y.setDate(now.getDate() - 1);
-    const yesterday = y.toDateString();
-
-    history.forEach((h) => {
-      const d = new Date(h.createdAt);
-      const key = d.toDateString() === today ? 'Täna' : d.toDateString() === yesterday ? 'Eile' : d.toLocaleDateString('et-EE');
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(h);
-    });
-    return map;
-  }, [history]);
+  const groups = useMemo(() => groupAttemptsByDay(history), [history]);
 
   return (
     <main className='container'>
@@ -63,14 +49,16 @@ export default function KirsiMathPage() {
 
         <div className='row'>
           <Link className='back-link' href='/kirsi'>Aine valik</Link>
-          <Link className='back-link' href='/'>Avalehele</Link>
+          <Link className='back-link' href='/'>Rollivalik</Link>
         </div>
       </section>
 
       <section className='card'>
         <h2>Testide ajalugu</h2>{loadError && <p className='error'>{loadError}</p>}
-        {history.length === 0 && <p>Ajalugu puudub.</p>}
-        {Array.from(groups.entries()).map(([k, items]) => (
+        <div className='row'><button type='button' className='chip' onClick={() => setShowHistory((v) => !v)}>{showHistory ? 'Peida' : 'Näita'}</button></div>
+        {!showHistory && <p>Viimased tulemused on peidetud.</p>}
+        {showHistory && history.length === 0 && <p>Ajalugu puudub.</p>}
+        {showHistory && Array.from(groups.entries()).map(([k, items]) => (
           <div key={k}>
             <h3>{k}</h3>
             <div className='history-list'>

@@ -9,7 +9,11 @@ export default function KiurPage() {
           <span className='avatar' aria-hidden>📘</span>
           <strong>Matemaatika</strong>
         </Link>
-        <Link className='back-link' href='/'>Avalehele</Link>
+
+        <Link className='profile card profile-link' href='/kiur/inglise-keel'>
+          <span className='avatar' aria-hidden>🇬🇧</span>
+          <strong>Inglise keel</strong>
+        </Link>
       </section>
     </main>
   );
