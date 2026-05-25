@@ -49,7 +49,7 @@ function byType(type: InternalType, d: Difficulty, rng: RNG, i: number): Generat
   if (type === 'km-m-conversion') {
     const mode = rInt(rng,0,2);
     if(mode===0){const km=rInt(rng,2,9); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:`${km} km = mitu m?`,expectedUnit:'m',correctAnswer:km*1000,explanation:`1 km = 1000 m, seega ${km} km = ${km*1000} m.`,subtopic:'pikkusuhikud'};}
-    if(mode===1){const m=rInt(rng,1100,9800); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:`${m} m = mitu km ja m? Sisesta ainult km arv.`,expectedUnit:'km',correctAnswer:Math.floor(m/1000),explanation:`${m} m = ${Math.floor(m/1000)} km ${m%1000} m.`,subtopic:'pikkusuhikud'};}
+    if(mode===1){const m=rInt(rng,1100,9800); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:`${m} m = mitu km?`,expectedUnit:'km',correctAnswer:Math.floor(m/1000),explanation:`${m} m = ${Math.floor(m/1000)} km ${m%1000} m.`,subtopic:'pikkusuhikud'};}
     const km=rInt(rng,1,8),m=pick(rng,[20,60,120,300,500,700]); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:`${km} km ${m} m = mitu m?`,expectedUnit:'m',correctAnswer:kmMToM(km,m),explanation:`${km} km ${m} m = ${kmMToM(km,m)} m.`,subtopic:'pikkusuhikud'};
   }
   if (type === 'length-comparison') {

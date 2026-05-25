@@ -53,8 +53,13 @@ function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gene
   }
   if (cat === 'Jaga rühmadesse') {
     const things = pick(rng, ['õuna', 'klotsi', 'palli', 'raamatut']);
-    const box = pick(rng, ['kotti', 'karpi', 'rühma', 'virna']);
-    return { id: `jr-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `${dividend} ${things} pannakse ${box}desse. Igas ${box}is on ${divisor} ${things}. Mitu ${box}i saab?`, correctAnswer: quotient, explanation: `Kui igas rühmas on ${divisor}, siis ${dividend} : ${divisor} = ${quotient}.` };
+    const containers = pick(rng, [
+      { inessivePlural: 'kottides', inessiveSingular: 'kotis', partitiveSingular: 'kotti' },
+      { inessivePlural: 'karpides', inessiveSingular: 'karbis', partitiveSingular: 'karpi' },
+      { inessivePlural: 'rühmades', inessiveSingular: 'rühmas', partitiveSingular: 'rühma' },
+      { inessivePlural: 'virnades', inessiveSingular: 'virnas', partitiveSingular: 'virna' }
+    ] as const);
+    return { id: `jr-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `${dividend} ${things} pannakse ${containers.inessivePlural}. Igas ${containers.inessiveSingular} on ${divisor} ${things}. Mitu ${containers.partitiveSingular} saab?`, correctAnswer: quotient, explanation: `Kui igas rühmas on ${divisor}, siis ${dividend} : ${divisor} = ${quotient}.` };
   }
   if (cat === 'Vali jagamistehe') {
     return { id: `vt-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `${dividend} eset jagatakse võrdselt ${divisor} rühma. Milline arvutus sobib?`, correctAnswer: 0, kind: 'choice', choiceOptions: [`${dividend} : ${divisor}`, `${dividend} + ${divisor}`, `${divisor} : ${dividend}`], explanation: 'Võrdseks jagamine tähendab jagamistehet.' };
@@ -63,10 +68,10 @@ function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gene
     return { id: `kc-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `${dividend} : ${divisor} = ${quotient}. Milline tehe kontrollib vastust?`, correctAnswer: 0, kind: 'choice', choiceOptions: [`${quotient} × ${divisor} = ${dividend}`, `${quotient} + ${divisor} = ${dividend}`, `${dividend} - ${quotient} = ${divisor}`], explanation: 'Jagamist kontrollime korrutamisega.' };
   }
   if (cat === 'Vali jagatis') {
-    const wrong1 = quotient + 1;
-    const wrong2 = Math.max(2, quotient - 1);
-    const wrong3 = quotient + divisor;
-    return { id: `vjg-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Vali õige vastus: ${dividend} : ${divisor} = ?`, correctAnswer: 0, kind: 'choice', choiceOptions: [String(quotient), String(wrong1), String(wrong2), String(wrong3)], explanation: `${dividend} : ${divisor} = ${quotient}.` };
+    const candidates = [quotient, quotient + 1, Math.max(2, quotient - 1), quotient + divisor, quotient + 2, Math.max(2, quotient - 2)];
+    const uniq = Array.from(new Set(candidates)).slice(0, 4);
+    while (uniq.length < 4) uniq.push(uniq[uniq.length - 1] + 1);
+    return { id: `vjg-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Vali õige vastus: ${dividend} : ${divisor} = ?`, correctAnswer: 0, kind: 'choice', choiceOptions: uniq.map(String), explanation: `${dividend} : ${divisor} = ${quotient}.` };
   }
   if (cat === 'Rühmadega jagamine') {
     return { id: `rg-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Vaata rühmi ja arvuta jagatis: ${dividend} : ${divisor}. Mitu on igas rühmas?`, correctAnswer: quotient, visual: 'division-groups', explanation: `${dividend} on jagatud ${divisor} võrdsesse rühma.` };
@@ -77,10 +82,11 @@ function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gene
     return { id: `ko-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Kas arvutus on õige? ${dividend} : ${divisor} = ${shown}`, correctAnswer: ok ? 0 : 1, kind: 'choice', choiceOptions: ['Õige', 'Vale'], explanation: `${dividend} : ${divisor} = ${quotient}.` };
   }
   if (cat === 'Jaga sama arvuga') {
-    const q2 = quotient + 2;
     const d2 = divisor;
+    const q2 = Math.max(2, Math.min(49, quotient + pick(rng, [1, 2, 3])));
     const a2 = d2 * q2;
-    const target = pick(rng, [`${dividend} : ${divisor}`, `${a2} : ${d2}`]);
+    const validAlt = a2 >= 10 && a2 <= 99;
+    const target = validAlt ? pick(rng, [`${dividend} : ${divisor}`, `${a2} : ${d2}`]) : `${dividend} : ${divisor}`;
     const ans = target == `${dividend} : ${divisor}` ? quotient : q2;
     return { id: `sa-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Arvuta järgmine jagatis: ${target}`, correctAnswer: ans, explanation: 'Jagame sama jagajaga.' };
   }
@@ -153,16 +159,21 @@ function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gen
     const idx = rInt(rng, 0, 3);
     const digits = String(n).padStart(4, '0').split('').map(Number);
     const value = digits[idx] * [1000, 100, 10, 1][idx];
-    return { id: `n11-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Mis on numbri ${digits[idx]} väärtus arvus ${n}?`, correctAnswer: 0, kind: 'choice', choiceOptions: [String(value), String(digits[idx] * [100, 10, 1, 1000][idx]), String(digits[idx])], explanation: `${digits[idx]} on ${['tuhandeliste', 'sajaliste', 'kümneliste', 'üheliste'][idx]} kohal.` };
+    const rawOpts = [value, digits[idx] * [100, 10, 1, 1000][idx], digits[idx], value + (value === 0 ? 1 : 10)];
+    const opts = Array.from(new Set(rawOpts)).map(String);
+    while (opts.length < 3) opts.push(String(Number(opts[opts.length - 1]) + 1));
+    return { id: `n11-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Mis on numbri ${digits[idx]} väärtus arvus ${n}?`, correctAnswer: 0, kind: 'choice', choiceOptions: opts.slice(0, 3), explanation: `${digits[idx]} on ${['tuhandeliste', 'sajaliste', 'kümneliste', 'üheliste'][idx]} kohal.` };
   }
   if (cat === 'Ümardamine') {
     const n = mk4(1200, 9800);
     if (rInt(rng, 0, 1) === 0) {
       const ans = Math.round(n / 100) * 100;
-      return { id: `n12-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Ümarda lähima sajani: ${n}`, correctAnswer: 0, kind: 'choice', choiceOptions: [String(ans), String(Math.floor(n / 100) * 100), String(Math.ceil(n / 100) * 100)], explanation: `${n} ümardatuna lähima sajani on ${ans}.` };
+      const opts = Array.from(new Set([ans, Math.floor(n / 100) * 100, Math.ceil(n / 100) * 100, ans + 100])).slice(0, 3).map(String);
+      return { id: `n12-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Ümarda lähima sajani: ${n}`, correctAnswer: 0, kind: 'choice', choiceOptions: opts, explanation: `${n} ümardatuna lähima sajani on ${ans}.` };
     }
     const ans = Math.round(n / 1000) * 1000;
-    return { id: `n12-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Ümarda lähima tuhandeni: ${n}`, correctAnswer: 0, kind: 'choice', choiceOptions: [String(ans), String(Math.floor(n / 1000) * 1000), String(Math.ceil(n / 1000) * 1000)], explanation: `${n} ümardatuna lähima tuhandeni on ${ans}.` };
+    const opts = Array.from(new Set([ans, Math.floor(n / 1000) * 1000, Math.ceil(n / 1000) * 1000, Math.min(10000, ans + 1000)])).slice(0, 3).map(String);
+    return { id: `n12-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Ümarda lähima tuhandeni: ${n}`, correctAnswer: 0, kind: 'choice', choiceOptions: opts, explanation: `${n} ümardatuna lähima tuhandeni on ${ans}.` };
   }
   if (cat === 'Ligikaudne arvutus') {
     const add = rInt(rng, 0, 1) === 0;
@@ -201,7 +212,7 @@ function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Genera
   if (cat === 'Leia läbimõõt') return { id: `cd-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: 'Milline sirglõik on läbimõõt?', correctAnswer: 1, kind: 'choice', choiceOptions: ['A', 'B', 'C'], explanation: 'Läbimõõt läbib keskpunkti ja ühendab ringjoone kahte punkti.', visual: 'diameter-demo' };
   if (cat === 'Läbimõõt raadiusest') { const r = rInt(rng, 3, 15); return { id: `cdf-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `Ringjoone raadius on ${r} ${unit}. Kui pikk on läbimõõt?`, expectedUnit: unit, correctAnswer: r * 2, explanation: `Läbimõõt on kaks raadiust: ${r * 2} ${unit}.` }; }
   if (cat === 'Raadius läbimõõdust') { const r = rInt(rng, 3, 14); return { id: `crf-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `Ringjoone läbimõõt on ${r * 2} ${unit}. Kui pikk on raadius?`, expectedUnit: unit, correctAnswer: r, explanation: 'Raadius on pool läbimõõdust.' }; }
-  if (cat === 'Punkti asukoht') { const ask = pick(rng, ['Kus asub punkt A?', 'Kus asub punkt B?', 'Kus asub punkt C?'] as const); const map = { 'Kus asub punkt A?': 0, 'Kus asub punkt B?': 1, 'Kus asub punkt C?': 2 }; return { id: `cp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: ask, correctAnswer: map[ask], kind: 'choice', choiceOptions: ['ringi sees', 'ringjoone peal', 'ringist väljas'], explanation: 'Punkt ringjoone peal asub täpselt piirjoonel.', visual: 'point-position' }; }
+  if (cat === 'Punkti asukoht') { const ask = pick(rng, ['Kus asub punkt A?', 'Kus asub punkt B?', 'Kus asub punkt C?'] as const); const map = { 'Kus asub punkt A?': 0, 'Kus asub punkt B?': 1, 'Kus asub punkt C?': 2 } as const; const exp = map[ask] === 0 ? 'Punkt on ringi sees, kui see asub ringjoonega piiratud ala sees.' : map[ask] === 1 ? 'Punkt ringjoone peal asub täpselt piirjoonel.' : 'Punkt on ringist väljas, kui see jääb ringjoonest väljapoole.'; return { id: `cp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: ask, correctAnswer: map[ask], kind: 'choice', choiceOptions: ['ringi sees', 'ringjoone peal', 'ringist väljas'], explanation: exp, visual: 'point-position' }; }
   if (cat === 'Sama keskpunkt') { const bigger = pick(rng, [6, 8, 10]); return { id: `cc-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `Kahel ringjoonel on sama keskpunkt. Suurema ringjoone raadius on ${bigger} cm. Väiksema ringjoone raadius on poole väiksem. Kui suur on väiksema ringjoone raadius?`, expectedUnit: 'cm', correctAnswer: bigger / 2, explanation: 'Poole väiksem tähendab, et jagame kahega.', visual: 'concentric-circles' }; }
   if (cat === 'Võrdle raadiuseid') { const cm = pick(rng, [3, 4, 5]); const mm = cm * 10; return { id: `cv-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `K raadius on ${mm} mm ja L raadius on ${cm} cm. Kas ringjooned on sama suured?`, correctAnswer: 2, kind: 'choice', choiceOptions: ['K', 'L', 'sama suured'], explanation: `${cm} cm = ${mm} mm, seega on ringjooned sama suured.` }; }
   if (cat === 'Ringi kraadid') { const set = [{ q: 'Mitu kraadi on täisring?', a: 360, v: 'circle-full' as const }, { q: 'Mitu kraadi on pool ringi?', a: 180, v: 'circle-half' as const }, { q: 'Mitu kraadi on veerand ringi?', a: 90, v: 'circle-quarter' as const }, { q: 'Mitu kraadi on kolmveerand ringi?', a: 270, v: 'sector-missing' as const }] as const; const it = pick(rng, set); return { id: `ck-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: it.q, correctAnswer: it.a, explanation: `Täisring on 360° ja sellest leitakse osad.`, visual: it.v }; }
@@ -261,8 +272,9 @@ function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gener
     const start = rInt(rng, 10, 60) * 100;
     const correct = [start, start + step, start + 2 * step, start + 3 * step, start + 4 * step];
     const wrong = [...correct];
-    wrong[3] += step;
-    return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'arvu-ja-loogikamustrid', question: `Leia arv, mis ei sobi mustrisse: ${wrong.join(', ')}`, correctAnswer: 3, kind: 'choice', choiceOptions: wrong.map(String), explanation: `Muster peaks suurenema iga kord ${step} võrra.` };
+    wrong[3] += step * 2;
+    const opts = wrong.map((v, idx) => `${v} (${idx + 1})`);
+    return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'arvu-ja-loogikamustrid', question: `Leia arv, mis ei sobi mustrisse: ${wrong.join(', ')}`, correctAnswer: 3, kind: 'choice', choiceOptions: opts, explanation: `Muster peaks suurenema iga kord ${step} võrra.` };
   }
 
   if (t === 7) {
@@ -319,9 +331,10 @@ function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gener
 export function generateKiurMathSession(topic: string, category: string, difficulty: Difficulty, count: number, seed: number): GeneratedQuestion[] {
   if (isKiurLengthTopic(topic)) return generateLengthSession(category as Category, difficulty, count, seed);
   const rng = seededRng(seed);
-  const normalizedTopic = topic === 'ring-ja-ringjoon' && category === 'Mustrid' ? 'mustrid' : topic;
+  const normalizedTopic = topic;
   const isBigNumbers = normalizedTopic === 'arvud-10000-piires' || normalizedTopic === 'arvud-10000';
-  const topicTypes = normalizedTopic === 'jagamine-kahekohaline-uhekohaline' ? DIV_CATS : isBigNumbers ? BIG_NUM_CATS : normalizedTopic === 'ring-ja-ringjoon' ? CIRCLE_CATS : normalizedTopic === 'mustrid' ? PATTERN_CATS : DIV_CATS;
+  const topicTypes = normalizedTopic === 'jagamine-kahekohaline-uhekohaline' ? DIV_CATS : isBigNumbers ? BIG_NUM_CATS : normalizedTopic === 'ring-ja-ringjoon' ? CIRCLE_CATS : normalizedTopic === 'mustrid' ? PATTERN_CATS : null;
+  if (!topicTypes) return [];
   const types = category === 'Segaharjutus' ? mixedPlan(rng, count, topicTypes) : Array.from({ length: count }, () => category as TopicCategory);
   const out: GeneratedQuestion[] = [];
   const used = new Set<string>();

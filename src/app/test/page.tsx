@@ -6,7 +6,7 @@ import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
-import { isKiurLengthTopic } from '@/lib/kiurMathTopics';
+
 
 function ShapeVisual({ question }: { question: GeneratedQuestion }) {
   if (question.visual) {
@@ -50,8 +50,8 @@ function TestPageContent() {
   const seed = Number(params.get('seed') || Date.now());
 
   const isKirsiMath = learner === 'kirsi' && subject === 'matemaatika' && topic === 'arvutamine';
-  const isKiurLengths = learner === 'kiur' && subject === 'matemaatika' && isKiurLengthTopic(topic);
-  const baseSelectionUrl = isKirsiMath ? '/kirsi/matemaatika' : isKiurLengths ? '/kiur/matemaatika' : '/';
+  const isKiurMath = learner === 'kiur' && subject === 'matemaatika';
+  const baseSelectionUrl = isKirsiMath ? '/kirsi/matemaatika' : isKiurMath ? '/kiur/matemaatika' : '/';
 
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [index, setIndex] = useState(0);
@@ -96,7 +96,7 @@ function TestPageContent() {
     return inputRef.current?.value ?? answers[index] ?? '';
   };
 
-  if (!current) return <main className='test-page'><section className='test-shell'><section className='question-card'>Laadin küsimusi...</section></section></main>;
+  if (!current) return <main className='test-page'><section className='test-shell'><section className='question-card'><h2>Harjutus ei ole saadaval</h2><p>Valitud teemat ei leitud.</p><button type='button' className='btn' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
 
   const finalizeResults = () => {
     return questions.map((question, i) => {
