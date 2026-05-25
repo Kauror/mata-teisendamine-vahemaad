@@ -90,7 +90,7 @@ export default function SprintPage() {
       }
     }} onBoardComplete={() => {
       if (endedRef.current) return;
-      setTimeLeft((v) => v + 20);
+      setTimeLeft((v) => 20 + Math.min(v, 20));
       setBoardSeed((v) => v + 1);
     }} showFeedback={false} />
   </section></main>;

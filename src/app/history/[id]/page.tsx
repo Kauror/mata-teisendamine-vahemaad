@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
-import { isKirsiAttempt } from '@/lib/history';
+import { compactTopicLabel, isKirsiAttempt } from '@/lib/history';
 import { KIUR_LENGTH_TOPIC_ID } from '@/lib/kiurMathTopics';
 
 export const dynamic = 'force-dynamic';
@@ -67,6 +67,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   const retryCategory = (retryTopic === 'ring-ja-ringjoon' || retryTopic === 'mustrid') ? 'Segaharjutus' : row.category;
 
   const isEnglish = row.subject === 'inglise-keel';
+  const attemptLabel = compactTopicLabel(row.topic, row.category) || row.category;
 
   const retryParams = new URLSearchParams({
     learner: row.learner || (isKirsi ? 'kirsi' : 'kiur'),
@@ -93,8 +94,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
           <h1>Tulemus</h1>
           <p className='result-score'>{row.score} / {row.questionCount} õige</p>
           <div className='result-meta-grid'>
-            <span>Teema: {row.category}</span>
-            <span>Raskus: {row.difficulty}</span>
+            <span>Teema: {attemptLabel}</span>
             <span>Aeg: {typeof row.elapsedSeconds === 'number' && Number.isFinite(row.elapsedSeconds) ? formatElapsed(row.elapsedSeconds) : 'aeg puudub'}</span>
             <span>{formatDateTime(row.createdAt)}</span>
           </div>
@@ -123,7 +123,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
       </section>
 
       <div className='result-actions'>
-        <Link className='btn' href={retryHref}>Tee {row.category.toLowerCase()} uuesti</Link>
+        <Link className='btn' href={retryHref}>Tee {attemptLabel.toLowerCase()} uuesti</Link>
         <Link className='btn chip active' href={isEnglish ? '/kiur/inglise-keel' : (isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika')}>Vali uus harjutus</Link>
       </div>
       </section>
