@@ -80,9 +80,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   });
 
   const retryHref = isEnglish
-    ? row.topic === 'sprint'
-      ? '/kiur/inglise-keel/sprint'
-      : '/kiur/inglise-keel/harjutamine'
+    ? '/kiur/inglise-keel/sprint'
     : `/test?${retryParams.toString()}`;
 
   return (
