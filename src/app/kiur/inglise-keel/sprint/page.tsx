@@ -3,12 +3,10 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EnglishMatchingBoard from '@/app/components/EnglishMatchingBoard';
 import { ENGLISH_PACKS, shuffle } from '@/lib/englishGame';
-import { loadEnglishProgress, saveEnglishProgress } from '@/lib/englishProgress';
 
 export default function SprintPage() {
-  const [progress, setProgress] = useState(loadEnglishProgress());
   const [score, setScore] = useState(0);
-  const [best, setBest] = useState(progress.sprintBestScore || 0);
+  const [best, setBest] = useState(0);
   const [streak, setStreak] = useState(0);
   const [mistakes, setMistakes] = useState(0);
   const [pairs, setPairs] = useState(0);
@@ -18,13 +16,21 @@ export default function SprintPage() {
   const [timeLeft, setTimeLeft] = useState(20);
   const endedRef = useRef(false);
 
-  const sourceWords = useMemo(() => {
-    const completed = new Set(progress.completedPacks);
-    const packs = ENGLISH_PACKS.filter((p, i) => (completed.size ? completed.has(p.id) : i === 0));
-    return packs.flatMap((p) => p.words);
-  }, [progress.completedPacks]);
+  const sourceWords = useMemo(() => ENGLISH_PACKS.flatMap((p) => p.words), []);
 
   const boardWords = useMemo(() => shuffle(sourceWords, boardSeed).slice(0, 5), [sourceWords, boardSeed]);
+
+  useEffect(() => {
+    void fetch('/api/history')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((rows: Array<{ subject?: string | null; topic?: string | null; score?: number }>) => {
+        const sprintScores = rows
+          .filter((row) => row.subject === 'inglise-keel' && row.topic === 'sprint')
+          .map((row) => (typeof row.score === 'number' ? row.score : 0));
+        setBest(sprintScores.length ? Math.max(...sprintScores) : 0);
+      })
+      .catch(() => setBest(0));
+  }, []);
 
   useEffect(() => {
     if (ended) return;
@@ -44,10 +50,6 @@ export default function SprintPage() {
   useEffect(() => {
     if (!ended || savedHistory) return;
     if (score > best) {
-      const p = loadEnglishProgress();
-      p.sprintBestScore = score;
-      saveEnglishProgress(p);
-      setProgress(p);
       setBest(score);
     }
 
@@ -90,7 +92,7 @@ export default function SprintPage() {
       }
     }} onBoardComplete={() => {
       if (endedRef.current) return;
-      setTimeLeft((v) => v + 20);
+      setTimeLeft((v) => Math.min(30, 20 + Math.min(v, 10)));
       setBoardSeed((v) => v + 1);
     }} showFeedback={false} />
   </section></main>;

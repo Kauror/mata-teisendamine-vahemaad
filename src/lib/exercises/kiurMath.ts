@@ -74,7 +74,7 @@ function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gene
     return { id: `vjg-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Vali õige vastus: ${dividend} : ${divisor} = ?`, correctAnswer: 0, kind: 'choice', choiceOptions: uniq.map(String), explanation: `${dividend} : ${divisor} = ${quotient}.` };
   }
   if (cat === 'Rühmadega jagamine') {
-    return { id: `rg-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Vaata rühmi ja arvuta jagatis: ${dividend} : ${divisor}. Mitu on igas rühmas?`, correctAnswer: quotient, visual: 'division-groups', explanation: `${dividend} on jagatud ${divisor} võrdsesse rühma.` };
+    return { id: `rg-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `${dividend} eset jagatakse võrdselt ${divisor} rühma vahel. Mitu eset on igas rühmas?`, correctAnswer: quotient, explanation: `${dividend} : ${divisor} = ${quotient}.` };
   }
   if (cat === 'Kas arvutus on õige?') {
     const ok = rInt(rng, 0, 1) === 0;

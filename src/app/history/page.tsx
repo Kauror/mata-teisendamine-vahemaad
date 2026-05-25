@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatElapsed } from '@/lib/validation';
-import { dayLabel, groupAttemptsByDay, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, dayLabel, groupAttemptsByDay, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
 
 type H = {
   id: number;
@@ -138,8 +138,7 @@ export default function HistoryPage() {
                             <span>{subjectDisplay(h).replace(/^🔤 |^🧮 /, '')}</span>
                           </div>
                           <div className='exercise-cell'>
-                            <strong>{h.category}</strong>
-                            <span>{h.difficulty}</span>
+                            <strong>{compactTopicLabel(h.topic, h.category) || h.category}</strong>
                           </div>
                           <div className='meta-cell'>{time}</div>
                           <div className='score-cell'>{h.score}/{h.questionCount}</div>
