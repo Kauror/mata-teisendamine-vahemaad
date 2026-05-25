@@ -7,12 +7,22 @@ async function getDb() {
   return (await import('@/lib/db')).default;
 }
 
+function safeParseQuestions(raw: unknown) {
+  if (typeof raw !== 'string') return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const db = await getDb();
   const { id } = await params;
   const row = db.prepare('SELECT * FROM attempts WHERE id = ?').get(id) as { [key: string]: unknown } | undefined;
   if (!row) return NextResponse.json({ message: 'Ei leitud' }, { status: 404 });
-  return NextResponse.json({ ...row, questions: JSON.parse(row.questions as string) });
+  return NextResponse.json({ ...row, questions: safeParseQuestions(row.questions) });
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
