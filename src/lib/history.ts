@@ -36,9 +36,9 @@ export function subjectLabel(subject?: string | null) {
 export function compactTopicLabel(topic?: string | null, category?: string | null) {
   if (topic === 'harjutamine') return 'Harjutamine';
   if (topic === 'sprint') return 'Sprint';
-  if (topic === 'mootuhikud-pikkused' || topic === 'pikkused') return 'Mõõtühikud ja pikkused';
+  if (topic === 'mootuhikud-pikkused' || topic === 'pikkused') return 'Mõõtühikud';
   if (topic === 'jagamine-kahekohaline-uhekohaline') return 'Kahekohalise arvu jagamine';
-  if (topic === 'arvud-10000') return 'Arvud 10k piires';
+  if (topic === 'arvud-10000' || topic === 'arvud-10000-piires') return 'Arvud 10k piires';
   if (topic === 'ring-ja-ringjoon') return 'Ring';
   if (topic === 'arvutamine') return 'Arvutamine';
   if (topic === 'mustrid') return 'Mustrid';

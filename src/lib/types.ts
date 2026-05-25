@@ -18,7 +18,7 @@ export type QuestionKind = 'numeric' | 'ordering' | 'choice';
 
 export type OrderingCard = { id: string; label: string; valueMm: number };
 
-export type QuestionVisual = 'circle-full' | 'circle-half' | 'circle-quarter';
+export type QuestionVisual = 'circle-full' | 'circle-half' | 'circle-quarter' | 'ring-outline' | 'ring-filled' | 'radius-demo' | 'diameter-demo' | 'point-position' | 'concentric-circles' | 'sector-missing' | 'place-value-blocks' | 'division-groups';
 
 export type GeneratedQuestion = {
   id: string;
@@ -27,6 +27,9 @@ export type GeneratedQuestion = {
   question: string;
   expectedUnit?: 'mm' | 'cm' | 'dm' | 'm' | 'km';
   correctAnswer: number;
+  choiceOptions?: string[];
+  explanation?: string;
+  subtopic?: string;
   kind?: QuestionKind;
   orderingCards?: OrderingCard[];
   orderingDirection?: 'asc' | 'desc';

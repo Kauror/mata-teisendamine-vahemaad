@@ -1,78 +1,128 @@
-import { CATEGORIES, Category, Difficulty, GeneratedQuestion } from '@/lib/types';
-import { LengthUnit, convert, mixedToMm } from '@/lib/units';
-import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
+import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 
-const NON_MIX = CATEGORIES.filter((c) => c !== 'Segaharjutus') as Exclude<Category, 'Segaharjutus'>[];
+type RNG = () => number;
+type InternalType =
+  | 'suitable-unit-choice'
+  | 'cm-mm-conversion'
+  | 'km-m-conversion'
+  | 'length-comparison'
+  | 'length-ordering'
+  | 'length-addition'
+  | 'length-subtraction'
+  | 'missing-measurement'
+  | 'perimeter-with-units'
+  | 'route-distance'
+  | 'ruler-or-segment'
+  | 'realistic-length-choice';
 
-const rInt = randomInt;
-const shuffle = shuffleWithRng;
-const pick = pickRandom;
+const INTERNAL_TYPES: InternalType[] = [
+  'suitable-unit-choice','cm-mm-conversion','km-m-conversion','length-comparison','length-ordering','length-addition','length-subtraction','missing-measurement','perimeter-with-units','route-distance','ruler-or-segment','realistic-length-choice'
+];
 
-function conversion(d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
-  const easy = [[1, 'm', 'cm'], [2, 'm', 'cm'], [1, 'cm', 'mm'], [5, 'cm', 'mm'], [1, 'dm', 'cm'], [4, 'dm', 'cm'], [20, 'mm', 'cm'], [30, 'cm', 'dm'], [100, 'cm', 'm'], [2, 'km', 'm']] as const;
-  const med = [[rInt(rng,1,9), 'm', 'dm'], [rInt(rng,2,9), 'dm', 'cm'], [rInt(rng,2,12), 'cm', 'mm'], [rInt(rng,2,6), 'm', 'cm']] as const;
-  const hard = [[Number((rInt(rng,11,39)/10).toFixed(1)), 'km', 'm'], [rInt(rng,200,4000), 'm', 'km'], [rInt(rng,10,300), 'dm', 'm']] as const;
-  const t = d === 'Lihtne' ? easy[i % easy.length] : d === 'Keskmine' ? med[i % med.length] : hard[i % hard.length];
-  const [value, from, to] = t as [number, LengthUnit, LengthUnit];
-  return { id: `t-${i}`, category: 'Teisendamine', difficulty: d, question: `${String(value).replace('.', ',')} ${from} = ___ ${to}`, expectedUnit: to, correctAnswer: convert(value, from, to) };
+function seededRng(seed: number): RNG { let t = seed >>> 0; return () => { t += 0x6D2B79F5; let x = Math.imul(t ^ (t >>> 15), 1 | t); x ^= x + Math.imul(x ^ (x >>> 7), 61 | x); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
+const rInt = (rng: RNG, min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
+const pick = <T,>(rng: RNG, arr: readonly T[]) => arr[rInt(rng, 0, arr.length - 1)];
+const shuffle = <T,>(rng: RNG, arr: T[]) => { const out=[...arr]; for(let i=out.length-1;i>0;i--){const j=rInt(rng,0,i); [out[i],out[j]]=[out[j],out[i]];} return out; };
+
+const kmMToM = (km:number,m:number)=>km*1000+m;
+const cmMmToMm = (cm:number,mm:number)=>cm*10+mm;
+
+function byType(type: InternalType, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+  if (type === 'suitable-unit-choice') {
+    const items = [
+      ['Millise ühikuga mõõdaksid pliiatsi pikkust?', 'cm'],
+      ['Millise ühikuga mõõdaksid linna vahemaad?', 'km'],
+      ['Vali sobiv ühik: koolimaja kõrgus.', 'm'],
+      ['Millise ühikuga mõõdaksid paberilehe paksust?', 'mm'],
+      ['Millise ühikuga mõõdaksid vihiku laiust?', 'dm']
+    ] as const;
+    const it = pick(rng, items);
+    const opts = shuffle(rng, ['km','m','dm','cm','mm']);
+    return { id:`mu-${i}`, category:'Teisendamine', difficulty:d, kind:'choice', question:it[0], choiceOptions:opts, correctAnswer:opts.indexOf(it[1]), explanation:`Selle mõõtmiseks sobib kõige paremini ${it[1]}.`, subtopic:'pikkusuhikud' };
+  }
+  if (type === 'cm-mm-conversion') {
+    const mode = rInt(rng,0,2);
+    if(mode===0){const cm=rInt(rng,2,12); return {id:`cmm-${i}`,category:'Teisendamine',difficulty:d,question:`${cm} cm = mitu mm?`,expectedUnit:'mm',correctAnswer:cm*10,explanation:`1 cm = 10 mm, seega ${cm} cm = ${cm*10} mm.`,subtopic:'pikkusuhikud'};}
+    if(mode===1){const mm=rInt(rng,11,98); return {id:`cmm-${i}`,category:'Teisendamine',difficulty:d,question:`${mm} mm = mitu cm ja mm? Sisesta ainult cm arv.`,expectedUnit:'cm',correctAnswer:Math.floor(mm/10),explanation:`${mm} mm = ${Math.floor(mm/10)} cm ${mm%10} mm.`,subtopic:'pikkusuhikud'};}
+    const cm=rInt(rng,2,9), mm=rInt(rng,1,9); return {id:`cmm-${i}`,category:'Teisendamine',difficulty:d,question:`${cm} cm ${mm} mm = mitu mm?`,expectedUnit:'mm',correctAnswer:cmMmToMm(cm,mm),explanation:`${cm} cm ${mm} mm = ${cmMmToMm(cm,mm)} mm.`,subtopic:'pikkusuhikud'};
+  }
+  if (type === 'km-m-conversion') {
+    const mode = rInt(rng,0,2);
+    if(mode===0){const km=rInt(rng,2,9); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:`${km} km = mitu m?`,expectedUnit:'m',correctAnswer:km*1000,explanation:`1 km = 1000 m, seega ${km} km = ${km*1000} m.`,subtopic:'pikkusuhikud'};}
+    if(mode===1){const m=rInt(rng,1100,9800); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:`${m} m = mitu km ja m? Sisesta ainult km arv.`,expectedUnit:'km',correctAnswer:Math.floor(m/1000),explanation:`${m} m = ${Math.floor(m/1000)} km ${m%1000} m.`,subtopic:'pikkusuhikud'};}
+    const km=rInt(rng,1,8),m=pick(rng,[20,60,120,300,500,700]); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:`${km} km ${m} m = mitu m?`,expectedUnit:'m',correctAnswer:kmMToM(km,m),explanation:`${km} km ${m} m = ${kmMToM(km,m)} m.`,subtopic:'pikkusuhikud'};
+  }
+  if (type === 'length-comparison') {
+    const mode=rInt(rng,0,1);
+    if(mode===0){const aCm=rInt(rng,3,9),aMm=rInt(rng,0,9),b=cmMmToMm(aCm,aMm)+(pick(rng,[-2,0,3]));const a=cmMmToMm(aCm,aMm); const q=`Võrdle pikkusi: ${aCm} cm ${aMm} mm ja ${b} mm. Vali: vasak, parem või võrdsed.`; const opts=['vasak','parem','võrdsed']; const idx=a>b?0:a<b?1:2; return {id:`cmp-${i}`,category:'Võrdlemine',difficulty:d,kind:'choice',question:q,choiceOptions:opts,correctAnswer:idx,explanation:`${aCm} cm ${aMm} mm = ${a} mm.`,subtopic:'pikkusuhikud'};}
+    const aKm=rInt(rng,1,4),aM=pick(rng,[20,200,500,800]); const left=kmMToM(aKm,aM); const right=left+pick(rng,[-50,0,120]); const opts=['vasak','parem','võrdsed']; const idx=left>right?0:left<right?1:2; return {id:`cmp-${i}`,category:'Võrdlemine',difficulty:d,kind:'choice',question:`Kumb on pikem: ${aKm} km ${aM} m või ${right} m?`,choiceOptions:opts,correctAnswer:idx,explanation:`${aKm} km ${aM} m = ${left} m.`,subtopic:'pikkusuhikud'};
+  }
+  if (type === 'length-ordering') {
+    const dir = rInt(rng,0,1)===0?'asc':'desc';
+    const cards = [
+      { id:`o-${i}-1`, label:'73 mm', valueMm:73 },
+      { id:`o-${i}-2`, label:'7 cm', valueMm:70 },
+      { id:`o-${i}-3`, label:'7 cm 5 mm', valueMm:75 }
+    ];
+    return {id:`ord-${i}`,category:'Järjestamine',difficulty:d,kind:'ordering',question:dir==='asc'?'Järjesta pikkused lühimast pikimani.':'Järjesta pikkused pikimast lühimani.',orderingCards:shuffle(rng,cards),orderingDirection:dir,expectedUnit:'mm',correctAnswer:0,explanation:'Võrdlemiseks teisenda kõik millimeetriteks.',subtopic:'pikkusuhikud'};
+  }
+  if (type === 'length-addition') {
+    if (rInt(rng,0,1)===0){const aCm=rInt(rng,2,8),aMm=rInt(rng,1,8),bCm=rInt(rng,1,6),bMm=rInt(rng,1,8); const total=cmMmToMm(aCm,aMm)+cmMmToMm(bCm,bMm); return {id:`add-${i}`,category:'Arvutamine',difficulty:d,question:`Arvuta pikkustega: ${aCm} cm ${aMm} mm + ${bCm} cm ${bMm} mm = mitu mm?`,expectedUnit:'mm',correctAnswer:total,explanation:`Liidame millimeetrites: ${total} mm.`,subtopic:'pikkusuhikud'};}
+    const aKm=rInt(rng,1,5),aM=pick(rng,[100,200,300,400,500]),bKm=rInt(rng,1,3),bM=pick(rng,[100,200,300,400,500]); const total=kmMToM(aKm,aM)+kmMToM(bKm,bM); return {id:`add-${i}`,category:'Arvutamine',difficulty:d,question:`Arvuta pikkustega: ${aKm} km ${aM} m + ${bKm} km ${bM} m = mitu m?`,expectedUnit:'m',correctAnswer:total,explanation:`Liidame meetrites: ${total} m.`,subtopic:'pikkusuhikud'};
+  }
+  if (type === 'length-subtraction') {
+    const a=rInt(rng,60,95),b=rInt(rng,20,59); return {id:`sub-${i}`,category:'Arvutamine',difficulty:d,question:`Arvuta pikkustega: ${a} cm - ${b} cm = ?`,expectedUnit:'cm',correctAnswer:a-b,explanation:`Lahutame sentimeetrid: ${a}-${b}=${a-b}.`,subtopic:'pikkusuhikud'};
+  }
+  if (type === 'missing-measurement') {
+    const mode=rInt(rng,0,2);
+    if(mode===0){const full=rInt(rng,31,89); const cm=Math.floor(full/10); return {id:`mis-${i}`,category:'Puuduv arv',difficulty:d,question:`${cm} cm __ mm = ${full} mm. Leia puuduv mm arv.`,expectedUnit:'mm',correctAnswer:full%10,explanation:`${full} mm = ${cm} cm ${full%10} mm.`,subtopic:'pikkusuhikud'};}
+    if(mode===1){const total=pick(rng,[2300,5300,6400,7800]); return {id:`mis-${i}`,category:'Puuduv arv',difficulty:d,question:`__ km 300 m = ${total} m. Leia puuduv km arv.`,expectedUnit:'km',correctAnswer:(total-300)/1000,explanation:`${total} m = ${(total-300)/1000} km 300 m.`,subtopic:'pikkusuhikud'};}
+    return {id:`mis-${i}`,category:'Puuduv arv',difficulty:d,question:'2 km + __ m = 2500 m. Leia puuduv meeter.',expectedUnit:'m',correctAnswer:500,explanation:'2500 m = 2 km 500 m.',subtopic:'pikkusuhikud'};
+  }
+  if (type === 'perimeter-with-units') {
+    const mode=rInt(rng,0,2);
+    if(mode===0){const s=rInt(rng,3,8); return {id:`per-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ruudu külg on ${s} cm. Leia ümbermõõt.`,expectedUnit:'cm',correctAnswer:s*4,explanation:`Ruudu ümbermõõt on 4 × ${s} cm = ${s*4} cm.`,subtopic:'pikkusuhikud'};}
+    if(mode===1){const a=rInt(rng,4,9),b=rInt(rng,3,7); return {id:`per-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ristküliku küljed on ${a} cm ja ${b} cm. Leia ümbermõõt.`,expectedUnit:'cm',correctAnswer:2*(a+b),explanation:`2 × (${a}+${b}) = ${2*(a+b)} cm.`,subtopic:'pikkusuhikud'};}
+    const a=rInt(rng,3,7),b=rInt(rng,4,8),c=rInt(rng,5,9); return {id:`per-${i}`,category:'Ümbermõõt',difficulty:d,question:`Kolmnurga küljed on ${a} cm, ${b} cm ja ${c} cm. Leia ümbermõõt.`,expectedUnit:'cm',correctAnswer:a+b+c,explanation:`${a}+${b}+${c} = ${a+b+c} cm.`,subtopic:'pikkusuhikud'};
+  }
+  if (type === 'route-distance') {
+    const mode=rInt(rng,0,2);
+    if(mode===0){return {id:`rt-${i}`,category:'Tekstülesanded',difficulty:d,question:'Tallinnast Paidesse on 93 km. Kui pikk on edasi-tagasi sõit?',expectedUnit:'km',correctAnswer:186,explanation:'Edasi-tagasi tähendab 2 × 93 km = 186 km.',subtopic:'pikkusuhikud'};}
+    if(mode===1){return {id:`rt-${i}`,category:'Tekstülesanded',difficulty:d,question:'Tartu–Põltsamaa on 56 km ja Põltsamaa–Paide on 48 km. Kui pikk on tee kokku?',expectedUnit:'km',correctAnswer:104,explanation:'56 km + 48 km = 104 km.',subtopic:'pikkusuhikud'};}
+    return {id:`rt-${i}`,category:'Tekstülesanded',difficulty:d,question:'Üks tee on 129 km ja teine 93 km. Kui palju on esimene tee pikem?',expectedUnit:'km',correctAnswer:36,explanation:'129 km - 93 km = 36 km.',subtopic:'pikkusuhikud'};
+  }
+  if (type === 'ruler-or-segment') {
+    const a=45,b=60; return {id:`seg-${i}`,category:'Võrdlemine',difficulty:d,question:`Lõik A on ${a} mm. Lõik B on 6 cm. Kui palju on B pikem?`,expectedUnit:'mm',correctAnswer:b-a,explanation:'6 cm = 60 mm, seega vahe on 15 mm.',subtopic:'pikkusuhikud'};
+  }
+  const opts = ['5 mm','5 cm','5 m','5 km'];
+  return {id:`real-${i}`,category:'Tekstülesanded',difficulty:d,kind:'choice',question:'Vali realistlik pikkus pliiatsi jaoks.',choiceOptions:opts,correctAnswer:1,explanation:'Pliiatsi pikkus on tavaliselt sentimeetrites.',subtopic:'pikkusuhikud'};
 }
 
-function compare(d: Difficulty, rng: RNG, i:number): GeneratedQuestion { const pairs = d==='Lihtne'
-? [[[8,'cm'],[80,'mm'],'mm'],[[4,'dm'],[40,'cm'],'cm'],[[2,'m'],[200,'cm'],'cm']]
-: d==='Keskmine' ? [[[rInt(rng,2,9),'dm'],[rInt(rng,20,95),'cm'],'cm'],[[rInt(rng,1,3),'m'],[rInt(rng,80,250),'cm'],'cm'],[[rInt(rng,5,12),'cm'],[rInt(rng,40,140),'mm'],'mm']]
-: [[[rInt(rng,1,4),'km'],[rInt(rng,400,1800),'m'],'m'],[[rInt(rng,3,12),'m'],[rInt(rng,160,980),'cm'],'cm'],[[rInt(rng,30,200),'cm'],[rInt(rng,200,2000),'mm'],'mm']];
-const p=pairs[i%pairs.length] as [[number,LengthUnit],[number,LengthUnit],LengthUnit]; const diff=Math.abs(convert(p[0][0],p[0][1],p[2])-convert(p[1][0],p[1][1],p[2]));
-return {id:`c-${i}`,category:'Võrdlemine',difficulty:d,question:`Kui suur on vahe: ${p[0][0]} ${p[0][1]} ja ${p[1][0]} ${p[1][1]}?`,expectedUnit:p[2],correctAnswer:diff}; }
-
-function ordering(d:Difficulty,rng:RNG,i:number):GeneratedQuestion{const n=d==='Lihtne'?3:d==='Keskmine'?4:5; const dir=(rInt(rng,0,1)===0?'asc':'desc') as 'asc'|'desc';
-const units:LengthUnit[] = d==='Raske'?['mm','cm','dm','m','km']:['mm','cm','dm','m']; const cards=[] as {id:string;label:string;valueMm:number}[]; const used=new Set<number>();
-while(cards.length<n){const u=pick(rng,units); const v=u==='km'?rInt(rng,1,3):u==='m'?rInt(rng,1,12):rInt(rng,2,90); const mm=mixedToMm([{value:v,unit:u}]); if(used.has(mm)) continue; used.add(mm); cards.push({id:`o-${i}-${cards.length}`,label:`${v} ${u}`,valueMm:mm});}
-return {id:`o-${i}`,category:'Järjestamine',difficulty:d,question:dir==='asc'?'Järjesta pikkused alates kõige väiksemast.':'Järjesta pikkused alates kõige suuremast.',expectedUnit:'cm',correctAnswer:0,kind:'ordering',orderingCards:shuffle(rng,cards),orderingDirection:dir};}
-
-function arithmetic(d:Difficulty,rng:RNG,i:number):GeneratedQuestion{const add=i%2===0; if(d==='Lihtne'){const u=pick(rng,['cm','dm','m'] as LengthUnit[]); const shownA=rInt(rng,1,10); const rawB=rInt(rng,1,10); const shownB=add?rawB:Math.min(rawB,shownA); return {id:`a-${i}`,category:'Arvutamine',difficulty:d,question:`Leia ${add?'summa':'vahe'}: ${shownA} ${u} ${add?'+':'-'} ${shownB} ${u}.`,expectedUnit:u,correctAnswer:add?shownA+shownB:shownA-shownB};} const am=rInt(rng,1,9),ac=rInt(rng,10,90),bm=rInt(rng,1,6),bc=rInt(rng,10,90); const x=am*100+ac,y=bm*100+bc; const hi=Math.max(x,y),lo=Math.min(x,y); const hiM=Math.floor(hi/100), hiC=hi%100, loM=Math.floor(lo/100), loC=lo%100; return {id:`a-${i}`,category:'Arvutamine',difficulty:d,question:add?`Leia summa: ${am} m ${ac} cm + ${bm} m ${bc} cm. Vastus cm-des.`:`Leia vahe: ${hiM} m ${hiC} cm ja ${loM} m ${loC} cm. Vastus cm-des.`,expectedUnit:'cm',correctAnswer:add?x+y:hi-lo};}
-
-function missing(d:Difficulty,rng:RNG,i:number):GeneratedQuestion{const easy=[['50 cm + ___ cm = 100 cm',50,'cm'],['5 cm + ___ cm = 10 cm',5,'cm'],['1 m = ___ cm',100,'cm'],['___ mm = 8 cm',80,'mm']] as const; const med=[['700 m + ___ m = 1 km',300,'m'],['2 m 4 dm = ___ cm',240,'cm'],['___ m = 300 cm',3,'m'],['3 dm 5 cm = ___ cm',35,'cm']] as const; const arr=d==='Lihtne'?easy:d==='Keskmine'?med:[...med,['1,5 km = ___ m',1500,'m'] as const]; const it=arr[i%arr.length]; return {id:`p-${i}`,category:'Puuduv arv',difficulty:d,question:it[0],expectedUnit:it[2] as LengthUnit,correctAnswer:it[1]};}
-
-function perimeter(d:Difficulty,rng:RNG,i:number):GeneratedQuestion{
-if(d==='Lihtne'){
-  const shape=i%3;
-  if(shape===0){
-    const s=rInt(rng,2,8);
-    return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ruudu külg on ${s} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:s*4};
+function mixedPlan(rng: RNG, count: number): InternalType[] {
+  if (count <= INTERNAL_TYPES.length) return shuffle(rng, [...INTERNAL_TYPES]).slice(0, count);
+  const out = shuffle(rng, [...INTERNAL_TYPES]);
+  while (out.length < count) {
+    const t = pick(rng, INTERNAL_TYPES);
+    if (out[out.length - 1] !== t) out.push(t);
   }
-  if(shape===1){
-    const length=rInt(rng,3,9), width=rInt(rng,2,7);
-    return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ristküliku pikkus on ${length} m ja laius ${width} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:2*(length+width)};
-  }
-  const a=rInt(rng,3,7), b=rInt(rng,3,7), c=Math.max(Math.abs(a-b)+1,rInt(rng,3,7));
-  return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Kolmnurga küljed on ${a} m, ${b} m ja ${c} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:a+b+c};
+  return out;
 }
-if(d==='Keskmine'){
-  if(i%2===0){
-    const lm=rInt(rng,1,3), lcm=rInt(rng,10,90), wm=rInt(rng,1,2), wcm=rInt(rng,10,90);
-    const length=lm*100+lcm, width=wm*100+wcm;
-    return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ristküliku pikkus on ${lm} m ${lcm} cm ja laius ${wm} m ${wcm} cm. Leia ümbermõõt sentimeetrites.`,expectedUnit:'cm',correctAnswer:2*(length+width)};
+
+export function generateSession(_mode: Category, difficulty: Difficulty, count: number, seed: number): GeneratedQuestion[] {
+  const rng = seededRng(seed);
+  const types = mixedPlan(rng, count);
+  const out: GeneratedQuestion[] = [];
+  const used = new Set<string>();
+  for (let i = 0; i < count; i++) {
+    let tries = 0;
+    let q: GeneratedQuestion;
+    do {
+      q = byType(types[i], difficulty, rng, i + tries * 31);
+      tries++;
+    } while (used.has(`${q.question}|${q.correctAnswer}`) && tries < 20);
+    used.add(`${q.question}|${q.correctAnswer}`);
+    out.push({ ...q, id: `${q.id}-${i}` });
   }
-  const a=rInt(rng,70,180), b=rInt(rng,70,180), c=Math.max(Math.abs(a-b)+1,rInt(rng,70,180));
-  const l1m=Math.floor(a/100), l1c=a%100, l2m=Math.floor(b/100), l2c=b%100, l3m=Math.floor(c/100), l3c=c%100;
-  const f=(m:number,c:number)=>m>0?`${m} m ${c} cm`:`${c} cm`;
-  return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Kolmnurga küljed on ${f(l1m,l1c)}, ${f(l2m,l2c)} ja ${f(l3m,l3c)}. Leia ümbermõõt sentimeetrites.`,expectedUnit:'cm',correctAnswer:a+b+c};
-}
-if(d==='Raske'&&i%3===0){return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:'Jalgpalliväljaku pikkus on 105 m ja laius 68 m. Leia ümbermõõt meetrites.',expectedUnit:'m',correctAnswer:346};}
-const a=rInt(rng,2,35),b=rInt(rng,2,28),c=rInt(rng,2,28); if(i%2===0) return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ristküliku küljed on ${a} m ja ${b} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:2*(a+b)}; return{id:`u-${i}`,category:'Ümbermõõt',difficulty:d,question:`Kolmnurga küljed on ${a} m, ${b} m ja ${c} m. Leia ümbermõõt meetrites.`,expectedUnit:'m',correctAnswer:a+b+c};}
-
-function text(d:Difficulty,rng:RNG,i:number):GeneratedQuestion{const e=[['Jalgrattur sõidab 5 km. Siis sõidab veel 3 km. Kui palju ta kokku sõitis?',8,'km']] as const; const m=[['Buss sõidab 60 km/h ja sõidab 2 tundi. Kui pika maa ta läbib?',120,'km'],['Mari kõndis 1200 m ja siis veel 800 m. Kui palju kokku meetrites?',2000,'m']] as const; const h=[['Matkaja läks 2 km, siis veel 850 m ja tagasi 600 m. Mitu meetrit ta kokku edasi liikus?',2250,'m']] as const; const arr=d==='Lihtne'?e:d==='Keskmine'?m:h; const t=arr[i%arr.length]; return{id:`x-${i}`,category:'Tekstülesanded',difficulty:d,question:t[0],expectedUnit:t[2] as LengthUnit,correctAnswer:t[1]};}
-
-const builders={Teisendamine:conversion,'Võrdlemine':compare,'Järjestamine':ordering,'Arvutamine':arithmetic,'Puuduv arv':missing,'Ümbermõõt':perimeter,'Tekstülesanded':text} as const;
-
-function mixedPlan(rng:RNG,count:number){if(count<=NON_MIX.length) return shuffle(rng,[...NON_MIX]).slice(0,count); const base=shuffle(rng,[...NON_MIX]); while(base.length<count){const c=pick(rng,NON_MIX); if(base[base.length-1]!==c) base.push(c);} return base;}
-
-export function generateSession(mode: Category, difficulty: Difficulty, count: number, seed: number): GeneratedQuestion[] {
-  const rng = seededRng(seed); const types = mode==='Segaharjutus'?mixedPlan(rng,count):Array.from({length:count},()=>mode as Exclude<Category,'Segaharjutus'>);
-  const out:GeneratedQuestion[]=[]; const used=new Set<string>();
-  for(let i=0;i<count;i++){let tries=0; let q:GeneratedQuestion;
-    do { q=builders[types[i]](difficulty,rng,i+tries*13); tries++; } while(used.has(`${q.category}|${q.question}|${q.correctAnswer}`)&&tries<20);
-    used.add(`${q.category}|${q.question}|${q.correctAnswer}`); out.push({...q,id:`${q.id}-${i}`}); }
   return out;
 }
 

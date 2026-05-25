@@ -13,6 +13,15 @@ function ShapeVisual({ question }: { question: GeneratedQuestion }) {
     if (question.visual === 'circle-full') return <svg width='140' height='140' aria-label='Täisring'><circle cx='70' cy='70' r='50' fill='#eef2ff' stroke='#3b82f6' strokeWidth='4' /></svg>;
     if (question.visual === 'circle-half') return <svg width='140' height='140' aria-label='Poolring'><path d='M20 70a50 50 0 0 1 100 0Z' fill='#bfdbfe' stroke='#3b82f6' strokeWidth='3' /><path d='M20 70a50 50 0 1 1 100 0' fill='none' stroke='#3b82f6' strokeWidth='4' /></svg>;
     if (question.visual === 'circle-quarter') return <svg width='140' height='140' aria-label='Veerandring'><path d='M70 70 L70 20 A50 50 0 0 1 120 70 Z' fill='#bfdbfe' stroke='#3b82f6' strokeWidth='3' /><circle cx='70' cy='70' r='50' fill='none' stroke='#3b82f6' strokeWidth='4' /></svg>;
+    if (question.visual === 'ring-outline') return <svg width='140' height='140' aria-label='Ringjoon'><circle cx='70' cy='70' r='52' fill='none' stroke='#3b82f6' strokeWidth='6' /></svg>;
+    if (question.visual === 'ring-filled') return <svg width='140' height='140' aria-label='Ring'><circle cx='70' cy='70' r='52' fill='#bfdbfe' stroke='#3b82f6' strokeWidth='4' /></svg>;
+    if (question.visual === 'radius-demo') return <svg width='160' height='140' aria-label='Raadiuse näide'><circle cx='70' cy='70' r='50' fill='none' stroke='#3b82f6' strokeWidth='3' /><circle cx='70' cy='70' r='4' fill='#0f172a' /><line x1='70' y1='70' x2='120' y2='70' stroke='#16a34a' strokeWidth='4' /><line x1='70' y1='70' x2='100' y2='40' stroke='#ef4444' strokeWidth='3' /><line x1='30' y1='90' x2='95' y2='95' stroke='#f59e0b' strokeWidth='3' /><text x='123' y='74' fontSize='14'>A</text><text x='102' y='38' fontSize='14'>B</text><text x='97' y='100' fontSize='14'>C</text><text x='58' y='64' fontSize='14'>O</text></svg>;
+    if (question.visual === 'diameter-demo') return <svg width='160' height='140' aria-label='Läbimõõdu näide'><circle cx='70' cy='70' r='50' fill='none' stroke='#3b82f6' strokeWidth='3' /><circle cx='70' cy='70' r='4' fill='#0f172a' /><line x1='20' y1='70' x2='120' y2='70' stroke='#16a34a' strokeWidth='4' /><line x1='70' y1='70' x2='105' y2='40' stroke='#ef4444' strokeWidth='3' /><line x1='30' y1='95' x2='95' y2='98' stroke='#f59e0b' strokeWidth='3' /><text x='122' y='74' fontSize='14'>B</text><text x='107' y='39' fontSize='14'>A</text><text x='97' y='104' fontSize='14'>C</text><text x='58' y='64' fontSize='14'>O</text></svg>;
+    if (question.visual === 'point-position') return <svg width='160' height='140' aria-label='Punkti asukoht'><circle cx='70' cy='70' r='50' fill='#eff6ff' stroke='#3b82f6' strokeWidth='3' /><circle cx='62' cy='58' r='4' fill='#16a34a' /><text x='68' y='56' fontSize='12'>A</text><circle cx='120' cy='70' r='4' fill='#f59e0b' /><text x='126' y='74' fontSize='12'>B</text><circle cx='135' cy='35' r='4' fill='#ef4444' /><text x='141' y='39' fontSize='12'>C</text></svg>;
+    if (question.visual === 'concentric-circles') return <svg width='160' height='140' aria-label='Sama keskpunktiga ringjooned'><circle cx='70' cy='70' r='52' fill='none' stroke='#6366f1' strokeWidth='3' /><circle cx='70' cy='70' r='30' fill='none' stroke='#22c55e' strokeWidth='3' /><circle cx='70' cy='70' r='4' fill='#0f172a' /><text x='76' y='66' fontSize='12'>O</text></svg>;
+    if (question.visual === 'sector-missing') return <svg width='160' height='140' aria-label='Puuduv kraad'><circle cx='70' cy='70' r='50' fill='none' stroke='#3b82f6' strokeWidth='3' /><path d='M70 70 L120 70 A50 50 0 0 1 70 20 Z' fill='#bfdbfe' /><path d='M70 70 L70 20 A50 50 0 0 0 20 70 Z' fill='#ddd6fe' /><text x='84' y='50' fontSize='12'>90°</text><text x='45' y='40' fontSize='12'>?</text></svg>;
+    if (question.visual === 'place-value-blocks') return <svg width='220' height='140' aria-label='Järguplokid'><rect x='10' y='20' width='34' height='34' fill='#bfdbfe' stroke='#3b82f6' /><rect x='50' y='20' width='24' height='24' fill='#c7f9cc' stroke='#16a34a' /><rect x='80' y='20' width='16' height='16' fill='#fde68a' stroke='#d97706' /><rect x='102' y='24' width='10' height='10' fill='#fecdd3' stroke='#e11d48' /><text x='10' y='70' fontSize='12'>Tuhandelised</text><text x='90' y='70' fontSize='12'>Sajalised</text><text x='10' y='88' fontSize='12'>Kümnelised</text><text x='90' y='88' fontSize='12'>Ühelised</text></svg>;
+    if (question.visual === 'division-groups') return <svg width='220' height='120' aria-label='Jagamisrühmad'><rect x='10' y='20' width='55' height='70' rx='10' fill='#eef2ff' stroke='#6366f1' /><rect x='80' y='20' width='55' height='70' rx='10' fill='#eef2ff' stroke='#6366f1' /><rect x='150' y='20' width='55' height='70' rx='10' fill='#eef2ff' stroke='#6366f1' /><text x='20' y='45' fontSize='12'>1. rühm</text><text x='90' y='45' fontSize='12'>2. rühm</text><text x='160' y='45' fontSize='12'>3. rühm</text></svg>;
   }
   if (question.category !== 'Ümbermõõt') return null;
   if (question.question.includes('Ruudu')) {
@@ -100,7 +109,7 @@ function TestPageContent() {
       }
       if (question.kind === 'choice') {
         const answer = choiceAnswers[i] ?? '';
-        const c = question.correctAnswer === -1 ? '<' : question.correctAnswer === 0 ? '=' : '>';
+        const c = question.choiceOptions?.length ? (question.choiceOptions[question.correctAnswer] ?? '') : (question.correctAnswer === -1 ? '<' : question.correctAnswer === 0 ? '=' : '>');
         return { ...question, userAnswer: answer, correctAnswer: question.correctAnswer, isCorrect: answer === c };
       }
       return { ...question, userAnswer: answers[i], isCorrect: isAnswerCorrect(answers[i], question.correctAnswer) };
@@ -144,7 +153,7 @@ function TestPageContent() {
   };
 
   const percent = Math.round(((index + 1) / count) * 100);
-  const topicEmoji = topic === 'mootuhikud-pikkused' || topic === 'pikkused' ? '📏' : topic === 'jagamine-kahekohaline-uhekohaline' ? '➗' : topic === 'arvud-10000' ? '🔢' : topic === 'ring-ja-ringjoon' ? '⭕' : '🧮';
+  const topicEmoji = topic === 'mootuhikud-pikkused' || topic === 'pikkused' ? '📏' : topic === 'jagamine-kahekohaline-uhekohaline' ? '➗' : topic === 'arvud-10000-piires' || topic === 'arvud-10000' ? '🔢' : topic === 'ring-ja-ringjoon' ? '⭕' : '🧮';
 
   return (
     <main className='test-page'>
@@ -187,7 +196,7 @@ function TestPageContent() {
               </div>
             ) : isChoiceQuestion ? (
               <div className='choice-answer-grid'>
-                {['<', '=', '>'].map((sign) => <button type='button' key={sign} aria-pressed={choiceAnswers[index] === sign} className={choiceAnswers[index] === sign ? 'choice-answer-button selected' : 'choice-answer-button'} onClick={() => { const next = [...choiceAnswers]; next[index] = sign; setChoiceAnswers(next); }}>{sign}</button>)}
+                {(current.choiceOptions?.length ? current.choiceOptions : ['<', '=', '>']).map((sign) => <button type='button' key={sign} aria-pressed={choiceAnswers[index] === sign} className={choiceAnswers[index] === sign ? 'choice-answer-button selected' : 'choice-answer-button'} onClick={() => { const next = [...choiceAnswers]; next[index] = sign; setChoiceAnswers(next); }}>{sign}</button>)}
               </div>
             ) : (
               <div className='answer-input-row'>

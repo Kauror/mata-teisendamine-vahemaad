@@ -18,6 +18,8 @@ type SavedQuestion = {
   orderingCards?: OrderingCard[];
   orderingDirection?: 'asc' | 'desc';
   estonian?: string;
+  explanation?: string;
+  choiceOptions?: string[];
 };
 
 async function getDb() {
@@ -112,8 +114,9 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
               <p className='result-question'>{i + 1}. {isEnglishPair ? q.question.replace('—', '↔') : q.question}</p>
               {q.kind === 'ordering'
                 ? <div className='answer-review-grid'><p className='answer-line'><span>Sinu järjestus:</span> <strong>{q.userAnswer || '—'}</strong></p><p className='answer-line'><span>Õige järjestus:</span> <strong>{order || '—'}</strong></p></div>
-                : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{q.kind === 'choice' && !isEnglish ? (q.correctAnswer === -1 ? '<' : q.correctAnswer === 0 ? '=' : '>') : (isEnglish ? 'Sõnapaar sobib' : String(q.correctAnswer ?? '—'))}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}
+                : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{q.kind === 'choice' && q.choiceOptions?.length ? (q.choiceOptions[q.correctAnswer] ?? '—') : q.kind === 'choice' && !isEnglish ? (q.correctAnswer === -1 ? '<' : q.correctAnswer === 0 ? '=' : '>') : (isEnglish ? 'Sõnapaar sobib' : String(q.correctAnswer ?? '—'))}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}
               <p className={q.isCorrect ? 'result-status correct' : 'result-status wrong'}>{q.isCorrect ? 'Õige' : 'Vale vastus'}</p>
+              {q.explanation && <p className='answer-line'><span>Selgitus:</span> <strong>{q.explanation}</strong></p>}
             </article>
           );
         })}
