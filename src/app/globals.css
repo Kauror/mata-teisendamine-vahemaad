@@ -204,3 +204,21 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .matching-feedback{grid-column:1/-1;margin:0;color:#be123c;font-weight:800}
 .english-result-card{background:#fff;border:1px solid #dfe8f6;border-radius:18px;padding:16px;display:grid;gap:8px}
 @media (max-width:768px){.english-mode-grid,.pack-grid{grid-template-columns:1fr}.matching-board{grid-template-columns:1fr}}
+
+
+.sprint-result-page{display:grid;place-items:center;padding:20px}
+.sprint-result-panel{width:min(860px,100%);background:rgba(255,255,255,.96);border:1px solid #dfe8f6;border-radius:32px;box-shadow:0 20px 60px rgba(30,64,175,.10);padding:clamp(18px,4vw,34px);display:grid;gap:22px}
+.sprint-result-header{display:grid;justify-items:center;text-align:center;gap:8px}
+.sprint-result-emoji{font-size:40px;line-height:1}
+.sprint-result-title{margin:0;color:#0b1b45;font-size:clamp(30px,5vw,44px);font-weight:900;letter-spacing:-.03em}
+.sprint-result-subtitle{margin:0;color:#64748b;font-size:16px;font-weight:700}
+.sprint-result-stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sprint-result-stat-card{border-radius:24px;border:1px solid #dbeafe;background:linear-gradient(180deg,#f8fbff,#eef5ff);padding:18px 20px;display:grid;gap:6px}
+.sprint-result-stat-label{margin:0;color:#64748b;font-size:14px;font-weight:800}
+.sprint-result-stat-value{margin:0;color:#0b1b45;font-size:clamp(26px,4vw,34px);font-weight:900;line-height:1.1}
+.sprint-result-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.sprint-primary-button,.sprint-secondary-button{min-height:54px;border-radius:18px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;text-decoration:none}
+.sprint-primary-button{border:0;background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 12px 26px rgba(37,99,235,.28);cursor:pointer}
+.sprint-secondary-button{border:1px solid #dbeafe;background:#fff;color:#0b1b45}
+.sprint-primary-button:focus-visible,.sprint-secondary-button:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+@media (max-width:760px){.sprint-result-stats-grid{grid-template-columns:1fr}.sprint-result-actions{grid-template-columns:1fr}}

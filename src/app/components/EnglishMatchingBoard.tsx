@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { EnglishVocabularyWord } from '@/lib/englishVocabulary';
 import { shuffle } from '@/lib/englishGame';
 
-export default function EnglishMatchingBoard({ words, onPair, onBoardComplete }: { words: EnglishVocabularyWord[]; onPair: (ok: boolean, word: EnglishVocabularyWord) => void; onBoardComplete: () => void; }) {
+export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, showFeedback = true }: { words: EnglishVocabularyWord[]; onPair: (ok: boolean, word: EnglishVocabularyWord) => void; onBoardComplete: () => void; showFeedback?: boolean; }) {
   const [selectedEn, setSelectedEn] = useState<string | null>(null);
   const [selectedEt, setSelectedEt] = useState<string | null>(null);
   const [done, setDone] = useState<Set<string>>(new Set());
@@ -46,6 +46,6 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete }:
     <div className='word-column'>
       {right.map((w) => <button key={w.id} type='button' disabled={done.has(w.id)} className={`word-card ${selectedEt===w.id?'word-card-selected':''} ${done.has(w.id)?'word-card-correct':''}`} onClick={() => { const id = w.id; setSelectedEt(id); tryMatch(selectedEn, id); }}>{w.estonian}</button>)}
     </div>
-    <p className='matching-feedback'>{feedback}</p>
+    {showFeedback ? <p className='matching-feedback'>{feedback}</p> : null}
   </div>;
 }

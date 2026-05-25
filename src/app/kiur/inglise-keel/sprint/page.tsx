@@ -15,6 +15,7 @@ export default function SprintPage() {
   const [boardSeed, setBoardSeed] = useState(1);
   const [ended, setEnded] = useState(false);
   const [savedHistory, setSavedHistory] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(20);
   const endedRef = useRef(false);
 
   const sourceWords = useMemo(() => {
@@ -24,6 +25,21 @@ export default function SprintPage() {
   }, [progress.completedPacks]);
 
   const boardWords = useMemo(() => shuffle(sourceWords, boardSeed).slice(0, 5), [sourceWords, boardSeed]);
+
+  useEffect(() => {
+    if (ended) return;
+    const t = setInterval(() => {
+      setTimeLeft((v) => {
+        if (v <= 1) {
+          endedRef.current = true;
+          setEnded(true);
+          return 0;
+        }
+        return v - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [ended]);
 
   useEffect(() => {
     if (!ended || savedHistory) return;
@@ -55,12 +71,12 @@ export default function SprintPage() {
   }, [best, ended, mistakes, pairs, savedHistory, score]);
 
   if (ended) {
-    return <main className='container english-page'><section className='practice-shell english-shell english-result-card'><h2>Sprint lõppes</h2><p>Skoor: {score}</p><p>Õigeid sõnu järjest: {streak}</p><p>Parim Sprint: {Math.max(best, score)}</p><p>Vigu: {mistakes}</p><div className='row'><button className='btn' onClick={() => location.reload()}>Proovi uuesti</button><Link className='btn chip' href='/kiur/inglise-keel'>Inglise keel</Link><Link className='btn chip' href='/kiur'>Aine valik</Link></div></section></main>;
+    return <main className='english-page sprint-result-page'><section className='sprint-result-panel'><header className='sprint-result-header'><div className='sprint-result-emoji' aria-hidden>🔤</div><h1 className='sprint-result-title'>Sprint lõppes</h1><p className='sprint-result-subtitle'>Siin on selle sprinti kokkuvõte.</p></header><div className='sprint-result-stats-grid'><article className='sprint-result-stat-card'><p className='sprint-result-stat-label'>Skoor</p><p className='sprint-result-stat-value'>{score}</p></article><article className='sprint-result-stat-card'><p className='sprint-result-stat-label'>Järjest õigesti</p><p className='sprint-result-stat-value'>{streak}</p></article><article className='sprint-result-stat-card'><p className='sprint-result-stat-label'>Parim sprint</p><p className='sprint-result-stat-value'>{Math.max(best, score)}</p></article><article className='sprint-result-stat-card'><p className='sprint-result-stat-label'>Vigu</p><p className='sprint-result-stat-value'>{mistakes}</p></article></div><div className='sprint-result-actions'><button className='sprint-primary-button' onClick={() => location.reload()}>▶ Proovi uuesti</button><Link className='sprint-secondary-button' href='/kiur/inglise-keel'>← Inglise keel</Link><Link className='sprint-secondary-button' href='/kiur'>← Aine valik</Link></div></section></main>;
   }
 
   return <main className='container english-page'><section className='practice-shell english-shell'>
     <Link className='practice-back-button' href='/kiur/inglise-keel'>← Katkesta sprint</Link>
-    <div className='matching-hud'><strong>Sprint</strong><span>Skoor: {score}</span><span>Jada: {streak}</span><span>Parim: {best}</span></div>
+    <div className='matching-hud'><strong>Sprint</strong><span>Skoor: {score}</span><span>Jada: {streak}</span><span>Aeg: {timeLeft}s</span><span>Parim: {best}</span></div>
     <EnglishMatchingBoard key={`sprint-${boardSeed}`} words={boardWords} onPair={(ok) => {
       if (endedRef.current) return;
       if (ok) {
@@ -74,7 +90,8 @@ export default function SprintPage() {
       }
     }} onBoardComplete={() => {
       if (endedRef.current) return;
+      setTimeLeft((v) => v + 20);
       setBoardSeed((v) => v + 1);
-    }} />
+    }} showFeedback={false} />
   </section></main>;
 }
