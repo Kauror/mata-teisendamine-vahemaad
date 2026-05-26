@@ -1,18 +1,13 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { fetchBestEnglishSprintScore } from '@/lib/englishHistory';
 
 export default function KiurEnglishPage() {
   const [best, setBest] = useState(0);
   useEffect(() => {
-    void fetch('/api/history')
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((rows: Array<{ subject?: string | null; topic?: string | null; score?: number }>) => {
-        const sprintScores = rows
-          .filter((row) => row.subject === 'inglise-keel' && row.topic === 'sprint')
-          .map((row) => (typeof row.score === 'number' ? row.score : 0));
-        setBest(sprintScores.length ? Math.max(...sprintScores) : 0);
-      })
+    void fetchBestEnglishSprintScore()
+      .then(setBest)
       .catch(() => setBest(0));
   }, []);
   return <main className='container english-page'><section className='practice-shell english-shell'>

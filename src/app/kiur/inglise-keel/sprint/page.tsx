@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EnglishMatchingBoard from '@/app/components/EnglishMatchingBoard';
 import { ENGLISH_PACKS, shuffle } from '@/lib/englishGame';
+import { fetchBestEnglishSprintScore } from '@/lib/englishHistory';
 
 export default function SprintPage() {
   const [score, setScore] = useState(0);
@@ -12,23 +13,18 @@ export default function SprintPage() {
   const [pairs, setPairs] = useState(0);
   const [boardSeed, setBoardSeed] = useState(1);
   const [ended, setEnded] = useState(false);
-  const [savedHistory, setSavedHistory] = useState(false);
   const [timeLeft, setTimeLeft] = useState(20);
   const endedRef = useRef(false);
+  const savedHistoryRef = useRef(false);
+  const startedAtRef = useRef(Date.now());
 
   const sourceWords = useMemo(() => ENGLISH_PACKS.flatMap((p) => p.words), []);
 
   const boardWords = useMemo(() => shuffle(sourceWords, boardSeed).slice(0, 5), [sourceWords, boardSeed]);
 
   useEffect(() => {
-    void fetch('/api/history')
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((rows: Array<{ subject?: string | null; topic?: string | null; score?: number }>) => {
-        const sprintScores = rows
-          .filter((row) => row.subject === 'inglise-keel' && row.topic === 'sprint')
-          .map((row) => (typeof row.score === 'number' ? row.score : 0));
-        setBest(sprintScores.length ? Math.max(...sprintScores) : 0);
-      })
+    void fetchBestEnglishSprintScore()
+      .then(setBest)
       .catch(() => setBest(0));
   }, []);
 
@@ -48,12 +44,13 @@ export default function SprintPage() {
   }, [ended]);
 
   useEffect(() => {
-    if (!ended || savedHistory) return;
+    if (!ended || savedHistoryRef.current) return;
+    savedHistoryRef.current = true;
+
     if (score > best) {
       setBest(score);
     }
 
-    setSavedHistory(true);
     void fetch('/api/history', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,11 +63,11 @@ export default function SprintPage() {
         difficulty: 'Tavaline',
         questionCount: pairs + mistakes,
         score,
-        elapsedSeconds: 0,
+        elapsedSeconds: Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000)),
         questions: [{ id: 'sprint-summary', question: 'Sprinti kokkuvõte', userAnswer: `Õigeid sõnu järjest: ${score}`, correctAnswer: score, isCorrect: true, kind: 'choice' }]
       })
     });
-  }, [best, ended, mistakes, pairs, savedHistory, score]);
+  }, [best, ended, mistakes, pairs, score]);
 
   if (ended) {
     return <main className='english-page sprint-result-page'><section className='sprint-result-panel'><header className='sprint-result-header'><div className='sprint-result-emoji' aria-hidden>🔤</div><h1 className='sprint-result-title'>Sprint lõppes</h1><p className='sprint-result-subtitle'>Siin on selle sprinti kokkuvõte.</p></header><div className='sprint-result-stats-grid'><article className='sprint-result-stat-card'><p className='sprint-result-stat-label'>Skoor</p><p className='sprint-result-stat-value'>{score}</p></article><article className='sprint-result-stat-card'><p className='sprint-result-stat-label'>Järjest õigesti</p><p className='sprint-result-stat-value'>{streak}</p></article><article className='sprint-result-stat-card'><p className='sprint-result-stat-label'>Parim sprint</p><p className='sprint-result-stat-value'>{Math.max(best, score)}</p></article><article className='sprint-result-stat-card'><p className='sprint-result-stat-label'>Vigu</p><p className='sprint-result-stat-value'>{mistakes}</p></article></div><div className='sprint-result-actions'><button className='sprint-primary-button' onClick={() => location.reload()}>▶ Proovi uuesti</button><Link className='sprint-secondary-button' href='/kiur/inglise-keel'>← Inglise keel</Link><Link className='sprint-secondary-button' href='/kiur'>← Aine valik</Link></div></section></main>;

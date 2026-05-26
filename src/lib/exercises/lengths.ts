@@ -1,6 +1,6 @@
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
+import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
 
-type RNG = () => number;
 type InternalType =
   | 'suitable-unit-choice'
   | 'cm-mm-conversion'
@@ -19,10 +19,9 @@ const INTERNAL_TYPES: InternalType[] = [
   'suitable-unit-choice','cm-mm-conversion','km-m-conversion','length-comparison','length-ordering','length-addition','length-subtraction','missing-measurement','perimeter-with-units','route-distance','ruler-or-segment','realistic-length-choice'
 ];
 
-function seededRng(seed: number): RNG { let t = seed >>> 0; return () => { t += 0x6D2B79F5; let x = Math.imul(t ^ (t >>> 15), 1 | t); x ^= x + Math.imul(x ^ (x >>> 7), 61 | x); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
-const rInt = (rng: RNG, min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
-const pick = <T,>(rng: RNG, arr: readonly T[]) => arr[rInt(rng, 0, arr.length - 1)];
-const shuffle = <T,>(rng: RNG, arr: T[]) => { const out=[...arr]; for(let i=out.length-1;i>0;i--){const j=rInt(rng,0,i); [out[i],out[j]]=[out[j],out[i]];} return out; };
+const rInt = randomInt;
+const pick = pickRandom;
+const shuffle = shuffleWithRng;
 
 const kmMToM = (km:number,m:number)=>km*1000+m;
 const cmMmToMm = (cm:number,mm:number)=>cm*10+mm;

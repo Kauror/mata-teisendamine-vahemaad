@@ -1,11 +1,10 @@
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateSession as generateLengthSession } from '@/lib/exercises/lengths';
 import { isKiurLengthTopic } from '@/lib/kiurMathTopics';
+import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
 
-type RNG = () => number;
-const rInt = (rng: RNG, min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
-const pick = <T,>(rng: RNG, arr: readonly T[]) => arr[rInt(rng, 0, arr.length - 1)];
-function seededRng(seed: number): RNG { let t = seed >>> 0; return () => { t += 0x6D2B79F5; let x = Math.imul(t ^ (t >>> 15), 1 | t); x ^= x + Math.imul(x ^ (x >>> 7), 61 | x); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
+const rInt = randomInt;
+const pick = pickRandom;
 
 const DIV_CATS = ['Arvuta jagatis', 'Jaga osadeks', 'Vali sobiv jaotus', 'Jaga võrdselt', 'Jaga rühmadesse', 'Vali jagamistehe', 'Kontrolli korrutamisega', 'Vali jagatis', 'Rühmadega jagamine', 'Kas arvutus on õige?', 'Jaga sama arvuga', 'Vali abitehe', 'Segaharjutus'] as const;
 const BIG_NUM_CATS = ['Liida sajalised', 'Lahuta sajalised', 'Liida tuhandelised', 'Lahuta tuhandelised', 'Liida 2- või 3-kohaline arv', 'Lahuta 2- või 3-kohaline arv', 'Liida kaks 4-kohalist arvu', 'Lahuta 4-kohalised arvud', 'Lahuta arv järkudeks', 'Pane arv kokku', 'Numbri väärtus', 'Ümardamine', 'Ligikaudne arvutus', 'Leia arvutusviga', 'Plokid ja järgud'] as const;
@@ -17,8 +16,7 @@ type TopicCategory = (typeof DIV_CATS)[number] | (typeof BIG_NUM_CATS)[number] |
 function mixedPlan(rng: RNG, count: number, types: readonly TopicCategory[]) {
   const out: TopicCategory[] = [];
   for (let i = 0; i < count; i++) out.push(types[i % types.length]);
-  for (let i = out.length - 1; i > 0; i--) { const j = rInt(rng, 0, i); [out[i], out[j]] = [out[j], out[i]]; }
-  return out;
+  return shuffleWithRng(rng, out);
 }
 
 function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {

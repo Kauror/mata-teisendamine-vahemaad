@@ -1,15 +1,10 @@
 import { Category, GeneratedQuestion } from '@/lib/types';
-
-type RNG = () => number;
+import { RNG, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
 
 type KirsiCategory = 'Arvutamine 10 piires' | 'Arvutamine 20 piires' | 'Suurem või väiksem kuni 100' | 'Segaülesanded';
 
-function seededRng(seed: number): RNG {
-  let t = seed >>> 0;
-  return () => { t += 0x6D2B79F5; let x = Math.imul(t ^ (t >>> 15), 1 | t); x ^= x + Math.imul(x ^ (x >>> 7), 61 | x); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
-}
-const rInt = (rng: RNG, min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
-const shuffle = <T,>(rng: RNG, arr: T[]) => { const out = [...arr]; for (let i = out.length - 1; i > 0; i--) { const j = rInt(rng, 0, i); [out[i], out[j]] = [out[j], out[i]]; } return out; };
+const rInt = randomInt;
+const shuffle = shuffleWithRng;
 
 function calc10(rng: RNG, i: number): GeneratedQuestion {
   const add = i % 2 === 0;
