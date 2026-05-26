@@ -7,10 +7,11 @@ type EnglishMatchingBoardProps = {
   words: EnglishVocabularyWord[];
   onPair: (ok: boolean, word: EnglishVocabularyWord) => void;
   onBoardComplete: () => void;
+  layoutSeed?: number;
   showFeedback?: boolean;
 };
 
-export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, showFeedback = true }: EnglishMatchingBoardProps) {
+export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, layoutSeed = 1, showFeedback = true }: EnglishMatchingBoardProps) {
   const [selectedEn, setSelectedEn] = useState<string | null>(null);
   const [selectedEt, setSelectedEt] = useState<string | null>(null);
   const [done, setDone] = useState<Set<string>>(new Set());
@@ -37,8 +38,8 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, s
     if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
   }, []);
 
-  const left = useMemo(() => shuffle(words, words.length * 13), [words]);
-  const right = useMemo(() => shuffle(words, words.length * 31), [words]);
+  const left = useMemo(() => shuffle(words, layoutSeed * 997 + words.length * 13), [layoutSeed, words]);
+  const right = useMemo(() => shuffle(words, layoutSeed * 1597 + words.length * 31), [layoutSeed, words]);
 
   useEffect(() => {
     if (words.length === 0 || done.size < words.length || completedBoardKeyRef.current === boardKey) return;

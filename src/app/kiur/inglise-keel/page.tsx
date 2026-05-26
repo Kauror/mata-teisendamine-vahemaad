@@ -14,9 +14,8 @@ export default function KiurEnglishPage() {
     <Link className='practice-back-button' href='/kiur'>← Aine valik</Link>
     <header className='subject-header'><div className='subject-emoji'>🔤</div><h1>Inglise keel</h1></header>
     <div className='english-mode-grid'>
-      <Link href='/kiur/inglise-keel/sprint' className='english-mode-card'><strong>Sprint</strong></Link>
+      <Link href='/kiur/inglise-keel/sprint' className='english-mode-card'><span className='english-mode-icon' aria-hidden>⚡</span><strong>Sprint</strong><span>Parim tulemus: {best}</span></Link>
     </div>
-    <p>Parim Sprint: {best}</p>
     <Link className='setup-history-link' href='/history'>📄 Vaata ajalugu</Link>
   </section></main>;
 }

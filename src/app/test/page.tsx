@@ -5,8 +5,42 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
+import { compactTopicLabel } from '@/lib/history';
 import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
 
+
+const sectorPoint = (degrees: number, radius = 50) => {
+  const radians = ((degrees - 90) * Math.PI) / 180;
+  return {
+    x: 70 + radius * Math.cos(radians),
+    y: 70 + radius * Math.sin(radians)
+  };
+};
+
+const sectorPath = (startDegrees: number, endDegrees: number) => {
+  const start = sectorPoint(startDegrees);
+  const end = sectorPoint(endDegrees);
+  const sweep = endDegrees - startDegrees;
+  const largeArc = sweep > 180 ? 1 : 0;
+  return `M70 70 L${start.x.toFixed(2)} ${start.y.toFixed(2)} A50 50 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)} Z`;
+};
+
+function SectorMissingVisual({ knownDegrees = 90 }: { knownDegrees?: number }) {
+  const missingDegrees = 360 - knownDegrees;
+  const knownLabel = sectorPoint(knownDegrees / 2, 31);
+  const missingLabel = sectorPoint(knownDegrees + missingDegrees / 2, 31);
+
+  return (
+    <svg width='170' height='150' aria-label='Puuduv kraad'>
+      <circle cx='70' cy='70' r='50' fill='#eef2ff' stroke='#3b82f6' strokeWidth='3' />
+      <path d={sectorPath(0, knownDegrees)} fill='#bfdbfe' stroke='#2563eb' strokeWidth='2' />
+      <path d={sectorPath(knownDegrees, 360)} fill='#ddd6fe' stroke='#7c3aed' strokeWidth='2' />
+      <circle cx='70' cy='70' r='3' fill='#0f172a' />
+      <text x={knownLabel.x} y={knownLabel.y} fontSize='12' textAnchor='middle' dominantBaseline='middle'>{knownDegrees}°</text>
+      <text x={missingLabel.x} y={missingLabel.y} fontSize='14' textAnchor='middle' dominantBaseline='middle'>?</text>
+    </svg>
+  );
+}
 
 function ShapeVisual({ question }: { question: GeneratedQuestion }) {
   if (question.visual) {
@@ -18,8 +52,8 @@ function ShapeVisual({ question }: { question: GeneratedQuestion }) {
     if (question.visual === 'radius-demo') return <svg width='160' height='140' aria-label='Raadiuse näide'><circle cx='70' cy='70' r='50' fill='none' stroke='#3b82f6' strokeWidth='3' /><circle cx='70' cy='70' r='4' fill='#0f172a' /><line x1='70' y1='70' x2='120' y2='70' stroke='#16a34a' strokeWidth='4' /><line x1='70' y1='70' x2='100' y2='40' stroke='#ef4444' strokeWidth='3' /><line x1='30' y1='90' x2='95' y2='95' stroke='#f59e0b' strokeWidth='3' /><text x='123' y='74' fontSize='14'>A</text><text x='102' y='38' fontSize='14'>B</text><text x='97' y='100' fontSize='14'>C</text><text x='58' y='64' fontSize='14'>O</text></svg>;
     if (question.visual === 'diameter-demo') return <svg width='160' height='140' aria-label='Läbimõõdu näide'><circle cx='70' cy='70' r='50' fill='none' stroke='#3b82f6' strokeWidth='3' /><circle cx='70' cy='70' r='4' fill='#0f172a' /><line x1='20' y1='70' x2='120' y2='70' stroke='#16a34a' strokeWidth='4' /><line x1='70' y1='70' x2='105' y2='40' stroke='#ef4444' strokeWidth='3' /><line x1='30' y1='95' x2='95' y2='98' stroke='#f59e0b' strokeWidth='3' /><text x='122' y='74' fontSize='14'>B</text><text x='107' y='39' fontSize='14'>A</text><text x='97' y='104' fontSize='14'>C</text><text x='58' y='64' fontSize='14'>O</text></svg>;
     if (question.visual === 'point-position') return <svg width='160' height='140' aria-label='Punkti asukoht'><circle cx='70' cy='70' r='50' fill='#eff6ff' stroke='#3b82f6' strokeWidth='3' /><circle cx='62' cy='58' r='4' fill='#16a34a' /><text x='68' y='56' fontSize='12'>A</text><circle cx='120' cy='70' r='4' fill='#f59e0b' /><text x='126' y='74' fontSize='12'>B</text><circle cx='135' cy='35' r='4' fill='#ef4444' /><text x='141' y='39' fontSize='12'>C</text></svg>;
-    if (question.visual === 'concentric-circles') return <svg width='160' height='140' aria-label='Sama keskpunktiga ringjooned'><circle cx='70' cy='70' r='52' fill='none' stroke='#6366f1' strokeWidth='3' /><circle cx='70' cy='70' r='30' fill='none' stroke='#22c55e' strokeWidth='3' /><circle cx='70' cy='70' r='4' fill='#0f172a' /><text x='76' y='66' fontSize='12'>O</text></svg>;
-    if (question.visual === 'sector-missing') return <svg width='160' height='140' aria-label='Puuduv kraad'><circle cx='70' cy='70' r='50' fill='none' stroke='#3b82f6' strokeWidth='3' /><path d='M70 70 L120 70 A50 50 0 0 1 70 20 Z' fill='#bfdbfe' /><path d='M70 70 L70 20 A50 50 0 0 0 20 70 Z' fill='#ddd6fe' /><text x='84' y='50' fontSize='12'>90°</text><text x='45' y='40' fontSize='12'>?</text></svg>;
+    if (question.visual === 'concentric-circles') return <svg width='160' height='140' aria-label='Sama keskpunktiga ringjooned'><circle cx='70' cy='70' r='52' fill='none' stroke='#6366f1' strokeWidth='3' /><circle cx='70' cy='70' r='30' fill='none' stroke='#22c55e' strokeWidth='3' /><circle cx='70' cy='70' r='4' fill='#0f172a' /></svg>;
+    if (question.visual === 'sector-missing') return <SectorMissingVisual knownDegrees={question.visualKnownDegrees} />;
     if (question.visual === 'place-value-blocks') return <svg width='220' height='140' aria-label='Järguplokid'><rect x='10' y='20' width='34' height='34' fill='#bfdbfe' stroke='#3b82f6' /><rect x='50' y='20' width='24' height='24' fill='#c7f9cc' stroke='#16a34a' /><rect x='80' y='20' width='16' height='16' fill='#fde68a' stroke='#d97706' /><rect x='102' y='24' width='10' height='10' fill='#fecdd3' stroke='#e11d48' /><text x='10' y='70' fontSize='12'>Tuhandelised</text><text x='90' y='70' fontSize='12'>Sajalised</text><text x='10' y='88' fontSize='12'>Kümnelised</text><text x='90' y='88' fontSize='12'>Ühelised</text></svg>;
     if (question.visual === 'division-groups') return <svg width='220' height='120' aria-label='Jagamisrühmad'><rect x='10' y='20' width='55' height='70' rx='10' fill='#eef2ff' stroke='#6366f1' /><rect x='80' y='20' width='55' height='70' rx='10' fill='#eef2ff' stroke='#6366f1' /><rect x='150' y='20' width='55' height='70' rx='10' fill='#eef2ff' stroke='#6366f1' /><text x='20' y='45' fontSize='12'>1. rühm</text><text x='90' y='45' fontSize='12'>2. rühm</text><text x='160' y='45' fontSize='12'>3. rühm</text></svg>;
   }
@@ -32,6 +66,22 @@ function ShapeVisual({ question }: { question: GeneratedQuestion }) {
   }
   if (!question.question.includes('Ristküliku')) return null;
   return <svg width='180' height='120' aria-label='Ristküliku joonis'><rect x='20' y='20' width='140' height='70' fill='#e9ffe9' stroke='#2e7d32' /></svg>;
+}
+
+function choiceLabels(question: GeneratedQuestion) {
+  const options = question.choiceOptions;
+  if (!options?.length) {
+    return [question.correctAnswer === -1 ? '<' : question.correctAnswer === 0 ? '=' : '>'];
+  }
+
+  const answerIndexes = question.correctAnswers?.length ? question.correctAnswers : [question.correctAnswer];
+  return answerIndexes.map((answerIndex) => options[answerIndex]).filter((answer): answer is string => Boolean(answer));
+}
+
+function testTopicLabel(topic: string, category: string, isKirsiMath: boolean) {
+  if (isKirsiMath) return category;
+  if (topic === 'ring-ja-ringjoon') return 'Ring ja ringjoon';
+  return compactTopicLabel(topic, category) || category;
 }
 
 function TestPageContent() {
@@ -109,8 +159,8 @@ function TestPageContent() {
       }
       if (question.kind === 'choice') {
         const answer = choiceAnswers[i] ?? '';
-        const c = question.choiceOptions?.length ? (question.choiceOptions[question.correctAnswer] ?? '') : (question.correctAnswer === -1 ? '<' : question.correctAnswer === 0 ? '=' : '>');
-        return { ...question, userAnswer: answer, correctAnswer: question.correctAnswer, isCorrect: answer === c };
+        const correctLabels = choiceLabels(question);
+        return { ...question, userAnswer: answer, correctAnswer: question.correctAnswer, isCorrect: correctLabels.includes(answer) };
       }
       return { ...question, userAnswer: answers[i], isCorrect: isAnswerCorrect(answers[i], question.correctAnswer) };
     });
@@ -154,6 +204,7 @@ function TestPageContent() {
 
   const percent = Math.round(((index + 1) / count) * 100);
   const topicEmoji = topic === 'mootuhikud-pikkused' || topic === 'pikkused' ? '📏' : topic === 'jagamine-kahekohaline-uhekohaline' ? '➗' : topic === 'arvud-10000-piires' || topic === 'arvud-10000' ? '🔢' : topic === 'ring-ja-ringjoon' ? '⭕' : '🧮';
+  const metaLabel = testTopicLabel(topic, categoryParam, isKirsiMath);
 
   return (
     <main className='test-page'>
@@ -162,7 +213,7 @@ function TestPageContent() {
           <div className='test-meta'>
             <span aria-hidden>{topicEmoji}</span>
             <div>
-              <p>{isKirsiMath ? categoryParam : `${categoryParam} · ${difficulty}`}</p>
+              <p>{metaLabel}</p>
               <strong>{count} küsimust</strong>
             </div>
           </div>
@@ -189,13 +240,13 @@ function TestPageContent() {
                 <div className='ordering-list'>
                   {selected.map((id, pos) => {
                     const card = cards.find((c) => c.id === id); if (!card) return null;
-                    return <div key={id} className='ordering-item'><strong>{pos + 1}. {card.label}</strong><div className='row'><button type='button' className='chip' onClick={() => setOrderingAnswers((prev) => { const next=[...prev]; const arr=[...(next[index]??[])]; if(pos>0)[arr[pos-1],arr[pos]]=[arr[pos],arr[pos-1]]; next[index]=arr; return next; })}>Üles</button><button type='button' className='chip' onClick={() => setOrderingAnswers((prev) => { const next=[...prev]; const arr=[...(next[index]??[])]; if(pos<arr.length-1)[arr[pos+1],arr[pos]]=[arr[pos],arr[pos+1]]; next[index]=arr; return next; })}>Alla</button><button type='button' className='chip danger' onClick={() => setOrderingAnswers((prev) => { const next=[...prev]; next[index]=(next[index]??[]).filter((x)=>x!==id); return next; })}>Eemalda</button></div></div>;
+                    return <div key={id} className='ordering-item'><strong>{pos + 1}. {card.label}</strong><div className='row'><button type='button' className='chip ordering-move-button' aria-label='Liiguta üles' title='Liiguta üles' onClick={() => setOrderingAnswers((prev) => { const next=[...prev]; const arr=[...(next[index]??[])]; if(pos>0)[arr[pos-1],arr[pos]]=[arr[pos],arr[pos-1]]; next[index]=arr; return next; })}>↑</button><button type='button' className='chip ordering-move-button' aria-label='Liiguta alla' title='Liiguta alla' onClick={() => setOrderingAnswers((prev) => { const next=[...prev]; const arr=[...(next[index]??[])]; if(pos<arr.length-1)[arr[pos+1],arr[pos]]=[arr[pos],arr[pos+1]]; next[index]=arr; return next; })}>↓</button><button type='button' className='chip danger' onClick={() => setOrderingAnswers((prev) => { const next=[...prev]; next[index]=(next[index]??[]).filter((x)=>x!==id); return next; })}>Eemalda</button></div></div>;
                   })}
                 </div>
                 <button type='button' className='danger' onClick={() => setOrderingAnswers((prev) => { const next = [...prev]; next[index] = []; return next; })}>Tühjenda valik</button>
               </div>
             ) : isChoiceQuestion ? (
-              <div className='choice-answer-grid'>
+              <div className='choice-answer-grid' onKeyDown={(e) => { if (e.key === 'Enter' && choiceAnswers[index]) { e.preventDefault(); void handleSubmit(); } }}>
                 {(current.choiceOptions?.length ? current.choiceOptions : ['<', '=', '>']).map((sign) => <button type='button' key={sign} aria-pressed={choiceAnswers[index] === sign} className={choiceAnswers[index] === sign ? 'choice-answer-button selected' : 'choice-answer-button'} onClick={() => { const next = [...choiceAnswers]; next[index] = sign; setChoiceAnswers(next); }}>{sign}</button>)}
               </div>
             ) : (
@@ -211,7 +262,7 @@ function TestPageContent() {
         {saveError && <p className='test-error'>{saveError}</p>}
 
         <footer className='test-actions-panel'>
-          <button type='button' className='stop-button' onClick={() => { if (confirm('Kas soovid harjutuse lõpetada? Tulemusi ei salvestata.')) router.push(baseSelectionUrl); }}>Lõpeta</button>
+          <button type='button' className='stop-button' onClick={() => router.push(baseSelectionUrl)}>Lõpeta</button>
           <button type='button' className='next-button' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}</button>
         </footer>
       </section>

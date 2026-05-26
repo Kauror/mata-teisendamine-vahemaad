@@ -50,6 +50,8 @@ export default function HistoryPage() {
   const [loadError, setLoadError] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [childFilter, setChildFilter] = useState<ChildFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
 
@@ -87,6 +89,22 @@ export default function HistoryPage() {
     }
   };
 
+  const onDeleteAll = async () => {
+    setDeleteError('');
+    setIsDeletingAll(true);
+    try {
+      const res = await fetch('/api/history', { method: 'DELETE' });
+      if (!res.ok) throw new Error('delete-all-failed');
+      setHistory([]);
+      setConfirmDeleteAll(false);
+      setConfirmId(null);
+    } catch {
+      setDeleteError('Kogu ajaloo kustutamine ebaõnnestus.');
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   return (
     <main className='history-page'>
       <div className='history-shell'>
@@ -111,6 +129,22 @@ export default function HistoryPage() {
           <button type='button' className={subjectFilter === 'matemaatika' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('matemaatika')}>🧮 Matemaatika</button>
           <button type='button' className={subjectFilter === 'inglise-keel' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('inglise-keel')}>🔤 Inglise keel</button>
         </section>
+
+        {history.length > 0 && (
+          <section className='history-danger-zone'>
+            <button type='button' className='delete-button' onClick={() => setConfirmDeleteAll(true)}>Kustuta kogu ajalugu</button>
+            {confirmDeleteAll && (
+              <div className='confirm-panel confirm-panel-wide'>
+                <strong>Kas oled kindel, et soovid terve ajaloo kustutada?</strong>
+                <p>Kõik senised tulemused kustutatakse ja seda tegevust ei saa tagasi võtta.</p>
+                <div className='confirm-actions'>
+                  <button type='button' className='filter-chip' onClick={() => setConfirmDeleteAll(false)} disabled={isDeletingAll}>Tühista</button>
+                  <button type='button' className='delete-button' onClick={onDeleteAll} disabled={isDeletingAll}>{isDeletingAll ? 'Kustutan...' : 'Jah, kustuta kõik'}</button>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {loadError && <p className='error'>{loadError}</p>}
         {deleteError && <p className='error'>{deleteError}</p>}

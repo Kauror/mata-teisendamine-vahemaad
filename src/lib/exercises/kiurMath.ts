@@ -150,7 +150,7 @@ function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gen
   if (cat === 'Pane arv kokku') {
     const t = rInt(rng, 1, 9), s = rInt(rng, 0, 9), k = rInt(rng, 0, 9), y = rInt(rng, 0, 9);
     const n = t * 1000 + s * 100 + k * 10 + y;
-    return { id: `n10-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `${t} tuhandelist, ${s} sajalist, ${k} kümnelist ja ${y} ühelist. Milline arv tekib?`, correctAnswer: n, explanation: `${t * 1000} + ${s * 100} + ${k * 10} + ${y} = ${n}.`, visual: 'place-value-blocks' };
+    return { id: `n10-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `${t} tuhandelist, ${s} sajalist, ${k} kümnelist ja ${y} ühelist. Milline arv tekib?`, correctAnswer: n, explanation: `${t * 1000} + ${s * 100} + ${k * 10} + ${y} = ${n}.` };
   }
   if (cat === 'Numbri väärtus') {
     const n = mk4(1200, 9800);
@@ -200,11 +200,11 @@ function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Genera
   const unit = pick(rng, ['cm', 'mm'] as const);
   if (cat === 'Ring või ringjoon') {
     const variants = [
-      { q: 'Kas kirjeldus käib ringi või ringjoone kohta? See on joon, mis piirab ringi.', a: 'Ringjoon', e: 'Ringjoon on ainult piirjoon.', v: 'ring-outline' as const },
-      { q: 'Kas kirjeldus käib ringi või ringjoone kohta? See on ringjoonega piiratud kujund.', a: 'Ring', e: 'Ring on ringjoonega piiratud kujund.', v: 'ring-filled' as const }
+      { q: 'Kas kirjeldus käib ringi või ringjoone kohta? See on joon, mis piirab ringi.', a: 'Ringjoon', e: 'Ringjoon on ainult piirjoon ehk ringi piirav joon.', v: 'ring-outline' as const },
+      { q: 'Kas kirjeldus käib ringi või ringjoone kohta? See on ringjoonega piiratud kujund koos sisuga.', a: 'Ring', e: 'Ring on ringjoonega piiratud tasandi osa ehk kujund koos sisuga.', v: 'ring-filled' as const }
     ] as const;
     const it = pick(rng, variants);
-    return { id: `cg-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: it.q, correctAnswer: it.a === 'Ring' ? 1 : 0, kind: 'choice', choiceOptions: ['Ring', 'Ringjoon'], explanation: it.e, visual: it.v };
+    return { id: `cg-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: it.q, correctAnswer: it.a === 'Ring' ? 0 : 1, kind: 'choice', choiceOptions: ['Ring', 'Ringjoon'], explanation: it.e, visual: it.v };
   }
   if (cat === 'Leia raadius') return { id: `cr-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: 'Milline sirglõik on raadius?', correctAnswer: 0, kind: 'choice', choiceOptions: ['A', 'B', 'C'], explanation: 'Raadius ühendab keskpunkti ringjoone punktiga.', visual: 'radius-demo' };
   if (cat === 'Leia läbimõõt') return { id: `cd-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: 'Milline sirglõik on läbimõõt?', correctAnswer: 1, kind: 'choice', choiceOptions: ['A', 'B', 'C'], explanation: 'Läbimõõt läbib keskpunkti ja ühendab ringjoone kahte punkti.', visual: 'diameter-demo' };
@@ -212,10 +212,18 @@ function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Genera
   if (cat === 'Raadius läbimõõdust') { const r = rInt(rng, 3, 14); return { id: `crf-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `Ringjoone läbimõõt on ${r * 2} ${unit}. Kui pikk on raadius?`, expectedUnit: unit, correctAnswer: r, explanation: 'Raadius on pool läbimõõdust.' }; }
   if (cat === 'Punkti asukoht') { const ask = pick(rng, ['Kus asub punkt A?', 'Kus asub punkt B?', 'Kus asub punkt C?'] as const); const map = { 'Kus asub punkt A?': 0, 'Kus asub punkt B?': 1, 'Kus asub punkt C?': 2 } as const; const exp = map[ask] === 0 ? 'Punkt on ringi sees, kui see asub ringjoonega piiratud ala sees.' : map[ask] === 1 ? 'Punkt ringjoone peal asub täpselt piirjoonel.' : 'Punkt on ringist väljas, kui see jääb ringjoonest väljapoole.'; return { id: `cp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: ask, correctAnswer: map[ask], kind: 'choice', choiceOptions: ['ringi sees', 'ringjoone peal', 'ringist väljas'], explanation: exp, visual: 'point-position' }; }
   if (cat === 'Sama keskpunkt') { const bigger = pick(rng, [6, 8, 10]); return { id: `cc-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `Kahel ringjoonel on sama keskpunkt. Suurema ringjoone raadius on ${bigger} cm. Väiksema ringjoone raadius on poole väiksem. Kui suur on väiksema ringjoone raadius?`, expectedUnit: 'cm', correctAnswer: bigger / 2, explanation: 'Poole väiksem tähendab, et jagame kahega.', visual: 'concentric-circles' }; }
-  if (cat === 'Võrdle raadiuseid') { const cm = pick(rng, [3, 4, 5]); const mm = cm * 10; return { id: `cv-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `K raadius on ${mm} mm ja L raadius on ${cm} cm. Kas ringjooned on sama suured?`, correctAnswer: 2, kind: 'choice', choiceOptions: ['K', 'L', 'sama suured'], explanation: `${cm} cm = ${mm} mm, seega on ringjooned sama suured.` }; }
-  if (cat === 'Ringi kraadid') { const set = [{ q: 'Mitu kraadi on täisring?', a: 360, v: 'circle-full' as const }, { q: 'Mitu kraadi on pool ringi?', a: 180, v: 'circle-half' as const }, { q: 'Mitu kraadi on veerand ringi?', a: 90, v: 'circle-quarter' as const }, { q: 'Mitu kraadi on kolmveerand ringi?', a: 270, v: 'sector-missing' as const }] as const; const it = pick(rng, set); return { id: `ck-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: it.q, correctAnswer: it.a, explanation: `Täisring on 360° ja sellest leitakse osad.`, visual: it.v }; }
-  const knownA = pick(rng, [90, 180, 270, 120]);
-  return { id: `cm-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `Ring on jaotatud osadeks. Üks osa on ${knownA}°. Kui suur on teine osa?`, correctAnswer: 360 - knownA, explanation: `Täisring on 360°. 360° − ${knownA}° = ${360 - knownA}°.`, visual: 'sector-missing' };
+  if (cat === 'Võrdle raadiuseid') {
+    const cm = pick(rng, [3, 4, 5]);
+    const mm = cm * 10;
+    const mode = rInt(rng, 0, 1);
+    if (mode === 0) {
+      return { id: `cv-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `K raadius on ${mm} mm ja L raadius on ${cm} cm. Kas ringjooned on sama suured?`, correctAnswer: 0, kind: 'choice', choiceOptions: ['Jah', 'Ei'], explanation: `${cm} cm = ${mm} mm, seega on ringjooned sama suured.` };
+    }
+    return { id: `cv-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `K raadius on ${mm} mm ja L raadius on ${cm} cm. Milline ringjoon on suurem?`, correctAnswer: 2, kind: 'choice', choiceOptions: ['K', 'L', 'sama suured'], explanation: `${cm} cm = ${mm} mm, seega on ringjooned sama suured.` };
+  }
+  if (cat === 'Ringi kraadid') { const set = [{ q: 'Mitu kraadi on täisring?', a: 360, v: 'circle-full' as const }, { q: 'Mitu kraadi on pool ringi?', a: 180, v: 'circle-half' as const }, { q: 'Mitu kraadi on veerand ringi?', a: 90, v: 'circle-quarter' as const }, { q: 'Mitu kraadi on kolmveerand ringi?', a: 270, v: 'sector-missing' as const }] as const; const it = pick(rng, set); return { id: `ck-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: it.q, correctAnswer: it.a, explanation: `Täisring on 360° ja sellest leitakse osad.`, visual: it.v, visualKnownDegrees: it.v === 'sector-missing' ? it.a : undefined }; }
+  const knownA = pick(rng, [45, 60, 75, 90, 120, 135, 150, 180, 190, 210, 240, 270, 300]);
+  return { id: `cm-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `Ring on jagatud kaheks osaks. Värvitud osa on ${knownA}°. Kui suur on teine osa?`, correctAnswer: 360 - knownA, explanation: `Täisring on 360°. 360° − ${knownA}° = ${360 - knownA}°.`, visual: 'sector-missing', visualKnownDegrees: knownA };
 }
 
 function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
@@ -271,7 +279,7 @@ function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gener
     const correct = [start, start + step, start + 2 * step, start + 3 * step, start + 4 * step];
     const wrong = [...correct];
     wrong[3] += step * 2;
-    const opts = wrong.map((v, idx) => `${v} (${idx + 1})`);
+    const opts = wrong.map(String);
     return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'arvu-ja-loogikamustrid', question: `Leia arv, mis ei sobi mustrisse: ${wrong.join(', ')}`, correctAnswer: 3, kind: 'choice', choiceOptions: opts, explanation: `Muster peaks suurenema iga kord ${step} võrra.` };
   }
 
@@ -315,7 +323,7 @@ function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gener
 
   if (t === 12) {
     const mul = pick(rng, [100, 200, 500]);
-    return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'arvu-ja-loogikamustrid', question: `Leia paaride muster: 1→${mul}, 2→${mul * 2}, 3→${mul * 3}, 4→__`, correctAnswer: mul * 4, explanation: `Teine arv on iga kord ${mul} võrra suurem.` };
+    return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'arvu-ja-loogikamustrid', question: `Leia paaride muster: ${mul}, ${mul * 2}, ${mul * 3}, __`, correctAnswer: mul * 4, explanation: `Arv suureneb iga kord ${mul} võrra.` };
   }
 
   const options = ['suureneb', 'väheneb', 'kordub kujunditena', 'ei ole muster'];

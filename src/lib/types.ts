@@ -27,6 +27,7 @@ export type GeneratedQuestion = {
   question: string;
   expectedUnit?: 'mm' | 'cm' | 'dm' | 'm' | 'km';
   correctAnswer: number;
+  correctAnswers?: number[];
   choiceOptions?: string[];
   explanation?: string;
   subtopic?: string;
@@ -34,6 +35,7 @@ export type GeneratedQuestion = {
   orderingCards?: OrderingCard[];
   orderingDirection?: 'asc' | 'desc';
   visual?: QuestionVisual;
+  visualKnownDegrees?: number;
 };
 
 export type QuestionResult = GeneratedQuestion & {

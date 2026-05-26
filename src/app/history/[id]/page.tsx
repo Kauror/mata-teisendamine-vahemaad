@@ -13,6 +13,7 @@ type SavedQuestion = {
   userAnswer: string;
   expectedUnit?: string;
   correctAnswer: number;
+  correctAnswers?: number[];
   isCorrect: boolean;
   kind?: 'numeric' | 'ordering' | 'choice';
   orderingCards?: OrderingCard[];
@@ -86,8 +87,6 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   return (
     <main className='result-page'>
       <section className='result-shell'>
-        <Link className='practice-back-button' href='/history'>← Tagasi ajalukku</Link>
-
         <section className='result-summary-card'>
           <h1>Tulemus</h1>
           <p className='result-score'>{row.score} / {row.questionCount} õige</p>
@@ -105,6 +104,11 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             .sort((a, b) => (q.orderingDirection === 'desc' ? b.valueMm - a.valueMm : a.valueMm - b.valueMm))
             .map((c) => c.label)
             .join(' → ');
+          const correctChoiceAnswer = q.kind === 'choice' && q.choiceOptions?.length
+            ? (q.correctAnswers?.length ? q.correctAnswers.map((answerIndex) => q.choiceOptions?.[answerIndex]).filter(Boolean).join(' / ') : (q.choiceOptions[q.correctAnswer] ?? '—'))
+            : q.kind === 'choice' && !isEnglish
+              ? (q.correctAnswer === -1 ? '<' : q.correctAnswer === 0 ? '=' : '>')
+              : (isEnglish ? 'Sõnapaar sobib' : String(q.correctAnswer ?? '—'));
 
           const isEnglishPair = isEnglish && (q.estonian || q.question.includes('—'));
           return (
@@ -112,7 +116,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
               <p className='result-question'>{i + 1}. {isEnglishPair ? q.question.replace('—', '↔') : q.question}</p>
               {q.kind === 'ordering'
                 ? <div className='answer-review-grid'><p className='answer-line'><span>Sinu järjestus:</span> <strong>{q.userAnswer || '—'}</strong></p><p className='answer-line'><span>Õige järjestus:</span> <strong>{order || '—'}</strong></p></div>
-                : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{q.kind === 'choice' && q.choiceOptions?.length ? (q.choiceOptions[q.correctAnswer] ?? '—') : q.kind === 'choice' && !isEnglish ? (q.correctAnswer === -1 ? '<' : q.correctAnswer === 0 ? '=' : '>') : (isEnglish ? 'Sõnapaar sobib' : String(q.correctAnswer ?? '—'))}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}
+                : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{correctChoiceAnswer}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}
               <p className={q.isCorrect ? 'result-status correct' : 'result-status wrong'}>{q.isCorrect ? 'Õige' : 'Vale vastus'}</p>
               {q.explanation && <p className='answer-line'><span>Selgitus:</span> <strong>{q.explanation}</strong></p>}
             </article>
@@ -124,6 +128,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
         <Link className='btn' href={retryHref}>Tee {attemptLabel.toLowerCase()} uuesti</Link>
         <Link className='btn chip active' href={isEnglish ? '/kiur/inglise-keel' : (isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika')}>Vali uus harjutus</Link>
       </div>
+      <Link className='practice-back-button result-history-back-link' href='/history'>Vaata ajalugu</Link>
       </section>
     </main>
   );

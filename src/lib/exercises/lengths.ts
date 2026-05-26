@@ -29,15 +29,16 @@ const cmMmToMm = (cm:number,mm:number)=>cm*10+mm;
 function byType(type: InternalType, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
   if (type === 'suitable-unit-choice') {
     const items = [
-      ['Millise ühikuga mõõdaksid pliiatsi pikkust?', 'cm'],
-      ['Millise ühikuga mõõdaksid linna vahemaad?', 'km'],
-      ['Vali sobiv ühik: koolimaja kõrgus.', 'm'],
-      ['Millise ühikuga mõõdaksid paberilehe paksust?', 'mm'],
-      ['Millise ühikuga mõõdaksid vihiku laiust?', 'dm']
+      { question: 'Millise ühikuga mõõdaksid pliiatsi pikkust?', units: ['cm'], explanation: 'Pliiatsi pikkust mõõdetakse tavaliselt sentimeetrites.' },
+      { question: 'Millise ühikuga mõõdaksid linna vahemaad?', units: ['km'], explanation: 'Linnade vahemaad mõõdetakse tavaliselt kilomeetrites.' },
+      { question: 'Vali sobiv ühik: koolimaja kõrgus.', units: ['m'], explanation: 'Koolimaja kõrgust mõõdetakse tavaliselt meetrites.' },
+      { question: 'Millise ühikuga mõõdaksid paberilehe paksust?', units: ['mm'], explanation: 'Paberilehe paksust mõõdetakse tavaliselt millimeetrites.' },
+      { question: 'Vali sobiv ühik vihiku laiuse mõõtmiseks.', units: ['mm', 'cm', 'dm'], explanation: 'Vihiku laiust saab mõõta millimeetrites, sentimeetrites või detsimeetrites. Meetrit ja kilomeetrit siin praktiliselt ei kasutata.' }
     ] as const;
     const it = pick(rng, items);
     const opts = shuffle(rng, ['km','m','dm','cm','mm']);
-    return { id:`mu-${i}`, category:'Teisendamine', difficulty:d, kind:'choice', question:it[0], choiceOptions:opts, correctAnswer:opts.indexOf(it[1]), explanation:`Selle mõõtmiseks sobib kõige paremini ${it[1]}.`, subtopic:'pikkusuhikud' };
+    const correctAnswers = it.units.map((unit) => opts.indexOf(unit)).filter((idx) => idx >= 0);
+    return { id:`mu-${i}`, category:'Teisendamine', difficulty:d, kind:'choice', question:it.question, choiceOptions:opts, correctAnswer:correctAnswers[0], correctAnswers, explanation:it.explanation, subtopic:'pikkusuhikud' };
   }
   if (type === 'cm-mm-conversion') {
     const mode = rInt(rng,0,2);
