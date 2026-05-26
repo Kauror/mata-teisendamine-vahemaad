@@ -130,22 +130,6 @@ export default function HistoryPage() {
           <button type='button' className={subjectFilter === 'inglise-keel' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('inglise-keel')}>🔤 Inglise keel</button>
         </section>
 
-        {history.length > 0 && (
-          <section className='history-danger-zone'>
-            <button type='button' className='delete-button' onClick={() => setConfirmDeleteAll(true)}>Kustuta kogu ajalugu</button>
-            {confirmDeleteAll && (
-              <div className='confirm-panel confirm-panel-wide'>
-                <strong>Kas oled kindel, et soovid terve ajaloo kustutada?</strong>
-                <p>Kõik senised tulemused kustutatakse ja seda tegevust ei saa tagasi võtta.</p>
-                <div className='confirm-actions'>
-                  <button type='button' className='filter-chip' onClick={() => setConfirmDeleteAll(false)} disabled={isDeletingAll}>Tühista</button>
-                  <button type='button' className='delete-button' onClick={onDeleteAll} disabled={isDeletingAll}>{isDeletingAll ? 'Kustutan...' : 'Jah, kustuta kõik'}</button>
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
         {loadError && <p className='error'>{loadError}</p>}
         {deleteError && <p className='error'>{deleteError}</p>}
 
@@ -198,6 +182,22 @@ export default function HistoryPage() {
                 </div>
               );
             })}
+          </section>
+        )}
+
+        {history.length > 0 && (
+          <section className='history-danger-zone'>
+            <button type='button' className='history-delete-all-link' onClick={() => setConfirmDeleteAll(true)}>Kustuta kogu ajalugu</button>
+            {confirmDeleteAll && (
+              <div className='confirm-panel confirm-panel-wide'>
+                <strong>Kas oled kindel, et soovid terve ajaloo kustutada?</strong>
+                <p>Kõik senised tulemused kustutatakse ja seda tegevust ei saa tagasi võtta.</p>
+                <div className='confirm-actions'>
+                  <button type='button' className='filter-chip' onClick={() => setConfirmDeleteAll(false)} disabled={isDeletingAll}>Tühista</button>
+                  <button type='button' className='delete-button' onClick={onDeleteAll} disabled={isDeletingAll}>{isDeletingAll ? 'Kustutan...' : 'Jah, kustuta kõik'}</button>
+                </div>
+              </div>
+            )}
           </section>
         )}
       </div>

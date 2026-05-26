@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { compactTopicLabel, isKirsiAttempt, isTodayIso, scorePercent, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, isKirsiAttempt, isTodayIso, subjectLabel } from '@/lib/history';
 
 type H = {
   id: number;
@@ -15,13 +15,6 @@ type H = {
   subject?: string | null;
   topic?: string | null;
 };
-
-function getAverageTone(average: number | null) {
-  if (average === null) return 'average-neutral';
-  if (average >= 80) return 'average-good';
-  if (average >= 60) return 'average-medium';
-  return 'average-low';
-}
 
 function ChildDashboardCard({
   name,
@@ -39,10 +32,6 @@ function ChildDashboardCard({
   const router = useRouter();
   const latest = attempts.slice(0, 3);
   const today = attempts.filter((a) => isTodayIso(a.createdAt));
-  const average = today.length
-    ? Math.round(today.reduce((sum, a) => sum + scorePercent(a.score, a.questionCount), 0) / today.length)
-    : null;
-
   const last = attempts[0];
   const lastText = last
     ? `Viimati harjutas ${new Date(last.createdAt).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' })}`
@@ -76,10 +65,6 @@ function ChildDashboardCard({
           <strong>{today.length}</strong>
           <small>harjutust</small>
         </div>
-        <div className={`stat-tile ${getAverageTone(average)}`}>
-          <span>Keskmine tulemus</span>
-          <strong>{average === null ? '—' : `${average}%`}</strong>
-        </div>
       </div>
 
       <div className='recent-panel'>
@@ -111,14 +96,6 @@ function ChildDashboardCard({
         >
           Vali aine
         </button>
-
-        <Link
-          href='/history'
-          className='history-link'
-          onClick={(event) => event.stopPropagation()}
-        >
-          Vaata kogu ajalugu →
-        </Link>
       </div>
     </section>
   );
@@ -146,6 +123,7 @@ export default function Home() {
         <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} />
         <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} />
       </div>
+      <Link href='/history' className='dashboard-history-link'>Vaata kogu ajalugu</Link>
     </main>
   );
 }

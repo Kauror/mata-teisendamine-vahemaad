@@ -262,8 +262,8 @@ function TestPageContent() {
         {saveError && <p className='test-error'>{saveError}</p>}
 
         <footer className='test-actions-panel'>
-          <button type='button' className='stop-button' onClick={() => router.push(baseSelectionUrl)}>Lõpeta</button>
           <button type='button' className='next-button' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}</button>
+          <button type='button' className='stop-button' onClick={() => router.push(baseSelectionUrl)}>Lõpeta</button>
         </footer>
       </section>
     </main>
