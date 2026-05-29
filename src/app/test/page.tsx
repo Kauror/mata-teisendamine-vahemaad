@@ -112,6 +112,7 @@ function TestPageContent() {
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   useEffect(() => {
     const generated = isKirsiMath ? generateKirsiSession(categoryParam as never, count, seed) : generateKiurMathSession(topic, categoryParam, difficulty, count, seed);
@@ -124,6 +125,7 @@ function TestPageContent() {
     setError('');
     setIsSaving(false);
     setSaveError('');
+    setShowStopConfirm(false);
   }, [category, categoryParam, difficulty, count, seed, isKirsiMath, topic]);
 
   useEffect(() => {
@@ -168,6 +170,7 @@ function TestPageContent() {
 
   const handleSubmit = async () => {
     if (isSaving) return;
+    setShowStopConfirm(false);
 
     if (current.kind === 'ordering') {
       if (selected.length !== cards.length) return setError('Vali kõik kaardid õigesse järjekorda.');
@@ -200,6 +203,10 @@ function TestPageContent() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleStopConfirm = () => {
+    router.push(baseSelectionUrl);
   };
 
   const percent = Math.round(((index + 1) / count) * 100);
@@ -263,7 +270,17 @@ function TestPageContent() {
 
         <footer className='test-actions-panel'>
           <button type='button' className='next-button' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}</button>
-          <button type='button' className='stop-button' onClick={() => router.push(baseSelectionUrl)}>Lõpeta</button>
+          {showStopConfirm ? (
+            <div className='stop-confirm-panel' role='alertdialog' aria-labelledby='stop-confirm-title'>
+              <p id='stop-confirm-title'>Kas soovid harjutuse lõpetada?</p>
+              <div className='stop-confirm-actions'>
+                <button type='button' className='stop-cancel-button' onClick={() => setShowStopConfirm(false)}>Jätka harjutust</button>
+                <button type='button' className='stop-confirm-button' onClick={handleStopConfirm}>Jah, lõpeta</button>
+              </div>
+            </div>
+          ) : (
+            <button type='button' className='stop-button' onClick={() => setShowStopConfirm(true)}>Lõpeta harjutus</button>
+          )}
         </footer>
       </section>
     </main>

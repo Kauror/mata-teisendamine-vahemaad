@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { compactTopicLabel, isKirsiAttempt, isTodayIso, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel } from '@/lib/history';
 
 type H = {
   id: number;
@@ -34,7 +34,7 @@ function ChildDashboardCard({
   const today = attempts.filter((a) => isTodayIso(a.createdAt));
   const last = attempts[0];
   const lastText = last
-    ? `Viimati harjutas ${new Date(last.createdAt).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' })}`
+    ? `Viimati harjutas ${relativeDateTimeLabel(last.createdAt)}`
     : 'Harjutusi pole veel tehtud';
 
   return (
@@ -56,28 +56,21 @@ function ChildDashboardCard({
         <div>
           <h2 className='child-name'>{name}</h2>
           <p className='last-practiced'>{lastText}</p>
-        </div>
-      </div>
-
-      <div className='stats'>
-        <div className='stat-tile'>
-          <span>Täna tehtud</span>
-          <strong>{today.length}</strong>
-          <small>harjutust</small>
+          <p className='today-practiced'>Täna tehtud: {today.length} harjutust</p>
         </div>
       </div>
 
       <div className='recent-panel'>
         <h3 className='recent-title'>Viimased harjutused</h3>
         {latest.length === 0 ? (
-          <p>Ajalugu puudub.</p>
+          <p className='recent-empty'>Ajalugu puudub.</p>
         ) : (
           <div className='exercise-list'>
             {latest.map((attempt) => (
               <p key={attempt.id} className='exercise-row'>
                 {subjectLabel(attempt.subject)}
                 {compactTopicLabel(attempt.topic, attempt.category) ? ` · ${compactTopicLabel(attempt.topic, attempt.category)}` : ''} · {' '}
-                {new Date(attempt.createdAt).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' })} · {' '}
+                {relativeDateTimeLabel(attempt.createdAt)} · {' '}
                 {attempt.score}/{attempt.questionCount}
               </p>
             ))}

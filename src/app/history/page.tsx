@@ -51,6 +51,7 @@ export default function HistoryPage() {
   const [deleteError, setDeleteError] = useState('');
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [showHistoryTools, setShowHistoryTools] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [childFilter, setChildFilter] = useState<ChildFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
@@ -116,18 +117,18 @@ export default function HistoryPage() {
             <p>Kõik tehtud harjutused</p>
           </div>
           <div className={`summary-pill ${tone(todayAvg)}`}>
-            <p>Täna — {todayItems.length} harjutust</p>
-            <p>Keskmine tulemus {todayAvg === null ? '—' : `${todayAvg}%`}</p>
+            <p>Täna: {todayItems.length} harjutust · Keskmine {todayAvg === null ? '—' : `${todayAvg}%`}</p>
           </div>
         </header>
 
         <section className='filter-bar'>
-          <button type='button' className={childFilter === 'all' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('all')}>Kõik lapsed</button>
+          <button type='button' className={childFilter === 'all' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('all')}>Kõik</button>
           <button type='button' className={childFilter === 'kiur' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('kiur')}>Kiur</button>
           <button type='button' className={childFilter === 'kirsi' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('kirsi')}>Kirsi</button>
+          <span className='filter-divider' aria-hidden />
           <button type='button' className={subjectFilter === 'all' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('all')}>Kõik ained</button>
-          <button type='button' className={subjectFilter === 'matemaatika' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('matemaatika')}>🧮 Matemaatika</button>
-          <button type='button' className={subjectFilter === 'inglise-keel' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('inglise-keel')}>🔤 Inglise keel</button>
+          <button type='button' className={subjectFilter === 'matemaatika' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('matemaatika')}>Matemaatika</button>
+          <button type='button' className={subjectFilter === 'inglise-keel' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('inglise-keel')}>Inglise keel</button>
         </section>
 
         {loadError && <p className='error'>{loadError}</p>}
@@ -143,27 +144,27 @@ export default function HistoryPage() {
               const groupAvg = avgPercent(items);
               return (
                 <div key={day} className='date-group'>
-                  <h2>{day} — {items.length} harjutust · Keskmine tulemus {groupAvg === null ? '—' : `${groupAvg}%`}</h2>
+                  <h2>{day}: {items.length} harjutust · Keskmine {groupAvg === null ? '—' : `${groupAvg}%`}</h2>
                   <div className='history-list-compact'>
                     {items.map((h) => {
                       const learner = learnerLabel(h.category, h.learner);
                       const time = new Date(h.createdAt).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
+                      const exercise = compactTopicLabel(h.topic, h.category) || h.category;
+                      const percent = scorePercent(h.score, h.questionCount);
+                      const elapsed = typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub';
                       return (
                         <div key={h.id} className='history-row'>
-                          <div className='learner-cell'>{learner}</div>
-                          <div className='subject-cell'>
-                            <span className='subject-emoji' aria-hidden>{subjectKey(h) === 'inglise-keel' ? '🔤' : '🧮'}</span>
-                            <span>{subjectDisplay(h).replace(/^🔤 |^🧮 /, '')}</span>
+                          <div className='history-card-main'>
+                            <div className='learner-cell'>{learner}</div>
+                            <div className='exercise-cell'>
+                              <span>{subjectDisplay(h).replace(/^🔤 |^🧮 /, '')} · {exercise}</span>
+                            </div>
+                            <div className='score-cell'>{h.score}/{h.questionCount} · {percent}% · {elapsed}</div>
+                            <div className='meta-cell'>{time}</div>
                           </div>
-                          <div className='exercise-cell'>
-                            <strong>{compactTopicLabel(h.topic, h.category) || h.category}</strong>
-                          </div>
-                          <div className='meta-cell'>{time}</div>
-                          <div className='score-cell'>{h.score}/{h.questionCount}</div>
-                          <div className='meta-cell'>{typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub'}</div>
                           <div className='row-actions'>
                             <Link className='view-button' href={`/history/${h.id}`}>Vaata</Link>
-                            <button type='button' className='delete-button' onClick={() => setConfirmId(h.id)}>Kustuta</button>
+                            <button type='button' className='delete-text-button' onClick={() => setConfirmId(h.id)}>Kustuta</button>
                           </div>
                           {confirmId === h.id && (
                             <div className='confirm-panel'>
@@ -187,8 +188,9 @@ export default function HistoryPage() {
 
         {history.length > 0 && (
           <section className='history-danger-zone'>
-            <button type='button' className='history-delete-all-link' onClick={() => setConfirmDeleteAll(true)}>Kustuta kogu ajalugu</button>
-            {confirmDeleteAll && (
+            <button type='button' className='history-tools-toggle' onClick={() => setShowHistoryTools((open) => !open)}>Halda ajalugu</button>
+            {showHistoryTools && <button type='button' className='history-delete-all-link' onClick={() => setConfirmDeleteAll(true)}>Kustuta kogu ajalugu</button>}
+            {showHistoryTools && confirmDeleteAll && (
               <div className='confirm-panel confirm-panel-wide'>
                 <strong>Kas oled kindel, et soovid terve ajaloo kustutada?</strong>
                 <p>Kõik senised tulemused kustutatakse ja seda tegevust ei saa tagasi võtta.</p>

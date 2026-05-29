@@ -27,6 +27,18 @@ export function isTodayIso(createdAt: string) {
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 }
 
+export function relativeDateTimeLabel(createdAt: string) {
+  const d = new Date(createdAt);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const time = d.toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
+
+  if (d.toDateString() === now.toDateString()) return `täna ${time}`;
+  if (d.toDateString() === yesterday.toDateString()) return `eile ${time}`;
+  return `${d.toLocaleDateString('et-EE', { day: '2-digit', month: '2-digit' })} ${time}`;
+}
+
 export function subjectLabel(subject?: string | null) {
   if (!subject || subject === 'matemaatika') return 'Matemaatika';
   if (subject === 'inglise-keel') return 'Inglise keel';
