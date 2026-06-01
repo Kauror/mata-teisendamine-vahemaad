@@ -94,7 +94,7 @@ export default function PracticeSetupPage({
                 ⚙️ Seaded
               </button>
             )}
-            <Link className='setup-history-link' href='/history'>📄 Vaata kogu ajalugu</Link>
+            <Link className='setup-history-link' href='/history'>📄 Ajalugu</Link>
           </div>
         </section>
         {hasSettings && settingsOpen && (

@@ -127,7 +127,7 @@ const emptyStoreForm = {
 const defaultLearningSettings: LearningSettings = {
   baseValue: 1,
   decayStep: 0.1,
-  minimumValue: 0.1,
+  minimumValue: 0,
   dailyCap: 10,
   streakIntervalDays: 7,
   streakBonusAmount: 1,
@@ -139,6 +139,7 @@ export default function ParentHub() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [store, setStore] = useState<StoreDashboard | null>(null);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [title, setTitle] = useState('');
   const [points, setPoints] = useState(1);
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>('kiur');
@@ -152,6 +153,8 @@ export default function ParentHub() {
   const [storeForm, setStoreForm] = useState(emptyStoreForm);
   const [editingStoreId, setEditingStoreId] = useState<number | null>(null);
   const [learningSettings, setLearningSettings] = useState<LearningSettings>(defaultLearningSettings);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [nextPassword, setNextPassword] = useState('');
 
   const load = () => {
     setError('');
@@ -175,6 +178,7 @@ export default function ParentHub() {
   const createTask = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
+    setNotice('');
     const res = await fetch('/api/parent/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -187,6 +191,7 @@ export default function ParentHub() {
     }
     setTitle('');
     setPoints(1);
+    setNotice('Tegevus lisatud.');
     load();
   };
 
@@ -198,6 +203,7 @@ export default function ParentHub() {
   const adjustPoints = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
+    setNotice('');
     const res = await fetch('/api/parent/adjust-points', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -210,12 +216,14 @@ export default function ParentHub() {
     }
     setAdjustAmount(1);
     setAdjustReason('');
+    setNotice(adjustAmount > 0 ? `${learnerLabel(adjustLearner)} sai +${adjustAmount} tähte.` : `${learnerLabel(adjustLearner)} tähti vähendati ${Math.abs(adjustAmount)} võrra.`);
     load();
   };
 
   const saveStoreItem = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
+    setNotice('');
     const url = editingStoreId ? `/api/parent/store/${editingStoreId}` : '/api/parent/store';
     const res = await fetch(url, {
       method: editingStoreId ? 'PUT' : 'POST',
@@ -227,6 +235,7 @@ export default function ParentHub() {
       setError(body.message || 'Poe eset ei saanud salvestada.');
       return;
     }
+    setNotice(editingStoreId ? 'Poe ese muudetud.' : 'Poe ese lisatud.');
     setEditingStoreId(null);
     setStoreForm(emptyStoreForm);
     load();
@@ -246,6 +255,7 @@ export default function ParentHub() {
       return;
     }
     setLearningSettings(body);
+    setNotice('Õppimise seaded salvestatud.');
   };
 
   const editStoreItem = (item: StoreItem) => {
@@ -266,8 +276,39 @@ export default function ParentHub() {
   };
 
   const storePatch = async (id: number, action: string) => {
-    await fetch(`/api/parent/store/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
+    setError('');
+    setNotice('');
+    setStore((current) => current ? {
+      ...current,
+      items: current.items.map((item) => item.id === id ? { ...item, hiddenToday: action === 'hide_today' } : item)
+    } : current);
+    const res = await fetch(`/api/parent/store/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
+    if (!res.ok) {
+      setError('Poe nähtavust ei saanud muuta.');
+      load();
+      return;
+    }
+    setNotice(action === 'hide_today' ? 'Peidetud tänaseks.' : 'Näidatakse täna.');
     load();
+  };
+
+  const changePassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setNotice('');
+    const res = await fetch('/api/parent/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, nextPassword })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.message || 'Parooli ei saanud muuta.');
+      return;
+    }
+    setCurrentPassword('');
+    setNextPassword('');
+    setNotice('Parool muudetud.');
   };
 
   const deleteStore = async (id: number) => {
@@ -291,6 +332,7 @@ export default function ParentHub() {
       </header>
 
       {error && <p className='error'>{error}</p>}
+      {notice && <p className='ok'>{notice}</p>}
 
       <section className='parent-grid'>
         <article className='parent-card'>
@@ -314,6 +356,15 @@ export default function ParentHub() {
             </div>
           </form>
         </article>
+      </section>
+
+      <section className='parent-card'>
+        <h2>Muuda parooli</h2>
+        <form className='parent-form parent-task-form' onSubmit={changePassword}>
+          <label><span>Praegune parool</span><input type='password' value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label>
+          <label><span>Uus parool</span><input type='password' value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} /></label>
+          <button type='submit'>Muuda parool</button>
+        </form>
       </section>
 
       <section className='parent-card'>

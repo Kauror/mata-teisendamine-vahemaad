@@ -13,7 +13,7 @@ export default async function ParentPage() {
   return (
     <main className='parent-page'>
       <div className='parent-shell'>
-        <Link className='subject-back-button' href='/'>← Rollivalik</Link>
+        <Link className='subject-back-button' href='/'>← Esilehele</Link>
         {configured && signedIn ? <ParentHub /> : <ParentLogin passwordMissing={!configured} />}
       </div>
     </main>

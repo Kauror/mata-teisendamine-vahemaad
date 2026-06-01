@@ -28,6 +28,11 @@ export type ParentTaskTemplate = {
   createdAt: string;
 };
 
+type DailyBonusResult = {
+  awarded: boolean;
+  amount: number;
+};
+
 type TaskTemplateRow = ParentTaskTemplate & { deletedAt: string | null };
 
 type TaskInstanceRow = {
@@ -117,6 +122,38 @@ function createAssignments(taskInstanceId: number, mode: AssignmentMode) {
   for (const learner of learnersForMode(mode)) {
     stmt.run(taskInstanceId, learner, 'active');
   }
+}
+
+function childDailyTasksDone(learner: Learner, date: string) {
+  const row = db.prepare(`
+    SELECT
+      COUNT(*) as total,
+      SUM(CASE WHEN a.status = 'active' THEN 1 ELSE 0 END) as active,
+      SUM(CASE WHEN a.status = 'completed' THEN 1 ELSE 0 END) as completed
+    FROM task_instance_assignments a
+    JOIN task_instances i ON i.id = a.taskInstanceId
+    WHERE a.learner = ? AND i.date = ? AND a.status IN ('active', 'completed', 'locked')
+  `).get(learner, date) as { total: number; active: number | null; completed: number | null } | undefined;
+  return Boolean(row && row.total > 0 && (row.active ?? 0) === 0 && (row.completed ?? 0) > 0);
+}
+
+function awardDailyTaskBonusIfReady(date: string, createdAt: string): DailyBonusResult {
+  if (!childDailyTasksDone('kiur', date) || !childDailyTasksDone('kirsi', date)) return { awarded: false, amount: 0 };
+  const existing = db.prepare('SELECT id FROM daily_task_bonuses WHERE date = ?').get(date);
+  if (existing) return { awarded: false, amount: 0 };
+
+  const description = 'Päevategevuste ühine boonus';
+  const metadata = JSON.stringify({ date, reason: 'both_children_completed_daily_tasks' });
+  const kiurLedger = db.prepare(`
+    INSERT INTO point_ledger (learner, amount, source, description, createdAt, metadataJson)
+    VALUES ('kiur', 1, 'daily_task_bonus', ?, ?, ?)
+  `).run(description, createdAt, metadata);
+  const kirsiLedger = db.prepare(`
+    INSERT INTO point_ledger (learner, amount, source, description, createdAt, metadataJson)
+    VALUES ('kirsi', 1, 'daily_task_bonus', ?, ?, ?)
+  `).run(description, createdAt, metadata);
+  db.prepare('INSERT INTO daily_task_bonuses (date, kiurLedgerEntryId, kirsiLedgerEntryId, createdAt) VALUES (?, ?, ?, ?)').run(date, kiurLedger.lastInsertRowid, kirsiLedger.lastInsertRowid, createdAt);
+  return { awarded: true, amount: 1 };
 }
 
 export function ensureTaskInstancesForDate(date = todayDateString()) {
@@ -247,6 +284,7 @@ export function completeTaskAssignment(assignmentId: number, learner: Learner) {
     }
 
     const completedAt = nowIso();
+    const date = todayDateString();
     const ledger = db.prepare(`
       INSERT INTO point_ledger (learner, amount, source, sourceId, description, createdAt, metadataJson)
       VALUES (?, ?, 'real_world_task', ?, ?, ?, ?)
@@ -273,7 +311,8 @@ export function completeTaskAssignment(assignmentId: number, learner: Learner) {
       if (!open) db.prepare("UPDATE task_instances SET status = 'completed', completedBy = ?, completedAt = ? WHERE id = ?").run(learner, completedAt, row.taskInstanceId);
     }
 
-    return { awarded: row.pointsSnapshot, balance: getBalance(learner) };
+    const bonus = awardDailyTaskBonusIfReady(date, completedAt);
+    return { awarded: row.pointsSnapshot, balance: getBalance(learner), dailyBonus: bonus };
   });
 
   return complete();
@@ -324,10 +363,10 @@ export function getTaskHistory() {
       l.createdAt,
       l.metadataJson,
       i.titleSnapshot,
-      i.assignmentModeSnapshot
+    i.assignmentModeSnapshot
     FROM point_ledger l
     LEFT JOIN task_instances i ON i.id = l.sourceId AND l.source = 'real_world_task'
-    WHERE l.source IN ('real_world_task', 'manual_adjustment')
+    WHERE l.source IN ('real_world_task', 'manual_adjustment', 'daily_task_bonus')
     ORDER BY l.createdAt DESC
   `).all();
 }

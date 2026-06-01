@@ -10,7 +10,7 @@ export default function KiurPage() {
   return (
     <main className='container subject-flow-page'>
       <section className='subject-flow-shell'>
-        <Link className='subject-back-button' href='/'>← Rollivalik</Link>
+        <Link className='subject-back-button' href='/'>← Esilehele</Link>
 
         <div className='child-header'>
           <span className='child-avatar' aria-hidden>👦</span>

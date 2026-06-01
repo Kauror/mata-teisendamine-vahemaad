@@ -25,7 +25,7 @@ type TaskHistory = {
   id: number;
   learner: 'kiur' | 'kirsi';
   amount: number;
-  source: 'real_world_task' | 'manual_adjustment';
+  source: 'real_world_task' | 'manual_adjustment' | 'daily_task_bonus';
   sourceId: number | null;
   description: string;
   createdAt: string;
@@ -166,7 +166,7 @@ export default function HistoryPage() {
   return (
     <main className='history-page'>
       <div className='history-shell'>
-        <Link className='subject-back-button' href='/'>← Rollivalik</Link>
+        <Link className='subject-back-button' href='/'>← Esilehele</Link>
         <header className='history-header'>
           <div>
             <h1>Ajalugu</h1>
@@ -216,20 +216,17 @@ export default function HistoryPage() {
                       const elapsed = isExercise && typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub';
                       const title = h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? h.titleSnapshot : `${subjectDisplay(h)} · ${exercise}`;
                       const scoreText = h.kind === 'task' ? `${h.amount > 0 ? '+' : ''}${h.amount} ⭐` : h.kind === 'store' ? `-${h.priceSnapshot} ⭐` : `${h.score}/${h.questionCount} · ${percent}% · ${elapsed}`;
+                      const detailText = h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
 
                       return (
                         <div key={`${h.kind}-${h.id}`} className='history-row'>
                           <div className='history-card-main'>
                             <div className='learner-cell'>{learner}</div>
                             <div className='exercise-cell'>
-                              <span>{title}</span>
-                              {isExercise && typeof h.earnedStars === 'number' && <span>Teenitud: +{h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐</span>}
-                              {h.kind === 'task' && firstCompleter && <span>Esimene tegija</span>}
-                              {h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason && <span>Põhjus: {meta.reason}</span>}
-                              {h.kind === 'store' && <span>Ostetud: {time}</span>}
+                              <span>{title} · {time}</span>
+                              {detailText && <span>{detailText}</span>}
                             </div>
-                            <div className='score-cell'>{scoreText}</div>
-                            <div className='meta-cell'>{time}</div>
+                            <div className='meta-cell'>{scoreText}</div>
                           </div>
                           <div className='row-actions'>
                             {isExercise && <Link className='view-button' href={`/history/${h.id}`}>Vaata</Link>}

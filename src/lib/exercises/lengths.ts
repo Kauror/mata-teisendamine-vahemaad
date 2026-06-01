@@ -26,6 +26,25 @@ const shuffle = shuffleWithRng;
 const kmMToM = (km:number,m:number)=>km*1000+m;
 const cmMmToMm = (cm:number,mm:number)=>cm*10+mm;
 
+function formatShortLengthMm(mm: number, variant: number) {
+  if (variant % 3 === 0) return `${mm} mm`;
+  const cm = Math.floor(mm / 10);
+  const rest = mm % 10;
+  if (variant % 3 === 1) return rest === 0 ? `${cm} cm` : `${cm} cm ${rest} mm`;
+  return `${(mm / 10).toLocaleString('et-EE', { maximumFractionDigits: 1 })} cm`;
+}
+
+function orderingCards(rng: RNG, i: number) {
+  const base = rInt(rng, 45, 145);
+  const offsets = shuffle(rng, [-18, -13, -9, -6, 5, 8, 12, 17]).slice(0, 2);
+  const values = shuffle(rng, [base, base + offsets[0], base + offsets[1]]).map((value) => Math.max(12, value));
+  return values.map((valueMm, index) => ({
+    id: `o-${i}-${index + 1}`,
+    label: formatShortLengthMm(valueMm, i + index),
+    valueMm
+  }));
+}
+
 function byType(type: InternalType, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
   if (type === 'suitable-unit-choice') {
     const items = [
@@ -54,16 +73,12 @@ function byType(type: InternalType, d: Difficulty, rng: RNG, i: number): Generat
   }
   if (type === 'length-comparison') {
     const mode=rInt(rng,0,1);
-    if(mode===0){const aCm=rInt(rng,3,9),aMm=rInt(rng,0,9),b=cmMmToMm(aCm,aMm)+(pick(rng,[-2,0,3]));const a=cmMmToMm(aCm,aMm); const q=`Võrdle pikkusi: ${aCm} cm ${aMm} mm ja ${b} mm. Vali: vasak, parem või võrdsed.`; const opts=['vasak','parem','võrdsed']; const idx=a>b?0:a<b?1:2; return {id:`cmp-${i}`,category:'Võrdlemine',difficulty:d,kind:'choice',question:q,choiceOptions:opts,correctAnswer:idx,explanation:`${aCm} cm ${aMm} mm = ${a} mm.`,subtopic:'pikkusuhikud'};}
-    const aKm=rInt(rng,1,4),aM=pick(rng,[20,200,500,800]); const left=kmMToM(aKm,aM); const right=left+pick(rng,[-50,0,120]); const opts=['vasak','parem','võrdsed']; const idx=left>right?0:left<right?1:2; return {id:`cmp-${i}`,category:'Võrdlemine',difficulty:d,kind:'choice',question:`Kumb on pikem: ${aKm} km ${aM} m või ${right} m?`,choiceOptions:opts,correctAnswer:idx,explanation:`${aKm} km ${aM} m = ${left} m.`,subtopic:'pikkusuhikud'};
+    if(mode===0){const aCm=rInt(rng,3,9),aMm=rInt(rng,0,9),b=cmMmToMm(aCm,aMm)+(pick(rng,[-2,0,3]));const a=cmMmToMm(aCm,aMm); const q=`Kumb on pikem? A) ${aCm} cm ${aMm} mm  B) ${b} mm`; const opts=['A','B','võrdsed']; const idx=a>b?0:a<b?1:2; return {id:`cmp-${i}`,category:'Võrdlemine',difficulty:d,kind:'choice',question:q,choiceOptions:opts,correctAnswer:idx,explanation:`A = ${a} mm. B = ${b} mm.`,subtopic:'pikkusuhikud'};}
+    const aKm=rInt(rng,1,4),aM=pick(rng,[20,200,450,500,800]); const left=kmMToM(aKm,aM); const right=left+pick(rng,[-80,-50,0,70,120]); const opts=['A','B','võrdsed']; const idx=left>right?0:left<right?1:2; return {id:`cmp-${i}`,category:'Võrdlemine',difficulty:d,kind:'choice',question:`Kumb on pikem? A) ${aKm} km ${aM} m  B) ${right} m`,choiceOptions:opts,correctAnswer:idx,explanation:`A = ${left} m. B = ${right} m.`,subtopic:'pikkusuhikud'};
   }
   if (type === 'length-ordering') {
     const dir = rInt(rng,0,1)===0?'asc':'desc';
-    const cards = [
-      { id:`o-${i}-1`, label:'73 mm', valueMm:73 },
-      { id:`o-${i}-2`, label:'7 cm', valueMm:70 },
-      { id:`o-${i}-3`, label:'7 cm 5 mm', valueMm:75 }
-    ];
+    const cards = orderingCards(rng, i);
     return {id:`ord-${i}`,category:'Järjestamine',difficulty:d,kind:'ordering',question:dir==='asc'?'Järjesta pikkused lühimast pikimani.':'Järjesta pikkused pikimast lühimani.',orderingCards:shuffle(rng,cards),orderingDirection:dir,expectedUnit:'mm',correctAnswer:0,explanation:'Võrdlemiseks teisenda kõik millimeetriteks.',subtopic:'pikkusuhikud'};
   }
   if (type === 'length-addition') {
@@ -113,14 +128,15 @@ export function generateSession(_mode: Category, difficulty: Difficulty, count: 
   const types = mixedPlan(rng, count);
   const out: GeneratedQuestion[] = [];
   const used = new Set<string>();
+  const signature = (q: GeneratedQuestion) => `${q.question}|${q.correctAnswer}|${q.orderingCards?.map((card) => `${card.label}:${card.valueMm}`).join(',') ?? ''}`;
   for (let i = 0; i < count; i++) {
     let tries = 0;
     let q: GeneratedQuestion;
     do {
       q = byType(types[i], difficulty, rng, i + tries * 31);
       tries++;
-    } while (used.has(`${q.question}|${q.correctAnswer}`) && tries < 20);
-    used.add(`${q.question}|${q.correctAnswer}`);
+    } while (used.has(signature(q)) && tries < 20);
+    used.add(signature(q));
     out.push({ ...q, id: `${q.id}-${i}` });
   }
   return out;

@@ -174,7 +174,7 @@ function TestPageContent() {
     if (current.kind === 'ordering') {
       if (selected.length !== cards.length) return setError('Vali kõik kaardid õigesse järjekorda.');
     } else if (isChoiceQuestion) {
-      if (!choiceAnswers[index]) return setError('Vali sobiv märk.');
+      if (!choiceAnswers[index]) return setError('Vali vastus.');
     } else {
       const currentAnswer = getCurrentAnswer();
       const copy = [...answers]; copy[index] = currentAnswer; setAnswers(copy);

@@ -11,6 +11,12 @@ type FailedSprintPair = {
   chosenOption: EnglishVocabularyWord;
 };
 
+type SprintReward = {
+  awardedAmount: number;
+  balanceAfter: number;
+  capReached: boolean;
+} | null;
+
 export default function SprintPage() {
   const [runSeed] = useState(() => Date.now() + Math.floor(Math.random() * 1_000_000));
   const [score, setScore] = useState(0);
@@ -20,7 +26,9 @@ export default function SprintPage() {
   const [pairs, setPairs] = useState(0);
   const [boardSeed, setBoardSeed] = useState(1);
   const [ended, setEnded] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(15);
+  const [timeLeft, setTimeLeft] = useState(12);
+  const [failedPair, setFailedPair] = useState<FailedSprintPair | null>(null);
+  const [reward, setReward] = useState<SprintReward>(null);
   const endedRef = useRef(false);
   const savedHistoryRef = useRef(false);
   const startedAtRef = useRef(Date.now());
@@ -98,7 +106,9 @@ export default function SprintPage() {
         elapsedSeconds,
         questions
       })
-    });
+    }).then((response) => response.ok ? response.json() : null)
+      .then((body) => setReward(body?.reward ?? null))
+      .catch(() => setReward(null));
   }, [best, elapsedSeconds, ended, mistakes, pairs, score]);
 
   if (ended) {
@@ -123,6 +133,21 @@ export default function SprintPage() {
             <p className='sprint-result-stat-value'>{elapsedSeconds}s</p>
           </article>
         </div>
+        {failedPair && (
+          <section className='sprint-failed-card'>
+            <h2>Viimane sõna</h2>
+            <p><strong>{failedPair.word.english}</strong> tähendab <strong>{failedPair.word.estonian}</strong>.</p>
+            <p>Sina valisid: <strong>{failedPair.chosenOption.estonian}</strong>.</p>
+          </section>
+        )}
+        {reward && (
+          <section className='sprint-failed-card sprint-reward-card'>
+            <h2>Tähed</h2>
+            <p>Teenitud: <strong>+{reward.awardedAmount.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐</strong></p>
+            <p>Tähed kokku: <strong>{reward.balanceAfter.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐</strong></p>
+            {reward.capReached && reward.awardedAmount === 0 && <p>Tänane õppimise punktipiir on täis.</p>}
+          </section>
+        )}
         <div className='sprint-result-actions'>
           <button className='sprint-primary-button' onClick={() => location.reload()}>▶ Proovi uuesti</button>
           <Link className='sprint-secondary-button' href='/kiur/inglise-keel'>← Inglise keel</Link>
@@ -142,14 +167,16 @@ export default function SprintPage() {
         setScore((v) => v + 1);
         setStreak((v) => v + 1);
       } else {
-        failedPairRef.current = { word, chosenOption };
+        const failed = { word, chosenOption };
+        failedPairRef.current = failed;
+        setFailedPair(failed);
         endedRef.current = true;
         setMistakes((v) => v + 1);
         setEnded(true);
       }
     }} onBoardComplete={() => {
       if (endedRef.current) return;
-      setTimeLeft((v) => Math.min(30, 15 + Math.min(v, 10)));
+      setTimeLeft((v) => Math.min(16, 12 + Math.min(v, 4)));
       setBoardSeed((v) => v + 1);
     }} showFeedback={false} />
   </section></main>;

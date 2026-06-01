@@ -27,10 +27,15 @@ function stars(value: number) {
   return Number.isInteger(value) ? String(value) : value.toLocaleString('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
+function learnerName(learner: Learner) {
+  return learner === 'kiur' ? 'Kiuri' : 'Kirsi';
+}
+
 export default function DailyTasksPanel({ learner }: { learner: Learner }) {
   const [data, setData] = useState<ChildDashboard | null>(null);
   const [error, setError] = useState('');
   const [confirmTask, setConfirmTask] = useState<ChildTask | null>(null);
+  const [bonusOpen, setBonusOpen] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = useCallback(() => {
@@ -59,6 +64,8 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || 'Tegevust ei saanud märkida.');
       }
+      const body = await res.json().catch(() => ({}));
+      if (body.dailyBonus?.awarded) setBonusOpen(true);
       setConfirmTask(null);
       load();
     } catch (err) {
@@ -78,7 +85,7 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
         <strong>⭐ {stars(balance)} tähte</strong>
         <span>🔥 Õpiseeria: {data?.streak ?? 0} päeva</span>
         <Link href={storeHref}>🛒 Pood</Link>
-        <Link href='/history'>📄 Vaata ajalugu</Link>
+        <Link href='/history'>📄 Ajalugu</Link>
       </div>
 
       <div className='daily-task-card'>
@@ -105,7 +112,7 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
                   <span className='daily-title'>{task.title}</span>
                   <strong>+{task.points} ⭐</strong>
                   {completed && <small>Tehtud</small>}
-                  {locked && <small>Tehtud teise lapse poolt</small>}
+                  {locked && <small>Tehtud {task.completedBy ? learnerName(task.completedBy) : 'teise lapse'} poolt</small>}
                 </button>
               );
             })}
@@ -123,6 +130,17 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
               <button type='button' className='filter-chip' onClick={() => setConfirmTask(null)}>Ei</button>
               <button type='button' onClick={completeTask} disabled={busyId === confirmTask.assignmentId}>Jah, tehtud</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {bonusOpen && (
+        <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
+          <div className='task-modal'>
+            <h2>Väga tubli!</h2>
+            <p>Mõlemal on tänased ülesanded tehtud. Siit tuleb boonuspunkt!</p>
+            <strong>Kiur +1 ⭐ ja Kirsi +1 ⭐</strong>
+            <button type='button' onClick={() => setBonusOpen(false)}>Selge</button>
           </div>
         </div>
       )}

@@ -197,6 +197,22 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_study_rewards_learner_key_date
     ON study_attempt_rewards(learner, exerciseKey, createdAt);
+
+  CREATE TABLE IF NOT EXISTS parent_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS daily_task_bonuses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL UNIQUE,
+    kiurLedgerEntryId INTEGER NOT NULL,
+    kirsiLedgerEntryId INTEGER NOT NULL,
+    createdAt TEXT NOT NULL,
+    FOREIGN KEY (kiurLedgerEntryId) REFERENCES point_ledger(id),
+    FOREIGN KEY (kirsiLedgerEntryId) REFERENCES point_ledger(id)
+  );
 `);
 
 export default db;

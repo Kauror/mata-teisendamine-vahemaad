@@ -59,7 +59,7 @@ type LearningPointSettingsRow = Omit<LearningPointSettings, 'learningPointsEnabl
 const DEFAULT_SETTINGS: LearningPointSettings = {
   baseValue: 1,
   decayStep: 0.1,
-  minimumValue: 0.1,
+  minimumValue: 0,
   dailyCap: 10,
   streakIntervalDays: 7,
   streakBonusAmount: 1,
@@ -68,6 +68,7 @@ const DEFAULT_SETTINGS: LearningPointSettings = {
 };
 
 const KEY_BY_CATEGORY: Record<string, string> = {
+  'Inglise keel - sprint': 'kiur.english.sprint',
   'Teisendamine': 'kiur.math.teisendamine',
   'Võrdlemine': 'kiur.math.vordlemine',
   'Järjestamine': 'kiur.math.jarjestamine',
@@ -151,7 +152,8 @@ export function updateLearningPointSettings(input: LearningPointSettings) {
 }
 
 export function exerciseKeyForAttempt(learner: Learner, category: string, topic?: string | null) {
-  if (learner === 'kiur' && topic && KEY_BY_TOPIC[topic]) return KEY_BY_TOPIC[topic];
+  if (learner === 'kiur' && topic === 'sprint') return 'kiur.english.sprint';
+  if (learner === 'kiur' && topic && KEY_BY_TOPIC[topic]) return `${KEY_BY_TOPIC[topic]}.${category.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'harjutus'}`;
   const key = KEY_BY_CATEGORY[category];
   if (key) return key;
   return `${learner}.math.${category.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'harjutus'}`;
@@ -181,7 +183,7 @@ function studyDates(learner: Learner) {
     SELECT DISTINCT substr(createdAt, 1, 10) as day
     FROM attempts
     WHERE (learner = ? OR (? = 'kirsi' AND learner IS NULL AND category IN ('Arvutamine 10 piires','Arvutamine 20 piires','Suurem või väiksem kuni 100','Segaülesanded')))
-      AND (subject IS NULL OR subject = 'matemaatika')
+      AND (subject IS NULL OR subject = 'matemaatika' OR (subject = 'inglise-keel' AND topic = 'sprint'))
     ORDER BY day DESC
   `).all(learner, learner) as Array<{ day: string }>;
   return new Set(rows.map((row) => row.day));
@@ -204,7 +206,7 @@ function hadStudyAttemptBeforeToday(learner: Learner, date: string, attemptId: n
   const row = db.prepare(`
     SELECT id FROM attempts
     WHERE id <> ? AND substr(createdAt, 1, 10) = ? AND (learner = ? OR (? = 'kirsi' AND learner IS NULL AND category IN ('Arvutamine 10 piires','Arvutamine 20 piires','Suurem või väiksem kuni 100','Segaülesanded')))
-      AND (subject IS NULL OR subject = 'matemaatika')
+      AND (subject IS NULL OR subject = 'matemaatika' OR (subject = 'inglise-keel' AND topic = 'sprint'))
     LIMIT 1
   `).get(attemptId, date, learner, learner);
   return Boolean(row);
@@ -215,7 +217,7 @@ export function awardStudyPointsForAttempt(attemptId: number): StudyReward | nul
   if (existing) return existing;
 
   const attempt = db.prepare('SELECT id, createdAt, category, questionCount, score, learner, subject, topic FROM attempts WHERE id = ?').get(attemptId) as AttemptRow | undefined;
-  if (!attempt || attempt.subject === 'inglise-keel' || attempt.topic === 'sprint') return null;
+  if (!attempt || (attempt.subject === 'inglise-keel' && attempt.topic !== 'sprint')) return null;
   const learner = parseLearner(attempt);
   if (!learner || attempt.questionCount <= 0) return null;
 
@@ -228,9 +230,9 @@ export function awardStudyPointsForAttempt(attemptId: number): StudyReward | nul
     if (duplicate) return duplicate;
 
     const attemptNumber = decayCountToday(learner, exerciseKey, date) + 1;
-    const baseValue = settings.learningPointsEnabled ? Math.max(settings.minimumValue, settings.baseValue - settings.decayStep * (attemptNumber - 1)) : 0;
+    const baseValue = settings.learningPointsEnabled ? Math.max(0, settings.baseValue - settings.decayStep * (attemptNumber - 1)) : 0;
     const scorePercent = Math.max(0, Math.min(1, attempt.score / attempt.questionCount));
-    const earnedBeforeCap = baseValue * scorePercent;
+    const earnedBeforeCap = baseValue;
     const before = dailyLearningEarned(learner, date);
     const remaining = Math.max(0, settings.dailyCap - before);
     const awarded = settings.learningPointsEnabled ? Math.max(0, Math.min(earnedBeforeCap, remaining)) : 0;

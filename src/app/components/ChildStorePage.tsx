@@ -105,7 +105,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
           <div className='store-balance'>⭐ {stars(balance)} tähte</div>
         </header>
 
-        <Link className='history-link' href='/history'>📄 Vaata ajalugu</Link>
+        <Link className='history-link' href='/history'>📄 Ajalugu</Link>
         {error && <p className='error'>{error}</p>}
 
         <section className='store-grid'>

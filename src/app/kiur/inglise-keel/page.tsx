@@ -16,6 +16,6 @@ export default function KiurEnglishPage() {
     <div className='english-mode-grid'>
       <Link href='/kiur/inglise-keel/sprint' className='english-mode-card'><span className='english-mode-icon' aria-hidden>⚡</span><strong>Sprint</strong><span>Parim tulemus: {best}</span></Link>
     </div>
-    <Link className='setup-history-link' href='/history'>📄 Vaata ajalugu</Link>
+    <Link className='setup-history-link' href='/history'>📄 Ajalugu</Link>
   </section></main>;
 }

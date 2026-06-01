@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, scorePercent, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel } from '@/lib/history';
 
 type H = {
   id: number;
@@ -20,7 +20,6 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak }: { 
   const router = useRouter();
   const latest = attempts.slice(0, 3);
   const today = attempts.filter((a) => isTodayIso(a.createdAt));
-  const average = today.length ? Math.round(today.reduce((sum, a) => sum + scorePercent(a.score, a.questionCount), 0) / today.length) : null;
   const last = attempts[0];
   const lastText = last ? `Viimati harjutas ${relativeDateTimeLabel(last.createdAt)}` : 'Harjutusi pole veel tehtud';
 
@@ -35,16 +34,8 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak }: { 
         </div>
       </div>
 
-      <div className='stats'>
-        <div className='stat-tile'>
-          <span>Keskmine tulemus</span>
-          <strong>{average === null ? '—' : `${average}%`}</strong>
-        </div>
-        <div className='stat-tile'>
-          <span>Õpiseeria</span>
-          <strong>{streak}</strong>
-          <small>päeva</small>
-        </div>
+      <div className='child-overview'>
+        <p className='streak-badge'><span aria-hidden>🔥</span><strong>{streak}</strong> päeva õpiseeria</p>
       </div>
 
       <div className='recent-panel'>
@@ -102,7 +93,10 @@ export default function Home() {
         <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} />
         <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} />
       </div>
-      <Link href='/history' className='dashboard-history-link'>Vaata kogu ajalugu</Link>
+      <div className='dashboard-footer-links'>
+        <Link href='/history' className='dashboard-history-link'>Ajalugu</Link>
+        <Link href='/vanem' className='dashboard-history-link'>Lapsevanema ala</Link>
+      </div>
     </main>
   );
 }

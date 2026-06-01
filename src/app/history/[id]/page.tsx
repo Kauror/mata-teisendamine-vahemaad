@@ -102,7 +102,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
               <span>Tähed kokku: {formatStars(reward.balanceAfter)} ⭐</span>
               <span>Õpiseeria: {reward.streakLength} päeva</span>
               {reward.streakBonusAwarded && <span>Seeriaboonus: +{formatStars(reward.streakBonusAmount)} ⭐</span>}
-              {reward.capReached && <span>Tänane õppimise punktipiir on täis. Harjutus salvestati.</span>}
+              {reward.capReached && reward.awardedAmount === 0 && <span>Tänane õppimise punktipiir on täis.</span>}
             </div>
           )}
         </section>
@@ -138,7 +138,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
         <Link className='btn' href={retryHref}>Tee {attemptLabel.toLowerCase()} uuesti</Link>
         <Link className='btn chip active' href={isEnglish ? '/kiur/inglise-keel' : (isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika')}>Vali uus harjutus</Link>
       </div>
-      <Link className='practice-back-button result-history-back-link' href='/history'>Vaata ajalugu</Link>
+      <Link className='practice-back-button result-history-back-link' href='/history'>Ajalugu</Link>
       </section>
     </main>
   );
