@@ -1,0 +1,235 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import PictureWordSprintBoard from '@/app/components/PictureWordSprintBoard';
+import { shuffle } from '@/lib/englishGame';
+import { fetchBestKirsiReadingSprintScore } from '@/lib/kirsiReadingHistory';
+import { KIRSI_READING_PAIRS, KirsiReadingPair } from '@/lib/kirsiReadingPairs';
+import { formatStars } from '@/lib/formatStars';
+import { formatElapsed } from '@/lib/validation';
+
+type ReviewItem = {
+  id: string;
+  question: string;
+  userAnswer: string;
+  correctAnswer: number;
+  isCorrect: boolean;
+  kind: 'choice';
+  image: string;
+  selectedWord: string;
+  correctWord: string;
+};
+
+type WrongMatch = {
+  picture: KirsiReadingPair;
+  selected: KirsiReadingPair;
+};
+
+type SprintReward = {
+  awardedAmount: number;
+  balanceAfter: number;
+  capReached: boolean;
+} | null;
+
+const BOARD_SIZE = 5;
+
+function buildBoardPairs(runSeed: number, boardIndex: number) {
+  const cycle = Math.floor((boardIndex * BOARD_SIZE) / KIRSI_READING_PAIRS.length);
+  const start = (boardIndex * BOARD_SIZE) % KIRSI_READING_PAIRS.length;
+  const deck = shuffle(KIRSI_READING_PAIRS, runSeed + cycle * 7919);
+  return deck.slice(start, start + BOARD_SIZE);
+}
+
+export default function KirsiPictureWordSprintPage() {
+  const [started, setStarted] = useState(false);
+  const [score, setScore] = useState(0);
+  const [best, setBest] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [boardIndex, setBoardIndex] = useState(0);
+  const [ended, setEnded] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [wrongMatch, setWrongMatch] = useState<WrongMatch | null>(null);
+  const [reward, setReward] = useState<SprintReward>(null);
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
+  const runSeedRef = useRef(Date.now());
+  const startedAtRef = useRef(Date.now());
+  const endedRef = useRef(false);
+  const savedHistoryRef = useRef(false);
+
+  const boardPairs = useMemo(() => buildBoardPairs(runSeedRef.current, boardIndex), [boardIndex]);
+
+  useEffect(() => {
+    void fetchBestKirsiReadingSprintScore()
+      .then(setBest)
+      .catch(() => setBest(0));
+  }, []);
+
+  useEffect(() => {
+    if (!started || ended) return;
+    const timer = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [ended, started]);
+
+  useEffect(() => {
+    if (!ended || savedHistoryRef.current) return;
+    savedHistoryRef.current = true;
+
+    if (score > best) {
+      setBest(score);
+    }
+
+    void fetch('/api/history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        createdAt: new Date().toISOString(),
+        learner: 'kirsi',
+        subject: 'lugemine',
+        topic: 'pilt-ja-sona',
+        category: 'Lugemine - pilt ja sõna',
+        difficulty: 'Sprint',
+        questionCount: score + 1,
+        score,
+        elapsedSeconds,
+        questions: reviewItems
+      })
+    }).then((response) => response.ok ? response.json() : null)
+      .then((body) => setReward(body?.reward ?? null))
+      .catch(() => setReward(null));
+  }, [best, elapsedSeconds, ended, reviewItems, score]);
+
+  const startGame = () => {
+    runSeedRef.current = Date.now();
+    startedAtRef.current = Date.now();
+    endedRef.current = false;
+    savedHistoryRef.current = false;
+    setStarted(true);
+    setEnded(false);
+    setScore(0);
+    setStreak(0);
+    setBoardIndex(0);
+    setElapsedSeconds(0);
+    setWrongMatch(null);
+    setReward(null);
+    setReviewItems([]);
+  };
+
+  const recordPair = (ok: boolean, picture: KirsiReadingPair, selected: KirsiReadingPair) => {
+    if (endedRef.current) return;
+
+    const item: ReviewItem = {
+      id: `${picture.id}-${Date.now()}`,
+      question: `${picture.image} — ${picture.word}`,
+      userAnswer: selected.word,
+      correctAnswer: 0,
+      isCorrect: ok,
+      kind: 'choice',
+      image: picture.image,
+      selectedWord: selected.word,
+      correctWord: picture.word
+    };
+    setReviewItems((prev) => [...prev, item]);
+
+    if (ok) {
+      setScore((value) => value + 1);
+      setStreak((value) => value + 1);
+      return;
+    }
+
+    endedRef.current = true;
+    setWrongMatch({ picture, selected });
+    setElapsedSeconds(Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000)));
+    setEnded(true);
+  };
+
+  if (!started) {
+    return (
+      <main className='container english-page reading-page'>
+        <section className='practice-shell english-shell reading-intro-shell'>
+          <Link className='practice-back-button' href='/kirsi/lugemine'>← Lugemine</Link>
+          <header className='subject-header'>
+            <div className='subject-emoji'>🖼️</div>
+            <h1>Pilt ja sõna</h1>
+          </header>
+          <p className='reading-intro-text'>Ühenda pilt õige sõnaga.</p>
+          <button type='button' className='start-button' onClick={startGame}>Alusta</button>
+        </section>
+      </main>
+    );
+  }
+
+  if (ended) {
+    return (
+      <main className='english-page sprint-result-page reading-page'>
+        <section className='sprint-result-panel'>
+          <header className='sprint-result-header'>
+            <div className='sprint-result-emoji' aria-hidden>🖼️</div>
+            <h1 className='sprint-result-title'>Tulemus</h1>
+            <p className='sprint-result-subtitle'>Vaata õiget paari ja proovi soovi korral uuesti.</p>
+          </header>
+          <div className='sprint-result-stats-grid'>
+            <article className='sprint-result-stat-card'>
+              <p className='sprint-result-stat-label'>Skoor</p>
+              <p className='sprint-result-stat-value'>{score}</p>
+            </article>
+            <article className='sprint-result-stat-card'>
+              <p className='sprint-result-stat-label'>Jada</p>
+              <p className='sprint-result-stat-value'>{streak}</p>
+            </article>
+            <article className='sprint-result-stat-card'>
+              <p className='sprint-result-stat-label'>Aeg</p>
+              <p className='sprint-result-stat-value'>{formatElapsed(elapsedSeconds)}</p>
+            </article>
+          </div>
+          {wrongMatch ? (
+            <section className='reading-correction-card'>
+              <div className='reading-correction-picture' aria-label='Valitud pilt'>{wrongMatch.picture.image}</div>
+              <p>Sinu valik: <strong>{wrongMatch.selected.word}</strong></p>
+              <p>Õige vastus: <strong>{wrongMatch.picture.word}</strong></p>
+            </section>
+          ) : null}
+          {reward ? (
+            <section className='reading-correction-card sprint-reward-card'>
+              <p>Teenitud: <strong>+{formatStars(reward.awardedAmount)} ⭐</strong></p>
+              <p>Tähed kokku: <strong>{formatStars(reward.balanceAfter)} ⭐</strong></p>
+              {reward.capReached && reward.awardedAmount === 0 ? <p>Tänane õppimise punktipiir on täis.</p> : null}
+            </section>
+          ) : null}
+          <div className='sprint-result-actions'>
+            <button className='sprint-primary-button' onClick={startGame}>▶ Proovi uuesti</button>
+            <Link className='sprint-secondary-button' href='/kirsi/lugemine'>← Lugemine</Link>
+            <Link className='sprint-secondary-button' href='/kirsi'>← Aine valik</Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className='container english-page reading-page'>
+      <section className='practice-shell english-shell'>
+        <Link className='practice-back-button' href='/kirsi/lugemine'>← Katkesta</Link>
+        <div className='matching-hud'>
+          <strong>Pilt ja sõna</strong>
+          <span>Skoor: {score}</span>
+          <span>Jada: {streak}</span>
+          <span>Aeg: {formatElapsed(elapsedSeconds)}</span>
+          <span>Parim: {Math.max(best, score)}</span>
+        </div>
+        <PictureWordSprintBoard
+          key={`reading-${boardIndex}`}
+          pairs={boardPairs}
+          layoutSeed={runSeedRef.current + boardIndex}
+          onPair={recordPair}
+          onBoardComplete={() => {
+            if (endedRef.current) return;
+            setBoardIndex((value) => value + 1);
+          }}
+        />
+      </section>
+    </main>
+  );
+}

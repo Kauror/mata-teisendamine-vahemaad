@@ -80,7 +80,9 @@ const KEY_BY_CATEGORY: Record<string, string> = {
   'Arvutamine 10 piires': 'kirsi.math.arvutamine-10',
   'Arvutamine 20 piires': 'kirsi.math.arvutamine-20',
   'Suurem või väiksem kuni 100': 'kirsi.math.suurem-vaiksem-100',
-  'Segaülesanded': 'kirsi.math.segaulesanded'
+  'Segaülesanded': 'kirsi.math.segaulesanded',
+  'Lugemine - pilt ja sõna': 'kirsi.reading.pilt-ja-sona',
+  'Lugemine - esimene häälik': 'kirsi.reading.esimene-haalik'
 };
 
 const KEY_BY_TOPIC: Record<string, string> = {
@@ -153,6 +155,8 @@ export function updateLearningPointSettings(input: LearningPointSettings) {
 
 export function exerciseKeyForAttempt(learner: Learner, category: string, topic?: string | null) {
   if (learner === 'kiur' && topic === 'sprint') return 'kiur.english.sprint';
+  if (learner === 'kirsi' && topic === 'pilt-ja-sona') return 'kirsi.reading.pilt-ja-sona';
+  if (learner === 'kirsi' && topic === 'esimene-haalik') return 'kirsi.reading.esimene-haalik';
   if (learner === 'kiur' && topic && KEY_BY_TOPIC[topic]) return `${KEY_BY_TOPIC[topic]}.${category.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'harjutus'}`;
   const key = KEY_BY_CATEGORY[category];
   if (key) return key;
@@ -181,11 +185,10 @@ function decayCountToday(learner: Learner, exerciseKey: string, date: string) {
 function studyDates(learner: Learner) {
   const rows = db.prepare(`
     SELECT DISTINCT substr(createdAt, 1, 10) as day
-    FROM attempts
-    WHERE (learner = ? OR (? = 'kirsi' AND learner IS NULL AND category IN ('Arvutamine 10 piires','Arvutamine 20 piires','Suurem või väiksem kuni 100','Segaülesanded')))
-      AND (subject IS NULL OR subject = 'matemaatika' OR (subject = 'inglise-keel' AND topic = 'sprint'))
+    FROM study_attempt_rewards
+    WHERE learner = ?
     ORDER BY day DESC
-  `).all(learner, learner) as Array<{ day: string }>;
+  `).all(learner) as Array<{ day: string }>;
   return new Set(rows.map((row) => row.day));
 }
 
@@ -204,11 +207,10 @@ export function getCurrentLearningStreak(learner: Learner, today = todayDateStri
 
 function hadStudyAttemptBeforeToday(learner: Learner, date: string, attemptId: number) {
   const row = db.prepare(`
-    SELECT id FROM attempts
-    WHERE id <> ? AND substr(createdAt, 1, 10) = ? AND (learner = ? OR (? = 'kirsi' AND learner IS NULL AND category IN ('Arvutamine 10 piires','Arvutamine 20 piires','Suurem või väiksem kuni 100','Segaülesanded')))
-      AND (subject IS NULL OR subject = 'matemaatika' OR (subject = 'inglise-keel' AND topic = 'sprint'))
+    SELECT id FROM study_attempt_rewards
+    WHERE attemptId <> ? AND substr(createdAt, 1, 10) = ? AND learner = ?
     LIMIT 1
-  `).get(attemptId, date, learner, learner);
+  `).get(attemptId, date, learner);
   return Boolean(row);
 }
 

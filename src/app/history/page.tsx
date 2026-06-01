@@ -44,7 +44,7 @@ type PurchaseHistory = {
 
 type HistoryItem = ExerciseHistory | TaskHistory | PurchaseHistory;
 type ChildFilter = 'all' | 'kiur' | 'kirsi';
-type SubjectFilter = 'all' | 'harjutused' | 'matemaatika' | 'inglise-keel' | 'paevategevused' | 'pood';
+type SubjectFilter = 'all' | 'harjutused' | 'matemaatika' | 'inglise-keel' | 'lugemine' | 'paevategevused' | 'pood';
 
 function itemDate(item: HistoryItem) {
   return item.kind === 'store' ? item.purchasedAt : item.createdAt;
@@ -67,10 +67,12 @@ function subjectKey(a: ExerciseHistory): SubjectFilter {
   const topic = (a.topic || '').toLowerCase();
   const cat = (a.category || '').toLowerCase();
   if (subj.includes('inglise') || topic.includes('inglise') || cat.includes('inglise')) return 'inglise-keel';
+  if (subj.includes('lugemine') || topic.includes('pilt-ja-sona') || cat.includes('lugemine')) return 'lugemine';
   return 'matemaatika';
 }
 
 function subjectDisplay(a: ExerciseHistory) {
+  if (subjectKey(a) === 'lugemine') return 'Lugemine';
   return subjectKey(a) === 'inglise-keel' ? 'Inglise keel' : subjectLabel(a.subject);
 }
 
@@ -186,6 +188,7 @@ export default function HistoryPage() {
           <button type='button' className={subjectFilter === 'harjutused' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('harjutused')}>Harjutused</button>
           <button type='button' className={subjectFilter === 'matemaatika' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('matemaatika')}>Matemaatika</button>
           <button type='button' className={subjectFilter === 'inglise-keel' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('inglise-keel')}>Inglise keel</button>
+          <button type='button' className={subjectFilter === 'lugemine' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('lugemine')}>Lugemine</button>
           <button type='button' className={subjectFilter === 'paevategevused' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('paevategevused')}>⭐ Päevategevused</button>
           <button type='button' className={subjectFilter === 'pood' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('pood')}>🛒 Pood</button>
         </section>

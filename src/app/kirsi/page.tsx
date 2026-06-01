@@ -2,7 +2,8 @@ import Link from 'next/link';
 import DailyTasksPanel from '@/app/components/DailyTasksPanel';
 
 const SUBJECTS = [
-  { id: 'matemaatika', name: 'Matemaatika', icon: '🧮', href: '/kirsi/matemaatika', accent: 'blue' }
+  { id: 'matemaatika', name: 'Matemaatika', icon: '🧮', href: '/kirsi/matemaatika', accent: 'blue' },
+  { id: 'lugemine', name: 'Lugemine', icon: '📖', href: '/kirsi/lugemine', accent: 'pink' }
 ] as const;
 
 export default function KirsiPage() {
@@ -18,7 +19,7 @@ export default function KirsiPage() {
 
         <DailyTasksPanel learner='kirsi' />
 
-        <div className='subject-grid subject-grid-single'>
+        <div className='subject-grid'>
           {SUBJECTS.map((subject) => (
             <Link key={subject.id} className='subject-card' data-accent={subject.accent} href={subject.href}>
               <span className='subject-icon' aria-hidden>{subject.icon}</span>

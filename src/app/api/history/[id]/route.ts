@@ -31,17 +31,6 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   const attemptId = Number(id);
   if (!Number.isInteger(attemptId)) return NextResponse.json({ message: 'Vale tulemus.' }, { status: 400 });
 
-  const remove = db.transaction(() => {
-    const rewards = db.prepare('SELECT ledgerEntryId FROM study_attempt_rewards WHERE attemptId = ?').all(attemptId) as Array<{ ledgerEntryId: number | null }>;
-    const streakBonuses = db.prepare('SELECT ledgerEntryId FROM streak_bonus_awards WHERE attemptId = ?').all(attemptId) as Array<{ ledgerEntryId: number | null }>;
-    db.prepare('DELETE FROM streak_bonus_awards WHERE attemptId = ?').run(attemptId);
-    db.prepare('DELETE FROM study_attempt_rewards WHERE attemptId = ?').run(attemptId);
-    for (const row of [...rewards, ...streakBonuses]) {
-      if (row.ledgerEntryId) db.prepare('DELETE FROM point_ledger WHERE id = ?').run(row.ledgerEntryId);
-    }
-    db.prepare('DELETE FROM attempts WHERE id = ?').run(attemptId);
-  });
-
-  remove();
+  db.prepare('DELETE FROM attempts WHERE id = ?').run(attemptId);
   return NextResponse.json({ ok: true });
 }
