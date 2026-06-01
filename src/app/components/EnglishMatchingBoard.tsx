@@ -5,7 +5,7 @@ import { shuffle } from '@/lib/englishGame';
 
 type EnglishMatchingBoardProps = {
   words: EnglishVocabularyWord[];
-  onPair: (ok: boolean, word: EnglishVocabularyWord) => void;
+  onPair: (ok: boolean, word: EnglishVocabularyWord, chosenOption: EnglishVocabularyWord) => void;
   onBoardComplete: () => void;
   layoutSeed?: number;
   showFeedback?: boolean;
@@ -19,7 +19,7 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, l
   const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedBoardKeyRef = useRef<string | null>(null);
   const onBoardCompleteRef = useRef(onBoardComplete);
-  const boardKey = useMemo(() => words.map((word) => word.id).join('|'), [words]);
+  const boardKey = useMemo(() => `${layoutSeed}:${words.map((word) => word.id).join('|')}`, [layoutSeed, words]);
 
   useEffect(() => {
     onBoardCompleteRef.current = onBoardComplete;
@@ -53,7 +53,7 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, l
     const et = words.find((w) => w.id === etId);
     if (!en || !et) return;
     const ok = en.id === et.id;
-    onPair(ok, en);
+    onPair(ok, en, et);
     if (ok) {
       setDone((prev) => {
         return new Set([...prev, en.id]);
@@ -62,7 +62,8 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, l
     } else {
       setFeedback('Proovi uuesti');
     }
-    setSelectedEn(null); setSelectedEt(null);
+    setSelectedEn(null);
+    setSelectedEt(null);
   };
 
   return <div className='matching-board'>

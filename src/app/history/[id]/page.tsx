@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
 import { compactTopicLabel, isKirsiAttempt } from '@/lib/history';
 import { KIUR_LENGTH_TOPIC_ID } from '@/lib/kiurMathTopics';
+import { formatStars, getStudyReward } from '@/lib/learningPoints';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -60,6 +61,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   }
 
   const questions = safeParseQuestions(row.questions);
+  const reward = getStudyReward(row.id);
 
   const isKirsi = isKirsiAttempt(row.category);
 
@@ -75,8 +77,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
     subject: row.subject || 'matemaatika',
     topic: retryTopic,
     category: retryCategory,
-    difficulty: row.difficulty,
-    count: String(row.questionCount),
+    count: '15',
     seed: String(Date.now())
   });
 
@@ -95,6 +96,15 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             <span>Aeg: {typeof row.elapsedSeconds === 'number' && Number.isFinite(row.elapsedSeconds) ? formatElapsed(row.elapsedSeconds) : 'aeg puudub'}</span>
             <span>{formatDateTime(row.createdAt)}</span>
           </div>
+          {reward && (
+            <div className='result-meta-grid'>
+              <span>Teenitud: +{formatStars(reward.awardedAmount)} ⭐</span>
+              <span>Tähed kokku: {formatStars(reward.balanceAfter)} ⭐</span>
+              <span>Õpiseeria: {reward.streakLength} päeva</span>
+              {reward.streakBonusAwarded && <span>Seeriaboonus: +{formatStars(reward.streakBonusAmount)} ⭐</span>}
+              {reward.capReached && <span>Tänane õppimise punktipiir on täis. Harjutus salvestati.</span>}
+            </div>
+          )}
         </section>
 
         <section className='result-list'>

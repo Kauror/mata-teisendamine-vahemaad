@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, scorePercent, subjectLabel } from '@/lib/history';
 
 type H = {
   id: number;
@@ -16,47 +16,34 @@ type H = {
   topic?: string | null;
 };
 
-function ChildDashboardCard({
-  name,
-  href,
-  avatar,
-  accent,
-  attempts
-}: {
-  name: 'Kiur' | 'Kirsi';
-  href: '/kiur' | '/kirsi';
-  avatar: string;
-  accent: 'blue' | 'pink';
-  attempts: H[];
-}) {
+function ChildDashboardCard({ name, href, avatar, accent, attempts, streak }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; streak: number }) {
   const router = useRouter();
   const latest = attempts.slice(0, 3);
   const today = attempts.filter((a) => isTodayIso(a.createdAt));
+  const average = today.length ? Math.round(today.reduce((sum, a) => sum + scorePercent(a.score, a.questionCount), 0) / today.length) : null;
   const last = attempts[0];
-  const lastText = last
-    ? `Viimati harjutas ${relativeDateTimeLabel(last.createdAt)}`
-    : 'Harjutusi pole veel tehtud';
+  const lastText = last ? `Viimati harjutas ${relativeDateTimeLabel(last.createdAt)}` : 'Harjutusi pole veel tehtud';
 
   return (
-    <section
-      className='child-dashboard-card'
-      data-accent={accent}
-      role='button'
-      tabIndex={0}
-      onClick={() => router.push(href)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          router.push(href);
-        }
-      }}
-    >
+    <section className='child-dashboard-card' data-accent={accent} role='button' tabIndex={0} onClick={() => router.push(href)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); router.push(href); } }}>
       <div className='child-profile'>
         <div className='child-avatar' aria-hidden>{avatar}</div>
         <div>
           <h2 className='child-name'>{name}</h2>
           <p className='last-practiced'>{lastText}</p>
           <p className='today-practiced'>Täna tehtud: {today.length} harjutust</p>
+        </div>
+      </div>
+
+      <div className='stats'>
+        <div className='stat-tile'>
+          <span>Keskmine tulemus</span>
+          <strong>{average === null ? '—' : `${average}%`}</strong>
+        </div>
+        <div className='stat-tile'>
+          <span>Õpiseeria</span>
+          <strong>{streak}</strong>
+          <small>päeva</small>
         </div>
       </div>
 
@@ -79,16 +66,7 @@ function ChildDashboardCard({
       </div>
 
       <div className='card-actions'>
-        <button
-          type='button'
-          className='subject-button'
-          onClick={(event) => {
-            event.stopPropagation();
-            router.push(href);
-          }}
-        >
-          Vali aine
-        </button>
+        <button type='button' className='subject-button' onClick={(event) => { event.stopPropagation(); router.push(href); }}>Vali aine</button>
       </div>
     </section>
   );
@@ -96,12 +74,20 @@ function ChildDashboardCard({
 
 export default function Home() {
   const [history, setHistory] = useState<H[]>([]);
+  const [streaks, setStreaks] = useState({ kiur: 0, kirsi: 0 });
 
   useEffect(() => {
     fetch('/api/history')
       .then((response) => (response.ok ? response.json() : []))
       .then((rows: H[]) => setHistory(rows))
       .catch(() => setHistory([]));
+  }, []);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/child-dashboard?learner=kiur').then((response) => response.ok ? response.json() : null),
+      fetch('/api/child-dashboard?learner=kirsi').then((response) => response.ok ? response.json() : null)
+    ]).then(([kiur, kirsi]) => setStreaks({ kiur: kiur?.streak ?? 0, kirsi: kirsi?.streak ?? 0 })).catch(() => setStreaks({ kiur: 0, kirsi: 0 }));
   }, []);
 
   const { kiur, kirsi } = useMemo(() => {
@@ -113,8 +99,8 @@ export default function Home() {
   return (
     <main className='container dashboard'>
       <div className='children-list'>
-        <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} />
-        <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} />
+        <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} />
+        <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} />
       </div>
       <Link href='/history' className='dashboard-history-link'>Vaata kogu ajalugu</Link>
     </main>

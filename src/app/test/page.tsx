@@ -94,9 +94,8 @@ function TestPageContent() {
   const topic = params.get('topic') || '';
   const categoryParam = params.get('category') || 'Teisendamine';
   const category = categoryParam as Category;
-  const difficulty = (params.get('difficulty') || 'Lihtne') as Difficulty;
-  const rawCount = Number(params.get('count') || 10);
-  const count = [10, 25].includes(rawCount) ? rawCount : 10;
+  const difficulty = 'Lihtne' as Difficulty;
+  const count = 15;
   const seed = Number(params.get('seed') || Date.now());
 
   const isKirsiMath = learner === 'kirsi' && subject === 'matemaatika' && topic === 'arvutamine';
@@ -193,7 +192,7 @@ function TestPageContent() {
     try {
       const res = await fetch('/api/history', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ createdAt: new Date().toISOString(), category: categoryParam, difficulty: isKirsiMath ? 'Lihtne' : difficulty, questionCount: count, score, elapsedSeconds: elapsed, questions: results, learner: learner || null, subject: subject || null, topic: topic || null })
+        body: JSON.stringify({ createdAt: new Date().toISOString(), category: categoryParam, difficulty: 'Lihtne', questionCount: count, score, elapsedSeconds: elapsed, questions: results, learner: learner || null, subject: subject || null, topic: topic || null })
       });
       if (!res.ok) throw new Error('save-failed');
       const body = await res.json();

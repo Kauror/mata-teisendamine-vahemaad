@@ -4,8 +4,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import EnglishMatchingBoard from '@/app/components/EnglishMatchingBoard';
 import { ENGLISH_PACKS, shuffle } from '@/lib/englishGame';
 import { fetchBestEnglishSprintScore } from '@/lib/englishHistory';
+import type { EnglishVocabularyWord } from '@/lib/englishVocabulary';
+
+type FailedSprintPair = {
+  word: EnglishVocabularyWord;
+  chosenOption: EnglishVocabularyWord;
+};
 
 export default function SprintPage() {
+  const [runSeed] = useState(() => Date.now() + Math.floor(Math.random() * 1_000_000));
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -17,9 +24,12 @@ export default function SprintPage() {
   const endedRef = useRef(false);
   const savedHistoryRef = useRef(false);
   const startedAtRef = useRef(Date.now());
+  const failedPairRef = useRef<FailedSprintPair | null>(null);
 
   const sourceWords = useMemo(() => ENGLISH_PACKS.flatMap((p) => p.words), []);
-  const boardWords = useMemo(() => shuffle(sourceWords, boardSeed).slice(0, 5), [sourceWords, boardSeed]);
+  const boardShuffleSeed = runSeed + boardSeed * 10_007;
+  const boardLayoutSeed = runSeed + boardSeed * 20_011;
+  const boardWords = useMemo(() => shuffle(sourceWords, boardShuffleSeed).slice(0, 5), [sourceWords, boardShuffleSeed]);
   const elapsedSeconds = useMemo(() => ended ? Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000)) : 0, [ended]);
 
   useEffect(() => {
@@ -51,6 +61,28 @@ export default function SprintPage() {
       setBest(score);
     }
 
+    const failedPair = failedPairRef.current;
+    const questions = failedPair
+      ? [{
+          id: `sprint-failed-${failedPair.word.id}`,
+          question: failedPair.word.english,
+          estonian: failedPair.word.estonian,
+          userAnswer: failedPair.chosenOption.estonian,
+          correctAnswer: 0,
+          isCorrect: false,
+          kind: 'choice' as const,
+          choiceOptions: [failedPair.word.estonian],
+          explanation: `Valisid: ${failedPair.chosenOption.estonian}. Õige vastus: ${failedPair.word.estonian}.`
+        }]
+      : [{
+          id: 'sprint-summary',
+          question: 'Sprinti kokkuvõte',
+          userAnswer: `Õigeid sõnu järjest: ${score}`,
+          correctAnswer: score,
+          isCorrect: true,
+          kind: 'choice' as const
+        }];
+
     void fetch('/api/history', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -64,7 +96,7 @@ export default function SprintPage() {
         questionCount: pairs + mistakes,
         score,
         elapsedSeconds,
-        questions: [{ id: 'sprint-summary', question: 'Sprinti kokkuvõte', userAnswer: `Õigeid sõnu järjest: ${score}`, correctAnswer: score, isCorrect: true, kind: 'choice' }]
+        questions
       })
     });
   }, [best, elapsedSeconds, ended, mistakes, pairs, score]);
@@ -103,13 +135,14 @@ export default function SprintPage() {
   return <main className='container english-page'><section className='practice-shell english-shell'>
     <Link className='practice-back-button' href='/kiur/inglise-keel'>← Katkesta sprint</Link>
     <div className='matching-hud'><strong>Sprint</strong><span>Skoor: {score}</span><span>Jada: {streak}</span><span>Aeg: {timeLeft}s</span><span>Parim: {best}</span></div>
-    <EnglishMatchingBoard key={`sprint-${boardSeed}`} words={boardWords} layoutSeed={boardSeed} onPair={(ok) => {
+    <EnglishMatchingBoard key={`sprint-${boardSeed}`} words={boardWords} layoutSeed={boardLayoutSeed} onPair={(ok, word, chosenOption) => {
       if (endedRef.current) return;
       if (ok) {
         setPairs((v) => v + 1);
         setScore((v) => v + 1);
         setStreak((v) => v + 1);
       } else {
+        failedPairRef.current = { word, chosenOption };
         endedRef.current = true;
         setMistakes((v) => v + 1);
         setEnded(true);

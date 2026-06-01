@@ -10,7 +10,7 @@ export const CATEGORIES = [
 ] as const;
 
 export const DIFFICULTIES = ['Lihtne', 'Keskmine', 'Raske'] as const;
-export const QUESTION_COUNTS = [10, 25] as const;
+export const QUESTION_COUNTS = [15] as const;
 
 export type Category = (typeof CATEGORIES)[number];
 export type Difficulty = (typeof DIFFICULTIES)[number];
