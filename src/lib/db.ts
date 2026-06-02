@@ -28,9 +28,19 @@ const hasLearner = cols.some((c) => c.name === 'learner');
 const hasSubject = cols.some((c) => c.name === 'subject');
 const hasTopic = cols.some((c) => c.name === 'topic');
 
-if (!hasLearner) db.exec('ALTER TABLE attempts ADD COLUMN learner TEXT');
-if (!hasSubject) db.exec('ALTER TABLE attempts ADD COLUMN subject TEXT');
-if (!hasTopic) db.exec('ALTER TABLE attempts ADD COLUMN topic TEXT');
+function addColumnIfMissing(hasColumn: boolean, statement: string) {
+  if (hasColumn) return;
+  try {
+    db.exec(statement);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('duplicate column name')) return;
+    throw error;
+  }
+}
+
+addColumnIfMissing(hasLearner, 'ALTER TABLE attempts ADD COLUMN learner TEXT');
+addColumnIfMissing(hasSubject, 'ALTER TABLE attempts ADD COLUMN subject TEXT');
+addColumnIfMissing(hasTopic, 'ALTER TABLE attempts ADD COLUMN topic TEXT');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS point_ledger (
