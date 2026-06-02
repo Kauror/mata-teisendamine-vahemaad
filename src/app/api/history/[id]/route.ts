@@ -31,6 +31,11 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   const attemptId = Number(id);
   if (!Number.isInteger(attemptId)) return NextResponse.json({ message: 'Vale tulemus.' }, { status: 400 });
 
-  db.prepare('DELETE FROM attempts WHERE id = ?').run(attemptId);
+  const deleteAttempt = db.transaction(() => {
+    db.prepare('DELETE FROM streak_bonus_awards WHERE attemptId = ?').run(attemptId);
+    db.prepare('DELETE FROM study_attempt_rewards WHERE attemptId = ?').run(attemptId);
+    db.prepare('DELETE FROM attempts WHERE id = ?').run(attemptId);
+  });
+  deleteAttempt();
   return NextResponse.json({ ok: true });
 }

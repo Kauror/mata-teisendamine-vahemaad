@@ -22,8 +22,6 @@ export default function SprintPage() {
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [mistakes, setMistakes] = useState(0);
-  const [pairs, setPairs] = useState(0);
   const [boardSeed, setBoardSeed] = useState(1);
   const [ended, setEnded] = useState(false);
   const [timeLeft, setTimeLeft] = useState(12);
@@ -33,6 +31,9 @@ export default function SprintPage() {
   const savedHistoryRef = useRef(false);
   const startedAtRef = useRef(Date.now());
   const failedPairRef = useRef<FailedSprintPair | null>(null);
+  const scoreRef = useRef(0);
+  const pairsRef = useRef(0);
+  const mistakesRef = useRef(0);
 
   const sourceWords = useMemo(() => ENGLISH_PACKS.flatMap((p) => p.words), []);
   const boardShuffleSeed = runSeed + boardSeed * 10_007;
@@ -70,8 +71,13 @@ export default function SprintPage() {
     if (!ended || savedHistoryRef.current) return;
     savedHistoryRef.current = true;
 
-    if (score > best) {
-      setBest(score);
+    const finalScore = scoreRef.current;
+    const finalPairs = pairsRef.current;
+    const finalMistakes = mistakesRef.current;
+    const finalQuestionCount = Math.max(1, finalPairs + finalMistakes);
+
+    if (finalScore > best) {
+      setBest(finalScore);
     }
 
     const failedPair = failedPairRef.current;
@@ -90,8 +96,8 @@ export default function SprintPage() {
       : [{
           id: 'sprint-summary',
           question: 'Sprinti kokkuvõte',
-          userAnswer: `Õigeid sõnu järjest: ${score}`,
-          correctAnswer: score,
+          userAnswer: `Õigeid sõnu järjest: ${finalScore}`,
+          correctAnswer: finalScore,
           isCorrect: true,
           kind: 'choice' as const
         }];
@@ -106,15 +112,15 @@ export default function SprintPage() {
         topic: 'sprint',
         category: 'Inglise keel - sprint',
         difficulty: 'Tavaline',
-        questionCount: pairs + mistakes,
-        score,
+        questionCount: finalQuestionCount,
+        score: finalScore,
         elapsedSeconds,
         questions
       })
     }).then((response) => response.ok ? response.json() : null)
       .then((body) => setReward(body?.reward ?? null))
       .catch(() => setReward(null));
-  }, [best, elapsedSeconds, ended, mistakes, pairs, score]);
+  }, [best, elapsedSeconds, ended]);
 
   if (ended) {
     return <main className='english-page sprint-result-page'>
@@ -168,15 +174,16 @@ export default function SprintPage() {
     <EnglishMatchingBoard key={`sprint-${boardSeed}`} words={boardWords} layoutSeed={boardLayoutSeed} onPair={(ok, word, chosenOption) => {
       if (endedRef.current) return;
       if (ok) {
-        setPairs((v) => v + 1);
-        setScore((v) => v + 1);
+        pairsRef.current += 1;
+        scoreRef.current += 1;
+        setScore(scoreRef.current);
         setStreak((v) => v + 1);
       } else {
         const failed = { word, chosenOption };
         failedPairRef.current = failed;
         setFailedPair(failed);
         endedRef.current = true;
-        setMistakes((v) => v + 1);
+        mistakesRef.current += 1;
         setEnded(true);
       }
     }} onBoardComplete={() => {

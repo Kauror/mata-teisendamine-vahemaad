@@ -61,6 +61,7 @@ export default function KiurReadingPage() {
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [reward, setReward] = useState<Reward>(null);
   const [saved, setSaved] = useState(false);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
   const startedAtRef = useRef(Date.now());
   const answerLockedRef = useRef(false);
 
@@ -103,6 +104,7 @@ export default function KiurReadingPage() {
     setReviewItems([]);
     setReward(null);
     setSaved(false);
+    setShowStopConfirm(false);
     answerLockedRef.current = false;
     setPhase(nextSession.length ? 'reading' : 'start');
   };
@@ -263,6 +265,20 @@ export default function KiurReadingPage() {
             <button type='button' className='start-button' onClick={next}>Järgmine</button>
           </section>
         ) : null}
+
+        <footer className='test-actions-panel'>
+          {showStopConfirm ? (
+            <div className='stop-confirm-panel' role='alertdialog' aria-labelledby='kiur-reading-stop-title'>
+              <p id='kiur-reading-stop-title'>Kas soovid harjutuse lõpetada?</p>
+              <div className='stop-confirm-actions'>
+                <button type='button' className='stop-cancel-button' onClick={() => setShowStopConfirm(false)}>Jätka harjutust</button>
+                <Link className='stop-confirm-button' href='/kiur/lugemine'>Jah, lõpeta</Link>
+              </div>
+            </div>
+          ) : (
+            <button type='button' className='stop-button' onClick={() => setShowStopConfirm(true)}>Lõpeta harjutus</button>
+          )}
+        </footer>
       </section>
     </main>
   );

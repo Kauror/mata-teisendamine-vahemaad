@@ -179,16 +179,30 @@ function dailyLearningEarned(learner: Learner, date: string) {
   return row?.total ?? 0;
 }
 
+function ledgerExerciseKey(metadataJson?: string | null) {
+  if (!metadataJson) return null;
+  try {
+    const metadata = JSON.parse(metadataJson) as { exerciseKey?: unknown };
+    return typeof metadata.exerciseKey === 'string' ? metadata.exerciseKey : null;
+  } catch {
+    return null;
+  }
+}
+
 function decayCountToday(learner: Learner, exerciseKey: string, date: string) {
-  const row = db.prepare('SELECT COUNT(*) as count FROM study_attempt_rewards WHERE learner = ? AND exerciseKey = ? AND substr(createdAt, 1, 10) = ?').get(learner, exerciseKey, date) as { count: number } | undefined;
-  return row?.count ?? 0;
+  const rows = db.prepare(`
+    SELECT metadataJson
+    FROM point_ledger
+    WHERE learner = ? AND source = 'study_exercise' AND substr(createdAt, 1, 10) = ?
+  `).all(learner, date) as Array<{ metadataJson?: string | null }>;
+  return rows.filter((row) => ledgerExerciseKey(row.metadataJson) === exerciseKey).length;
 }
 
 function studyDates(learner: Learner) {
   const rows = db.prepare(`
     SELECT DISTINCT substr(createdAt, 1, 10) as day
-    FROM study_attempt_rewards
-    WHERE learner = ?
+    FROM point_ledger
+    WHERE learner = ? AND source = 'study_exercise'
     ORDER BY day DESC
   `).all(learner) as Array<{ day: string }>;
   return new Set(rows.map((row) => row.day));
@@ -209,8 +223,8 @@ export function getCurrentLearningStreak(learner: Learner, today = todayDateStri
 
 function hadStudyAttemptBeforeToday(learner: Learner, date: string, attemptId: number) {
   const row = db.prepare(`
-    SELECT id FROM study_attempt_rewards
-    WHERE attemptId <> ? AND substr(createdAt, 1, 10) = ? AND learner = ?
+    SELECT id FROM point_ledger
+    WHERE sourceId <> ? AND substr(createdAt, 1, 10) = ? AND learner = ? AND source = 'study_exercise'
     LIMIT 1
   `).get(attemptId, date, learner);
   return Boolean(row);

@@ -43,6 +43,7 @@ export default function KirsiFirstSoundPage() {
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [reward, setReward] = useState<Reward>(null);
   const [saved, setSaved] = useState(false);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
   const startedAtRef = useRef(Date.now());
   const session = useMemo(() => buildSession(seed), [seed]);
   const current: KirsiFirstSoundTask | undefined = session[index];
@@ -91,6 +92,7 @@ export default function KirsiFirstSoundPage() {
     setReviewItems([]);
     setReward(null);
     setSaved(false);
+    setShowStopConfirm(false);
   };
 
   const chooseLetter = (letter: string) => {
@@ -211,6 +213,19 @@ export default function KirsiFirstSoundPage() {
           ) : null}
           <button type='button' className='start-button' disabled={!answered} onClick={next}>Järgmine</button>
         </section>
+        <footer className='test-actions-panel'>
+          {showStopConfirm ? (
+            <div className='stop-confirm-panel' role='alertdialog' aria-labelledby='first-sound-stop-title'>
+              <p id='first-sound-stop-title'>Kas soovid harjutuse lõpetada?</p>
+              <div className='stop-confirm-actions'>
+                <button type='button' className='stop-cancel-button' onClick={() => setShowStopConfirm(false)}>Jätka harjutust</button>
+                <Link className='stop-confirm-button' href='/kirsi/lugemine'>Jah, lõpeta</Link>
+              </div>
+            </div>
+          ) : (
+            <button type='button' className='stop-button' onClick={() => setShowStopConfirm(true)}>Lõpeta harjutus</button>
+          )}
+        </footer>
       </section>
     </main>
   );

@@ -52,6 +52,7 @@ export default function KirsiPictureWordSprintPage() {
   const [wrongMatch, setWrongMatch] = useState<WrongMatch | null>(null);
   const [reward, setReward] = useState<SprintReward>(null);
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
   const runSeedRef = useRef(Date.now());
   const startedAtRef = useRef(Date.now());
   const endedRef = useRef(false);
@@ -115,6 +116,7 @@ export default function KirsiPictureWordSprintPage() {
     setWrongMatch(null);
     setReward(null);
     setReviewItems([]);
+    setShowStopConfirm(false);
   };
 
   const recordPair = (ok: boolean, picture: KirsiReadingPair, selected: KirsiReadingPair) => {
@@ -229,6 +231,19 @@ export default function KirsiPictureWordSprintPage() {
             setBoardIndex((value) => value + 1);
           }}
         />
+        <footer className='test-actions-panel'>
+          {showStopConfirm ? (
+            <div className='stop-confirm-panel' role='alertdialog' aria-labelledby='picture-word-stop-title'>
+              <p id='picture-word-stop-title'>Kas soovid harjutuse lõpetada?</p>
+              <div className='stop-confirm-actions'>
+                <button type='button' className='stop-cancel-button' onClick={() => setShowStopConfirm(false)}>Jätka harjutust</button>
+                <Link className='stop-confirm-button' href='/kirsi/lugemine'>Jah, lõpeta</Link>
+              </div>
+            </div>
+          ) : (
+            <button type='button' className='stop-button' onClick={() => setShowStopConfirm(true)}>Lõpeta harjutus</button>
+          )}
+        </footer>
       </section>
     </main>
   );
