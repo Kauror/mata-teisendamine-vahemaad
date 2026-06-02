@@ -3,7 +3,8 @@ import DailyTasksPanel from '@/app/components/DailyTasksPanel';
 
 const SUBJECTS = [
   { id: 'matemaatika', name: 'Matemaatika', icon: '🧮', href: '/kiur/matemaatika', accent: 'blue' },
-  { id: 'inglise-keel', name: 'Inglise keel', icon: '🔤', href: '/kiur/inglise-keel', accent: 'pink' }
+  { id: 'inglise-keel', name: 'Inglise keel', icon: '🔤', href: '/kiur/inglise-keel', accent: 'pink' },
+  { id: 'lugemine', name: 'Lugemine', icon: '📖', href: '/kiur/lugemine', accent: 'green' }
 ] as const;
 
 export default function KiurPage() {

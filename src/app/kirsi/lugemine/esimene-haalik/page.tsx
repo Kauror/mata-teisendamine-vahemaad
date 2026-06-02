@@ -34,7 +34,7 @@ function buildSession(seed: number) {
 }
 
 export default function KirsiFirstSoundPage() {
-  const [seed, setSeed] = useState(() => Date.now());
+  const [seed, setSeed] = useState(0);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [hintCount, setHintCount] = useState(0);
@@ -50,6 +50,11 @@ export default function KirsiFirstSoundPage() {
   const isCorrect = Boolean(current && selectedLetter === current.correctLetter);
   const optionSeed = seed + index * 1777;
   const options = useMemo(() => current ? shuffle(current.options, optionSeed) : [], [current, optionSeed]);
+
+  useEffect(() => {
+    startedAtRef.current = Date.now();
+    setSeed(Date.now());
+  }, []);
 
   useEffect(() => {
     if (index < QUESTION_COUNT || saved) return;

@@ -67,7 +67,7 @@ function subjectKey(a: ExerciseHistory): SubjectFilter {
   const topic = (a.topic || '').toLowerCase();
   const cat = (a.category || '').toLowerCase();
   if (subj.includes('inglise') || topic.includes('inglise') || cat.includes('inglise')) return 'inglise-keel';
-  if (subj.includes('lugemine') || topic.includes('pilt-ja-sona') || cat.includes('lugemine')) return 'lugemine';
+  if (subj.includes('lugemine') || topic.includes('pilt-ja-sona') || topic.includes('loe-ja-vasta') || cat.includes('lugemine')) return 'lugemine';
   return 'matemaatika';
 }
 

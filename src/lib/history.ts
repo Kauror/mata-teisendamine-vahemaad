@@ -51,6 +51,7 @@ export function subjectLabel(subject?: string | null) {
 export function compactTopicLabel(topic?: string | null, category?: string | null) {
   if (topic === 'harjutamine') return 'Harjutamine';
   if (topic === 'sprint') return 'Sprint';
+  if (topic === 'loe-ja-vasta') return 'Loe ja vasta';
   if (topic === 'pilt-ja-sona') return 'Pilt ja sõna';
   if (topic === 'esimene-haalik') return 'Esimene häälik';
   if (topic === 'mootuhikud-pikkused' || topic === 'pikkused') return 'Mõõtühikud';

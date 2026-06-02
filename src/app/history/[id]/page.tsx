@@ -25,6 +25,13 @@ type SavedQuestion = {
   image?: string;
   selectedWord?: string;
   correctWord?: string;
+  text?: string;
+  selectedAnswer?: string;
+  correctAnswerText?: string;
+  sourceAuthor?: string;
+  sourceTitle?: string;
+  sourceCollection?: string;
+  evidenceText?: string;
 };
 
 async function getDb() {
@@ -74,6 +81,8 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
 
   const isEnglish = row.subject === 'inglise-keel';
   const isKirsiReading = row.learner === 'kirsi' && row.subject === 'lugemine';
+  const isKiurReading = row.learner === 'kiur' && row.subject === 'lugemine';
+  const isReading = row.subject === 'lugemine';
   const attemptLabel = compactTopicLabel(row.topic, row.category) || row.category;
 
   const retryParams = new URLSearchParams({
@@ -87,6 +96,10 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
 
   const retryHref = isEnglish
     ? '/kiur/inglise-keel/sprint'
+    : isKiurReading
+      ? '/kiur/lugemine'
+    : isKirsiReading && row.topic === 'esimene-haalik'
+      ? '/kirsi/lugemine/esimene-haalik'
     : isKirsiReading
       ? '/kirsi/lugemine/pilt-ja-sona'
     : `/test?${retryParams.toString()}`;
@@ -120,7 +133,9 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             .sort((a, b) => (q.orderingDirection === 'desc' ? b.valueMm - a.valueMm : a.valueMm - b.valueMm))
             .map((c) => c.label)
             .join(' → ');
-          const correctChoiceAnswer = isKirsiReading
+          const correctChoiceAnswer = isReading && q.correctAnswerText
+            ? q.correctAnswerText
+            : isKirsiReading
             ? (q.correctWord ?? '—')
             : q.kind === 'choice' && q.choiceOptions?.length
             ? (q.correctAnswers?.length ? q.correctAnswers.map((answerIndex) => q.choiceOptions?.[answerIndex]).filter(Boolean).join(' / ') : (q.choiceOptions[q.correctAnswer] ?? '—'))
@@ -137,6 +152,13 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
                 ? <div className='answer-review-grid'><p className='answer-line'><span>Sinu järjestus:</span> <strong>{q.userAnswer || '—'}</strong></p><p className='answer-line'><span>Õige järjestus:</span> <strong>{order || '—'}</strong></p></div>
                 : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{correctChoiceAnswer}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}
               <p className={q.isCorrect ? 'result-status correct' : 'result-status wrong'}>{q.isCorrect ? 'Õige' : 'Vale vastus'}</p>
+              {isReading && q.text && (
+                <div className='reading-history-detail'>
+                  <p>{q.text}</p>
+                  {(q.sourceAuthor || q.sourceTitle || q.sourceCollection) && <span>Allikas: {[q.sourceAuthor, q.sourceTitle ? `"${q.sourceTitle}"` : '', q.sourceCollection].filter(Boolean).join(', ')}</span>}
+                  {!q.isCorrect && q.evidenceText ? <p><strong>Tekstis oli kirjas:</strong> {q.evidenceText}</p> : null}
+                </div>
+              )}
               {q.explanation && <p className='answer-line'><span>Selgitus:</span> <strong>{q.explanation}</strong></p>}
             </article>
           );
@@ -145,7 +167,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
 
       <div className='result-actions'>
         <Link className='btn' href={retryHref}>Tee {attemptLabel.toLowerCase()} uuesti</Link>
-        <Link className='btn chip active' href={isEnglish ? '/kiur/inglise-keel' : isKirsiReading ? '/kirsi/lugemine' : (isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika')}>Vali uus harjutus</Link>
+        <Link className='btn chip active' href={isEnglish ? '/kiur/inglise-keel' : isKiurReading ? '/kiur/lugemine' : isKirsiReading ? '/kirsi/lugemine' : (isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika')}>Vali uus harjutus</Link>
       </div>
       <Link className='practice-back-button result-history-back-link' href='/history'>Ajalugu</Link>
       </section>

@@ -82,7 +82,8 @@ const KEY_BY_CATEGORY: Record<string, string> = {
   'Suurem või väiksem kuni 100': 'kirsi.math.suurem-vaiksem-100',
   'Segaülesanded': 'kirsi.math.segaulesanded',
   'Lugemine - pilt ja sõna': 'kirsi.reading.pilt-ja-sona',
-  'Lugemine - esimene häälik': 'kirsi.reading.esimene-haalik'
+  'Lugemine - esimene häälik': 'kirsi.reading.esimene-haalik',
+  'Lugemine - loe ja vasta': 'kiur.reading.loe-ja-vasta'
 };
 
 const KEY_BY_TOPIC: Record<string, string> = {
@@ -155,6 +156,7 @@ export function updateLearningPointSettings(input: LearningPointSettings) {
 
 export function exerciseKeyForAttempt(learner: Learner, category: string, topic?: string | null) {
   if (learner === 'kiur' && topic === 'sprint') return 'kiur.english.sprint';
+  if (learner === 'kiur' && topic === 'loe-ja-vasta') return 'kiur.reading.loe-ja-vasta';
   if (learner === 'kirsi' && topic === 'pilt-ja-sona') return 'kirsi.reading.pilt-ja-sona';
   if (learner === 'kirsi' && topic === 'esimene-haalik') return 'kirsi.reading.esimene-haalik';
   if (learner === 'kiur' && topic && KEY_BY_TOPIC[topic]) return `${KEY_BY_TOPIC[topic]}.${category.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'harjutus'}`;
@@ -232,7 +234,8 @@ export function awardStudyPointsForAttempt(attemptId: number): StudyReward | nul
     if (duplicate) return duplicate;
 
     const attemptNumber = decayCountToday(learner, exerciseKey, date) + 1;
-    const baseValue = settings.learningPointsEnabled ? Math.max(0, settings.baseValue - settings.decayStep * (attemptNumber - 1)) : 0;
+    const decayedBaseValue = settings.baseValue - settings.decayStep * (attemptNumber - 1);
+    const baseValue = settings.learningPointsEnabled ? Math.max(settings.minimumValue, decayedBaseValue) : 0;
     const scorePercent = Math.max(0, Math.min(1, attempt.score / attempt.questionCount));
     const earnedBeforeCap = baseValue;
     const before = dailyLearningEarned(learner, date);

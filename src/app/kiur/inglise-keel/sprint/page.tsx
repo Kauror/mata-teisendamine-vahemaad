@@ -18,7 +18,7 @@ type SprintReward = {
 } | null;
 
 export default function SprintPage() {
-  const [runSeed] = useState(() => Date.now() + Math.floor(Math.random() * 1_000_000));
+  const [runSeed, setRunSeed] = useState(0);
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -39,6 +39,11 @@ export default function SprintPage() {
   const boardLayoutSeed = runSeed + boardSeed * 20_011;
   const boardWords = useMemo(() => shuffle(sourceWords, boardShuffleSeed).slice(0, 5), [sourceWords, boardShuffleSeed]);
   const elapsedSeconds = useMemo(() => ended ? Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000)) : 0, [ended]);
+
+  useEffect(() => {
+    startedAtRef.current = Date.now();
+    setRunSeed(Date.now() + Math.floor(Math.random() * 1_000_000));
+  }, []);
 
   useEffect(() => {
     void fetchBestEnglishSprintScore()

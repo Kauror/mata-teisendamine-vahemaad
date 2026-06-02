@@ -103,11 +103,32 @@ function validateItemInput(input: {
   return { title, description, weekdays };
 }
 
+function appDateFromIso(value: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Kiev',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date(value));
+  const get = (type: string) => parts.find((part) => part.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function purchaseDate(row: { purchasedAt: string; metadataJson: string | null }) {
+  if (row.metadataJson) {
+    try {
+      const metadata = JSON.parse(row.metadataJson) as { date?: unknown };
+      if (typeof metadata.date === 'string') return metadata.date;
+    } catch {
+      // Fall back to the purchase timestamp below.
+    }
+  }
+  return appDateFromIso(row.purchasedAt);
+}
+
 function getDailyUsed(itemId: number, date: string) {
-  const start = `${date}T00:00:00.000Z`;
-  const end = `${date}T23:59:59.999Z`;
-  const row = db.prepare('SELECT COUNT(*) as count FROM store_purchases WHERE storeItemId = ? AND purchasedAt BETWEEN ? AND ?').get(itemId, start, end) as { count: number } | undefined;
-  return row?.count ?? 0;
+  const rows = db.prepare('SELECT purchasedAt, metadataJson FROM store_purchases WHERE storeItemId = ?').all(itemId) as Array<{ purchasedAt: string; metadataJson: string | null }>;
+  return rows.filter((row) => purchaseDate(row) === date).length;
 }
 
 function isHiddenToday(itemId: number, date: string) {
