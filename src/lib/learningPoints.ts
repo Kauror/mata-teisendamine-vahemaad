@@ -67,6 +67,8 @@ const DEFAULT_SETTINGS: LearningPointSettings = {
   streakBonusEnabled: true
 };
 
+const MIN_REWARD_SCORE_PERCENT = 0.5;
+
 const KEY_BY_CATEGORY: Record<string, string> = {
   'Inglise keel - sprint': 'kiur.english.sprint',
   'Teisendamine': 'kiur.math.teisendamine',
@@ -251,10 +253,11 @@ export function awardStudyPointsForAttempt(attemptId: number): StudyReward | nul
     const decayedBaseValue = settings.baseValue - settings.decayStep * (attemptNumber - 1);
     const baseValue = settings.learningPointsEnabled ? Math.max(settings.minimumValue, decayedBaseValue) : 0;
     const scorePercent = Math.max(0, Math.min(1, attempt.score / attempt.questionCount));
-    const earnedBeforeCap = baseValue;
+    const meetsRewardThreshold = scorePercent >= MIN_REWARD_SCORE_PERCENT;
+    const earnedBeforeCap = meetsRewardThreshold ? baseValue : 0;
     const before = dailyLearningEarned(learner, date);
     const remaining = Math.max(0, settings.dailyCap - before);
-    const awarded = settings.learningPointsEnabled ? Math.max(0, Math.min(earnedBeforeCap, remaining)) : 0;
+    const awarded = settings.learningPointsEnabled && meetsRewardThreshold ? Math.max(0, Math.min(earnedBeforeCap, remaining)) : 0;
     const roundedAwarded = Math.round(awarded * 100) / 100;
     const after = before + roundedAwarded;
     const createdAt = nowIso();
@@ -278,7 +281,7 @@ export function awardStudyPointsForAttempt(attemptId: number): StudyReward | nul
     let streakBonusAmount = 0;
     let streakBonusAwarded = false;
 
-    if (isNewStreakDay && settings.streakBonusEnabled && settings.streakBonusAmount > 0 && streakLength > 0 && streakLength % settings.streakIntervalDays === 0) {
+    if (meetsRewardThreshold && isNewStreakDay && settings.streakBonusEnabled && settings.streakBonusAmount > 0 && streakLength > 0 && streakLength % settings.streakIntervalDays === 0) {
       const bonusLedger = db.prepare(`
         INSERT INTO point_ledger (learner, amount, source, sourceId, description, createdAt, metadataJson)
         VALUES (?, ?, 'streak_bonus', ?, ?, ?, ?)
