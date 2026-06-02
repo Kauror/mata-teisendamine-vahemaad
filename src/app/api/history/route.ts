@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const stmt = db.prepare('INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const isLearningAttempt = body.subject !== 'inglise-keel';
-  const questionCount = isLearningAttempt ? 15 : Number(body.questionCount) || 0;
+  const questionCount = body.subject === 'lugemine' ? Number(body.questionCount) || 0 : isLearningAttempt ? 15 : Number(body.questionCount) || 0;
   const score = Math.max(0, Math.min(Math.floor(Number(body.score) || 0), questionCount));
   const result = stmt.run(
     body.createdAt,
@@ -48,19 +48,6 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE() {
   const db = await getDb();
-  const remove = db.transaction(() => {
-    const ledgerRows = db.prepare(`
-      SELECT ledgerEntryId FROM study_attempt_rewards WHERE ledgerEntryId IS NOT NULL
-      UNION
-      SELECT ledgerEntryId FROM streak_bonus_awards WHERE ledgerEntryId IS NOT NULL
-    `).all() as Array<{ ledgerEntryId: number }>;
-    db.prepare('DELETE FROM streak_bonus_awards').run();
-    db.prepare('DELETE FROM study_attempt_rewards').run();
-    for (const row of ledgerRows) {
-      db.prepare('DELETE FROM point_ledger WHERE id = ?').run(row.ledgerEntryId);
-    }
-    db.prepare('DELETE FROM attempts').run();
-  });
-  remove();
+  db.prepare('DELETE FROM attempts').run();
   return NextResponse.json({ ok: true });
 }

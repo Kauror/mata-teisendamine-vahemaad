@@ -2,7 +2,9 @@ export const KIRSI_CATEGORIES = new Set([
   'Arvutamine 10 piires',
   'Arvutamine 20 piires',
   'Suurem või väiksem kuni 100',
-  'Segaülesanded'
+  'Segaülesanded',
+  'Lugemine - pilt ja sõna',
+  'Lugemine - esimene häälik'
 ]);
 
 export function isKirsiAttempt(category: string, learner?: string | null) {
@@ -42,12 +44,15 @@ export function relativeDateTimeLabel(createdAt: string) {
 export function subjectLabel(subject?: string | null) {
   if (!subject || subject === 'matemaatika') return 'Matemaatika';
   if (subject === 'inglise-keel') return 'Inglise keel';
+  if (subject === 'lugemine') return 'Lugemine';
   return subject;
 }
 
 export function compactTopicLabel(topic?: string | null, category?: string | null) {
   if (topic === 'harjutamine') return 'Harjutamine';
   if (topic === 'sprint') return 'Sprint';
+  if (topic === 'pilt-ja-sona') return 'Pilt ja sõna';
+  if (topic === 'esimene-haalik') return 'Esimene häälik';
   if (topic === 'mootuhikud-pikkused' || topic === 'pikkused') return 'Mõõtühikud';
   if (topic === 'jagamine-kahekohaline-uhekohaline') return 'Kahekohalise arvu jagamine';
   if (topic === 'arvud-10000' || topic === 'arvud-10000-piires') return 'Arvud 10k piires';

@@ -1,0 +1,60 @@
+export type KirsiFirstSoundTask = {
+  id: string;
+  word: string;
+  image: string;
+  correctLetter: string;
+  options: string[];
+};
+
+export const KIRSI_FIRST_SOUND_TASKS: KirsiFirstSoundTask[] = [
+  { id: 'beebi', word: 'BEEBI', image: '👶', correctLetter: 'B', options: ['B', 'P', 'T'] },
+  { id: 'kasi', word: 'KÄSI', image: '✋', correctLetter: 'K', options: ['K', 'P', 'T'] },
+  { id: 'jalg', word: 'JALG', image: '🦵', correctLetter: 'J', options: ['J', 'K', 'S'] },
+  { id: 'suu', word: 'SUU', image: '👄', correctLetter: 'S', options: ['S', 'M', 'U'] },
+  { id: 'silm', word: 'SILM', image: '👁️', correctLetter: 'S', options: ['S', 'K', 'I'] },
+  { id: 'nina', word: 'NINA', image: '👃', correctLetter: 'N', options: ['N', 'M', 'L'] },
+  { id: 'korv', word: 'KÕRV', image: '👂', correctLetter: 'K', options: ['K', 'Õ', 'T'] },
+  { id: 'hammas', word: 'HAMMAS', image: '🦷', correctLetter: 'H', options: ['H', 'K', 'M'] },
+  { id: 'suda', word: 'SÜDA', image: '❤️', correctLetter: 'S', options: ['S', 'K', 'Ü'] },
+  { id: 'kass', word: 'KASS', image: '🐱', correctLetter: 'K', options: ['K', 'P', 'S'] },
+  { id: 'koer', word: 'KOER', image: '🐶', correctLetter: 'K', options: ['K', 'T', 'P'] },
+  { id: 'siga', word: 'SIGA', image: '🐷', correctLetter: 'S', options: ['S', 'K', 'P'] },
+  { id: 'lehm', word: 'LEHM', image: '🐮', correctLetter: 'L', options: ['L', 'M', 'K'] },
+  { id: 'kana', word: 'KANA', image: '🐔', correctLetter: 'K', options: ['K', 'T', 'P'] },
+  { id: 'part', word: 'PART', image: '🦆', correctLetter: 'P', options: ['P', 'B', 'T'] },
+  { id: 'hiir', word: 'HIIR', image: '🐭', correctLetter: 'H', options: ['H', 'N', 'M'] },
+  { id: 'karu', word: 'KARU', image: '🐻', correctLetter: 'K', options: ['K', 'R', 'P'] },
+  { id: 'hunt', word: 'HUNT', image: '🐺', correctLetter: 'H', options: ['H', 'K', 'T'] },
+  { id: 'janes', word: 'JÄNES', image: '🐰', correctLetter: 'J', options: ['J', 'S', 'K'] },
+  { id: 'orav', word: 'ORAV', image: '🐿️', correctLetter: 'O', options: ['O', 'A', 'V'] },
+  { id: 'siil', word: 'SIIL', image: '🦔', correctLetter: 'S', options: ['S', 'L', 'I'] },
+  { id: 'konn', word: 'KONN', image: '🐸', correctLetter: 'K', options: ['K', 'T', 'P'] },
+  { id: 'kala', word: 'KALA', image: '🐟', correctLetter: 'K', options: ['K', 'L', 'P'] },
+  { id: 'lind', word: 'LIND', image: '🐦', correctLetter: 'L', options: ['L', 'K', 'T'] },
+  { id: 'oun', word: 'ÕUN', image: '🍎', correctLetter: 'Õ', options: ['Õ', 'Ö', 'Ü'] },
+  { id: 'pirn', word: 'PIRN', image: '🍐', correctLetter: 'P', options: ['P', 'B', 'T'] },
+  { id: 'banaan', word: 'BANAAN', image: '🍌', correctLetter: 'B', options: ['B', 'N', 'P'] },
+  { id: 'kiivi', word: 'KIIVI', image: '🥝', correctLetter: 'K', options: ['K', 'V', 'G'] },
+  { id: 'sidrun', word: 'SIDRUN', image: '🍋', correctLetter: 'S', options: ['S', 'K', 'T'] },
+  { id: 'kirss', word: 'KIRSS', image: '🍒', correctLetter: 'K', options: ['K', 'S', 'P'] },
+  { id: 'arbuus', word: 'ARBUUS', image: '🍉', correctLetter: 'A', options: ['A', 'O', 'E'] },
+  { id: 'kurk', word: 'KURK', image: '🥒', correctLetter: 'K', options: ['K', 'G', 'R'] },
+  { id: 'tomat', word: 'TOMAT', image: '🍅', correctLetter: 'T', options: ['T', 'M', 'P'] },
+  { id: 'mais', word: 'MAIS', image: '🌽', correctLetter: 'M', options: ['M', 'N', 'A'] },
+  { id: 'sai', word: 'SAI', image: '🍞', correctLetter: 'S', options: ['S', 'P', 'T'] },
+  { id: 'leib', word: 'LEIB', image: '🥖', correctLetter: 'L', options: ['L', 'T', 'E'] },
+  { id: 'juust', word: 'JUUST', image: '🧀', correctLetter: 'J', options: ['J', 'K', 'T'] },
+  { id: 'muna', word: 'MUNA', image: '🥚', correctLetter: 'M', options: ['M', 'N', 'U'] },
+  { id: 'vesi', word: 'VESI', image: '💧', correctLetter: 'V', options: ['V', 'K', 'M'] },
+  { id: 'maja', word: 'MAJA', image: '🏠', correctLetter: 'M', options: ['M', 'N', 'A'] },
+  { id: 'auto', word: 'AUTO', image: '🚗', correctLetter: 'A', options: ['A', 'O', 'E'] },
+  { id: 'pall', word: 'PALL', image: '⚽', correctLetter: 'P', options: ['P', 'B', 'T'] },
+  { id: 'lill', word: 'LILL', image: '🌸', correctLetter: 'L', options: ['L', 'S', 'K'] },
+  { id: 'amber', word: 'ÄMBER', image: '🪣', correctLetter: 'Ä', options: ['Ä', 'A', 'E'] },
+  { id: 'ookull', word: 'ÖÖKULL', image: '🦉', correctLetter: 'Ö', options: ['Ö', 'Õ', 'Ü'] },
+  { id: 'kell', word: 'KELL', image: '🕒', correctLetter: 'K', options: ['K', 'L', 'T'] },
+  { id: 'puu', word: 'PUU', image: '🌳', correctLetter: 'P', options: ['P', 'B', 'T'] },
+  { id: 'seen', word: 'SEEN', image: '🍄', correctLetter: 'S', options: ['S', 'K', 'P'] },
+  { id: 'leht', word: 'LEHT', image: '🍃', correctLetter: 'L', options: ['L', 'K', 'T'] },
+  { id: 'tuli', word: 'TULI', image: '🔥', correctLetter: 'T', options: ['T', 'P', 'K'] }
+];

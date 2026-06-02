@@ -73,14 +73,14 @@ export function getBalances(): Record<Learner, number> {
   const rows = db.prepare('SELECT learner, COALESCE(SUM(amount), 0) as balance FROM point_ledger GROUP BY learner').all() as Array<{ learner: Learner; balance: number }>;
   const balances: Record<Learner, number> = { kiur: 0, kirsi: 0 };
   for (const row of rows) {
-    if (row.learner === 'kiur' || row.learner === 'kirsi') balances[row.learner] = row.balance;
+    if (row.learner === 'kiur' || row.learner === 'kirsi') balances[row.learner] = Math.max(0, row.balance);
   }
   return balances;
 }
 
 export function getBalance(learner: Learner) {
   const row = db.prepare('SELECT COALESCE(SUM(amount), 0) as balance FROM point_ledger WHERE learner = ?').get(learner) as { balance: number } | undefined;
-  return row?.balance ?? 0;
+  return Math.max(0, row?.balance ?? 0);
 }
 
 function weekdayForDate(date: string) {
@@ -320,6 +320,7 @@ export function completeTaskAssignment(assignmentId: number, learner: Learner) {
 
 export function manualPointAdjustment(learner: Learner, amount: number, reason: string) {
   if (!Number.isInteger(amount) || amount === 0) throw new Error('Punktide arv peab olema täisarv ja mitte null.');
+  if (amount < 0 && getBalance(learner) + amount < 0) throw new Error('Tähed ei saa minna alla nulli.');
   const cleanReason = reason.trim().slice(0, 120);
   const description = cleanReason || 'Vanema muudatus';
   db.prepare(`
