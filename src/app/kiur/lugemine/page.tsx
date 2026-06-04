@@ -62,12 +62,20 @@ export default function KiurReadingPage() {
   const [reward, setReward] = useState<Reward>(null);
   const [saved, setSaved] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [readingActive, setReadingActive] = useState(false);
   const startedAtRef = useRef(Date.now());
   const answerLockedRef = useRef(false);
 
   const current = session[index];
   const runCount = session.length;
   const isCorrect = Boolean(current && selectedAnswer === current.correctAnswer);
+
+  useEffect(() => {
+    void fetch('/api/learning-exercises/active?learner=kiur')
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((body) => setReadingActive(Array.isArray(body.exerciseIds) && body.exerciseIds.includes('kiur.reading.loe-ja-vasta')))
+      .catch(() => setReadingActive(false));
+  }, []);
 
   useEffect(() => {
     if (phase !== 'result' || saved || runCount === 0) return;
@@ -95,6 +103,7 @@ export default function KiurReadingPage() {
   }, [phase, reviewItems, runCount, saved, score]);
 
   const startRun = () => {
+    if (!readingActive) return;
     const nextSession = buildSession();
     startedAtRef.current = Date.now();
     setSession(nextSession);
@@ -146,7 +155,7 @@ export default function KiurReadingPage() {
   };
 
   if (phase === 'start') {
-    const hasTasks = getValidKiurReadingTasks().length > 0;
+    const hasTasks = readingActive && getValidKiurReadingTasks().length > 0;
     return (
       <main className='container english-page kiur-reading-page'>
         <section className='practice-shell english-shell reading-intro-shell kiur-reading-shell'>

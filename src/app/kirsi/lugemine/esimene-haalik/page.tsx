@@ -44,6 +44,7 @@ export default function KirsiFirstSoundPage() {
   const [reward, setReward] = useState<Reward>(null);
   const [saved, setSaved] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [exerciseActive, setExerciseActive] = useState<boolean | null>(null);
   const startedAtRef = useRef(Date.now());
   const session = useMemo(() => buildSession(seed), [seed]);
   const current: KirsiFirstSoundTask | undefined = session[index];
@@ -58,7 +59,22 @@ export default function KirsiFirstSoundPage() {
   }, []);
 
   useEffect(() => {
-    if (index < QUESTION_COUNT || saved) return;
+    let cancelled = false;
+    void fetch('/api/learning-exercises/active?learner=kirsi')
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((body: { exerciseIds?: string[] }) => {
+        if (!cancelled) setExerciseActive(Boolean(body.exerciseIds?.includes('kirsi.reading.esimene-haalik')));
+      })
+      .catch(() => {
+        if (!cancelled) setExerciseActive(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (index < QUESTION_COUNT || saved || exerciseActive !== true) return;
     setSaved(true);
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000));
 
@@ -79,7 +95,7 @@ export default function KirsiFirstSoundPage() {
     }).then((response) => response.ok ? response.json() : null)
       .then((body) => setReward(body?.reward ?? null))
       .catch(() => setReward(null));
-  }, [index, reviewItems, saved, score]);
+  }, [exerciseActive, index, reviewItems, saved, score]);
 
   const reset = () => {
     startedAtRef.current = Date.now();
@@ -96,7 +112,7 @@ export default function KirsiFirstSoundPage() {
   };
 
   const chooseLetter = (letter: string) => {
-    if (!current || answered) return;
+    if (exerciseActive !== true || !current || answered) return;
     const correct = letter === current.correctLetter;
     const orderedOptions = options.length ? options : current.options;
     setSelectedLetter(letter);
@@ -118,7 +134,7 @@ export default function KirsiFirstSoundPage() {
   };
 
   const showHint = () => {
-    if (hintVisible || answered) return;
+    if (exerciseActive !== true || hintVisible || answered) return;
     setHintVisible(true);
     setHintCount((value) => value + 1);
   };
@@ -128,6 +144,24 @@ export default function KirsiFirstSoundPage() {
     setHintVisible(false);
     setSelectedLetter(null);
   };
+
+  if (exerciseActive === null) {
+    return <main className='container english-page reading-page'><section className='practice-shell english-shell first-sound-shell'>Laadin harjutust...</section></main>;
+  }
+
+  if (!exerciseActive) {
+    return (
+      <main className='container english-page reading-page'>
+        <section className='practice-shell english-shell first-sound-shell'>
+          <Link className='practice-back-button' href='/kirsi/lugemine'>&larr; Lugemine</Link>
+          <header className='subject-header'>
+            <div className='subject-emoji'>ABC</div>
+            <h1>Harjutus ei ole praegu saadaval</h1>
+          </header>
+        </section>
+      </main>
+    );
+  }
 
   if (index >= QUESTION_COUNT) {
     return (

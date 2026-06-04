@@ -27,6 +27,7 @@ export default function SprintPage() {
   const [timeLeft, setTimeLeft] = useState(12);
   const [failedPair, setFailedPair] = useState<FailedSprintPair | null>(null);
   const [reward, setReward] = useState<SprintReward>(null);
+  const [sprintActive, setSprintActive] = useState<boolean | null>(null);
   const endedRef = useRef(false);
   const savedHistoryRef = useRef(false);
   const startedAtRef = useRef(Date.now());
@@ -47,13 +48,28 @@ export default function SprintPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/learning-exercises/active?learner=kiur')
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((body: { exerciseIds?: string[] }) => {
+        if (!cancelled) setSprintActive(Boolean(body.exerciseIds?.includes('kiur.english.sprint')));
+      })
+      .catch(() => {
+        if (!cancelled) setSprintActive(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     void fetchBestEnglishSprintScore()
       .then(setBest)
       .catch(() => setBest(0));
   }, []);
 
   useEffect(() => {
-    if (ended) return;
+    if (ended || sprintActive !== true) return;
     const t = setInterval(() => {
       setTimeLeft((v) => {
         if (v <= 1) {
@@ -65,10 +81,10 @@ export default function SprintPage() {
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [ended]);
+  }, [ended, sprintActive]);
 
   useEffect(() => {
-    if (!ended || savedHistoryRef.current) return;
+    if (!ended || savedHistoryRef.current || sprintActive !== true) return;
     savedHistoryRef.current = true;
 
     const finalScore = scoreRef.current;
@@ -120,7 +136,25 @@ export default function SprintPage() {
     }).then((response) => response.ok ? response.json() : null)
       .then((body) => setReward(body?.reward ?? null))
       .catch(() => setReward(null));
-  }, [best, elapsedSeconds, ended]);
+  }, [best, elapsedSeconds, ended, sprintActive]);
+
+  if (sprintActive === null) {
+    return <main className='container english-page'><section className='practice-shell english-shell'>Laadin sprinti...</section></main>;
+  }
+
+  if (!sprintActive) {
+    return (
+      <main className='container english-page'>
+        <section className='practice-shell english-shell'>
+          <Link className='practice-back-button' href='/kiur/inglise-keel'>&larr; Inglise keel</Link>
+          <header className='subject-header'>
+            <div className='subject-emoji'>ABC</div>
+            <h1>Sprint ei ole praegu saadaval</h1>
+          </header>
+        </section>
+      </main>
+    );
+  }
 
   if (ended) {
     return <main className='english-page sprint-result-page'>
@@ -151,7 +185,7 @@ export default function SprintPage() {
             <p>Sina valisid: <strong>{failedPair.chosenOption.estonian}</strong>.</p>
           </section>
         )}
-        {reward && (
+        {reward && (reward.awardedAmount > 0 || reward.capReached) && (
           <section className='sprint-failed-card sprint-reward-card'>
             <h2>Tähed</h2>
             <p>Teenitud: <strong>+{reward.awardedAmount.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐</strong></p>

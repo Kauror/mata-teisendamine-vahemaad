@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { awardStudyPointsForAttempt } from '@/lib/learningPoints';
+import {
+  isLearner,
+  isLearningExerciseActiveForAttempt,
+  isLearningExerciseSubject
+} from '@/lib/learningExercises';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -26,6 +31,15 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const db = await getDb();
   const body = await req.json();
+  const learner = isLearner(body.learner) ? body.learner : null;
+  const subject = isLearningExerciseSubject(body.subject) ? body.subject : null;
+  const topic = typeof body.topic === 'string' ? body.topic : '';
+  const category = typeof body.category === 'string' ? body.category : '';
+
+  if (learner && subject && !isLearningExerciseActiveForAttempt({ learner, subject, topic, category })) {
+    return NextResponse.json({ message: 'Harjutus ei ole praegu aktiivne.' }, { status: 403 });
+  }
+
   const stmt = db.prepare('INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const isLearningAttempt = body.subject !== 'inglise-keel';
   const questionCount = body.subject === 'lugemine' ? Number(body.questionCount) || 0 : isLearningAttempt ? 15 : Number(body.questionCount) || 0;
@@ -38,9 +52,9 @@ export async function POST(req: NextRequest) {
     score,
     body.elapsedSeconds,
     JSON.stringify(body.questions),
-    body.learner ?? null,
-    body.subject ?? null,
-    body.topic ?? null
+    learner,
+    subject ?? body.subject ?? null,
+    topic || null
   );
   const reward = awardStudyPointsForAttempt(Number(result.lastInsertRowid));
   return NextResponse.json({ id: result.lastInsertRowid, reward }, { status: 201 });

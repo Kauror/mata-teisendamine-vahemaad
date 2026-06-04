@@ -8,6 +8,11 @@ import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { compactTopicLabel } from '@/lib/history';
 import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
 
+type ActiveLearningExercise = {
+  subject: string;
+  topic: string;
+  category: string;
+};
 
 const sectorPoint = (degrees: number, radius = 50) => {
   const radians = ((degrees - 90) * Math.PI) / 180;
@@ -112,8 +117,46 @@ function TestPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [exerciseAvailability, setExerciseAvailability] = useState<'loading' | 'allowed' | 'blocked'>('loading');
 
   useEffect(() => {
+    if (learner !== 'kiur' && learner !== 'kirsi') {
+      setExerciseAvailability('allowed');
+      return;
+    }
+    if (subject !== 'matemaatika' && subject !== 'inglise-keel' && subject !== 'lugemine') {
+      setExerciseAvailability('allowed');
+      return;
+    }
+
+    let cancelled = false;
+    setExerciseAvailability('loading');
+    void fetch(`/api/learning-exercises/active?learner=${learner}`)
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((body: { exercises?: ActiveLearningExercise[] }) => {
+        if (cancelled) return;
+        const exercises = body.exercises ?? [];
+        const isActive = exercises.some((exercise) => {
+          if (exercise.subject !== subject) return false;
+          if (subject === 'matemaatika') {
+            if (learner === 'kirsi') return exercise.topic === topic && exercise.category === categoryParam;
+            return exercise.topic === topic;
+          }
+          return exercise.topic === topic || exercise.category === categoryParam;
+        });
+        setExerciseAvailability(isActive ? 'allowed' : 'blocked');
+      })
+      .catch(() => {
+        if (!cancelled) setExerciseAvailability('blocked');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryParam, learner, subject, topic]);
+
+  useEffect(() => {
+    if (exerciseAvailability !== 'allowed') return;
     const generated = isKirsiMath ? generateKirsiSession(categoryParam as never, count, seed) : generateKiurMathSession(topic, categoryParam, difficulty, count, seed);
     setQuestions(generated);
     setAnswers(Array(generated.length).fill(''));
@@ -125,7 +168,7 @@ function TestPageContent() {
     setIsSaving(false);
     setSaveError('');
     setShowStopConfirm(false);
-  }, [category, categoryParam, difficulty, count, seed, isKirsiMath, topic]);
+  }, [category, categoryParam, difficulty, count, exerciseAvailability, seed, isKirsiMath, topic]);
 
   useEffect(() => {
     if (!questions.length) return;
@@ -147,6 +190,8 @@ function TestPageContent() {
     return inputRef.current?.value ?? answers[index] ?? '';
   };
 
+  if (exerciseAvailability === 'loading') return <main className='test-page'><section className='test-shell'><section className='question-card'>Laadin harjutust...</section></section></main>;
+  if (exerciseAvailability === 'blocked') return <main className='test-page'><section className='test-shell'><section className='question-card'><h2>Harjutus ei ole saadaval</h2><p>See harjutus ei ole praegu aktiivne.</p><button type='button' className='btn' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
   if (!current) return <main className='test-page'><section className='test-shell'><section className='question-card'><h2>Harjutus ei ole saadaval</h2><p>Valitud teemat ei leitud.</p><button type='button' className='btn' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
 
   const finalizeResults = () => {

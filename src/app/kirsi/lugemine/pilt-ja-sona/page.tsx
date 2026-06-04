@@ -53,12 +53,28 @@ export default function KirsiPictureWordSprintPage() {
   const [reward, setReward] = useState<SprintReward>(null);
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [exerciseActive, setExerciseActive] = useState<boolean | null>(null);
   const runSeedRef = useRef(Date.now());
   const startedAtRef = useRef(Date.now());
   const endedRef = useRef(false);
   const savedHistoryRef = useRef(false);
 
   const boardPairs = useMemo(() => buildBoardPairs(runSeedRef.current, boardIndex), [boardIndex]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/learning-exercises/active?learner=kirsi')
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((body: { exerciseIds?: string[] }) => {
+        if (!cancelled) setExerciseActive(Boolean(body.exerciseIds?.includes('kirsi.reading.pilt-ja-sona')));
+      })
+      .catch(() => {
+        if (!cancelled) setExerciseActive(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     void fetchBestKirsiReadingSprintScore()
@@ -75,7 +91,7 @@ export default function KirsiPictureWordSprintPage() {
   }, [ended, started]);
 
   useEffect(() => {
-    if (!ended || savedHistoryRef.current) return;
+    if (!ended || savedHistoryRef.current || exerciseActive !== true) return;
     savedHistoryRef.current = true;
 
     if (score > best) {
@@ -100,9 +116,10 @@ export default function KirsiPictureWordSprintPage() {
     }).then((response) => response.ok ? response.json() : null)
       .then((body) => setReward(body?.reward ?? null))
       .catch(() => setReward(null));
-  }, [best, elapsedSeconds, ended, reviewItems, score]);
+  }, [best, elapsedSeconds, ended, exerciseActive, reviewItems, score]);
 
   const startGame = () => {
+    if (exerciseActive !== true) return;
     runSeedRef.current = Date.now();
     startedAtRef.current = Date.now();
     endedRef.current = false;
@@ -146,6 +163,24 @@ export default function KirsiPictureWordSprintPage() {
     setElapsedSeconds(Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000)));
     setEnded(true);
   };
+
+  if (exerciseActive === null) {
+    return <main className='container english-page reading-page'><section className='practice-shell english-shell reading-intro-shell'>Laadin harjutust...</section></main>;
+  }
+
+  if (!exerciseActive) {
+    return (
+      <main className='container english-page reading-page'>
+        <section className='practice-shell english-shell reading-intro-shell'>
+          <Link className='practice-back-button' href='/kirsi/lugemine'>&larr; Lugemine</Link>
+          <header className='subject-header'>
+            <div className='subject-emoji'>ABC</div>
+            <h1>Harjutus ei ole praegu saadaval</h1>
+          </header>
+        </section>
+      </main>
+    );
+  }
 
   if (!started) {
     return (

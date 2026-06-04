@@ -1,7 +1,7 @@
 'use client';
 
-import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type AssignmentMode = 'kiur' | 'kirsi' | 'both_independent' | 'first_completer';
 type RecurrenceType = 'once' | 'daily' | 'weekdays' | 'weekends' | 'selected_weekdays';
@@ -40,6 +40,24 @@ type StoreDashboard = {
   purchases: Array<{ id: number; learner: Learner; titleSnapshot: string; priceSnapshot: number; purchasedAt: string }>;
 };
 
+type LearningExerciseStatus = 'active' | 'hidden';
+type LearningExerciseSubject = 'matemaatika' | 'inglise-keel' | 'lugemine';
+type LearningExercise = {
+  id: string;
+  title: string;
+  learnerScope: Learner[];
+  subject: LearningExerciseSubject;
+  topic: string;
+  category: string;
+  routePath: string;
+  sortOrder: number;
+  childStatus: Record<Learner, LearningExerciseStatus | null>;
+};
+
+type LearningExerciseDashboard = {
+  exercises: LearningExercise[];
+};
+
 type LearningSettings = {
   baseValue: number;
   decayStep: number;
@@ -50,6 +68,20 @@ type LearningSettings = {
   learningPointsEnabled: boolean;
   streakBonusEnabled: boolean;
 };
+
+type ParentSectionId = 'stars' | 'today' | 'tasks' | 'store' | 'stock' | 'lists' | 'learning' | 'library' | 'password';
+
+function ParentAccordionSection({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
+  return (
+    <section className='parent-accordion-section'>
+      <button type='button' className='parent-accordion-toggle' aria-expanded={open} onClick={onToggle}>
+        <span>{title}</span>
+        <strong>{summary}</strong>
+      </button>
+      {open && <div className='parent-accordion-content'>{children}</div>}
+    </section>
+  );
+}
 
 const ASSIGNMENT_LABELS: Record<AssignmentMode, string> = {
   kiur: 'Kiur',
@@ -72,6 +104,15 @@ const STOCK_LABELS: Record<StoreStockType, string> = {
   fixed_stock: 'Kindel kogus',
   daily_stock: 'Päevane kogus',
   one_time_global: 'Ühekordne'
+};
+const SUBJECT_LABELS: Record<LearningExerciseSubject, string> = {
+  matemaatika: 'Matemaatika',
+  'inglise-keel': 'Inglise keel',
+  lugemine: 'Lugemine'
+};
+const STATUS_LABELS: Record<LearningExerciseStatus, string> = {
+  active: 'Aktiivne',
+  hidden: 'Peidetud'
 };
 
 const WEEKDAYS = [
@@ -138,6 +179,7 @@ const defaultLearningSettings: LearningSettings = {
 export default function ParentHub() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [store, setStore] = useState<StoreDashboard | null>(null);
+  const [learningExercises, setLearningExercises] = useState<LearningExercise[]>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [title, setTitle] = useState('');
@@ -155,18 +197,34 @@ export default function ParentHub() {
   const [learningSettings, setLearningSettings] = useState<LearningSettings>(defaultLearningSettings);
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
+  const [openSections, setOpenSections] = useState<Set<ParentSectionId>>(() => new Set(['stars', 'today']));
+  const [exerciseChildFilter, setExerciseChildFilter] = useState<'all' | Learner>('all');
+  const [exerciseSubjectFilter, setExerciseSubjectFilter] = useState<'all' | LearningExerciseSubject>('all');
+  const [exerciseTopicFilter, setExerciseTopicFilter] = useState('all');
+  const [exerciseStatusFilter, setExerciseStatusFilter] = useState<'all' | LearningExerciseStatus>('all');
+
+  const toggleSection = (section: ParentSectionId) => {
+    setOpenSections((current) => {
+      const next = new Set(current);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  };
 
   const load = () => {
     setError('');
     Promise.all([
       fetch('/api/parent/dashboard').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/store').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/parent/learning-settings').then((res) => (res.ok ? res.json() : Promise.reject()))
+      fetch('/api/parent/learning-settings').then((res) => (res.ok ? res.json() : Promise.reject())),
+      fetch('/api/parent/learning-exercises').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard]) => {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
+        setLearningExercises((exerciseDashboard as LearningExerciseDashboard).exercises);
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
   };
@@ -174,6 +232,44 @@ export default function ParentHub() {
   useEffect(() => {
     load();
   }, []);
+
+  const exerciseTopicOptions = useMemo(() => {
+    const values = new Map<string, string>();
+    for (const exercise of learningExercises) {
+      if (exercise.topic) values.set(exercise.topic, exercise.topic);
+      if (exercise.category) values.set(exercise.category, exercise.category);
+      if (!exercise.topic && !exercise.category) values.set(exercise.title, exercise.title);
+    }
+    return Array.from(values, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, 'et'));
+  }, [learningExercises]);
+
+  const filteredLearningExercises = useMemo(() => learningExercises.filter((exercise) => {
+    const childOk = exerciseChildFilter === 'all' || exercise.learnerScope.includes(exerciseChildFilter);
+    const subjectOk = exerciseSubjectFilter === 'all' || exercise.subject === exerciseSubjectFilter;
+    const topicOk = exerciseTopicFilter === 'all' || exercise.topic === exerciseTopicFilter || exercise.category === exerciseTopicFilter || exercise.title === exerciseTopicFilter;
+    const statusOk = exerciseStatusFilter === 'all'
+      || (exerciseChildFilter === 'all'
+        ? (exercise.childStatus.kiur === exerciseStatusFilter || exercise.childStatus.kirsi === exerciseStatusFilter)
+        : exercise.childStatus[exerciseChildFilter] === exerciseStatusFilter);
+    return childOk && subjectOk && topicOk && statusOk;
+  }), [exerciseChildFilter, exerciseStatusFilter, exerciseSubjectFilter, exerciseTopicFilter, learningExercises]);
+
+  const changeLearningExerciseStatus = async (exerciseId: string, learner: Learner, status: LearningExerciseStatus) => {
+    setError('');
+    setNotice('');
+    const res = await fetch('/api/parent/learning-exercises', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exerciseId, learner, status })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.message || 'Harjutust ei saanud muuta.');
+      return;
+    }
+    setLearningExercises((body as LearningExerciseDashboard).exercises);
+    setNotice(status === 'active' ? 'Harjutus lisati tagasi.' : 'Harjutus peideti lapse vaatest.');
+  };
 
   const createTask = async (event: FormEvent) => {
     event.preventDefault();
@@ -334,6 +430,7 @@ export default function ParentHub() {
       {error && <p className='error'>{error}</p>}
       {notice && <p className='ok'>{notice}</p>}
 
+      <ParentAccordionSection title='Tähed' summary='Saldod ja punktide muutmine' open={openSections.has('stars')} onToggle={() => toggleSection('stars')}>
       <section className='parent-grid'>
         <article className='parent-card'>
           <h2>Tähed</h2>
@@ -357,7 +454,9 @@ export default function ParentHub() {
           </form>
         </article>
       </section>
+      </ParentAccordionSection>
 
+      <ParentAccordionSection title='Parool' summary='Lapsevanema ala ligipääs' open={openSections.has('password')} onToggle={() => toggleSection('password')}>
       <section className='parent-card'>
         <h2>Muuda parooli</h2>
         <form className='parent-form parent-task-form' onSubmit={changePassword}>
@@ -366,7 +465,9 @@ export default function ParentHub() {
           <button type='submit'>Muuda parool</button>
         </form>
       </section>
+      </ParentAccordionSection>
 
+      <ParentAccordionSection title='Lisa tegevus' summary='Uus päevategevus' open={openSections.has('tasks')} onToggle={() => toggleSection('tasks')}>
       <section className='parent-card'>
         <h2>Lisa tegevus</h2>
         <form className='parent-form parent-task-form' onSubmit={createTask}>
@@ -379,7 +480,9 @@ export default function ParentHub() {
           <button type='submit'>Salvesta</button>
         </form>
       </section>
+      </ParentAccordionSection>
 
+      <ParentAccordionSection title='Pood' summary='Lisa või muuda poe esemeid' open={openSections.has('store')} onToggle={() => toggleSection('store')}>
       <section className='parent-card'>
         <h2>Pood</h2>
         <form className='parent-form parent-task-form' onSubmit={saveStoreItem}>
@@ -403,7 +506,9 @@ export default function ParentHub() {
           </div>
         </form>
       </section>
+      </ParentAccordionSection>
 
+      <ParentAccordionSection title='Õppimise punktid' summary='Harjutuste tähtede reeglid' open={openSections.has('learning')} onToggle={() => toggleSection('learning')}>
       <section className='parent-card'>
         <h2>Õppimise punktid</h2>
         <p>Õppimise punktid annavad tähti harjutuste tegemise eest. Sama harjutuse kordamisel väheneb tänane väärtus, et vältida lihtsat punktide kogumist.</p>
@@ -419,7 +524,48 @@ export default function ParentHub() {
           <button type='submit'>Salvesta</button>
         </form>
       </section>
+      </ParentAccordionSection>
 
+      <ParentAccordionSection title='Harjutuste kogu' summary={`${learningExercises.length} harjutust`} open={openSections.has('library')} onToggle={() => toggleSection('library')}>
+      <section className='parent-card'>
+        <h2>Harjutuste kogu</h2>
+        <div className='parent-form parent-library-filters'>
+          <label><span>Laps</span><select value={exerciseChildFilter} onChange={(event) => setExerciseChildFilter(event.target.value as 'all' | Learner)}><option value='all'>Kõik</option><option value='kiur'>Kiur</option><option value='kirsi'>Kirsi</option></select></label>
+          <label><span>Aine</span><select value={exerciseSubjectFilter} onChange={(event) => setExerciseSubjectFilter(event.target.value as 'all' | LearningExerciseSubject)}><option value='all'>Kõik ained</option>{Object.entries(SUBJECT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label><span>Teema</span><select value={exerciseTopicFilter} onChange={(event) => setExerciseTopicFilter(event.target.value)}><option value='all'>Kõik teemad</option>{exerciseTopicOptions.map((topic) => <option key={topic.value} value={topic.value}>{topic.label}</option>)}</select></label>
+          <label><span>Staatus</span><select value={exerciseStatusFilter} onChange={(event) => setExerciseStatusFilter(event.target.value as 'all' | LearningExerciseStatus)}><option value='all'>Kõik</option><option value='active'>Aktiivne</option><option value='hidden'>Peidetud</option></select></label>
+        </div>
+        <div className='parent-template-list'>
+          {filteredLearningExercises.map((exercise) => (
+            <div key={exercise.id} className='parent-template-row parent-learning-exercise-row'>
+              <div>
+                <strong>{exercise.title}</strong>
+                <span>{SUBJECT_LABELS[exercise.subject]} · {exercise.topic || exercise.category}</span>
+              </div>
+              <div className='learning-status-grid'>
+                {(['kiur', 'kirsi'] as Learner[]).map((learner) => {
+                  const supported = exercise.learnerScope.includes(learner);
+                  const status = exercise.childStatus[learner];
+                  const childName = learnerLabel(learner);
+                  return (
+                    <div key={learner} className='learning-status-cell'>
+                      <strong>{childName}</strong>
+                      <span>{supported && status ? STATUS_LABELS[status] : 'Ei kuulu'}</span>
+                      {supported && status === 'active' ? <button type='button' className='filter-chip' onClick={() => changeLearningExerciseStatus(exercise.id, learner, 'hidden')}>Peida lapse vaatest</button> : null}
+                      {supported && status === 'hidden' ? <button type='button' className='view-button' onClick={() => changeLearningExerciseStatus(exercise.id, learner, 'active')}>{learner === 'kiur' ? 'Näita Kiurile' : 'Näita Kirsile'}</button> : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {learningExercises.length > 0 && filteredLearningExercises.length === 0 && <p>Selle filtriga harjutusi ei ole.</p>}
+          {learningExercises.length === 0 && <p>Harjutuste kogu laaditakse.</p>}
+        </div>
+      </section>
+      </ParentAccordionSection>
+
+      <ParentAccordionSection title='Täna' summary='Aktiivsed ja tehtud tegevused' open={openSections.has('today')} onToggle={() => toggleSection('today')}>
       <section className='parent-grid'>
         <article className='parent-card'>
           <h2>Tänased tegevused</h2>
@@ -436,7 +582,9 @@ export default function ParentHub() {
           </div>
         </article>
       </section>
+      </ParentAccordionSection>
 
+      <ParentAccordionSection title='Laoseis' summary={`${store?.items.length ?? 0} poe eset`} open={openSections.has('stock')} onToggle={() => toggleSection('stock')}>
       <section className='parent-card'>
         <h2>Laoseis</h2>
         <div className='parent-template-list'>
@@ -459,7 +607,9 @@ export default function ParentHub() {
           {store && store.items.length === 0 && <p>Poe esemeid ei ole loodud.</p>}
         </div>
       </section>
+      </ParentAccordionSection>
 
+      <ParentAccordionSection title='Nimekirjad' summary='Tegevused ja ostud' open={openSections.has('lists')} onToggle={() => toggleSection('lists')}>
       <section className='parent-grid'>
         <article className='parent-card'>
           <h2>Tegevused</h2>
@@ -485,6 +635,7 @@ export default function ParentHub() {
           </div>
         </article>
       </section>
+      </ParentAccordionSection>
     </section>
   );
 }

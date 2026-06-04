@@ -96,6 +96,7 @@ function groupHistoryByDay(items: HistoryItem[]) {
 }
 
 export default function HistoryPage() {
+  const todayKey = dayLabel(new Date().toISOString());
   const [history, setHistory] = useState<ExerciseHistory[]>([]);
   const [taskHistory, setTaskHistory] = useState<TaskHistory[]>([]);
   const [storeHistory, setStoreHistory] = useState<PurchaseHistory[]>([]);
@@ -107,6 +108,7 @@ export default function HistoryPage() {
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [childFilter, setChildFilter] = useState<ChildFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
+  const [openDays, setOpenDays] = useState<Set<string>>(() => new Set([todayKey]));
 
   useEffect(() => {
     Promise.all([
@@ -136,6 +138,15 @@ export default function HistoryPage() {
   const todayItems = useMemo(() => filtered.filter((a) => dayLabel(itemDate(a)) === 'Täna'), [filtered]);
   const todayAvg = avgPercent(todayItems.filter((item): item is ExerciseHistory => item.kind === 'exercise'));
   const groups = useMemo(() => groupHistoryByDay(filtered), [filtered]);
+
+  const toggleDay = (day: string) => {
+    setOpenDays((current) => {
+      const next = new Set(current);
+      if (next.has(day)) next.delete(day);
+      else next.add(day);
+      return next;
+    });
+  };
 
   const onDelete = async (id: number) => {
     setDeleteError('');
@@ -204,10 +215,14 @@ export default function HistoryPage() {
           <section className='history-groups'>
             {Array.from(groups.entries()).map(([day, items]) => {
               const groupAvg = avgPercent(items.filter((item): item is ExerciseHistory => item.kind === 'exercise'));
+              const isOpen = openDays.has(day);
               return (
                 <div key={day} className='date-group'>
-                  <h2>{day}: {items.length} kirjet · Keskmine {groupAvg === null ? '—' : `${groupAvg}%`}</h2>
-                  <div className='history-list-compact'>
+                  <button type='button' className='date-group-toggle' aria-expanded={isOpen} onClick={() => toggleDay(day)}>
+                    <span>{day}</span>
+                    <strong>{items.length} kirjet · Keskmine {groupAvg === null ? '—' : `${groupAvg}%`}</strong>
+                  </button>
+                  {isOpen && <div className='history-list-compact'>
                     {items.map((h) => {
                       const isExercise = h.kind === 'exercise';
                       const learner = isExercise ? learnerLabel(h.category, h.learner) : h.learner === 'kiur' ? 'Kiur' : 'Kirsi';
@@ -248,7 +263,7 @@ export default function HistoryPage() {
                         </div>
                       );
                     })}
-                  </div>
+                  </div>}
                 </div>
               );
             })}

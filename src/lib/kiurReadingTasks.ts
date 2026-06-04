@@ -1023,6 +1023,1006 @@ export const KIUR_READING_TASKS = [
     "correctAnswer": "ta hoidub inimestest eemale",
     "evidenceText": "hoiduvad inimestest eemale",
     "questionType": "detail"
+  },
+  {
+    "id": "51-tulipart",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "TULIPART",
+    "sourceCollection": "Linnunädalad",
+    "text": "Veel kümmekonna aasta eest poleks osanud arvata, et Eestis pole tulipardi kohtamine enam mingi harukordne juhtum. See pigem hane kui parti meenutav eksoot on tavapärane pesitseja hoopiski Põhja-Aafrikas, Kesk- ja Sise-Aasias ning Kagu-Euroopas Türgis, Kreekas, Bulgaarias ja Rumeenias. Seega oluliselt soojema kliimaga aladel kui meie kodumaa.",
+    "question": "Kus on tulipart tavapärane pesitseja?",
+    "options": [
+      "Põhja-Aafrikas ja Aasias",
+      "Eestis igas maakonnas",
+      "Gröönimaal",
+      "Antarktikas"
+    ],
+    "correctAnswer": "Põhja-Aafrikas ja Aasias",
+    "evidenceText": "tavapärane pesitseja hoopiski Põhja-Aafrikas, Kesk- ja Sise-Aasias",
+    "questionType": "detail"
+  },
+  {
+    "id": "52-nurmkana",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "NURMKANA",
+    "sourceCollection": "Linnunädalad",
+    "text": "Nurmkanaseltskond, keda me praegu ringi näeme sibamas, on suvine perekond – isa, ema ja lapsed. Niimoodi üheskoos veedavad nad aega kevadeni, mil otsivad omale paarilised. Ja praeguse seltskonna suurus oleneb sellest, kui paljudel lastel on õnnestunud ellu jääda. Nurmkanadel on paljulapselised pered, lapsi võib kooruda üle kahekümne!",
+    "question": "Kes kuuluvad tekstis kirjeldatud nurmkanaseltskonda?",
+    "options": [
+      "isa, ema ja lapsed",
+      "ainult isaslinnud",
+      "ainult pojad",
+      "kaks vanaema"
+    ],
+    "correctAnswer": "isa, ema ja lapsed",
+    "evidenceText": "suvine perekond – isa, ema ja lapsed",
+    "questionType": "detail"
+  },
+  {
+    "id": "53-herilaseviu",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "HERILASEVIU",
+    "sourceCollection": "Linnunädalad",
+    "text": "Herilaseviu on üks hilisemaid saabujaid rändlindude hulgas ning sellel on mõistagi kindel põhjus. Varem pole siin suhu pista suurt midagi, mis oleks talle nokka mööda. Nimelt on tema lemmikroog herilaste ja kimalaste vastsed ning neid varakevadel võtta pole. Tõsi küll, ta menüüsse kuuluvad ka konnad, rohutirtsud, hiired, linnupojad, mardikad ja muu taoline, aga alles siis, kui põhitoitu parasjagu silmapiiril pole.",
+    "question": "Mis on herilaseviu lemmikroog?",
+    "options": [
+      "herilaste ja kimalaste vastsed",
+      "pihlakamarjad",
+      "kirsikivid",
+      "vesiroosiseemned"
+    ],
+    "correctAnswer": "herilaste ja kimalaste vastsed",
+    "evidenceText": "tema lemmikroog herilaste ja kimalaste vastsed",
+    "questionType": "detail"
+  },
+  {
+    "id": "54-kaelustuvi",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KAELUSTUVI",
+    "sourceCollection": "Linnunädalad",
+    "text": "Meigastel on turismihooaeg. Meigas ongi kaelustuvi, sel linnul on kaks nimetust. Terve septembri reisivad Soome ja Venemaa tuvidest turistid läbi Maarjamaa Lääne-Euroopa suunas. Sinnasamasse võtavad suuna ka meie endi tuvid. Vaid mõned üksikud jäävad talve uudistama.",
+    "question": "Mis lind on meigas?",
+    "options": [
+      "kaelustuvi",
+      "kodutuvi",
+      "rabahani",
+      "hallrästas"
+    ],
+    "correctAnswer": "kaelustuvi",
+    "evidenceText": "Meigas ongi kaelustuvi",
+    "questionType": "detail"
+  },
+  {
+    "id": "55-rabahani",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "RABAHANI",
+    "sourceCollection": "Linnunädalad",
+    "text": "Märtsis-aprillis-mais ning septembrist novembrini peatuvad meie põldudel kümned tuhanded haned. Rabahanedel on pea ja kael tumepruunid, selg ja kõht hallikaspruunid. Mustal nokal on ere oranž muster, jalad on samuti erkoranžid, justkui helkurid liiklusohutuse tagamiseks. Laukhanesid saab neist eristada kirju kõhualuse järgi ning valge otsaesine aitab neid ära tunda lähemal vaatlusel.",
+    "question": "Mis värvi muster on rabahane mustal nokal?",
+    "options": [
+      "ere oranž",
+      "hele sinine",
+      "tumeroheline",
+      "valge"
+    ],
+    "correctAnswer": "ere oranž",
+    "evidenceText": "Mustal nokal on ere oranž muster",
+    "questionType": "detail"
+  },
+  {
+    "id": "56-hobehaigur",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "HÕBEHAIGUR",
+    "sourceCollection": "Linnunädalad",
+    "text": "Hõbehaigur on nii valge sulestikuga, kui üldse olla saab. Valge nagu luik ja üpris suur lind, kuid suuruselt jääb luigele siiski tublisti alla. Meie suurima linnu kühmnokk-luigega võrreldes on ta kehakaal ligi kümme korda väiksem. Samas ega tiibade siruulatus luige omast palju ei erinegi, ligikaudu 1,5 meetrit luige 2–2,4 meetri vastu.",
+    "question": "Millise värvusega on hõbehaigru sulestik?",
+    "options": [
+      "valge",
+      "must",
+      "roheline",
+      "sinine"
+    ],
+    "correctAnswer": "valge",
+    "evidenceText": "Hõbehaigur on nii valge sulestikuga",
+    "questionType": "detail"
+  },
+  {
+    "id": "57-veetallaja",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "VEETALLAJA",
+    "sourceCollection": "Linnunädalad",
+    "text": "Värvus on kevadistel ja sügisestel veetallajatel üpris erinev. Kevaditi on kaelaküljed punakat tooni, sügiseti on linnud mustvalged, kuid ära tunneme nad ennekõike iseloomuliku vee tallamise tõttu. Tegelikult näeme seda, et need linnud püsivad vee peal kergelt kui korgid ning keerlevad ühe koha peal, napsates aina välkkiirete liigutustega vee pealt putukaid. Samal ajal teevad nende jalakesed vee all aktiivset tallamistööd, mille tõttu veeputukad pinnale tõusevad ning sedasi ta neid enda ümbert noppida saabki.",
+    "question": "Mille järgi saab veetallajat tekstis ära tunda?",
+    "options": [
+      "vee tallamise järgi",
+      "pika saba järgi",
+      "punase noka järgi",
+      "puutüvel ronimise järgi"
+    ],
+    "correctAnswer": "vee tallamise järgi",
+    "evidenceText": "ära tunneme nad ennekõike iseloomuliku vee tallamise tõttu",
+    "questionType": "detail"
+  },
+  {
+    "id": "58-sookurg",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "SOOKURG",
+    "sourceCollection": "Linnunädalad",
+    "text": "September on sookurgede rännuaeg. Kuresõpradele tõeline tipphetk. Ühelgi teisel ajal aastas pole meil nii palju sookurgi liikvel, eriti veel suurte seltskondadena. Meie oma sookurgedele lisandub suurte parvedena külalisi põhjast ja kirdest – Soomest, Karjalast ja Leningradi oblastist Venemaalt.",
+    "question": "Millal on sookurgede rännuaeg?",
+    "options": [
+      "septembris",
+      "jaanuaris",
+      "juunis",
+      "märtsis"
+    ],
+    "correctAnswer": "septembris",
+    "evidenceText": "September on sookurgede rännuaeg.",
+    "questionType": "detail"
+  },
+  {
+    "id": "59-mansak",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "MÄNSAK",
+    "sourceCollection": "Linnunädalad",
+    "text": "Mänsakud on kõige häälekamad sügisel. Nende nurrumist on augustist saati koduõuelegi kuulda. Seda muidugi juhul, kui kodu metsaserval paikneb. Minul on see õnn ja harva juhtub, et mõni päev mänsakuta möödub. Linnas mänsakut ei kohta ning temaga kohtumiseks tuleb ette võtta metsas käik.",
+    "question": "Kus tuleb mänsakuga kohtumiseks käia?",
+    "options": [
+      "metsas",
+      "linnatänaval",
+      "mererannas",
+      "koolimajas"
+    ],
+    "correctAnswer": "metsas",
+    "evidenceText": "temaga kohtumiseks tuleb ette võtta metsas käik",
+    "questionType": "detail"
+  },
+  {
+    "id": "60-hallrastas",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "HALLRÄSTAS",
+    "sourceCollection": "Linnunädalad",
+    "text": "Rästaste parvi on septembris-oktoobris kõikjal ohtralt liikvel. Eelkõige just hallrästaid. Neil pole rändeteele asumisega sugugi kiiret. Hallrästaid märkame ka talvisel ajal, mõnes asulas üksikuna või paarikaupa, sageli aga suuremate salkadena ringi liikumas. Kuni on puudel-põõsastel õunu ja marju, on ka hallrästaid.",
+    "question": "Mida peab olema puudel-põõsastel, et hallrästaid näha?",
+    "options": [
+      "õunu ja marju",
+      "kalu ja konni",
+      "käbisid ja kive",
+      "sulgi ja oksi"
+    ],
+    "correctAnswer": "õunu ja marju",
+    "evidenceText": "Kuni on puudel-põõsastel õunu ja marju, on ka hallrästaid.",
+    "questionType": "detail"
+  },
+  {
+    "id": "61-hobekajakas",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "HÕBEKAJAKAS",
+    "sourceCollection": "Linnunädalad",
+    "text": "Hõbekajakat võime kohata erinevais paigus. Linnainimestele on ta tuttav tänavailt, saarlastele ja rannarahvale mererannikult ning maainimestele laukarabadest. Kuna noored hõbekajakad valivad elupaigaks enamasti selle, kus nad üles on kasvanud, ning elavad seal kogu elu, võibki neid tinglikult jagada rabakajakateks, linnakajakateks ja merekajakateks. Noored asuvad pesitsema alles neljandal eluaastal, kuid kui lindudel hästi läheb, võivad nad elada vähemalt 20-aastaseks.",
+    "question": "Kuhu võib hõbekajakaid tekstis jagada?",
+    "options": [
+      "rabakajakateks, linnakajakateks ja merekajakateks",
+      "ainult metsalindudeks",
+      "ainult kodulindudeks",
+      "laululindudeks ja rähnideks"
+    ],
+    "correctAnswer": "rabakajakateks, linnakajakateks ja merekajakateks",
+    "evidenceText": "jagada rabakajakateks, linnakajakateks ja merekajakateks",
+    "questionType": "detail"
+  },
+  {
+    "id": "62-hallhani",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "HALLHANI",
+    "sourceCollection": "Linnunädalad",
+    "text": "Hallhaned on kevadel väga varased saabujad. Esimesi võib läänesaartel trehvata veebruari lõpupäevil, kuid märtsi algusest peale on nende tulekul juba hoog sees. Kui tekib küsimus, kuidas aru saada, et saabujad just hallhaned, mitte raba- või laukhaned on, siis neid polegi väga raske eristada. Kui neid piisavalt lähedalt näeme. Nimelt on hallhanel suur üleni oranž nokk ja sulestik heledam kui teistel hanedel, ise on ta aga pisut suurem.",
+    "question": "Milline nokk on hallhanel?",
+    "options": [
+      "suur üleni oranž nokk",
+      "väike must nokk",
+      "sinine nokk",
+      "roheline nokk"
+    ],
+    "correctAnswer": "suur üleni oranž nokk",
+    "evidenceText": "hallhanel suur üleni oranž nokk",
+    "questionType": "detail"
+  },
+  {
+    "id": "63-vaike-lehelind",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "VÄIKE-LEHELIND",
+    "sourceCollection": "Linnunädalad",
+    "text": "Väike-lehelinnu laul on küll vist kõigile inimestele tuttav. Hoopis vähem on muidugi neid, kes oskavad selle lauljat nimetada. Väga üksikud aga suudavad ta ka näo järgi ära tunda. Aprilli lõpust oleme kuulnud kõikjal, kus vähegi puid ja põõsaid kasvamas, tema tuttavat hitti „tsilp-tsalp-tsilp-tsalp…“.",
+    "question": "Milline on väike-lehelinnu tuttav laul?",
+    "options": [
+      "tsilp-tsalp",
+      "kuk-ku",
+      "kraa-kraa",
+      "piip-piip"
+    ],
+    "correctAnswer": "tsilp-tsalp",
+    "evidenceText": "tuttavat hitti „tsilp-tsalp-tsilp-tsalp…“",
+    "questionType": "detail"
+  },
+  {
+    "id": "64-korvukrats",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KÕRVUKRÄTS",
+    "sourceCollection": "Linnunädalad",
+    "text": "Vahva nimetus sel linnul. Lind ise on ka põnev tegelane. Ja üldse mitte selline, kes peidab end metsasügavustes. Ta võib suisa meie koduaeda elama asuda, kui sealt sobivad tingimused leiab. Kõrge kuusehekk näiteks ja selles mõni vana haraka- või varesepesa.",
+    "question": "Kuhu võib kõrvukräts sobivatel tingimustel elama asuda?",
+    "options": [
+      "koduaeda",
+      "ainult avamerele",
+      "kõrbe",
+      "koolimajja"
+    ],
+    "correctAnswer": "koduaeda",
+    "evidenceText": "Ta võib suisa meie koduaeda elama asuda",
+    "questionType": "detail"
+  },
+  {
+    "id": "65-kalakajakas",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KALAKAJAKAS",
+    "sourceCollection": "Linnunädalad",
+    "text": "Kalakajakas on meil üks tavalisemaid kajakaliike. Kohtame teda elutsemas ja pesitsemas nii rannikul ja saartel kui ka siseveekogudel ja rabades ning linnadeski. Tõsi küll, nii veidi väiksem pruunipäine naerukajakas kui ka tükk maad suurem hõbekajakas on arvukamad, kuid kalakajakaidki pesitseb meil 7000 – 10 000 paari. Piisavalt, et igaühele silma jääda.",
+    "question": "Milline kajakaliik on kalakajakas Eestis?",
+    "options": [
+      "üks tavalisemaid kajakaliike",
+      "kõige haruldasem lind",
+      "ainult talvelind",
+      "ainult puurilind"
+    ],
+    "correctAnswer": "üks tavalisemaid kajakaliike",
+    "evidenceText": "Kalakajakas on meil üks tavalisemaid kajakaliike.",
+    "questionType": "detail"
+  },
+  {
+    "id": "66-lauk",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "LAUK",
+    "sourceCollection": "Linnunädalad",
+    "text": "Enamik laukusid naudib talve siiski Lääne-Euroopas või lausa Põhja-Aafrikas ning saabub meie vetele tagasi märtsis. Neid on lihtne kõigi teiste veelindude seas ära tunda, süsimusta sulestiku taustal helgib kaugele valge laubakilp. Lähemalt vaadeldes näeme ka punaseid silmi, mis pole sugugi magamatusest punased, vaid neile loomupärased.",
+    "question": "Mille järgi on lauk teiste veelindude seas lihtne ära tunda?",
+    "options": [
+      "valge laubakilbi järgi",
+      "kollase saba järgi",
+      "sinise noka järgi",
+      "pika kaela järgi"
+    ],
+    "correctAnswer": "valge laubakilbi järgi",
+    "evidenceText": "helgib kaugele valge laubakilp",
+    "questionType": "detail"
+  },
+  {
+    "id": "67-soorudi",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "SOORÜDI",
+    "sourceCollection": "Linnunädalad",
+    "text": "Ega esimese pilguga ei pruugi üldse tajudagi, et rannajoonel elu käib, sest need kuldnokastki väiksemad kahlajad, kel küll jalad ja nokk kuldnoka omadest oluliselt pikemad, sulanduvad ümbrusesse ideaalselt tänu oma säbrulisele sulestikule. Ära tunneme nad eelkõige musta kõhu järgi. Tulnud on nad Põhjala tundratest, kus asuvad soorüdi pesitsusalad. Tegelikult on soorüdil kaks alamliiki, keda Eestis võib kohata.",
+    "question": "Mille järgi tunneme soorüdi eelkõige ära?",
+    "options": [
+      "musta kõhu järgi",
+      "punase saba järgi",
+      "sinise pea järgi",
+      "kollase noka järgi"
+    ],
+    "correctAnswer": "musta kõhu järgi",
+    "evidenceText": "Ära tunneme nad eelkõige musta kõhu järgi.",
+    "questionType": "detail"
+  },
+  {
+    "id": "68-hoburastas",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "HOBURÄSTAS",
+    "sourceCollection": "Linnunädalad",
+    "text": "Hoburästastel on rändeaeg. Sellega seoses võib neid puristamas kuulda ka seal, kus neid pesitsusperioodil ei kohta. Kindlasti tasub neid otsida pihlapuude kasvukohtadest, sest pihlakamarjad on neile Eestis leiduvatest viljadest ühed lemmikumad. Hoburästas on kõigi rästaste seas suurim ning püstise kehahoiaku ja suurte tähnide tõttu rinnaesisel ka piisavalt hästi äratuntav.",
+    "question": "Milliste puude kasvukohtadest tasub hoburästaid otsida?",
+    "options": [
+      "pihlapuude",
+      "palmipuude",
+      "õunapuude",
+      "kuuskede"
+    ],
+    "correctAnswer": "pihlapuude",
+    "evidenceText": "tasub neid otsida pihlapuude kasvukohtadest",
+    "questionType": "detail"
+  },
+  {
+    "id": "69-valgeposk-lagle",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "VALGEPÕSK-LAGLE",
+    "sourceCollection": "Linnunädalad",
+    "text": "Oktoobris on Lääne- ja Põhja-Eesti põllud, heinamaad ja rannakarjamaad lagledest tulvil. Niisama nagu kevadel aprillis-mais. Sest Eesti on just paraja koha peal, et teha üks pikem, nädalaid kestev rändepeatus teel arktiliselt Novaja Zemljalt Hollandisse. Just Hollandi madalad rohumaad sobivad valgepõsk-lagledele kõige paremini talve möödasaatmiseks, aga kuna ka meie põllud ja heinamaad on neile igati meele järele, ei raatsi nad sageli enne lume tulekut edasi lennata.",
+    "question": "Kuhu on valgepõsk-lagled teel talve mööda saatma?",
+    "options": [
+      "Hollandisse",
+      "Indiasse",
+      "Austraaliasse",
+      "Antarktikasse"
+    ],
+    "correctAnswer": "Hollandisse",
+    "evidenceText": "teel arktiliselt Novaja Zemljalt Hollandisse",
+    "questionType": "detail"
+  },
+  {
+    "id": "70-valgeselg-kirjurahn",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "VALGESELG-KIRJURÄHN",
+    "sourceCollection": "Linnunädalad",
+    "text": "Mõnel aastal algab talv varakult. Vahel juba oktoobris, vahel esimeste novembripäevadega sajab paksu lume maha, tekitades jõulutunde. Ühel sellisel varase lumega aastal tegin esimesel lumisel laupäevahommikul kodutalu ümbruses Mõedakal väikese linnuretke ning kohtasin esmakordselt kodulepikus valgeselg-kirjurähni. Üllatus oli suur, sest olin selle linnuliigiga varem vaid mõned üksikud korrad kohtunud.",
+    "question": "Millist lindu kohtas autor kodulepikus?",
+    "options": [
+      "valgeselg-kirjurähni",
+      "kanada laglet",
+      "auli",
+      "kodukakku"
+    ],
+    "correctAnswer": "valgeselg-kirjurähni",
+    "evidenceText": "kohtasin esmakordselt kodulepikus valgeselg-kirjurähni",
+    "questionType": "detail"
+  },
+  {
+    "id": "71-hakk",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "HAKK",
+    "sourceCollection": "Linnunädalad",
+    "text": "Just oktoobris on hakinoorukite arvates see aeg, kus kodukandis juba piisavalt ringi vaadatud ning hing ihkab kaugemaid paiku kaeda. Said nad ju juba enne jaanipäeva tuule tiibadesse, olles esimese elukuu veetnud lärmakas ühiselamus kusagil kirikutornis või mujal müürilõhedes, õõnsate puudega mõisapargis või koguni korstnas. Muidugi on suur hulk noorukeid pärit ka maalt „üksiktaludest“, milleks on betoonist õõnsad kõrgepingepostid.",
+    "question": "Millal tahavad hakinoorukid kaugemaid paiku vaadata?",
+    "options": [
+      "oktoobris",
+      "jaanuaris",
+      "aprillis",
+      "juunis"
+    ],
+    "correctAnswer": "oktoobris",
+    "evidenceText": "Just oktoobris on hakinoorukite arvates see aeg",
+    "questionType": "detail"
+  },
+  {
+    "id": "72-hallvares",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "HALLVARES",
+    "sourceCollection": "Linnunädalad",
+    "text": "Lindude sügisränne on nüüdseks kestnud juba kuid, aga ikka on veel minejaid. On ka mahajääjaid, kellega koos veedame talve siinmail. Üks selline on vares, tuttav tegelane igaühele. Hallvares mõistagi, ehkki maainimene tunneb teda pigem lihtsalt varesena.",
+    "question": "Kellega veedame teksti järgi talve siinmail?",
+    "options": [
+      "hallvaresega",
+      "suitsupääsukesega",
+      "väikekoovitajaga",
+      "ööbikuga"
+    ],
+    "correctAnswer": "hallvaresega",
+    "evidenceText": "Üks selline on vares, tuttav tegelane igaühele. Hallvares mõistagi",
+    "questionType": "detail"
+  },
+  {
+    "id": "73-kanada-lagle",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KANADA LAGLE",
+    "sourceCollection": "Linnunädalad",
+    "text": "Kanada on suur maa. Eestist koguni 220 korda suurem. Ja kanada lagle on suur lind, siinmail laiemalt levinud valgepõsk-laglest umbes 30 sentimeetri jagu pikem ja suurema tiibade siruulatusega. Seda muidugi juhul, kui ta on täiskasvanud.",
+    "question": "Kummast linnust on kanada lagle tekstis suurem?",
+    "options": [
+      "valgepõsk-laglest",
+      "pöialpoisist",
+      "musträstast",
+      "kodukakust"
+    ],
+    "correctAnswer": "valgepõsk-laglest",
+    "evidenceText": "valgepõsk-laglest umbes 30 sentimeetri jagu pikem",
+    "questionType": "detail"
+  },
+  {
+    "id": "74-mustlagle",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "MUSTLAGLE",
+    "sourceCollection": "Linnunädalad",
+    "text": "Igal kevadel ja sügisel rändab Eestist läbi sadu tuhandeid hanesid ja laglesid, sealhulgas mustlagled. Septembris, oktoobris ja novembris lendab neid meie läänerannikut pidi läbi kümneid tuhandeid, kuid mõned sajad jäävad ka rannikule peatuma. Ja mitte üksnes läänerannikule, ka Lääne-Virumaa randades ja põldudel on nähtud neid toimetamas.",
+    "question": "Millal rändavad mustlagled Eestist läbi?",
+    "options": [
+      "kevadel ja sügisel",
+      "ainult jaanuaris",
+      "ainult kesksuvel",
+      "ainult jõulude ajal"
+    ],
+    "correctAnswer": "kevadel ja sügisel",
+    "evidenceText": "Igal kevadel ja sügisel rändab Eestist läbi",
+    "questionType": "detail"
+  },
+  {
+    "id": "75-siisike",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "SIISIKE",
+    "sourceCollection": "Linnunädalad",
+    "text": "Siisikesel on ilus nimetus. Küllap teataksegi siisikest selle poolest hästi, linnu enda aga tunnevad vähesed looduses ära. On ju ta õige pisike ning enamasti tegutseb kõrgetes puuvõrades, kust leiab toidu ning kuhu ehitab ka pesa. Pesitsusperioodil kohtab siisikesi meil hajusalt ja kindlasti jäävad nad linnurohkuse ja lehestiku varjus enamikul märkamata.",
+    "question": "Kus tegutseb siisike enamasti?",
+    "options": [
+      "kõrgetes puuvõrades",
+      "mererannas",
+      "kooliõues",
+      "põllumasinas"
+    ],
+    "correctAnswer": "kõrgetes puuvõrades",
+    "evidenceText": "enamasti tegutseb kõrgetes puuvõrades",
+    "questionType": "detail"
+  },
+  {
+    "id": "76-kodukakk",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KODUKAKK",
+    "sourceCollection": "Linnunädalad",
+    "text": "Sügiselgi tasub õhtupimedas parki jalutama minna ning kuulatada, ehk kostub kodukakuisa kume „huuuuuu .... hu-hu-hu-hu-huu“. Sellega annab ta märku, et see park on tema territoorium ning kui mina või sina peaksime kodukakud olema, siis tuleks taanduda. Kui me aga kodukakud pole, siis võime õnnelikud olla, et meile selline meeliülendav looduselamus osaks sai.",
+    "question": "Mida annab kodukakuisa oma huikega märku?",
+    "options": [
+      "et park on tema territoorium",
+      "et vihma hakkab sadama",
+      "et ta otsib kalu",
+      "et tal on külm"
+    ],
+    "correctAnswer": "et park on tema territoorium",
+    "evidenceText": "see park on tema territoorium",
+    "questionType": "detail"
+  },
+  {
+    "id": "77-kormoran",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KORMORAN",
+    "sourceCollection": "Linnunädalad",
+    "text": "Mäletan, et minu lapsepõlves käisid meie linnuhuvilised kormorane imetlemas Volga deltas ja mujal lõunapoolsetel aladel, kuhu tollal oli võimalik sõita. Meil selliseid eksoote ei elanud. Praegu aga hinnatakse Eesti kormoranipopulatsiooni suuruseks kuni 25 000 paari! Mingi kogus neist on end sisse seadnud ka Lääne-Virumaa piires Soome lahe rannikul ja ranniku lähedal väikesaartel.",
+    "question": "Kui suureks hinnatakse Eesti kormoranipopulatsiooni?",
+    "options": [
+      "kuni 25 000 paari",
+      "kuni 50 paari",
+      "ainult üks paar",
+      "üle miljoni paari"
+    ],
+    "correctAnswer": "kuni 25 000 paari",
+    "evidenceText": "kuni 25 000 paari",
+    "questionType": "detail"
+  },
+  {
+    "id": "78-mustrastas",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "MUSTRÄSTAS",
+    "sourceCollection": "Linnunädalad",
+    "text": "Paljudel meist, ennekõike linnaelanikel, seisab ees terve talv koos musträstastega. Eriti aedlinnades meeldib musträstale niivõrd, et ta ei näe mingit mõtet riskantset rännuteed ette võtta. Kompostihunnikud, solgiaugud ja lindude toidumajad katavad ju talveperioodiks rikkaliku laua. Eriti siis, kui me ei unusta toidumajadesse ka õunu lisada.",
+    "question": "Mis aitab musträstal talvel toitu leida?",
+    "options": [
+      "kompostihunnikud ja toidumajad",
+      "sügav meri",
+      "kõrged mäed",
+      "liivaluited"
+    ],
+    "correctAnswer": "kompostihunnikud ja toidumajad",
+    "evidenceText": "Kompostihunnikud, solgiaugud ja lindude toidumajad",
+    "questionType": "detail"
+  },
+  {
+    "id": "79-tamme-kirjurahn",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "TAMME-KIRJURÄHN",
+    "sourceCollection": "Linnunädalad",
+    "text": "Tamme-kirjurähni esmakordne pesitsemine Eestis tehti kindlaks 2000. aastal Räpinas, kümne aasta eest hinnati tema pesitsusaegseks arvukuseks Eestis juba 100–300 paari. Praegu pole tamme-kirjurähn ka meil Lääne-Virumaalgi mingi eriline haruldus, ühe paari pesitsuse tuvastas tänavu kevadel Vilja Padonik Rakvere tammikus, aga kuna seal võib neid alati kohata, polnud see kindlasti esimene pesitsus ja tõenäoliselt pesitseb seal rohkem kui üks paar. Ja pesitsevad nad Sagadis ja Vihulaski. Või näiteks Aasperes ja Kundas.",
+    "question": "Kus tehti kindlaks tamme-kirjurähni esmakordne pesitsemine Eestis?",
+    "options": [
+      "Räpinas",
+      "Tallinnas",
+      "Käsmus",
+      "Narvas"
+    ],
+    "correctAnswer": "Räpinas",
+    "evidenceText": "esmakordne pesitsemine Eestis tehti kindlaks 2000. aastal Räpinas",
+    "questionType": "detail"
+  },
+  {
+    "id": "80-karvasjalg-viu",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KARVASJALG-VIU",
+    "sourceCollection": "Linnunädalad",
+    "text": "Karvasjalg-viu ehk taliviu on meie tavalisima kullilise hiireviu sugulane, kes meil ei pesitse, küll aga kasutab meie alasid transiitmaana. Nii nagu paljud rändlinnud. Ja tema sügisrände kõrghooaeg on oktoobris, kuid jätkub novembris. Kesk-Euroopas talvepuhkust pidavad taliviud on pärit Põhjamaadest ja Venemaalt, aga esimesed meist juba üle rännanud isendid võisid pärineda isegi Siberi tundratest.",
+    "question": "Millal on karvasjalg-viu sügisrände kõrghooaeg?",
+    "options": [
+      "oktoobris",
+      "juunis",
+      "veebruaris",
+      "detsembris"
+    ],
+    "correctAnswer": "oktoobris",
+    "evidenceText": "tema sügisrände kõrghooaeg on oktoobris",
+    "questionType": "detail"
+  },
+  {
+    "id": "81-hangelind",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "HANGELIND",
+    "sourceCollection": "Linnunädalad",
+    "text": "Arktikas pesitsevate hangelindude rändeaeg on käes, mistõttu võib olla õnne neid ka meie mail näha. Kui mullu kohtas Lääne-Virumaal esimesi hangelinde Jaana Vain Käsmus 25. oktoobril, siis tänavu kohtas Viive Kiis üht isendit Kadrina vallas Ama külas juba 29. septembril. Kindlasti ei kuulu nad Eestis ega ka Lääne-Virumaal sageli kohatavate linnuliikide hulka.",
+    "question": "Kus pesitsevad hangelinnud?",
+    "options": [
+      "Arktikas",
+      "Lõuna-Aafrikas",
+      "Eesti linnaparkides",
+      "Vahemeres"
+    ],
+    "correctAnswer": "Arktikas",
+    "evidenceText": "Arktikas pesitsevate hangelindude",
+    "questionType": "detail"
+  },
+  {
+    "id": "82-karmiinleevike",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KARMIINLEEVIKE",
+    "sourceCollection": "Linnunädalad",
+    "text": "November kipub olema meie kliimavöötmes küll vist kõige kõledam kuu. Kes ei ihkaks praegu viibida hoopis soojemal maal ... näiteks Indias? Meie tänane päevakangelane karmiinleevike veedabki praegu aega Indias või Kagu-Aasia maades ning ei kavatse veel niipea tagasi pöörduda. Tema jaoks on siin liiga külm ja toidulaud liiga kasin.",
+    "question": "Kus veedab karmiinleevike praegu aega?",
+    "options": [
+      "Indias või Kagu-Aasias",
+      "Eestis lume all",
+      "Põhjanabal",
+      "Läänemerel"
+    ],
+    "correctAnswer": "Indias või Kagu-Aasias",
+    "evidenceText": "veedabki praegu aega Indias või Kagu-Aasia maades",
+    "questionType": "detail"
+  },
+  {
+    "id": "83-puukoristaja",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "PUUKORISTAJA",
+    "sourceCollection": "Linnunädalad",
+    "text": "Nüüd, kus miinuskraadid enam väga harvad külalised pole, sigineb koduaedadesse aina enam linnukesi uurima, kas toidumajad juba välja pandud ja neisse seemneid puistatud. Tihastega hästi seltsiv puukoristaja on talviti neis sage külaline. Ta on tihastest suurem ja tugevam ning konkurentsi korral paneb selle ka maksma. Sestap, kui toidumajal õnnestub jälgida puukoristaja ja rasvatihase duelli, võidab enamasti puukoristaja.",
+    "question": "Kus on puukoristaja talviti sage külaline?",
+    "options": [
+      "toidumajades",
+      "merel",
+      "viljapõllul",
+      "koolisaalis"
+    ],
+    "correctAnswer": "toidumajades",
+    "evidenceText": "puukoristaja on talviti neis sage külaline",
+    "questionType": "detail"
+  },
+  {
+    "id": "84-rohevint",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "ROHEVINT",
+    "sourceCollection": "Linnunädalad",
+    "text": "Rohevinti võime oma koduaias kohata aasta ringi. Seda muidugi juhul, kui on täidetud tema nõutud tingimused. Talvel on tal aeda asja juhul, kui seal toidumaja olemas ja selles rikkalikult seemneid. Kevadel ja suvel on vaja aga pesitsemisvõimalust mõnes tihedas põõsas, hekis või kuusel.",
+    "question": "Mida vajab rohevint talvel aias?",
+    "options": [
+      "toidumaja seemnetega",
+      "kalatiiki",
+      "liivakasti",
+      "kõrget torni"
+    ],
+    "correctAnswer": "toidumaja seemnetega",
+    "evidenceText": "toidumaja olemas ja selles rikkalikult seemneid",
+    "questionType": "detail"
+  },
+  {
+    "id": "85-varblased",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "VARBLASED",
+    "sourceCollection": "Linnunädalad",
+    "text": "Varblased hoiduvad alati meie lähedusse. Olgu või aasta kõige pimedam ja porisem aeg. Iseenesest on ju täitsa mõnus mõelda, et on olemas linnuliik, kes meid vajab. Samas teeb see nende elu meie omast sõltuvaks ja kui meie neid enam oma lähikonnas ei salli, on neil raske toime tulla.",
+    "question": "Kelle lähedusse varblased tekstis hoiduvad?",
+    "options": [
+      "meie lähedusse",
+      "ainult merele",
+      "karude juurde",
+      "sügavasse rabasse"
+    ],
+    "correctAnswer": "meie lähedusse",
+    "evidenceText": "Varblased hoiduvad alati meie lähedusse.",
+    "questionType": "detail"
+  },
+  {
+    "id": "86-kukkurtihane",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KUKKURTIHANE",
+    "sourceCollection": "Linnunädalad",
+    "text": "Kukkurtihase nimetus võib tekitada arvamuse, et tegemist on Austraalia päritolu tihasega, kel on kukkur kõhu peal. Nii see muidugi pole, ka pole ta rahajõmm, kel kukkur vööl. Nimetuse on talle andnud hoopiski ta pesa, mis on Eesti lindude seas ainulaadne. Selle meisterlikkuse on ta tõepoolest Austraalia kukkurloomadelt üle võtnud, aga vaid väliselt.",
+    "question": "Mis on andnud kukkurtihasele nime?",
+    "options": [
+      "tema pesa",
+      "tema saba",
+      "tema laul",
+      "tema nokk"
+    ],
+    "correctAnswer": "tema pesa",
+    "evidenceText": "Nimetuse on talle andnud hoopiski ta pesa",
+    "questionType": "detail"
+  },
+  {
+    "id": "87-siidisaba",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "SIIDISABA",
+    "sourceCollection": "Linnunädalad",
+    "text": "„Peeglike, peeglike seina peal, milline lind on kauneim me maal?“ oleks siidisabal põhjust inimelamutes leiduvat edevat mööblitükki tülitada. Milline võiks vastus olla? Maitse asi, aga siidisabal oleks põhjust vastuseks enda nime oodata küll. Siidisaba on tõeline edevuse kehastus, vähemalt meie lindude hulgas.",
+    "question": "Millise omaduse kehastus on siidisaba tekstis?",
+    "options": [
+      "edevuse",
+      "arguse",
+      "laiskuse",
+      "kurjuse"
+    ],
+    "correctAnswer": "edevuse",
+    "evidenceText": "Siidisaba on tõeline edevuse kehastus",
+    "questionType": "detail"
+  },
+  {
+    "id": "88-laanepuu",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "LAANEPÜÜ",
+    "sourceCollection": "Linnunädalad",
+    "text": "Laanepüüde elus on sügis huvitav aeg. Just nüüd leiavad nad paarilise kogu järgnevaks aastaks ning jaotavad territooriume. Pesitsemiseks läheb nagu kõigil lindudel ikka kevadel, aga kruntide ja paariliste jagamine toimub sügisel. Kui siis õnnestub uus naaber välja vihastada, on suur võimalus, et ta tormab kohale ja saamegi temaga tuttavaks.",
+    "question": "Millal jagavad laanepüüd krunte ja paarilisi?",
+    "options": [
+      "sügisel",
+      "jõuluööl",
+      "jaanuaris",
+      "kesksuvel"
+    ],
+    "correctAnswer": "sügisel",
+    "evidenceText": "kruntide ja paariliste jagamine toimub sügisel",
+    "questionType": "detail"
+  },
+  {
+    "id": "89-kodutuvi",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KODUTUVI",
+    "sourceCollection": "Linnunädalad",
+    "text": "Kord eksinud vaene tütarlaps metsas ära. Ingel tulnud ta juurde ja andnud talle sulise kuue. Selle kuue varal lennanud ta metsast välja, kuid moondunud ise tuviks. Istuva tuvina hüüdnud ta: „Tu-vi, tu-vi!“",
+    "question": "Milleks moondus tütarlaps tekstis?",
+    "options": [
+      "tuviks",
+      "kajakaks",
+      "rebaseks",
+      "kalaks"
+    ],
+    "correctAnswer": "tuviks",
+    "evidenceText": "moondunud ise tuviks",
+    "questionType": "detail"
+  },
+  {
+    "id": "90-tuttlooke",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "TUTTLÕOKE",
+    "sourceCollection": "Linnunädalad",
+    "text": "Tuttlõokesi elab Eestis vähe. Õigemini, nad on siin üpris haruldased. Või märgatakse neid vähem, kui tegelikult on, sest ka põldlõokesed kipuvad tutti pähe turritama ning kuna põldlõokesi on kevadel ja suvel avamaastik tihedalt täis, võib nende vahel mõni tuttlõoke märkamata jääda küll. Kuigi hea tahtmise korral võib teda kohata aasta ringi.",
+    "question": "Milline lind on tuttlõoke Eestis?",
+    "options": [
+      "üpris haruldane",
+      "kõige tavalisem aialind",
+      "ainult puurilind",
+      "kodulind"
+    ],
+    "correctAnswer": "üpris haruldane",
+    "evidenceText": "nad on siin üpris haruldased",
+    "questionType": "detail"
+  },
+  {
+    "id": "91-piilpart",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "PIILPART",
+    "sourceCollection": "Linnunädalad",
+    "text": "Seda, et piilupart oli rongijuht, on meist igaüks kuulnud, aga looduses piilparti tõenäoliselt siiski kõik ära ei tunne. Tegemist on meie kõige pisema ujupardiga rikkalikus pardiperes. Sinikael-parti teavad-tunnevad kõik ja piilpart ongi vast tuntuse poolest järgmine, aga ujupartide peres on meil veel räga-, soo-, luitsnokk-, rääks- ja viupart.",
+    "question": "Milline part on piilpart?",
+    "options": [
+      "kõige pisem ujupart",
+      "kõige suurem hani",
+      "rähn",
+      "kajakas"
+    ],
+    "correctAnswer": "kõige pisem ujupart",
+    "evidenceText": "meie kõige pisema ujupardiga",
+    "questionType": "detail"
+  },
+  {
+    "id": "92-kuhmnokk-luik",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KÜHMNOKK-LUIK",
+    "sourceCollection": "Linnunädalad",
+    "text": "„Valge nagu luik“ tavatsetakse öelda inimese kohta, kelle ihu pole päikest näinud. Luiged on kogu aeg päikese käes, kui päike paistab, aga ikka valged. Valged nagu lumi. Värvuse puhtuse poolest võiksid luiged inglitega võistelda.",
+    "question": "Mis värvi on luiged tekstis?",
+    "options": [
+      "valged",
+      "mustad",
+      "rohelised",
+      "sinised"
+    ],
+    "correctAnswer": "valged",
+    "evidenceText": "Valged nagu lumi.",
+    "questionType": "detail"
+  },
+  {
+    "id": "93-laanerahn",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "LAANERÄHN",
+    "sourceCollection": "Linnunädalad",
+    "text": "Oleme varasemates Virumaa Teataja numbrites tutvunud juba mitme rähniliigiga, üks toredam kui teine. Tuttavaks on saanud pisike pruunitähniline väänkael, musta-valgekirjud suur-kirjurähn, väike-kirjurähn, tamme-kirjurähn ja valgeselg-kirjurähn, rohelise palituga hallpea-rähn ning suur punast mütsi kandev musträhn. Tänane päevakangelane laanerähn eristub neist kõigist. Ta on üleni musta-valgekirju, kuid valget leidub temas siiski omajagu rohkem kui musta.",
+    "question": "Milline on laanerähni sulestik tekstis?",
+    "options": [
+      "musta-valgekirju",
+      "üleni sinine",
+      "roheline ja kollane",
+      "punane ja pruun"
+    ],
+    "correctAnswer": "musta-valgekirju",
+    "evidenceText": "Ta on üleni musta-valgekirju",
+    "questionType": "detail"
+  },
+  {
+    "id": "94-suur-kirjurahn",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "SUUR-KIRJURÄHN",
+    "sourceCollection": "Linnunädalad",
+    "text": "„Rähn on lindude puusepp. Neid on mitu venda, kõik peavad sedasama ametit,“ arvas rähnidest Carl Robert Jakobson ligi poolteist sajandit tagasi. Ja tõepoolest on vennad rähnid puusepa ametit pidanud aastasadu. Nokk on neil ju peitel, millega annab raiuda puusse nii kodukoopaid, toiduauke kui ka hädasignaale. Aga mida siiski teeb talvel see punase tutimütsiga isane suur-kirjurähn aiavärava kõveraks vajunud, pehkinud puust aiaposti otsas?",
+    "question": "Millega võrreldakse rähni nokka?",
+    "options": [
+      "peitliga",
+      "lusikaga",
+      "pilliga",
+      "aeruga"
+    ],
+    "correctAnswer": "peitliga",
+    "evidenceText": "Nokk on neil ju peitel",
+    "questionType": "detail"
+  },
+  {
+    "id": "95-kruusel",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KRÜÜSEL",
+    "sourceCollection": "Linnunädalad",
+    "text": "Jõulude lähenedes võiks kirjutada mõnest linnust, kellel sulestikus rohkem või veel rohkem jõuluvana kuue värvi leidub. Näiteks leevikesest või käbilinnust või punarinnast. Mängin aga väikse vingerpussi ning kirjutan hoopiski linnust, kellel jalad ilusad punased. Tema üldine väljanägemine näib aga kaugelt vaadates hoopis mustvalge nagu toonekurel, ehkki temaga meil nüüd küll vähimatki sugulust pole.",
+    "question": "Mis värvi jalad on krüüslil tekstis?",
+    "options": [
+      "punased",
+      "sinised",
+      "rohelised",
+      "mustad"
+    ],
+    "correctAnswer": "punased",
+    "evidenceText": "jalad ilusad punased",
+    "questionType": "detail"
+  },
+  {
+    "id": "96-leevike",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "LEEVIKE",
+    "sourceCollection": "Linnunädalad",
+    "text": "Leevike on jõululind. Miks just leevikest kõige sagedamini jõulukaartidel kujutatakse, aga mitte varblast või varest, seda pole raske ära arvata. Leevikese isaslinnu alapool on just jõuluvana kuuega ühte karva. Siis näebki postkaardil välja justkui punase kuuega jõuluvana ise talvisele õunapuule laskunud.",
+    "question": "Miks sobib leevike jõulukaardile?",
+    "options": [
+      "isaslinnu alapool on jõuluvana kuuega ühte karva",
+      "ta elab korstnas",
+      "ta veab saani",
+      "ta teeb kingitusi"
+    ],
+    "correctAnswer": "isaslinnu alapool on jõuluvana kuuega ühte karva",
+    "evidenceText": "Leevikese isaslinnu alapool on just jõuluvana kuuega ühte karva.",
+    "questionType": "detail"
+  },
+  {
+    "id": "97-koldvint",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "KOLDVINT",
+    "sourceCollection": "Linnunädalad",
+    "text": "Kui mina lapsepõlves 1974. aastal oma esimese linnuraamatu, Eerik Kumari „Eesti lindude välimääraja“ sain, oli seal muude lindude seas kirjeldatud ka kanaari vinti. Tookord arvasin, et tegu on sama kanaarilinnuga, kelle paari klassivend puuris pidas. Hiljem sain muidugi teada, et kanaari vint ehk koldvint elab looduses Kanaari saartel, Madeiral ja Assooridel ning temast on aretatud puuris peetav kanaarilind.",
+    "question": "Kus elab koldvint looduses?",
+    "options": [
+      "Kanaari saartel, Madeiral ja Assooridel",
+      "Eestis igas aias",
+      "Antarktikas",
+      "Siberi tundras"
+    ],
+    "correctAnswer": "Kanaari saartel, Madeiral ja Assooridel",
+    "evidenceText": "elab looduses Kanaari saartel, Madeiral ja Assooridel",
+    "questionType": "detail"
+  },
+  {
+    "id": "98-poialpoiss",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "PÖIALPOISS",
+    "sourceCollection": "Linnunädalad",
+    "text": "Lumivalgekese muinasjutus on tegelasteks seitse pöialpoissi, aga nendest täna juttu ei tule. Lind, kes kannab pöialpoisi nimetust, on samuti selle saanud oma väiksuse tõttu, tegemist on Euroopa pisima linnuga. Sümboolselt on selle linnukese valinud oma rahvuslinnuks üks Euroopa pisemaid riike Luksemburg. Eesti pisima linnu tiitlit kannab pöialpoiss samuti auga, meie suurima linnu kühmnokk-luigega võrreldes on ta koguni 2400 korda kergem.",
+    "question": "Mille tõttu on pöialpoiss oma nime saanud?",
+    "options": [
+      "väiksuse tõttu",
+      "pika noka tõttu",
+      "punase saba tõttu",
+      "tugeva hääle tõttu"
+    ],
+    "correctAnswer": "väiksuse tõttu",
+    "evidenceText": "selle saanud oma väiksuse tõttu",
+    "questionType": "detail"
+  },
+  {
+    "id": "99-roohabekas",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "ROOHABEKAS",
+    "sourceCollection": "Linnunädalad",
+    "text": "Kui kuulutataks välja kõige efektsema välimusega lindude konkurss, oleks roohabekal küll põhjust sellel osaleda. Isaslinnu mustad sorakil „vuntsid“ annavad talle ikka väga vahva väljanägemise. Roostjaskollane seljasulestik mõlemal sugupoolel on samuti silmatorkav ning pikk ümara laieneva otsaga saba samuti. Sellise välimusega lind ei jää meie linnuriigis tõesti märkamatuks.",
+    "question": "Mis annab isasele roohabekale vahva väljanägemise?",
+    "options": [
+      "mustad sorakil vuntsid",
+      "sinine nokk",
+      "valge laubakilp",
+      "pikk kael"
+    ],
+    "correctAnswer": "mustad sorakil vuntsid",
+    "evidenceText": "Isaslinnu mustad sorakil „vuntsid“",
+    "questionType": "detail"
+  },
+  {
+    "id": "100-aul",
+    "learner": "kiur",
+    "subject": "lugemine",
+    "exercise": "loe-ja-vasta",
+    "sourceAuthor": "Peep Veedla",
+    "sourceTitle": "AUL",
+    "sourceCollection": "Linnunädalad",
+    "text": "Kohe lööb kalendris ette uue aastanumbri ning algab auli aasta. Mitte hiina horoskoobi järgi, vaid Eesti Ornitoloogiaühing on aastaks 2023 valinud aasta linnuks auli. Seega on aasta viimasel päeval tagumine aeg selle vahva sukelpardiga tutvust teha. Suure tõenäosusega aastavahetuse saluuti jälgides meil auliga kohtuda ei õnnestu, sest auli kodu on nüüd ja edaspidi kuni kevadeni Läänemeri, elukohaks merelained.",
+    "question": "Milleks valis Eesti Ornitoloogiaühing auli aastaks 2023?",
+    "options": [
+      "aasta linnuks",
+      "aasta putukaks",
+      "rahvuslinnuks",
+      "koduloomaks"
+    ],
+    "correctAnswer": "aasta linnuks",
+    "evidenceText": "valinud aasta linnuks auli",
+    "questionType": "detail"
   }
 ] satisfies KiurReadingTask[];
 

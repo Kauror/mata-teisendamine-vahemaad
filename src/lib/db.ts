@@ -223,6 +223,33 @@ db.exec(`
     FOREIGN KEY (kiurLedgerEntryId) REFERENCES point_ledger(id),
     FOREIGN KEY (kirsiLedgerEntryId) REFERENCES point_ledger(id)
   );
+
+  CREATE TABLE IF NOT EXISTS learning_exercises (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    learnerScopeJson TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    topic TEXT,
+    category TEXT,
+    routePath TEXT NOT NULL,
+    sortOrder INTEGER NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS child_learning_exercise_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exerciseId TEXT NOT NULL,
+    learner TEXT NOT NULL,
+    status TEXT NOT NULL,
+    updatedAt TEXT NOT NULL,
+    FOREIGN KEY (exerciseId) REFERENCES learning_exercises(id)
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_child_learning_exercise_settings_unique
+    ON child_learning_exercise_settings(exerciseId, learner);
+
+  CREATE INDEX IF NOT EXISTS idx_child_learning_exercise_settings_learner_status
+    ON child_learning_exercise_settings(learner, status);
 `);
 
 export default db;

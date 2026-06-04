@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import DailyTasksPanel from '@/app/components/DailyTasksPanel';
+import { subjectHasActiveLearningExercises } from '@/lib/learningExercises';
 
 const SUBJECTS = [
   { id: 'matemaatika', name: 'Matemaatika', icon: '🧮', href: '/kiur/matemaatika', accent: 'blue' },
@@ -7,7 +8,12 @@ const SUBJECTS = [
   { id: 'lugemine', name: 'Lugemine', icon: '📖', href: '/kiur/lugemine', accent: 'green' }
 ] as const;
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function KiurPage() {
+  const subjects = SUBJECTS.filter((subject) => subjectHasActiveLearningExercises('kiur', subject.id));
+
   return (
     <main className='container subject-flow-page'>
       <section className='subject-flow-shell'>
@@ -21,12 +27,13 @@ export default function KiurPage() {
         <DailyTasksPanel learner='kiur' />
 
         <div className='subject-grid'>
-          {SUBJECTS.map((subject) => (
+          {subjects.map((subject) => (
             <Link key={subject.id} className='subject-card' data-accent={subject.accent} href={subject.href}>
               <span className='subject-icon' aria-hidden>{subject.icon}</span>
               <strong className='subject-name'>{subject.name}</strong>
             </Link>
           ))}
+          {subjects.length === 0 && <p className='recent-empty'>Harjutusi ei ole praegu aktiivne.</p>}
         </div>
       </section>
     </main>

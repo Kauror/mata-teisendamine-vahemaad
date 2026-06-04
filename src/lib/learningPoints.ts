@@ -68,6 +68,7 @@ const DEFAULT_SETTINGS: LearningPointSettings = {
 };
 
 const MIN_REWARD_SCORE_PERCENT = 0.5;
+const MIN_ENGLISH_SPRINT_WORDS_FOR_REWARD = 5;
 
 const KEY_BY_CATEGORY: Record<string, string> = {
   'Inglise keel - sprint': 'kiur.english.sprint',
@@ -210,9 +211,8 @@ function studyDates(learner: Learner) {
   return new Set(rows.map((row) => row.day));
 }
 
-export function getCurrentLearningStreak(learner: Learner, today = todayDateString()) {
-  const dates = studyDates(learner);
-  const cursor = new Date(`${today}T12:00:00Z`);
+function countLearningStreakFrom(dates: Set<string>, startDate: string) {
+  const cursor = new Date(`${startDate}T12:00:00Z`);
   let streak = 0;
   while (true) {
     const day = cursor.toISOString().slice(0, 10);
@@ -221,6 +221,20 @@ export function getCurrentLearningStreak(learner: Learner, today = todayDateStri
     cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
   return streak;
+}
+
+export function getCurrentLearningStreak(learner: Learner, today = todayDateString()) {
+  return countLearningStreakFrom(studyDates(learner), today);
+}
+
+export function getActiveLearningStreak(learner: Learner, today = todayDateString()) {
+  const dates = studyDates(learner);
+  const todayStreak = countLearningStreakFrom(dates, today);
+  if (todayStreak > 0) return todayStreak;
+
+  const yesterday = new Date(`${today}T12:00:00Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  return countLearningStreakFrom(dates, yesterday.toISOString().slice(0, 10));
 }
 
 function hadStudyAttemptBeforeToday(learner: Learner, date: string, attemptId: number) {
@@ -253,7 +267,8 @@ export function awardStudyPointsForAttempt(attemptId: number): StudyReward | nul
     const decayedBaseValue = settings.baseValue - settings.decayStep * (attemptNumber - 1);
     const baseValue = settings.learningPointsEnabled ? Math.max(settings.minimumValue, decayedBaseValue) : 0;
     const scorePercent = Math.max(0, Math.min(1, attempt.score / attempt.questionCount));
-    const meetsRewardThreshold = scorePercent >= MIN_REWARD_SCORE_PERCENT;
+    const meetsMinimumWork = !(learner === 'kiur' && attempt.subject === 'inglise-keel' && attempt.topic === 'sprint') || attempt.questionCount >= MIN_ENGLISH_SPRINT_WORDS_FOR_REWARD;
+    const meetsRewardThreshold = meetsMinimumWork && scorePercent >= MIN_REWARD_SCORE_PERCENT;
     const earnedBeforeCap = meetsRewardThreshold ? baseValue : 0;
     const before = dailyLearningEarned(learner, date);
     const remaining = Math.max(0, settings.dailyCap - before);

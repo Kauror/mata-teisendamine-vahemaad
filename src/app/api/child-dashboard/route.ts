@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getChildDashboard, Learner } from '@/lib/tasks';
-import { getCurrentLearningStreak } from '@/lib/learningPoints';
+import { getActiveLearningStreak } from '@/lib/learningPoints';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -12,5 +12,5 @@ function parseLearner(value: string | null): Learner | null {
 export async function GET(req: NextRequest) {
   const learner = parseLearner(req.nextUrl.searchParams.get('learner'));
   if (!learner) return NextResponse.json({ message: 'Vale laps.' }, { status: 400 });
-  return NextResponse.json({ ...getChildDashboard(learner), streak: getCurrentLearningStreak(learner) });
+  return NextResponse.json({ ...getChildDashboard(learner), streak: getActiveLearningStreak(learner) });
 }
