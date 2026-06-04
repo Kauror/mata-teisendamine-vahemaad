@@ -158,6 +158,7 @@ export function updateLearningPointSettings(input: LearningPointSettings) {
 }
 
 export function exerciseKeyForAttempt(learner: Learner, category: string, topic?: string | null) {
+  if (topic === 'kordamine' || category === 'Kordamine') return `${learner}.remediation.mixed`;
   if (learner === 'kiur' && topic === 'sprint') return 'kiur.english.sprint';
   if (learner === 'kiur' && topic === 'loe-ja-vasta') return 'kiur.reading.loe-ja-vasta';
   if (learner === 'kirsi' && topic === 'pilt-ja-sona') return 'kirsi.reading.pilt-ja-sona';
@@ -182,30 +183,20 @@ function dailyLearningEarned(learner: Learner, date: string) {
   return row?.total ?? 0;
 }
 
-function ledgerExerciseKey(metadataJson?: string | null) {
-  if (!metadataJson) return null;
-  try {
-    const metadata = JSON.parse(metadataJson) as { exerciseKey?: unknown };
-    return typeof metadata.exerciseKey === 'string' ? metadata.exerciseKey : null;
-  } catch {
-    return null;
-  }
-}
-
 function decayCountToday(learner: Learner, exerciseKey: string, date: string) {
-  const rows = db.prepare(`
-    SELECT metadataJson
-    FROM point_ledger
-    WHERE learner = ? AND source = 'study_exercise' AND substr(createdAt, 1, 10) = ?
-  `).all(learner, date) as Array<{ metadataJson?: string | null }>;
-  return rows.filter((row) => ledgerExerciseKey(row.metadataJson) === exerciseKey).length;
+  const row = db.prepare(`
+    SELECT COUNT(*) as count
+    FROM study_attempt_rewards
+    WHERE learner = ? AND exerciseKey = ? AND substr(createdAt, 1, 10) = ?
+  `).get(learner, exerciseKey, date) as { count: number } | undefined;
+  return row?.count ?? 0;
 }
 
 function studyDates(learner: Learner) {
   const rows = db.prepare(`
     SELECT DISTINCT substr(createdAt, 1, 10) as day
-    FROM point_ledger
-    WHERE learner = ? AND source = 'study_exercise'
+    FROM study_attempt_rewards
+    WHERE learner = ?
     ORDER BY day DESC
   `).all(learner) as Array<{ day: string }>;
   return new Set(rows.map((row) => row.day));
@@ -239,8 +230,8 @@ export function getActiveLearningStreak(learner: Learner, today = todayDateStrin
 
 function hadStudyAttemptBeforeToday(learner: Learner, date: string, attemptId: number) {
   const row = db.prepare(`
-    SELECT id FROM point_ledger
-    WHERE sourceId <> ? AND substr(createdAt, 1, 10) = ? AND learner = ? AND source = 'study_exercise'
+    SELECT id FROM study_attempt_rewards
+    WHERE attemptId <> ? AND substr(createdAt, 1, 10) = ? AND learner = ?
     LIMIT 1
   `).get(attemptId, date, learner);
   return Boolean(row);

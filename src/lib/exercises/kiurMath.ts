@@ -150,7 +150,8 @@ function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gen
   if (cat === 'Pane arv kokku') {
     const t = rInt(rng, 1, 9), s = rInt(rng, 0, 9), k = rInt(rng, 0, 9), y = rInt(rng, 0, 9);
     const n = t * 1000 + s * 100 + k * 10 + y;
-    return { id: `n10-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `${t} tuhandelist, ${s} sajalist, ${k} kümnelist ja ${y} ühelist. Milline arv tekib?`, correctAnswer: n, explanation: `${t * 1000} + ${s * 100} + ${k * 10} + ${y} = ${n}.` };
+    const parts = shuffleWithRng(rng, [`${t} tuhandelist`, `${s} sajalist`, `${k} kümnelist`, `${y} ühelist`]);
+    return { id: `n10-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `${parts.join(', ')}. Milline arv tekib?`, correctAnswer: n, explanation: `${t * 1000} + ${s * 100} + ${k * 10} + ${y} = ${n}.` };
   }
   if (cat === 'Numbri väärtus') {
     const n = mk4(1200, 9800);
@@ -193,7 +194,8 @@ function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gen
 
   const t = rInt(rng, 2, 9), s = rInt(rng, 0, 9), k = rInt(rng, 0, 9), y = rInt(rng, 0, 9);
   const n = t * 1000 + s * 100 + k * 10 + y;
-  return { id: `n15-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Millist arvu näitavad plokid? Tuhandelised: ${t}, sajalised: ${s}, kümnelised: ${k}, ühelised: ${y}.`, correctAnswer: n, explanation: `${t} tuhandelist, ${s} sajalist, ${k} kümnelist ja ${y} ühelist teeb kokku ${n}.`, visual: 'place-value-blocks' };
+  const parts = shuffleWithRng(rng, [`tuhandelised: ${t}`, `sajalised: ${s}`, `kümnelised: ${k}`, `ühelised: ${y}`]);
+  return { id: `n15-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Millist arvu näitavad plokid? ${parts.join(', ')}.`, correctAnswer: n, explanation: `${t} tuhandelist, ${s} sajalist, ${k} kümnelist ja ${y} ühelist teeb kokku ${n}.`, visual: 'place-value-blocks' };
 }
 
 function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {

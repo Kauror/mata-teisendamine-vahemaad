@@ -250,6 +250,64 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_child_learning_exercise_settings_learner_status
     ON child_learning_exercise_settings(learner, status);
+
+  CREATE TABLE IF NOT EXISTS mistake_pool (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    learner TEXT NOT NULL,
+    mistakeKey TEXT NOT NULL,
+    exerciseKey TEXT NOT NULL,
+    rendererType TEXT NOT NULL,
+    status TEXT NOT NULL,
+    promptSnapshotJson TEXT NOT NULL,
+    correctAnswerSnapshot TEXT NOT NULL,
+    lastWrongAnswerSnapshot TEXT,
+    wrongCount INTEGER NOT NULL DEFAULT 1,
+    reviewWrongCount INTEGER NOT NULL DEFAULT 0,
+    firstWrongAt TEXT NOT NULL,
+    lastWrongAt TEXT NOT NULL,
+    lastReviewedAt TEXT,
+    resolvedAt TEXT,
+    resolvedByAttemptId INTEGER,
+    sourceAttemptId INTEGER,
+    sourceQuestionIndex INTEGER,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL,
+    UNIQUE(learner, mistakeKey),
+    FOREIGN KEY (sourceAttemptId) REFERENCES attempts(id),
+    FOREIGN KEY (resolvedByAttemptId) REFERENCES attempts(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_mistake_pool_learner_status
+    ON mistake_pool(learner, status, rendererType);
+
+  CREATE TABLE IF NOT EXISTS remediation_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    learner TEXT NOT NULL,
+    startedAt TEXT NOT NULL,
+    completedAt TEXT,
+    score INTEGER,
+    questionCount INTEGER NOT NULL DEFAULT 15,
+    historyAttemptId INTEGER,
+    earnedStars REAL,
+    metadataJson TEXT,
+    FOREIGN KEY (historyAttemptId) REFERENCES attempts(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS remediation_session_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sessionId INTEGER NOT NULL,
+    mistakeId INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    renderedQuestionJson TEXT NOT NULL,
+    childAnswer TEXT,
+    isCorrect INTEGER,
+    answeredAt TEXT,
+    FOREIGN KEY (sessionId) REFERENCES remediation_sessions(id),
+    FOREIGN KEY (mistakeId) REFERENCES mistake_pool(id)
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_remediation_session_position
+    ON remediation_session_items(sessionId, position);
 `);
 
 export default db;

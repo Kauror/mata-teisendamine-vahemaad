@@ -42,6 +42,7 @@ export function relativeDateTimeLabel(createdAt: string) {
 }
 
 export function subjectLabel(subject?: string | null) {
+  if (subject === 'kordamine') return 'Kordamine';
   if (!subject || subject === 'matemaatika') return 'Matemaatika';
   if (subject === 'inglise-keel') return 'Inglise keel';
   if (subject === 'lugemine') return 'Lugemine';
@@ -49,6 +50,7 @@ export function subjectLabel(subject?: string | null) {
 }
 
 export function compactTopicLabel(topic?: string | null, category?: string | null) {
+  if (topic === 'kordamine' || category === 'Kordamine') return 'Kordamine';
   if (topic === 'harjutamine') return 'Harjutamine';
   if (topic === 'sprint') return 'Sprint';
   if (topic === 'loe-ja-vasta') return 'Loe ja vasta';

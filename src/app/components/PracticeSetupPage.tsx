@@ -71,6 +71,7 @@ export default function PracticeSetupPage({
               </button>
             ))}
           </div>
+          {disabledStart && placeholderMessage ? <p className='recent-empty'>{placeholderMessage}</p> : null}
         </section>
         <section className='setup-actions' aria-label='Harjutuse alustamine'>
           {!disabledStart && (

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import DailyTasksPanel from '@/app/components/DailyTasksPanel';
 import { subjectHasActiveLearningExercises } from '@/lib/learningExercises';
+import { getOpenRenderableMistakeCount, REMEDIATION_MIN_OPEN_MISTAKES } from '@/lib/remediation';
 
 const SUBJECTS = [
   { id: 'matemaatika', name: 'Matemaatika', icon: '🧮', href: '/kiur/matemaatika', accent: 'blue' },
@@ -13,6 +14,7 @@ export const runtime = 'nodejs';
 
 export default function KiurPage() {
   const subjects = SUBJECTS.filter((subject) => subjectHasActiveLearningExercises('kiur', subject.id));
+  const showRemediation = getOpenRenderableMistakeCount('kiur') >= REMEDIATION_MIN_OPEN_MISTAKES;
 
   return (
     <main className='container subject-flow-page'>
@@ -27,6 +29,12 @@ export default function KiurPage() {
         <DailyTasksPanel learner='kiur' />
 
         <div className='subject-grid'>
+          {showRemediation && (
+            <Link className='subject-card remediation-card' data-accent='green' href='/kiur/kordamine'>
+              <span className='subject-icon' aria-hidden>↻</span>
+              <strong className='subject-name'>Kordamine</strong>
+            </Link>
+          )}
           {subjects.map((subject) => (
             <Link key={subject.id} className='subject-card' data-accent={subject.accent} href={subject.href}>
               <span className='subject-icon' aria-hidden>{subject.icon}</span>

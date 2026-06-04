@@ -44,7 +44,7 @@ type PurchaseHistory = {
 
 type HistoryItem = ExerciseHistory | TaskHistory | PurchaseHistory;
 type ChildFilter = 'all' | 'kiur' | 'kirsi';
-type SubjectFilter = 'all' | 'harjutused' | 'matemaatika' | 'inglise-keel' | 'lugemine' | 'paevategevused' | 'pood';
+type SubjectFilter = 'all' | 'harjutused' | 'matemaatika' | 'inglise-keel' | 'lugemine' | 'kordamine' | 'paevategevused' | 'pood';
 
 function itemDate(item: HistoryItem) {
   return item.kind === 'store' ? item.purchasedAt : item.createdAt;
@@ -66,12 +66,14 @@ function subjectKey(a: ExerciseHistory): SubjectFilter {
   const subj = (a.subject || '').toLowerCase();
   const topic = (a.topic || '').toLowerCase();
   const cat = (a.category || '').toLowerCase();
+  if (subj.includes('kordamine') || topic.includes('kordamine') || cat.includes('kordamine')) return 'kordamine';
   if (subj.includes('inglise') || topic.includes('inglise') || cat.includes('inglise')) return 'inglise-keel';
   if (subj.includes('lugemine') || topic.includes('pilt-ja-sona') || topic.includes('loe-ja-vasta') || cat.includes('lugemine')) return 'lugemine';
   return 'matemaatika';
 }
 
 function subjectDisplay(a: ExerciseHistory) {
+  if (subjectKey(a) === 'kordamine') return 'Kordamine';
   if (subjectKey(a) === 'lugemine') return 'Lugemine';
   return subjectKey(a) === 'inglise-keel' ? 'Inglise keel' : subjectLabel(a.subject);
 }
@@ -200,6 +202,7 @@ export default function HistoryPage() {
           <button type='button' className={subjectFilter === 'matemaatika' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('matemaatika')}>Matemaatika</button>
           <button type='button' className={subjectFilter === 'inglise-keel' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('inglise-keel')}>Inglise keel</button>
           <button type='button' className={subjectFilter === 'lugemine' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('lugemine')}>Lugemine</button>
+          <button type='button' className={subjectFilter === 'kordamine' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('kordamine')}>Kordamine</button>
           <button type='button' className={subjectFilter === 'paevategevused' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('paevategevused')}>⭐ Päevategevused</button>
           <button type='button' className={subjectFilter === 'pood' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('pood')}>🛒 Pood</button>
         </section>
@@ -232,7 +235,7 @@ export default function HistoryPage() {
                       const exercise = isExercise ? compactTopicLabel(h.topic, h.category) || h.category : '';
                       const percent = isExercise ? scorePercent(h.score, h.questionCount) : null;
                       const elapsed = isExercise && typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub';
-                      const title = h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? h.titleSnapshot : `${subjectDisplay(h)} · ${exercise}`;
+                      const title = h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? h.titleSnapshot : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
                       const scoreText = h.kind === 'task' ? `${h.amount > 0 ? '+' : ''}${h.amount} ⭐` : h.kind === 'store' ? `-${h.priceSnapshot} ⭐` : `${h.score}/${h.questionCount} · ${percent}% · ${elapsed}`;
                       const detailText = h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
 

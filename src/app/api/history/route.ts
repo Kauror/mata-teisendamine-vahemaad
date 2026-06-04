@@ -5,6 +5,7 @@ import {
   isLearningExerciseActiveForAttempt,
   isLearningExerciseSubject
 } from '@/lib/learningExercises';
+import { captureMistakesForAttempt } from '@/lib/remediation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
   const subject = isLearningExerciseSubject(body.subject) ? body.subject : null;
   const topic = typeof body.topic === 'string' ? body.topic : '';
   const category = typeof body.category === 'string' ? body.category : '';
+  const questions = Array.isArray(body.questions) ? body.questions : [];
 
   if (learner && subject && !isLearningExerciseActiveForAttempt({ learner, subject, topic, category })) {
     return NextResponse.json({ message: 'Harjutus ei ole praegu aktiivne.' }, { status: 403 });
@@ -51,11 +53,16 @@ export async function POST(req: NextRequest) {
     questionCount,
     score,
     body.elapsedSeconds,
-    JSON.stringify(body.questions),
+    JSON.stringify(questions),
     learner,
     subject ?? body.subject ?? null,
     topic || null
   );
+  try {
+    captureMistakesForAttempt({ attemptId: Number(result.lastInsertRowid), learner, subject, topic, category, questions });
+  } catch (error) {
+    console.warn('Mistake capture failed', error);
+  }
   const reward = awardStudyPointsForAttempt(Number(result.lastInsertRowid));
   return NextResponse.json({ id: result.lastInsertRowid, reward }, { status: 201 });
 }

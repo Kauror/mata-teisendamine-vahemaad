@@ -15,7 +15,6 @@ function calc10(rng: RNG, i: number): GeneratedQuestion {
     category: 'Arvutamine' as Category,
     difficulty: 'Lihtne',
     question: `${a} ${add ? '+' : '-'} ${b} = ___`,
-    expectedUnit: 'cm',
     correctAnswer: add ? a + b : a - b,
     kind: 'numeric'
   };
@@ -30,7 +29,6 @@ function calc20(rng: RNG, i: number): GeneratedQuestion {
     category: 'Arvutamine' as Category,
     difficulty: 'Keskmine',
     question: `${a} ${add ? '+' : '-'} ${b} = ___`,
-    expectedUnit: 'cm',
     correctAnswer: add ? a + b : a - b,
     kind: 'numeric'
   };
@@ -46,7 +44,6 @@ function compare100(rng: RNG, i: number): GeneratedQuestion {
     category: 'Võrdlemine' as Category,
     difficulty: 'Lihtne',
     question: `${a} ___ ${b}`,
-    expectedUnit: 'cm',
     correctAnswer: correct === '<' ? -1 : correct === '=' ? 0 : 1,
     kind: 'choice'
   };

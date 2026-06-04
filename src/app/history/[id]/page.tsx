@@ -61,6 +61,16 @@ function safeParseQuestions(raw: string): SavedQuestion[] {
   }
 }
 
+function safeParseMetadata(raw: string | null | undefined) {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed as { resolvedCount?: number } : {};
+  } catch {
+    return {};
+  }
+}
+
 export default async function HistoryDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const db = await getDb();
@@ -72,8 +82,11 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
 
   const questions = safeParseQuestions(row.questions);
   const reward = getStudyReward(row.id);
+  const remediationSession = db.prepare('SELECT metadataJson FROM remediation_sessions WHERE historyAttemptId = ?').get(row.id) as { metadataJson?: string | null } | undefined;
+  const remediationMetadata = safeParseMetadata(remediationSession?.metadataJson);
 
   const isKirsi = isKirsiAttempt(row.category, row.learner);
+  const isRemediation = row.subject === 'kordamine' || row.topic === 'kordamine' || row.category === 'Kordamine';
 
   const isOldRingPattern = (row.topic === 'ring-ja-ringjoon' || !row.topic) && row.category === 'Mustrid';
   const retryTopic = isOldRingPattern ? 'mustrid' : (row.topic || (isKirsi ? 'arvutamine' : KIUR_LENGTH_TOPIC_ID));
@@ -94,7 +107,9 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
     seed: String(Date.now())
   });
 
-  const retryHref = isEnglish
+  const retryHref = isRemediation
+    ? (row.learner === 'kirsi' ? '/kirsi' : '/kiur')
+    : isEnglish
     ? '/kiur/inglise-keel/sprint'
     : isKiurReading
       ? '/kiur/lugemine'
@@ -120,6 +135,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
               <span>Teenitud: +{formatStars(reward.awardedAmount)} ⭐</span>
               <span>Tähed kokku: {formatStars(reward.balanceAfter)} ⭐</span>
               <span>Õpiseeria: {reward.streakLength} päeva</span>
+              {isRemediation && typeof remediationMetadata.resolvedCount === 'number' && <span>Parandatud: {remediationMetadata.resolvedCount}</span>}
               {reward.streakBonusAwarded && <span>Seeriaboonus: +{formatStars(reward.streakBonusAmount)} ⭐</span>}
               {reward.capReached && reward.awardedAmount === 0 && <span>Tänane õppimise punktipiir on täis.</span>}
             </div>
@@ -134,6 +150,8 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             .map((c) => c.label)
             .join(' → ');
           const correctChoiceAnswer = isReading && q.correctAnswerText
+            ? q.correctAnswerText
+            : q.correctAnswerText
             ? q.correctAnswerText
             : isKirsiReading
             ? (q.correctWord ?? '—')
@@ -152,7 +170,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
                 ? <div className='answer-review-grid'><p className='answer-line'><span>Sinu järjestus:</span> <strong>{q.userAnswer || '—'}</strong></p><p className='answer-line'><span>Õige järjestus:</span> <strong>{order || '—'}</strong></p></div>
                 : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{correctChoiceAnswer}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}
               <p className={q.isCorrect ? 'result-status correct' : 'result-status wrong'}>{q.isCorrect ? 'Õige' : 'Vale vastus'}</p>
-              {isReading && q.text && (
+              {(isReading || isRemediation) && q.text && (
                 <div className='reading-history-detail'>
                   <p>{q.text}</p>
                   {(q.sourceAuthor || q.sourceTitle || q.sourceCollection) && <span>Allikas: {[q.sourceAuthor, q.sourceTitle ? `"${q.sourceTitle}"` : '', q.sourceCollection].filter(Boolean).join(', ')}</span>}
@@ -166,8 +184,8 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
       </section>
 
       <div className='result-actions'>
-        <Link className='btn' href={retryHref}>Tee {attemptLabel.toLowerCase()} uuesti</Link>
-        <Link className='btn chip active' href={isEnglish ? '/kiur/inglise-keel' : isKiurReading ? '/kiur/lugemine' : isKirsiReading ? '/kirsi/lugemine' : (isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika')}>Vali uus harjutus</Link>
+        <Link className='btn' href={retryHref}>{isRemediation ? 'Tagasi' : `Tee ${attemptLabel.toLowerCase()} uuesti`}</Link>
+        <Link className='btn chip active' href={isRemediation ? (row.learner === 'kirsi' ? '/kirsi' : '/kiur') : isEnglish ? '/kiur/inglise-keel' : isKiurReading ? '/kiur/lugemine' : isKirsiReading ? '/kirsi/lugemine' : (isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika')}>Vali uus harjutus</Link>
       </div>
       <Link className='practice-back-button result-history-back-link' href='/history'>Ajalugu</Link>
       </section>
