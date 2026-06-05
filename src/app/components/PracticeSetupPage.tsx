@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
-type Topic = { id: string; name: string; emoji: string };
+type Topic = { id: string; name: string; emoji: string; accent?: string };
 type OptionGroup = {
   id: string;
   title: string;
@@ -66,7 +66,7 @@ export default function PracticeSetupPage({
                 }}
                 aria-pressed={topic.id === selectedTopicId}
               >
-                <span className='topic-emoji' aria-hidden>{topic.emoji}</span>
+                <span className={topic.accent ? `topic-emoji ${topic.accent}` : 'topic-emoji'} aria-hidden>{topic.emoji}</span>
                 <span className='topic-name'>{topic.name}</span>
               </button>
             ))}

@@ -60,7 +60,10 @@ export function compactTopicLabel(topic?: string | null, category?: string | nul
   if (topic === 'jagamine-kahekohaline-uhekohaline') return 'Kahekohalise arvu jagamine';
   if (topic === 'arvud-10000' || topic === 'arvud-10000-piires') return 'Arvud 10k piires';
   if (topic === 'ring-ja-ringjoon') return 'Ring ja ringjoon';
+  if (topic === 'korrutamine') return 'Korrutamine';
+  if (topic === 'tekstulesanded') return 'Tekstülesanded';
   if (topic === 'arvutamine') return 'Arvutamine';
+  if (topic === 'loendamine') return 'Loendamine';
   if (topic === 'mustrid') return 'Mustrid';
   return category || '';
 }

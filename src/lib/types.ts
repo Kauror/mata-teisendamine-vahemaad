@@ -3,6 +3,7 @@ export const CATEGORIES = [
   'Võrdlemine',
   'Järjestamine',
   'Arvutamine',
+  'Korrutamine',
   'Puuduv arv',
   'Ümbermõõt',
   'Tekstülesanded',
@@ -14,7 +15,7 @@ export const QUESTION_COUNTS = [15] as const;
 
 export type Category = (typeof CATEGORIES)[number];
 export type Difficulty = (typeof DIFFICULTIES)[number];
-export type QuestionKind = 'numeric' | 'ordering' | 'choice';
+export type QuestionKind = 'numeric' | 'ordering' | 'choice' | 'text';
 
 export type OrderingCard = { id: string; label: string; valueMm: number };
 
@@ -22,11 +23,24 @@ export type QuestionVisual = 'circle-full' | 'circle-half' | 'circle-quarter' | 
 
 export type GeneratedQuestion = {
   id: string;
+  type?: string;
   category: Category;
   difficulty: Difficulty;
   question: string;
+  prompt?: string;
+  emoji?: string;
+  objectLabel?: string;
+  count?: number;
+  choices?: number[];
+  left?: number;
+  right?: number;
+  operator?: string;
+  displayExpression?: string;
+  exerciseKey?: string;
   expectedUnit?: 'mm' | 'cm' | 'dm' | 'm' | 'km';
   correctAnswer: number;
+  correctAnswerText?: string;
+  acceptedAnswers?: string[];
   correctAnswers?: number[];
   choiceOptions?: string[];
   explanation?: string;

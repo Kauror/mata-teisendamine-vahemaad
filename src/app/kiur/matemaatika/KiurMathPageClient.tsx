@@ -14,9 +14,10 @@ export default function KiurMathPageClient({ activeTopicIds }: { activeTopicIds:
   const hasActiveTopics = activeTopics.length > 0;
   const resolvedCategory = selectedTopic.hideExerciseTypeSelector ? selectedTopic.defaultCategory : category;
 
+  const questionCount = selectedTopic.id === 'tekstulesanded' ? 5 : 15;
   const startUrl = useMemo(() => (
-    `/test?learner=kiur&subject=matemaatika&topic=${selectedTopic.id}&category=${encodeURIComponent(resolvedCategory)}&count=15`
-  ), [selectedTopic.id, resolvedCategory]);
+    `/test?learner=kiur&subject=matemaatika&topic=${selectedTopic.id}&category=${encodeURIComponent(resolvedCategory)}&count=${questionCount}`
+  ), [selectedTopic.id, resolvedCategory, questionCount]);
 
   return (
     <PracticeSetupPage

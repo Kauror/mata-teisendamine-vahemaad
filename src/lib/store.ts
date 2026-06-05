@@ -58,6 +58,11 @@ function formatDate(date: string) {
   return `${day}.${month}.${year}`;
 }
 
+function formatStars(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toLocaleString('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
 function parseWeekdays(raw: string | null) {
   if (!raw) return [];
   try {
@@ -179,7 +184,7 @@ function itemState(item: StoreItemRow, learner: Learner, balance: number, date: 
 
   if (state === 'available' && missingStars > 0) {
     state = 'not_enough_stars';
-    stateLabel = `Puudu: ${missingStars} ⭐`;
+    stateLabel = `Puudu: ${formatStars(missingStars)} ⭐`;
   }
 
   return { ...item, state, stateLabel, canBuy: state === 'available', missingStars, dailyRemaining };

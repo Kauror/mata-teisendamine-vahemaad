@@ -62,6 +62,36 @@ export const KIUR_MATH_TOPICS = [
     questionCounts: QUESTION_COUNTS
   },
   {
+    id: 'korrutamine',
+    name: 'Korrutamine',
+    emoji: '\u00d7',
+    accent: 'orange',
+    description: 'Korrutustabeli harjutamine teguritega 2 kuni 10',
+    implemented: true,
+    hideExerciseTypeSelector: true,
+    defaultCategory: 'Korrutamine' as const,
+    hideDifficultySelector: true,
+    defaultDifficulty: 'Lihtne' as const,
+    exerciseTypes: ['Korrutamine'] as const,
+    difficulties: ['Lihtne'] as const,
+    questionCounts: QUESTION_COUNTS
+  },
+  {
+    id: 'tekstulesanded',
+    name: 'Tekstülesanded',
+    emoji: 'Aa',
+    accent: 'blue',
+    description: 'Viie tekstülesande lahendamine rahulikus tempos',
+    implemented: true,
+    hideExerciseTypeSelector: true,
+    defaultCategory: 'Tekstülesanded' as const,
+    hideDifficultySelector: true,
+    defaultDifficulty: 'Lihtne' as const,
+    exerciseTypes: ['Tekstülesanded'] as const,
+    difficulties: ['Lihtne'] as const,
+    questionCounts: [5] as const
+  },
+  {
     id: 'mustrid',
     name: 'Mustrid',
     emoji: '🧩',

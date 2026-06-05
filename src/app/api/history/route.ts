@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
 
   const stmt = db.prepare('INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const isLearningAttempt = body.subject !== 'inglise-keel';
-  const questionCount = body.subject === 'lugemine' ? Number(body.questionCount) || 0 : isLearningAttempt ? 15 : Number(body.questionCount) || 0;
+  const isTextProblems = body.subject === 'matemaatika' && (topic === 'tekstulesanded' || category === 'Tekstülesanded');
+  const questionCount = body.subject === 'lugemine' || isTextProblems ? Number(body.questionCount) || 0 : isLearningAttempt ? 15 : Number(body.questionCount) || 0;
   const score = Math.max(0, Math.min(Math.floor(Number(body.score) || 0), questionCount));
   const result = stmt.run(
     body.createdAt,

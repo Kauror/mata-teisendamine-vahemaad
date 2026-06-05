@@ -170,7 +170,7 @@ export default function KirsiFirstSoundPage() {
           <header className='sprint-result-header'>
             <div className='sprint-result-emoji' aria-hidden>🔤</div>
             <h1 className='sprint-result-title'>Tulemus</h1>
-            <p className='sprint-result-subtitle'>Tubli harjutamine.</p>
+            <p className='sprint-result-subtitle'>Harjutus on lõpetatud.</p>
           </header>
           <div className='sprint-result-stats-grid'>
             <article className='sprint-result-stat-card'>

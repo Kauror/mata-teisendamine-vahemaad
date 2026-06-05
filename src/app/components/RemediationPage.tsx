@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
 
 type Learner = 'kiur' | 'kirsi';
-type RendererType = 'math_numeric' | 'math_multiple_choice' | 'initial_sound' | 'word_choice' | 'word_picture_choice' | 'sprint_word_choice';
+type RendererType = 'math_numeric' | 'math_multiple_choice' | 'counting_choice' | 'initial_sound' | 'word_choice' | 'word_picture_choice' | 'sprint_word_choice';
 
 type RemediationQuestion = {
   sessionItemId: number;
@@ -13,6 +13,9 @@ type RemediationQuestion = {
   rendererType: RendererType;
   promptText: string;
   promptImage?: string;
+  promptEmoji?: string;
+  objectLabel?: string;
+  count?: number;
   targetWord?: string;
   readingText?: string;
   correctAnswerLabel: string;
@@ -64,6 +67,15 @@ function feedbackHeading(question: RemediationQuestion, correct: boolean) {
   if (correct) return 'Õige!';
   if (question.rendererType === 'initial_sound') return `Õige vastus on ${question.correctAnswerLabel}.`;
   return feedbackText(question);
+}
+
+function CountingReviewGrid({ question }: { question: RemediationQuestion }) {
+  if (question.rendererType !== 'counting_choice' || !question.promptEmoji || !question.count) return null;
+  return (
+    <div className='counting-object-grid' aria-label={`${question.count} ${question.objectLabel ?? 'asja'}`}>
+      {Array.from({ length: question.count }, (_, index) => <span key={index}>{question.promptEmoji}</span>)}
+    </div>
+  );
 }
 
 export default function RemediationPage({ learner }: { learner: Learner }) {
@@ -173,6 +185,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
                 <article key={question.sessionItemId} className={answer?.isCorrect ? 'result-review-card correct' : 'result-review-card wrong'}>
                   <p className='result-question'>{i + 1}. {question.promptText || promptEyebrow(question)}</p>
                   {question.promptImage ? <div className='remediation-prompt-image'>{question.promptImage}</div> : null}
+                  <CountingReviewGrid question={question} />
                   <div className='answer-review-grid'>
                     <p className='answer-line'><span>Sinu vastus:</span> <strong>{answer?.answer || '—'}</strong></p>
                     <p className='answer-line'><span>Õige vastus:</span> <strong>{question.correctAnswerLabel}</strong></p>
@@ -213,6 +226,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
           <p className='question-eyebrow'>{promptEyebrow(current)}</p>
           {current.readingText ? <p className='remediation-reading-text'>{current.readingText}</p> : null}
           {current.promptImage ? <div className='remediation-prompt-image' aria-label='Pilt'>{current.promptImage}</div> : null}
+          <CountingReviewGrid question={current} />
           {current.rendererType !== 'initial_sound' && current.rendererType !== 'word_picture_choice' ? <h1 className='question-text'>{current.promptText}</h1> : null}
           {current.rendererType === 'initial_sound' && current.targetWord ? (
             <div className='first-sound-hint-row'>

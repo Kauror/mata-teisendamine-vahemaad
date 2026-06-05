@@ -108,7 +108,7 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
                   disabled={completed || locked || busyId === task.assignmentId}
                   onClick={() => setConfirmTask(task)}
                 >
-                  <span className='daily-check'>{completed ? '✓' : locked ? '–' : ''}</span>
+                  <span className='daily-check'>{completed ? '✓' : locked ? '-' : ''}</span>
                   <span className='daily-title'>{task.title}</span>
                   <strong>+{task.points} ⭐</strong>
                   {completed && <small>Tehtud</small>}
@@ -137,8 +137,8 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
       {bonusOpen && (
         <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
           <div className='task-modal'>
-            <h2>Väga tubli!</h2>
-            <p>Mõlemal on tänased ülesanded tehtud. Siit tuleb boonuspunkt!</p>
+            <h2>Boonuspunkt</h2>
+            <p>Mõlemal on tänased ülesanded tehtud. Siit tuleb boonuspunkt.</p>
             <strong>Kiur +1 ⭐ ja Kirsi +1 ⭐</strong>
             <button type='button' onClick={() => setBonusOpen(false)}>Selge</button>
           </div>

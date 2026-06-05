@@ -1,6 +1,7 @@
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateSession as generateLengthSession } from '@/lib/exercises/lengths';
 import { isKiurLengthTopic } from '@/lib/kiurMathTopics';
+import { kiurTextProblemPool } from '@/lib/kiurTextProblems';
 import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
 
 const rInt = randomInt;
@@ -10,6 +11,8 @@ const DIV_CATS = ['Arvuta jagatis', 'Jaga osadeks', 'Vali sobiv jaotus', 'Jaga v
 const BIG_NUM_CATS = ['Liida sajalised', 'Lahuta sajalised', 'Liida tuhandelised', 'Lahuta tuhandelised', 'Liida 2- või 3-kohaline arv', 'Lahuta 2- või 3-kohaline arv', 'Liida kaks 4-kohalist arvu', 'Lahuta 4-kohalised arvud', 'Lahuta arv järkudeks', 'Pane arv kokku', 'Numbri väärtus', 'Ümardamine', 'Ligikaudne arvutus', 'Leia arvutusviga', 'Plokid ja järgud'] as const;
 const CIRCLE_CATS = ['Ring või ringjoon', 'Leia raadius', 'Leia läbimõõt', 'Läbimõõt raadiusest', 'Raadius läbimõõdust', 'Punkti asukoht', 'Sama keskpunkt', 'Võrdle raadiuseid', 'Ringi kraadid', 'Puuduv kraad'] as const;
 const PATTERN_CATS = ['Segaharjutus'] as const;
+const MULTIPLICATION_EXERCISE_KEY = 'kiur.math.multiplication';
+const TEXT_PROBLEM_EXERCISE_KEY = 'kiur.math.tekstulesanded';
 
 type TopicCategory = (typeof DIV_CATS)[number] | (typeof BIG_NUM_CATS)[number] | (typeof CIRCLE_CATS)[number] | (typeof PATTERN_CATS)[number] | 'Segaharjutus';
 
@@ -336,8 +339,80 @@ function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gener
 }
 
 
+function multiplicationFacts(rng: RNG) {
+  const hardFacts = shuffleWithRng(rng, [
+    [6, 7], [7, 8], [8, 9], [9, 6], [7, 9], [6, 8], [8, 8], [9, 9]
+  ] as const);
+  const mixedFacts = shuffleWithRng(rng, Array.from({ length: 9 }, (_, aIndex) => (
+    Array.from({ length: 9 }, (_, bIndex) => [aIndex + 2, bIndex + 2] as const)
+  )).flat().filter(([a, b]) => a * b <= 100 && a !== 10 && b !== 10));
+  const tenFacts = shuffleWithRng(rng, Array.from({ length: 9 }, (_, index) => [index + 2, 10] as const));
+
+  const selected: Array<readonly [number, number]> = [];
+  const used = new Set<string>();
+  const add = (fact: readonly [number, number]) => {
+    const key = `${fact[0]}x${fact[1]}`;
+    if (used.has(key) || selected.length >= 15) return;
+    used.add(key);
+    selected.push(fact);
+  };
+
+  hardFacts.slice(0, 5).forEach(add);
+  tenFacts.slice(0, 2).forEach(add);
+  mixedFacts.forEach(add);
+
+  return shuffleWithRng(rng, selected.slice(0, 15));
+}
+
+function multiplicationQ(fact: readonly [number, number], i: number): GeneratedQuestion {
+  const [left, right] = fact;
+  const answer = left * right;
+  const displayExpression = `${left} \u00d7 ${right}`;
+  return {
+    id: `mul-${left}-${right}-${i}`,
+    type: 'multiplication',
+    category: 'Korrutamine' as Category,
+    difficulty: 'Lihtne',
+    subtopic: 'korrutamine',
+    question: `${displayExpression} = ?`,
+    prompt: `${displayExpression} = ?`,
+    left,
+    right,
+    operator: '\u00d7',
+    correctAnswer: answer,
+    displayExpression,
+    explanation: `${displayExpression} = ${answer}`,
+    exerciseKey: MULTIPLICATION_EXERCISE_KEY
+  };
+}
+
+function generateMultiplicationSession(count: number, seed: number): GeneratedQuestion[] {
+  const rng = seededRng(seed);
+  return multiplicationFacts(rng).slice(0, count).map((fact, index) => multiplicationQ(fact, index));
+}
+
+function generateTextProblemSession(seed: number): GeneratedQuestion[] {
+  const rng = seededRng(seed);
+  return shuffleWithRng(rng, kiurTextProblemPool).slice(0, 5).map((task, index) => ({
+    id: `${task.id}-${index}`,
+    type: 'text-problem',
+    category: 'Tekstülesanded' as Category,
+    difficulty: 'Lihtne',
+    question: task.question,
+    prompt: task.question,
+    correctAnswer: 0,
+    correctAnswerText: task.answer,
+    acceptedAnswers: task.acceptedAnswers,
+    explanation: task.solution,
+    kind: 'text',
+    exerciseKey: TEXT_PROBLEM_EXERCISE_KEY
+  }));
+}
+
 export function generateKiurMathSession(topic: string, category: string, difficulty: Difficulty, count: number, seed: number): GeneratedQuestion[] {
   if (isKiurLengthTopic(topic)) return generateLengthSession(category as Category, difficulty, count, seed);
+  if (topic === 'korrutamine') return generateMultiplicationSession(count, seed);
+  if (topic === 'tekstulesanded' || category === 'Tekstülesanded') return generateTextProblemSession(seed);
   const rng = seededRng(seed);
   const normalizedTopic = topic;
   const isBigNumbers = normalizedTopic === 'arvud-10000-piires' || normalizedTopic === 'arvud-10000';

@@ -32,6 +32,10 @@ type SavedQuestion = {
   sourceTitle?: string;
   sourceCollection?: string;
   evidenceText?: string;
+  type?: string;
+  emoji?: string;
+  objectLabel?: string;
+  count?: number;
 };
 
 async function getDb() {
@@ -69,6 +73,15 @@ function safeParseMetadata(raw: string | null | undefined) {
   } catch {
     return {};
   }
+}
+
+function CountingHistoryGrid({ question }: { question: SavedQuestion }) {
+  if (question.type !== 'counting' || !question.emoji || !question.count) return null;
+  return (
+    <div className='counting-object-grid' aria-label={`${question.count} ${question.objectLabel ?? 'asja'}`}>
+      {Array.from({ length: question.count }, (_, index) => <span key={index}>{question.emoji}</span>)}
+    </div>
+  );
 }
 
 export default async function HistoryDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -166,6 +179,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
           return (
             <article key={q.id || `q-${i}`} className={q.isCorrect ? 'result-review-card correct' : 'result-review-card wrong'}>
               <p className='result-question'>{i + 1}. {isEnglishPair || isReadingPair ? q.question.replace('—', '↔') : q.question}</p>
+              <CountingHistoryGrid question={q} />
               {q.kind === 'ordering'
                 ? <div className='answer-review-grid'><p className='answer-line'><span>Sinu järjestus:</span> <strong>{q.userAnswer || '—'}</strong></p><p className='answer-line'><span>Õige järjestus:</span> <strong>{order || '—'}</strong></p></div>
                 : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{correctChoiceAnswer}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}

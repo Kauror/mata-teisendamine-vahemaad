@@ -11,6 +11,7 @@ export const REMEDIATION_MIN_OPEN_MISTAKES = 10;
 export type RemediationRendererType =
   | 'math_numeric'
   | 'math_multiple_choice'
+  | 'counting_choice'
   | 'initial_sound'
   | 'word_choice'
   | 'word_picture_choice'
@@ -23,7 +24,7 @@ type SavedQuestion = {
   correctAnswer?: number;
   correctAnswers?: number[];
   isCorrect?: boolean;
-  kind?: 'numeric' | 'ordering' | 'choice';
+  kind?: 'numeric' | 'ordering' | 'choice' | 'text';
   choiceOptions?: string[];
   expectedUnit?: string;
   image?: string;
@@ -37,6 +38,11 @@ type SavedQuestion = {
   estonian?: string;
   explanation?: string;
   text?: string;
+  type?: string;
+  emoji?: string;
+  objectLabel?: string;
+  count?: number;
+  choices?: number[];
 };
 
 export type RemediationQuestion = {
@@ -45,6 +51,9 @@ export type RemediationQuestion = {
   rendererType: RemediationRendererType;
   promptText: string;
   promptImage?: string;
+  promptEmoji?: string;
+  objectLabel?: string;
+  count?: number;
   targetWord?: string;
   readingText?: string;
   correctAnswerLabel: string;
@@ -161,6 +170,8 @@ function correctLabel(question: SavedQuestion) {
 
 function rendererFor(learner: Learner, subject: string, topic: string, question: SavedQuestion): RemediationRendererType | null {
   if (subject === 'matemaatika') {
+    if (question.kind === 'text' || question.type === 'text-problem') return null;
+    if (learner === 'kirsi' && topic === 'loendamine' && question.type === 'counting') return 'counting_choice';
     if (question.kind === 'ordering') return null;
     return question.kind === 'choice' ? 'math_multiple_choice' : 'math_numeric';
   }
@@ -210,6 +221,9 @@ function buildSnapshot(input: {
     exerciseKey,
     promptText,
     promptImage,
+    promptEmoji: rendererType === 'counting_choice' ? input.question.emoji : undefined,
+    objectLabel: rendererType === 'counting_choice' ? input.question.objectLabel : undefined,
+    count: rendererType === 'counting_choice' ? input.question.count : undefined,
     targetWord: input.question.word,
     readingText: input.question.text,
     correctAnswerLabel,
@@ -307,6 +321,9 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
     rendererType: snapshot.rendererType,
     promptText,
     promptImage,
+    promptEmoji: original.emoji ?? snapshot.promptEmoji,
+    objectLabel: original.objectLabel ?? snapshot.objectLabel,
+    count: original.count ?? snapshot.count,
     targetWord: original.word ?? snapshot.targetWord,
     readingText: original.text ?? snapshot.readingText,
     correctAnswerLabel: snapshot.correctAnswerLabel,

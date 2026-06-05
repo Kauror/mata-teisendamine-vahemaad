@@ -84,9 +84,11 @@ const KEY_BY_CATEGORY: Record<string, string> = {
   'Arvutamine 20 piires': 'kirsi.math.arvutamine-20',
   'Suurem või väiksem kuni 100': 'kirsi.math.suurem-vaiksem-100',
   'Segaülesanded': 'kirsi.math.segaulesanded',
+  'Loendamine': 'kirsi.math.counting-20',
   'Lugemine - pilt ja sõna': 'kirsi.reading.pilt-ja-sona',
   'Lugemine - esimene häälik': 'kirsi.reading.esimene-haalik',
-  'Lugemine - loe ja vasta': 'kiur.reading.loe-ja-vasta'
+  'Lugemine - loe ja vasta': 'kiur.reading.loe-ja-vasta',
+  'Korrutamine': 'kiur.math.multiplication'
 };
 
 const KEY_BY_TOPIC: Record<string, string> = {
@@ -96,7 +98,8 @@ const KEY_BY_TOPIC: Record<string, string> = {
   'arvud-10000-piires': 'kiur.math.arvud-10000',
   'arvud-10000': 'kiur.math.arvud-10000',
   'ring-ja-ringjoon': 'kiur.math.ring',
-  'mustrid': 'kiur.math.mustrid'
+  'mustrid': 'kiur.math.mustrid',
+  'korrutamine': 'kiur.math.multiplication'
 };
 
 function roundTenths(value: number) {
@@ -161,8 +164,11 @@ export function exerciseKeyForAttempt(learner: Learner, category: string, topic?
   if (topic === 'kordamine' || category === 'Kordamine') return `${learner}.remediation.mixed`;
   if (learner === 'kiur' && topic === 'sprint') return 'kiur.english.sprint';
   if (learner === 'kiur' && topic === 'loe-ja-vasta') return 'kiur.reading.loe-ja-vasta';
+  if (learner === 'kiur' && topic === 'korrutamine') return 'kiur.math.multiplication';
+  if (learner === 'kiur' && topic === 'tekstulesanded') return 'kiur.math.tekstulesanded';
   if (learner === 'kirsi' && topic === 'pilt-ja-sona') return 'kirsi.reading.pilt-ja-sona';
   if (learner === 'kirsi' && topic === 'esimene-haalik') return 'kirsi.reading.esimene-haalik';
+  if (learner === 'kirsi' && topic === 'loendamine') return 'kirsi.math.counting-20';
   if (learner === 'kiur' && topic && KEY_BY_TOPIC[topic]) return `${KEY_BY_TOPIC[topic]}.${category.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'harjutus'}`;
   const key = KEY_BY_CATEGORY[category];
   if (key) return key;

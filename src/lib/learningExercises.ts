@@ -64,6 +64,16 @@ const STATIC_LEARNING_EXERCISES: LearningExerciseCatalogEntry[] = [
     sortOrder: 300 + index
   })),
   {
+    id: 'kirsi.math.counting-20',
+    title: 'Loendamine',
+    learnerScope: ['kirsi'],
+    subject: 'matemaatika',
+    topic: 'loendamine',
+    category: 'Loendamine',
+    routePath: '/kirsi/matemaatika',
+    sortOrder: 299
+  },
+  {
     id: 'kiur.english.sprint',
     title: 'Sprint',
     learnerScope: ['kiur'],

@@ -83,6 +83,55 @@ function choiceLabels(question: GeneratedQuestion) {
   return answerIndexes.map((answerIndex) => options[answerIndex]).filter((answer): answer is string => Boolean(answer));
 }
 
+function CountingObjectGrid({ question }: { question: GeneratedQuestion }) {
+  if (question.type !== 'counting' || !question.emoji || !question.count) return null;
+  const items = Array.from({ length: question.count }, (_, index) => index);
+  return (
+    <div className='counting-object-grid' aria-label={`${question.count} ${question.objectLabel ?? 'asja'}`}>
+      {items.map((item) => <span key={item}>{question.emoji}</span>)}
+    </div>
+  );
+}
+
+function normalizeTextAnswer(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/\s+ja\s+/g, ' ')
+    .replace(/(\d)\s+(?=[a-zõäöüšž])/gi, '$1')
+    .replace(/(\d{1,2})\.(\d{2})/g, '$1:$2');
+}
+
+function textAnswerLabels(question: GeneratedQuestion) {
+  return [question.correctAnswerText, ...(question.acceptedAnswers ?? [])].filter((answer): answer is string => Boolean(answer));
+}
+
+type TextAnswerField = { unit: string };
+
+function textAnswerFields(question: GeneratedQuestion): TextAnswerField[] | null {
+  const answer = question.correctAnswerText;
+  if (!answer || /[:=+]/.test(answer) || /\d\s*-\s*\d/.test(answer) || /\b(vähem|rohkem|võrdsed|kell)\b/i.test(answer)) return null;
+  const numberMatches = answer.match(/\d+(?:[,.]\d+)?/g) ?? [];
+  const matches = [...answer.matchAll(/(\d+(?:[,.]\d+)?)\s*([A-Za-zõäöüšžÕÄÖÜŠŽ]+)\b/g)];
+  if (!numberMatches.length || matches.length !== numberMatches.length) return null;
+  return matches.map((match) => ({ unit: match[2] }));
+}
+
+function textAnswerValues(answer: string, fields: TextAnswerField[]) {
+  const values = answer.match(/\d+(?:[,.]\d+)?/g) ?? [];
+  return fields.map((_, index) => values[index] ?? '');
+}
+
+function composeTextAnswer(fields: TextAnswerField[], values: string[]) {
+  return fields.map((field, index) => `${values[index] ?? ''} ${field.unit}`.trim()).join(' ').trim();
+}
+
+function isTextAnswerCorrect(answer: string, question: GeneratedQuestion) {
+  const normalized = normalizeTextAnswer(answer);
+  return textAnswerLabels(question).some((label) => normalizeTextAnswer(label) === normalized);
+}
+
 function testTopicLabel(topic: string, category: string, isKirsiMath: boolean) {
   if (isKirsiMath) return category;
   if (topic === 'ring-ja-ringjoon') return 'Ring ja ringjoon';
@@ -100,10 +149,10 @@ function TestPageContent() {
   const categoryParam = params.get('category') || 'Teisendamine';
   const category = categoryParam as Category;
   const difficulty = 'Lihtne' as Difficulty;
-  const count = 15;
+  const count = topic === 'tekstulesanded' || categoryParam === 'Tekstülesanded' ? 5 : 15;
   const seed = Number(params.get('seed') || Date.now());
 
-  const isKirsiMath = learner === 'kirsi' && subject === 'matemaatika' && topic === 'arvutamine';
+  const isKirsiMath = learner === 'kirsi' && subject === 'matemaatika';
   const isKiurMath = learner === 'kiur' && subject === 'matemaatika';
   const baseSelectionUrl = isKirsiMath ? '/kirsi/matemaatika' : isKiurMath ? '/kiur/matemaatika' : '/';
 
@@ -118,6 +167,8 @@ function TestPageContent() {
   const [saveError, setSaveError] = useState('');
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [exerciseAvailability, setExerciseAvailability] = useState<'loading' | 'allowed' | 'blocked'>('loading');
+  const [countingFeedback, setCountingFeedback] = useState<{ answer: string; isCorrect: boolean } | null>(null);
+  const [textFeedback, setTextFeedback] = useState<{ answer: string; isCorrect: boolean } | null>(null);
 
   useEffect(() => {
     if (learner !== 'kiur' && learner !== 'kirsi') {
@@ -168,6 +219,8 @@ function TestPageContent() {
     setIsSaving(false);
     setSaveError('');
     setShowStopConfirm(false);
+    setCountingFeedback(null);
+    setTextFeedback(null);
   }, [category, categoryParam, difficulty, count, exerciseAvailability, seed, isKirsiMath, topic]);
 
   useEffect(() => {
@@ -183,11 +236,25 @@ function TestPageContent() {
   const selected = orderingAnswers[index] ?? [];
   const selectedSet = new Set(selected);
   const isChoiceQuestion = current?.kind === 'choice';
+  const isCountingQuestion = current?.type === 'counting';
+  const isTextQuestion = current?.kind === 'text';
+  const currentTextFields = current && isTextQuestion ? textAnswerFields(current) : null;
 
   const getCurrentAnswer = () => {
     if (current.kind === 'ordering') return orderingAnswers[index]?.join('|') ?? '';
     if (isChoiceQuestion) return choiceAnswers[index] ?? '';
+    if (isTextQuestion && currentTextFields) return answers[index] ?? '';
     return inputRef.current?.value ?? answers[index] ?? '';
+  };
+
+  const chooseCountingAnswer = (answer: string) => {
+    if (!current || !isCountingQuestion || countingFeedback) return;
+    const correct = choiceLabels(current).includes(answer);
+    const next = [...choiceAnswers];
+    next[index] = answer;
+    setChoiceAnswers(next);
+    setCountingFeedback({ answer, isCorrect: correct });
+    setError('');
   };
 
   if (exerciseAvailability === 'loading') return <main className='test-page'><section className='test-shell'><section className='question-card'>Laadin harjutust...</section></section></main>;
@@ -208,6 +275,10 @@ function TestPageContent() {
         const correctLabels = choiceLabels(question);
         return { ...question, userAnswer: answer, correctAnswer: question.correctAnswer, isCorrect: correctLabels.includes(answer) };
       }
+      if (question.kind === 'text') {
+        const answer = answers[i] ?? '';
+        return { ...question, userAnswer: answer, correctAnswer: 0, isCorrect: isTextAnswerCorrect(answer, question) };
+      }
       return { ...question, userAnswer: answers[i], isCorrect: isAnswerCorrect(answers[i], question.correctAnswer) };
     });
   };
@@ -218,6 +289,26 @@ function TestPageContent() {
 
     if (current.kind === 'ordering') {
       if (selected.length !== cards.length) return setError('Vali kõik kaardid õigesse järjekorda.');
+    } else if (isCountingQuestion) {
+      if (!countingFeedback) return setError('Vali vastus.');
+    } else if (isTextQuestion) {
+      if (!textFeedback) {
+        const currentAnswer = getCurrentAnswer();
+        const copy = [...answers];
+        copy[index] = currentAnswer;
+        setAnswers(copy);
+        const missingTextAnswer = currentTextFields
+          ? textAnswerValues(currentAnswer, currentTextFields).some((value) => !value.trim())
+          : !currentAnswer.trim();
+        if (missingTextAnswer) {
+          setError('Sisesta vastus enne jätkamist.');
+          inputRef.current?.focus();
+          return;
+        }
+        setTextFeedback({ answer: currentAnswer, isCorrect: isTextAnswerCorrect(currentAnswer, current) });
+        setError('');
+        return;
+      }
     } else if (isChoiceQuestion) {
       if (!choiceAnswers[index]) return setError('Vali vastus.');
     } else {
@@ -228,7 +319,11 @@ function TestPageContent() {
     }
 
     setError('');
-    if (index < count - 1) return setIndex((v) => v + 1);
+    if (index < count - 1) {
+      setCountingFeedback(null);
+      setTextFeedback(null);
+      return setIndex((v) => v + 1);
+    }
 
     setIsSaving(true);
     const results = finalizeResults();
@@ -279,6 +374,7 @@ function TestPageContent() {
         <section className='question-card'>
           <p className='question-eyebrow'>Vasta küsimusele</p>
           <h1 className='question-text'>{current.question}</h1>
+          <CountingObjectGrid question={current} />
           {!isKirsiMath && <ShapeVisual question={current} />}
           <div className='answer-area'>
             {current.kind === 'ordering' ? (
@@ -298,22 +394,65 @@ function TestPageContent() {
               </div>
             ) : isChoiceQuestion ? (
               <div className='choice-answer-grid' onKeyDown={(e) => { if (e.key === 'Enter' && choiceAnswers[index]) { e.preventDefault(); void handleSubmit(); } }}>
-                {(current.choiceOptions?.length ? current.choiceOptions : ['<', '=', '>']).map((sign) => <button type='button' key={sign} aria-pressed={choiceAnswers[index] === sign} className={choiceAnswers[index] === sign ? 'choice-answer-button selected' : 'choice-answer-button'} onClick={() => { const next = [...choiceAnswers]; next[index] = sign; setChoiceAnswers(next); }}>{sign}</button>)}
+                {(current.choiceOptions?.length ? current.choiceOptions : ['<', '=', '>']).map((sign) => <button type='button' key={sign} aria-pressed={choiceAnswers[index] === sign} disabled={Boolean(countingFeedback)} className={choiceAnswers[index] === sign ? 'choice-answer-button selected' : 'choice-answer-button'} onClick={() => { if (isCountingQuestion) { chooseCountingAnswer(sign); return; } const next = [...choiceAnswers]; next[index] = sign; setChoiceAnswers(next); }}>{sign}</button>)}
+              </div>
+            ) : isTextQuestion && currentTextFields ? (
+              <div className={currentTextFields.length > 1 ? 'answer-input-row split-answer-row' : 'answer-input-row'}>
+                {currentTextFields.map((field, fieldIndex) => {
+                  const values = textAnswerValues(answers[index] ?? '', currentTextFields);
+                  return (
+                    <label className='split-answer-field' key={`${field.unit}-${fieldIndex}`}>
+                      <input
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleSubmit(); } }}
+                        ref={fieldIndex === 0 ? inputRef : undefined}
+                        aria-label={`Vastus ${field.unit}`}
+                        aria-describedby={error ? 'vastuse-viga' : undefined}
+                        className={error ? 'answer-input input-error' : 'answer-input'}
+                        inputMode='decimal'
+                        value={values[fieldIndex] ?? ''}
+                        disabled={Boolean(textFeedback)}
+                        onChange={(e) => {
+                          const nextValue = e.target.value;
+                          if (!/^\d*([,.]\d*)?$/.test(nextValue)) return;
+                          const nextValues = textAnswerValues(answers[index] ?? '', currentTextFields);
+                          nextValues[fieldIndex] = nextValue;
+                          const copy = [...answers];
+                          copy[index] = composeTextAnswer(currentTextFields, nextValues);
+                          setAnswers(copy);
+                        }}
+                        placeholder='Number'
+                      />
+                      <strong className='answer-unit-pill'>{field.unit}</strong>
+                    </label>
+                  );
+                })}
               </div>
             ) : (
               <div className='answer-input-row'>
-                <input onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleSubmit(); } }} ref={inputRef} aria-label='Vastus' aria-describedby={error ? 'vastuse-viga' : undefined} className={error ? 'answer-input input-error' : 'answer-input'} inputMode='decimal' value={answers[index] ?? ''} onChange={(e) => { const next = e.target.value; if (/^\d*([,.]\d*)?$/.test(next)) { const copy = [...answers]; copy[index] = next; setAnswers(copy); } }} placeholder='Sisesta number' />
+                <input onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleSubmit(); } }} ref={inputRef} aria-label='Vastus' aria-describedby={error ? 'vastuse-viga' : undefined} className={error ? 'answer-input input-error' : 'answer-input'} inputMode={isTextQuestion ? 'text' : 'decimal'} value={answers[index] ?? ''} disabled={isTextQuestion && Boolean(textFeedback)} onChange={(e) => { const next = e.target.value; if (isTextQuestion || /^\d*([,.]\d*)?$/.test(next)) { const copy = [...answers]; copy[index] = next; setAnswers(copy); } }} placeholder={isTextQuestion ? 'Sisesta vastus' : 'Sisesta number'} />
                 {!isKirsiMath && current.expectedUnit && <strong className='answer-unit-pill'>{current.expectedUnit}</strong>}
               </div>
             )}
           </div>
+          {isCountingQuestion && countingFeedback ? (
+            <div className={`counting-feedback ${countingFeedback.isCorrect ? 'correct' : 'wrong'}`}>
+              <strong>{countingFeedback.isCorrect ? 'Õige!' : `Õige vastus on ${current.correctAnswerText ?? choiceLabels(current)[0]}.`}</strong>
+              <span>{current.explanation}</span>
+            </div>
+          ) : null}
+          {isTextQuestion && textFeedback ? (
+            <div className={`counting-feedback ${textFeedback.isCorrect ? 'correct' : 'wrong'}`}>
+              <strong>{textFeedback.isCorrect ? 'Õige!' : `Õige vastus on ${current.correctAnswerText}.`}</strong>
+              <span>{current.explanation}</span>
+            </div>
+          ) : null}
         </section>
 
         {error && <p id='vastuse-viga' className='test-error'>{error}</p>}
         {saveError && <p className='test-error'>{saveError}</p>}
 
         <footer className='test-actions-panel'>
-          <button type='button' className='next-button' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}</button>
+          <button type='button' className='next-button' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : isTextQuestion && !textFeedback ? 'Vasta' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}</button>
           {showStopConfirm ? (
             <div className='stop-confirm-panel' role='alertdialog' aria-labelledby='stop-confirm-title'>
               <p id='stop-confirm-title'>Kas soovid harjutuse lõpetada?</p>
