@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
-type Topic = { id: string; name: string; emoji: string; accent?: string };
+type Topic = { id: string; name: string; emoji: string; accent?: string; completedToday?: boolean };
 type OptionGroup = {
   id: string;
   title: string;
@@ -48,7 +48,7 @@ export default function PracticeSetupPage({
   return (
     <main className='practice-page'>
       <section className='practice-shell'>
-        <Link className='practice-back-button' href={backHref}>← Aine valik</Link>
+        <Link className='practice-back-button' href={backHref}>← Tagasi</Link>
         <header className='subject-header'>
           <div className='subject-emoji' aria-hidden>{subjectEmoji}</div>
           <h1>{subjectName}</h1>
@@ -66,6 +66,7 @@ export default function PracticeSetupPage({
                 }}
                 aria-pressed={topic.id === selectedTopicId}
               >
+                {topic.completedToday ? <span className='done-today-marker' aria-label='Täna tehtud'>✓</span> : null}
                 <span className={topic.accent ? `topic-emoji ${topic.accent}` : 'topic-emoji'} aria-hidden>{topic.emoji}</span>
                 <span className='topic-name'>{topic.name}</span>
               </button>

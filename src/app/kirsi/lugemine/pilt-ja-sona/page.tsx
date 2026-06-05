@@ -172,7 +172,7 @@ export default function KirsiPictureWordSprintPage() {
     return (
       <main className='container english-page reading-page'>
         <section className='practice-shell english-shell reading-intro-shell'>
-          <Link className='practice-back-button' href='/kirsi/lugemine'>&larr; Lugemine</Link>
+          <Link className='practice-back-button' href='/kirsi'>&larr; Harjutused</Link>
           <header className='subject-header'>
             <div className='subject-emoji'>ABC</div>
             <h1>Harjutus ei ole praegu saadaval</h1>
@@ -186,7 +186,7 @@ export default function KirsiPictureWordSprintPage() {
     return (
       <main className='container english-page reading-page'>
         <section className='practice-shell english-shell reading-intro-shell'>
-          <Link className='practice-back-button' href='/kirsi/lugemine'>← Lugemine</Link>
+          <Link className='practice-back-button' href='/kirsi'>← Harjutused</Link>
           <header className='subject-header'>
             <div className='subject-emoji'>🖼️</div>
             <h1>Pilt ja sõna</h1>
@@ -237,8 +237,7 @@ export default function KirsiPictureWordSprintPage() {
           ) : null}
           <div className='sprint-result-actions'>
             <button className='sprint-primary-button' onClick={startGame}>▶ Proovi uuesti</button>
-            <Link className='sprint-secondary-button' href='/kirsi/lugemine'>← Lugemine</Link>
-            <Link className='sprint-secondary-button' href='/kirsi'>← Aine valik</Link>
+            <Link className='sprint-secondary-button' href='/kirsi'>← Harjutused</Link>
           </div>
         </section>
       </main>
@@ -248,7 +247,7 @@ export default function KirsiPictureWordSprintPage() {
   return (
     <main className='container english-page reading-page'>
       <section className='practice-shell english-shell'>
-        <Link className='practice-back-button' href='/kirsi/lugemine'>← Katkesta</Link>
+        <Link className='practice-back-button' href='/kirsi'>← Katkesta</Link>
         <div className='matching-hud'>
           <strong>Pilt ja sõna</strong>
           <span>Skoor: {score}</span>
@@ -272,7 +271,7 @@ export default function KirsiPictureWordSprintPage() {
               <p id='picture-word-stop-title'>Kas soovid harjutuse lõpetada?</p>
               <div className='stop-confirm-actions'>
                 <button type='button' className='stop-cancel-button' onClick={() => setShowStopConfirm(false)}>Jätka harjutust</button>
-                <Link className='stop-confirm-button' href='/kirsi/lugemine'>Jah, lõpeta</Link>
+                <Link className='stop-confirm-button' href='/kirsi'>Jah, lõpeta</Link>
               </div>
             </div>
           ) : (

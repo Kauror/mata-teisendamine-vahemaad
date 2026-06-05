@@ -57,7 +57,7 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak }: { 
       </div>
 
       <div className='card-actions'>
-        <button type='button' className='subject-button' onClick={(event) => { event.stopPropagation(); router.push(href); }}>Vali aine</button>
+        <button type='button' className='subject-button' onClick={(event) => { event.stopPropagation(); router.push(href); }}>Ava harjutused</button>
       </div>
     </section>
   );

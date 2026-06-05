@@ -199,7 +199,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
 
       <div className='result-actions'>
         <Link className='btn' href={retryHref}>{isRemediation ? 'Tagasi' : `Tee ${attemptLabel.toLowerCase()} uuesti`}</Link>
-        <Link className='btn chip active' href={isRemediation ? (row.learner === 'kirsi' ? '/kirsi' : '/kiur') : isEnglish ? '/kiur/inglise-keel' : isKiurReading ? '/kiur/lugemine' : isKirsiReading ? '/kirsi/lugemine' : (isKirsi ? '/kirsi/matemaatika' : '/kiur/matemaatika')}>Vali uus harjutus</Link>
+        <Link className='btn chip active' href={row.learner === 'kirsi' || isKirsi ? '/kirsi' : '/kiur'}>Vali uus harjutus</Link>
       </div>
       <Link className='practice-back-button result-history-back-link' href='/history'>Ajalugu</Link>
       </section>

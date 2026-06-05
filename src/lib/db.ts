@@ -27,6 +27,7 @@ const cols = db.prepare('PRAGMA table_info(attempts)').all() as Array<{ name: st
 const hasLearner = cols.some((c) => c.name === 'learner');
 const hasSubject = cols.some((c) => c.name === 'subject');
 const hasTopic = cols.some((c) => c.name === 'topic');
+const hasExerciseId = cols.some((c) => c.name === 'exerciseId');
 
 function addColumnIfMissing(hasColumn: boolean, statement: string) {
   if (hasColumn) return;
@@ -41,6 +42,7 @@ function addColumnIfMissing(hasColumn: boolean, statement: string) {
 addColumnIfMissing(hasLearner, 'ALTER TABLE attempts ADD COLUMN learner TEXT');
 addColumnIfMissing(hasSubject, 'ALTER TABLE attempts ADD COLUMN subject TEXT');
 addColumnIfMissing(hasTopic, 'ALTER TABLE attempts ADD COLUMN topic TEXT');
+addColumnIfMissing(hasExerciseId, 'ALTER TABLE attempts ADD COLUMN exerciseId TEXT');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS point_ledger (

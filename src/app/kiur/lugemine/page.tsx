@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { completedTodayFromHistory, ClientCompletionAttempt } from '@/lib/clientExerciseCompletion';
 import { shuffle } from '@/lib/englishGame';
 import { formatStars } from '@/lib/formatStars';
 import { getValidKiurReadingTasks, KiurReadingTask } from '@/lib/kiurReadingTasks';
@@ -63,6 +64,7 @@ export default function KiurReadingPage() {
   const [saved, setSaved] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [readingActive, setReadingActive] = useState(false);
+  const [doneToday, setDoneToday] = useState(false);
   const startedAtRef = useRef(Date.now());
   const answerLockedRef = useRef(false);
 
@@ -75,6 +77,13 @@ export default function KiurReadingPage() {
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((body) => setReadingActive(Array.isArray(body.exerciseIds) && body.exerciseIds.includes('kiur.reading.loe-ja-vasta')))
       .catch(() => setReadingActive(false));
+  }, []);
+
+  useEffect(() => {
+    void fetch('/api/history')
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((attempts: ClientCompletionAttempt[]) => setDoneToday(completedTodayFromHistory(attempts, 'kiur', 'kiur.reading.loe-ja-vasta', { subject: 'lugemine', topic: 'loe-ja-vasta', category: 'Lugemine - loe ja vasta' })))
+      .catch(() => setDoneToday(false));
   }, []);
 
   useEffect(() => {
@@ -159,7 +168,7 @@ export default function KiurReadingPage() {
     return (
       <main className='container english-page kiur-reading-page'>
         <section className='practice-shell english-shell reading-intro-shell kiur-reading-shell'>
-          <Link className='practice-back-button' href='/kiur'>← Kiur</Link>
+          <Link className='practice-back-button' href='/kiur'>← Harjutused</Link>
           <header className='subject-header'>
             <div className='subject-emoji'>📖</div>
             <h1>Lugemine</h1>
@@ -167,6 +176,7 @@ export default function KiurReadingPage() {
           {hasTasks ? (
             <section className='english-mode-grid'>
               <article className='english-mode-card kiur-reading-start-card'>
+                {doneToday ? <span className='done-today-marker' aria-label='Täna tehtud'>✓</span> : null}
                 <span className='english-mode-icon' aria-hidden>📖</span>
                 <strong>Loe ja vasta</strong>
                 <span>Loe lühike tekst läbi ja vasta küsimusele.</span>
@@ -216,8 +226,7 @@ export default function KiurReadingPage() {
           </section>
           <div className='sprint-result-actions'>
             <button className='sprint-primary-button' onClick={startRun}>Harjuta uuesti</button>
-            <Link className='sprint-secondary-button' href='/kiur/lugemine'>Lugemine</Link>
-            <Link className='sprint-secondary-button' href='/kiur'>Aine valik</Link>
+            <Link className='sprint-secondary-button' href='/kiur'>Harjutused</Link>
           </div>
         </section>
       </main>
@@ -229,7 +238,7 @@ export default function KiurReadingPage() {
   return (
     <main className='container english-page kiur-reading-page'>
       <section className='practice-shell english-shell kiur-reading-shell'>
-        <Link className='practice-back-button' href='/kiur/lugemine'>← Lugemine</Link>
+        <Link className='practice-back-button' href='/kiur'>← Harjutused</Link>
         <div className='matching-hud'>
           <strong>Loe ja vasta</strong>
           <span>{index + 1} / {runCount}</span>
@@ -281,7 +290,7 @@ export default function KiurReadingPage() {
               <p id='kiur-reading-stop-title'>Kas soovid harjutuse lõpetada?</p>
               <div className='stop-confirm-actions'>
                 <button type='button' className='stop-cancel-button' onClick={() => setShowStopConfirm(false)}>Jätka harjutust</button>
-                <Link className='stop-confirm-button' href='/kiur/lugemine'>Jah, lõpeta</Link>
+                <Link className='stop-confirm-button' href='/kiur'>Jah, lõpeta</Link>
               </div>
             </div>
           ) : (

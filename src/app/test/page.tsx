@@ -103,6 +103,16 @@ function normalizeTextAnswer(value: string) {
     .replace(/(\d{1,2})\.(\d{2})/g, '$1:$2');
 }
 
+function normalizeNumberEntry(value: string) {
+  const compact = value.replace(/\s/g, '').replace(',', '.');
+  if (!/^\d*(?:\.\d*)?$/.test(compact)) return null;
+  return compact.replace('.', ',');
+}
+
+function numberParts(value: string) {
+  return (value.match(/\d+(?:[,.]\d+)?/g) ?? []).map((part) => part.replace(',', '.'));
+}
+
 function textAnswerLabels(question: GeneratedQuestion) {
   return [question.correctAnswerText, ...(question.acceptedAnswers ?? [])].filter((answer): answer is string => Boolean(answer));
 }
@@ -129,7 +139,12 @@ function composeTextAnswer(fields: TextAnswerField[], values: string[]) {
 
 function isTextAnswerCorrect(answer: string, question: GeneratedQuestion) {
   const normalized = normalizeTextAnswer(answer);
-  return textAnswerLabels(question).some((label) => normalizeTextAnswer(label) === normalized);
+  const enteredNumbers = numberParts(answer);
+  return textAnswerLabels(question).some((label) => {
+    if (normalizeTextAnswer(label) === normalized) return true;
+    const labelNumbers = numberParts(label);
+    return enteredNumbers.length > 0 && enteredNumbers.length === labelNumbers.length && enteredNumbers.every((part, index) => part === labelNumbers[index]);
+  });
 }
 
 function testTopicLabel(topic: string, category: string, isKirsiMath: boolean) {
@@ -150,11 +165,10 @@ function TestPageContent() {
   const category = categoryParam as Category;
   const difficulty = 'Lihtne' as Difficulty;
   const count = topic === 'tekstulesanded' || categoryParam === 'Tekstülesanded' ? 5 : 15;
-  const seed = Number(params.get('seed') || Date.now());
+  const seed = Number(params.get('seed') || 1);
 
   const isKirsiMath = learner === 'kirsi' && subject === 'matemaatika';
-  const isKiurMath = learner === 'kiur' && subject === 'matemaatika';
-  const baseSelectionUrl = isKirsiMath ? '/kirsi/matemaatika' : isKiurMath ? '/kiur/matemaatika' : '/';
+  const baseSelectionUrl = learner === 'kirsi' ? '/kirsi' : learner === 'kiur' ? '/kiur' : '/';
 
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [index, setIndex] = useState(0);
@@ -412,8 +426,8 @@ function TestPageContent() {
                         value={values[fieldIndex] ?? ''}
                         disabled={Boolean(textFeedback)}
                         onChange={(e) => {
-                          const nextValue = e.target.value;
-                          if (!/^\d*([,.]\d*)?$/.test(nextValue)) return;
+                          const nextValue = normalizeNumberEntry(e.target.value);
+                          if (nextValue === null) return;
                           const nextValues = textAnswerValues(answers[index] ?? '', currentTextFields);
                           nextValues[fieldIndex] = nextValue;
                           const copy = [...answers];

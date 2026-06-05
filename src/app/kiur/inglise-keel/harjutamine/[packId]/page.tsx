@@ -7,7 +7,7 @@ export default function RemovedPackPage() {
     <p>Kasuta inglise keeles Sprinti, kus kõik sõnad on kohe kasutusel.</p>
     <div className='row'>
       <Link className='btn' href='/kiur/inglise-keel/sprint'>Ava sprint</Link>
-      <Link className='btn chip' href='/kiur/inglise-keel'>Tagasi</Link>
+      <Link className='btn chip' href='/kiur'>Tagasi</Link>
     </div>
   </section></main>;
 }

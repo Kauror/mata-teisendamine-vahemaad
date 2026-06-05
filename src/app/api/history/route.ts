@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { awardStudyPointsForAttempt } from '@/lib/learningPoints';
 import {
+  findLearningExerciseForAttempt,
   isLearner,
   isLearningExerciseActiveForAttempt,
   isLearningExerciseSubject
@@ -19,6 +20,7 @@ export async function GET() {
   const rows = db.prepare(`
     SELECT
       a.id, a.createdAt, a.category, a.difficulty, a.questionCount, a.score, a.elapsedSeconds, a.learner, a.subject, a.topic,
+      a.exerciseId,
       r.awardedAmount as earnedStars,
       r.dailyCap as learningDailyCap,
       r.dailyLearningEarnedAfter as dailyLearningEarnedAfter
@@ -38,11 +40,13 @@ export async function POST(req: NextRequest) {
   const category = typeof body.category === 'string' ? body.category : '';
   const questions = Array.isArray(body.questions) ? body.questions : [];
 
+  const exercise = learner && subject ? findLearningExerciseForAttempt({ learner, subject, topic, category }) : null;
+
   if (learner && subject && !isLearningExerciseActiveForAttempt({ learner, subject, topic, category })) {
     return NextResponse.json({ message: 'Harjutus ei ole praegu aktiivne.' }, { status: 403 });
   }
 
-  const stmt = db.prepare('INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const stmt = db.prepare('INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic, exerciseId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const isLearningAttempt = body.subject !== 'inglise-keel';
   const isTextProblems = body.subject === 'matemaatika' && (topic === 'tekstulesanded' || category === 'Tekstülesanded');
   const questionCount = body.subject === 'lugemine' || isTextProblems ? Number(body.questionCount) || 0 : isLearningAttempt ? 15 : Number(body.questionCount) || 0;
@@ -57,7 +61,8 @@ export async function POST(req: NextRequest) {
     JSON.stringify(questions),
     learner,
     subject ?? body.subject ?? null,
-    topic || null
+    topic || null,
+    typeof body.exerciseId === 'string' && body.exerciseId ? body.exerciseId : exercise?.id ?? null
   );
   try {
     captureMistakesForAttempt({ attemptId: Number(result.lastInsertRowid), learner, subject, topic, category, questions });

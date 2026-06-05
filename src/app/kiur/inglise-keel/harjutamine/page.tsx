@@ -7,7 +7,7 @@ export default function PracticePacksPage() {
     <p>Inglise keeles on nüüd kasutusel ainult Sprint, kus kõik sõnad tulevad kohe mängu.</p>
     <div className='row'>
       <Link className='btn' href='/kiur/inglise-keel/sprint'>Ava sprint</Link>
-      <Link className='btn chip' href='/kiur/inglise-keel'>Tagasi</Link>
+      <Link className='btn chip' href='/kiur'>Tagasi</Link>
     </div>
   </section></main>;
 }

@@ -89,7 +89,7 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
       </div>
 
       <div className='daily-task-card'>
-        <h2>Päevategevused</h2>
+        <h2>Päevased tegevused</h2>
         {error && <p className='error'>{error}</p>}
         {!data ? (
           <p>Laadin...</p>

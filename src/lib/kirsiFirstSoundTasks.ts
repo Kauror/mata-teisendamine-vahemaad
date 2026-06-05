@@ -31,7 +31,7 @@ export const KIRSI_FIRST_SOUND_TASKS: KirsiFirstSoundTask[] = [
   { id: 'konn', word: 'KONN', image: '🐸', correctLetter: 'K', options: ['K', 'T', 'P'] },
   { id: 'kala', word: 'KALA', image: '🐟', correctLetter: 'K', options: ['K', 'L', 'P'] },
   { id: 'lind', word: 'LIND', image: '🐦', correctLetter: 'L', options: ['L', 'K', 'T'] },
-  { id: 'oun', word: 'ÕUN', image: '🍎', correctLetter: 'Õ', options: ['Õ', 'Ö', 'Ü'] },
+  { id: 'oun', word: 'ÕUN', image: '🍎', correctLetter: 'Õ', options: ['Õ', 'Ü', 'B'] },
   { id: 'pirn', word: 'PIRN', image: '🍐', correctLetter: 'P', options: ['P', 'B', 'T'] },
   { id: 'banaan', word: 'BANAAN', image: '🍌', correctLetter: 'B', options: ['B', 'N', 'P'] },
   { id: 'kiivi', word: 'KIIVI', image: '🥝', correctLetter: 'K', options: ['K', 'V', 'G'] },

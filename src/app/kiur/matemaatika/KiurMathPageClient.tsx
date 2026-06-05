@@ -5,8 +5,15 @@ import PracticeSetupPage from '@/app/components/PracticeSetupPage';
 import { KIUR_LENGTH_TOPIC_ID, KIUR_MATH_TOPICS, KiurMathTopicId } from '@/lib/kiurMathTopics';
 import { Category } from '@/lib/types';
 
-export default function KiurMathPageClient({ activeTopicIds }: { activeTopicIds: string[] }) {
+export default function KiurMathPageClient({
+  activeTopicIds,
+  completedExerciseIds = []
+}: {
+  activeTopicIds: string[];
+  completedExerciseIds?: string[];
+}) {
   const activeTopics = useMemo(() => KIUR_MATH_TOPICS.filter((topic) => activeTopicIds.includes(topic.id)), [activeTopicIds]);
+  const completedSet = useMemo(() => new Set(completedExerciseIds), [completedExerciseIds]);
   const [topicId, setTopicId] = useState<KiurMathTopicId>((activeTopics[0]?.id ?? KIUR_LENGTH_TOPIC_ID) as KiurMathTopicId);
   const [category, setCategory] = useState<Category>('Segaharjutus');
 
@@ -24,7 +31,12 @@ export default function KiurMathPageClient({ activeTopicIds }: { activeTopicIds:
       backHref='/kiur'
       subjectName='Matemaatika'
       subjectEmoji='🧮'
-      topics={activeTopics.map((topic) => ({ id: topic.id, name: topic.name, emoji: topic.emoji }))}
+      topics={activeTopics.map((topic) => ({
+        id: topic.id,
+        name: topic.name,
+        emoji: topic.emoji,
+        completedToday: completedSet.has(`kiur.math.${topic.id}`)
+      }))}
       selectedTopicId={selectedTopic.id}
       onSelectTopic={(t) => setTopicId(t as KiurMathTopicId)}
       setupTitle={hasActiveTopics && selectedTopic.implemented ? 'Harjutuse seadistus' : 'Matemaatika'}

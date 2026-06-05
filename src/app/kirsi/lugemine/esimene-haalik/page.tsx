@@ -33,8 +33,16 @@ function buildSession(seed: number) {
   return shuffle(KIRSI_FIRST_SOUND_TASKS, seed).slice(0, QUESTION_COUNT);
 }
 
+function getChoiceOptions(task: KirsiFirstSoundTask, seed: number) {
+  const choices = task.options.includes(task.correctLetter)
+    ? Array.from(new Set(task.options))
+    : [task.correctLetter, ...task.options.filter((letter) => letter !== task.correctLetter)].slice(0, task.options.length);
+
+  return shuffle(choices, seed);
+}
+
 export default function KirsiFirstSoundPage() {
-  const [seed, setSeed] = useState(0);
+  const [seed, setSeed] = useState<number | null>(null);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [hintCount, setHintCount] = useState(0);
@@ -46,16 +54,16 @@ export default function KirsiFirstSoundPage() {
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [exerciseActive, setExerciseActive] = useState<boolean | null>(null);
   const startedAtRef = useRef(Date.now());
-  const session = useMemo(() => buildSession(seed), [seed]);
+  const session = useMemo(() => seed === null ? [] : buildSession(seed), [seed]);
   const current: KirsiFirstSoundTask | undefined = session[index];
   const answered = selectedLetter !== null;
   const isCorrect = Boolean(current && selectedLetter === current.correctLetter);
-  const optionSeed = seed + index * 1777;
-  const options = useMemo(() => current ? shuffle(current.options, optionSeed) : [], [current, optionSeed]);
+  const optionSeed = (seed ?? 0) + index * 1777;
+  const options = useMemo(() => current ? getChoiceOptions(current, optionSeed) : [], [current, optionSeed]);
 
   useEffect(() => {
     startedAtRef.current = Date.now();
-    setSeed(Date.now());
+    setSeed(startedAtRef.current);
   }, []);
 
   useEffect(() => {
@@ -145,7 +153,7 @@ export default function KirsiFirstSoundPage() {
     setSelectedLetter(null);
   };
 
-  if (exerciseActive === null) {
+  if (exerciseActive === null || seed === null) {
     return <main className='container english-page reading-page'><section className='practice-shell english-shell first-sound-shell'>Laadin harjutust...</section></main>;
   }
 
@@ -153,7 +161,7 @@ export default function KirsiFirstSoundPage() {
     return (
       <main className='container english-page reading-page'>
         <section className='practice-shell english-shell first-sound-shell'>
-          <Link className='practice-back-button' href='/kirsi/lugemine'>&larr; Lugemine</Link>
+          <Link className='practice-back-button' href='/kirsi'>&larr; Harjutused</Link>
           <header className='subject-header'>
             <div className='subject-emoji'>ABC</div>
             <h1>Harjutus ei ole praegu saadaval</h1>
@@ -194,8 +202,7 @@ export default function KirsiFirstSoundPage() {
           ) : null}
           <div className='sprint-result-actions'>
             <button className='sprint-primary-button' onClick={reset}>▶ Proovi uuesti</button>
-            <Link className='sprint-secondary-button' href='/kirsi/lugemine'>← Lugemine</Link>
-            <Link className='sprint-secondary-button' href='/kirsi'>← Aine valik</Link>
+            <Link className='sprint-secondary-button' href='/kirsi'>← Harjutused</Link>
           </div>
         </section>
       </main>
@@ -207,7 +214,7 @@ export default function KirsiFirstSoundPage() {
   return (
     <main className='container english-page reading-page'>
       <section className='practice-shell english-shell first-sound-shell'>
-        <Link className='practice-back-button' href='/kirsi/lugemine'>← Lugemine</Link>
+        <Link className='practice-back-button' href='/kirsi'>← Harjutused</Link>
         <div className='matching-hud'>
           <strong>Esimene häälik</strong>
           <span>{index + 1}/{QUESTION_COUNT}</span>
@@ -253,7 +260,7 @@ export default function KirsiFirstSoundPage() {
               <p id='first-sound-stop-title'>Kas soovid harjutuse lõpetada?</p>
               <div className='stop-confirm-actions'>
                 <button type='button' className='stop-cancel-button' onClick={() => setShowStopConfirm(false)}>Jätka harjutust</button>
-                <Link className='stop-confirm-button' href='/kirsi/lugemine'>Jah, lõpeta</Link>
+                <Link className='stop-confirm-button' href='/kirsi'>Jah, lõpeta</Link>
               </div>
             </div>
           ) : (

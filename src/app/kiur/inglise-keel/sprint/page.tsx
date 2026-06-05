@@ -146,7 +146,7 @@ export default function SprintPage() {
     return (
       <main className='container english-page'>
         <section className='practice-shell english-shell'>
-          <Link className='practice-back-button' href='/kiur/inglise-keel'>&larr; Inglise keel</Link>
+          <Link className='practice-back-button' href='/kiur'>&larr; Harjutused</Link>
           <header className='subject-header'>
             <div className='subject-emoji'>ABC</div>
             <h1>Sprint ei ole praegu saadaval</h1>
@@ -195,15 +195,14 @@ export default function SprintPage() {
         )}
         <div className='sprint-result-actions'>
           <button className='sprint-primary-button' onClick={() => location.reload()}>▶ Proovi uuesti</button>
-          <Link className='sprint-secondary-button' href='/kiur/inglise-keel'>← Inglise keel</Link>
-          <Link className='sprint-secondary-button' href='/kiur'>← Aine valik</Link>
+          <Link className='sprint-secondary-button' href='/kiur'>← Harjutused</Link>
         </div>
       </section>
     </main>;
   }
 
   return <main className='container english-page'><section className='practice-shell english-shell'>
-    <Link className='practice-back-button' href='/kiur/inglise-keel'>← Katkesta sprint</Link>
+    <Link className='practice-back-button' href='/kiur'>← Katkesta sprint</Link>
     <div className='matching-hud'><strong>Sprint</strong><span>Skoor: {score}</span><span>Jada: {streak}</span><span>Aeg: {timeLeft}s</span><span>Parim: {best}</span></div>
     <EnglishMatchingBoard key={`sprint-${boardSeed}`} words={boardWords} layoutSeed={boardLayoutSeed} onPair={(ok, word, chosenOption) => {
       if (endedRef.current) return;
