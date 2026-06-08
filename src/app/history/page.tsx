@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatElapsed } from '@/lib/validation';
 import { compactTopicLabel, dayLabel, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
+import { formatStars } from '@/lib/formatStars';
 
 type ExerciseHistory = {
   kind: 'exercise';
@@ -25,7 +26,7 @@ type TaskHistory = {
   id: number;
   learner: 'kiur' | 'kirsi';
   amount: number;
-  source: 'real_world_task' | 'manual_adjustment' | 'daily_task_bonus';
+  source: 'real_world_task' | 'manual_adjustment' | 'daily_task_bonus' | 'point_gift';
   sourceId: number | null;
   description: string;
   createdAt: string;
@@ -53,6 +54,17 @@ function itemDate(item: HistoryItem) {
 function avgPercent(items: ExerciseHistory[]) {
   if (!items.length) return null;
   return Math.round(items.reduce((sum, a) => sum + scorePercent(a.score, a.questionCount), 0) / items.length);
+}
+
+// Stars the child gained that day: learning points from exercises plus task,
+// bonus and parent-adjustment ledger amounts. Store purchases are spending, so
+// they are excluded.
+function earnedStars(items: HistoryItem[]) {
+  return items.reduce((sum, item) => {
+    if (item.kind === 'exercise') return sum + (item.earnedStars ?? 0);
+    if (item.kind === 'task') return sum + item.amount;
+    return sum;
+  }, 0);
 }
 
 function tone(avg: number | null) {
@@ -139,6 +151,7 @@ export default function HistoryPage() {
 
   const todayItems = useMemo(() => filtered.filter((a) => dayLabel(itemDate(a)) === 'Täna'), [filtered]);
   const todayAvg = avgPercent(todayItems.filter((item): item is ExerciseHistory => item.kind === 'exercise'));
+  const todayStars = earnedStars(todayItems);
   const groups = useMemo(() => groupHistoryByDay(filtered), [filtered]);
 
   const toggleDay = (day: string) => {
@@ -188,7 +201,7 @@ export default function HistoryPage() {
             <p>Kõik harjutused, päevategevused ja poe ostud</p>
           </div>
           <div className={`summary-pill ${tone(todayAvg)}`}>
-            <p>Täna: {todayItems.length} kirjet · Keskmine {todayAvg === null ? '—' : `${todayAvg}%`}</p>
+            <p>Täna: {todayItems.length} kirjet · Keskmine {todayAvg === null ? '—' : `${todayAvg}%`} · ⭐ {formatStars(todayStars)}</p>
           </div>
         </header>
 
@@ -218,12 +231,13 @@ export default function HistoryPage() {
           <section className='history-groups'>
             {Array.from(groups.entries()).map(([day, items]) => {
               const groupAvg = avgPercent(items.filter((item): item is ExerciseHistory => item.kind === 'exercise'));
+              const groupStars = earnedStars(items);
               const isOpen = openDays.has(day);
               return (
                 <div key={day} className='date-group'>
                   <button type='button' className='date-group-toggle' aria-expanded={isOpen} onClick={() => toggleDay(day)}>
                     <span>{day}</span>
-                    <strong>{items.length} kirjet · Keskmine {groupAvg === null ? '—' : `${groupAvg}%`}</strong>
+                    <strong>{items.length} kirjet · Keskmine {groupAvg === null ? '—' : `${groupAvg}%`} · ⭐ {formatStars(groupStars)}</strong>
                   </button>
                   {isOpen && <div className='history-list-compact'>
                     {items.map((h) => {

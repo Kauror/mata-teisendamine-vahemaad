@@ -1,8 +1,13 @@
 import db from '@/lib/db';
 import { KIUR_MATH_TOPICS } from '@/lib/kiurMathTopics';
-import { nowIso, type Learner } from '@/lib/tasks';
+import { nowIso, todayDateString, type Learner } from '@/lib/tasks';
+import { seededRng, shuffleWithRng } from '@/lib/random';
 
-export type LearningExerciseStatus = 'active' | 'hidden';
+// 'rotation' = in the daily rotation pool; 'permanent' = always shown; 'hidden'
+// = not shown. Legacy rows stored as 'active' are read as 'rotation'.
+export type LearningExerciseStatus = 'hidden' | 'rotation' | 'permanent';
+
+export const DAILY_EXERCISE_LIMIT = 4;
 export type LearningExerciseSubject = 'matemaatika' | 'inglise-keel' | 'lugemine';
 
 export type LearningExerciseCatalogEntry = {
@@ -125,7 +130,10 @@ function parseLearnerScope(value: string): Learner[] {
 }
 
 function normalizeStatus(value: unknown): LearningExerciseStatus | null {
-  return value === 'active' || value === 'hidden' ? value : null;
+  if (value === 'active' || value === 'rotation') return 'rotation';
+  if (value === 'permanent') return 'permanent';
+  if (value === 'hidden') return 'hidden';
+  return null;
 }
 
 function toRow(row: LearningExerciseDbRow): LearningExerciseRow {
@@ -168,7 +176,7 @@ export function syncLearningExerciseCatalog() {
       for (const learner of exercise.learnerScope) {
         db.prepare(`
           INSERT INTO child_learning_exercise_settings (exerciseId, learner, status, updatedAt)
-          VALUES (?, ?, 'active', ?)
+          VALUES (?, ?, 'rotation', ?)
           ON CONFLICT(exerciseId, learner) DO NOTHING
         `).run(exercise.id, learner, updatedAt);
       }
@@ -193,8 +201,41 @@ export function getLearningExerciseCatalog() {
   return rows.map(toRow);
 }
 
+// Exercises the parent has enabled for this child (rotation pool + permanent).
+// These are all reachable/allowed; the dashboard separately limits how many are
+// shown on a given day via selectTodaysLearningExercises.
 export function getActiveLearningExercises(learner: Learner) {
-  return getLearningExerciseCatalog().filter((exercise) => exercise.childStatus[learner] === 'active');
+  return getLearningExerciseCatalog().filter((exercise) => {
+    const status = exercise.childStatus[learner];
+    return status === 'rotation' || status === 'permanent';
+  });
+}
+
+// Picks the exercises shown to a child today: every permanent one, plus a
+// daily-random sample from the rotation pool, capped at DAILY_EXERCISE_LIMIT in
+// total. The random sample is seeded by (learner + date) so it is stable for the
+// whole day and reshuffles each new day.
+export function selectTodaysLearningExercises<T extends { id: string; sortOrder: number; childStatus: Record<Learner, LearningExerciseStatus | null> }>(
+  exercises: T[],
+  learner: Learner,
+  date = todayDateString(),
+  limit = DAILY_EXERCISE_LIMIT
+): T[] {
+  const available = exercises.filter((exercise) => {
+    const status = exercise.childStatus[learner];
+    return status === 'rotation' || status === 'permanent';
+  });
+  const permanents = available.filter((exercise) => exercise.childStatus[learner] === 'permanent');
+  const rotation = available.filter((exercise) => exercise.childStatus[learner] === 'rotation');
+
+  const remaining = Math.max(0, limit - permanents.length);
+  let seed = 0;
+  const seedSource = `${learner}:${date}`;
+  for (let i = 0; i < seedSource.length; i++) seed = (Math.imul(seed, 31) + seedSource.charCodeAt(i)) >>> 0;
+  const rotated = shuffleWithRng(seededRng(seed), rotation).slice(0, remaining);
+
+  const chosen = new Set([...permanents, ...rotated].map((exercise) => exercise.id));
+  return available.filter((exercise) => chosen.has(exercise.id)).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export function getActiveLearningExerciseIds(learner: Learner) {
@@ -239,7 +280,9 @@ export function isLearningExerciseActiveForAttempt(input: {
   category: string;
 }) {
   const exercise = findLearningExerciseForAttempt(input);
-  return Boolean(exercise && exercise.childStatus[input.learner] === 'active');
+  if (!exercise) return false;
+  const status = exercise.childStatus[input.learner];
+  return status === 'rotation' || status === 'permanent';
 }
 
 export function updateChildLearningExerciseStatus(exerciseId: string, learner: Learner, status: LearningExerciseStatus) {
@@ -262,5 +305,5 @@ export function isLearner(value: unknown): value is Learner {
 }
 
 export function isLearningExerciseStatus(value: unknown): value is LearningExerciseStatus {
-  return value === 'active' || value === 'hidden';
+  return value === 'hidden' || value === 'rotation' || value === 'permanent';
 }

@@ -11,7 +11,8 @@ type ChildTask = {
   title: string;
   points: number;
   assignmentMode: string;
-  status: 'active' | 'completed' | 'missed' | 'locked';
+  status: 'active' | 'completed' | 'missed' | 'locked' | 'pending_approval';
+  requiresApproval?: boolean;
   completedAt: string | null;
   completedBy: Learner | null;
 };
@@ -34,6 +35,7 @@ function learnerName(learner: Learner) {
 export default function DailyTasksPanel({ learner }: { learner: Learner }) {
   const [data, setData] = useState<ChildDashboard | null>(null);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [confirmTask, setConfirmTask] = useState<ChildTask | null>(null);
   const [bonusOpen, setBonusOpen] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -65,6 +67,8 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
         throw new Error(body.message || 'Tegevust ei saanud märkida.');
       }
       const body = await res.json().catch(() => ({}));
+      if (body.pending) setNotice('Saadetud vanemale kinnitamiseks.');
+      else setNotice('');
       if (body.dailyBonus?.awarded) setBonusOpen(true);
       setConfirmTask(null);
       load();
@@ -77,7 +81,31 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
 
   const balance = data?.balance ?? 0;
   const tasks = data?.tasks ?? [];
+  const isDone = (task: ChildTask) => task.status === 'completed' || task.status === 'locked';
+  const activeTasks = tasks.filter((task) => !isDone(task));
+  const doneTasks = tasks.filter(isDone);
   const storeHref = learner === 'kiur' ? '/kiur/pood' : '/kirsi/pood';
+
+  const renderTask = (task: ChildTask) => {
+    const completed = task.status === 'completed';
+    const locked = task.status === 'locked';
+    const pending = task.status === 'pending_approval';
+    return (
+      <button
+        type='button'
+        key={task.assignmentId}
+        className={completed ? 'daily-task-row completed' : locked ? 'daily-task-row locked' : pending ? 'daily-task-row pending' : 'daily-task-row'}
+        disabled={completed || locked || pending || busyId === task.assignmentId}
+        onClick={() => setConfirmTask(task)}
+      >
+        <span className='daily-check'>{completed ? '✓' : pending ? '⏳' : locked ? '-' : ''}</span>
+        <span className='daily-title'>{task.title}</span>
+        <strong>+{task.points} ⭐</strong>
+        {pending && <small>Ootab vanema kinnitust</small>}
+        {locked && <small>Tehtud {task.completedBy ? learnerName(task.completedBy) : 'teise lapse'} poolt</small>}
+      </button>
+    );
+  };
 
   return (
     <section className='daily-panel'>
@@ -91,32 +119,30 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
       <div className='daily-task-card'>
         <h2>Päevased tegevused</h2>
         {error && <p className='error'>{error}</p>}
+        {notice && <p className='ok'>{notice}</p>}
         {!data ? (
           <p>Laadin...</p>
         ) : tasks.length === 0 ? (
           <p>Tänaseid tegevusi ei ole.</p>
         ) : (
-          <div className='daily-task-list'>
-            {tasks.map((task) => {
-              const completed = task.status === 'completed';
-              const locked = task.status === 'locked';
-              return (
-                <button
-                  type='button'
-                  key={task.assignmentId}
-                  className={completed ? 'daily-task-row completed' : locked ? 'daily-task-row locked' : 'daily-task-row'}
-                  disabled={completed || locked || busyId === task.assignmentId}
-                  onClick={() => setConfirmTask(task)}
-                >
-                  <span className='daily-check'>{completed ? '✓' : locked ? '-' : ''}</span>
-                  <span className='daily-title'>{task.title}</span>
-                  <strong>+{task.points} ⭐</strong>
-                  {completed && <small>Tehtud</small>}
-                  {locked && <small>Tehtud {task.completedBy ? learnerName(task.completedBy) : 'teise lapse'} poolt</small>}
-                </button>
-              );
-            })}
-          </div>
+          <>
+            {activeTasks.length > 0 && (
+              <div className='daily-task-list'>
+                {activeTasks.map(renderTask)}
+              </div>
+            )}
+            {activeTasks.length === 0 && (
+              <p className='daily-all-done'>Kõik tänased tegevused on tehtud! 🎉</p>
+            )}
+            {doneTasks.length > 0 && (
+              <details className='daily-done-accordion'>
+                <summary>Tehtud tegevused ({doneTasks.length})</summary>
+                <div className='daily-task-list'>
+                  {doneTasks.map(renderTask)}
+                </div>
+              </details>
+            )}
+          </>
         )}
       </div>
 
@@ -126,6 +152,7 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
             <h2>Kas tegevus on tehtud?</h2>
             <p>{confirmTask.title}</p>
             <strong>+{confirmTask.points} ⭐</strong>
+            {confirmTask.requiresApproval && <p className='daily-approval-hint'>✋ Vanem kinnitab tähed.</p>}
             <div className='task-modal-actions'>
               <button type='button' className='filter-chip' onClick={() => setConfirmTask(null)}>Ei</button>
               <button type='button' onClick={completeTask} disabled={busyId === confirmTask.assignmentId}>Jah, tehtud</button>

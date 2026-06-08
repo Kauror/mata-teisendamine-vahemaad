@@ -65,6 +65,7 @@ db.exec(`
     selectedWeekdaysJson TEXT,
     startDate TEXT,
     onceDate TEXT,
+    requiresApproval INTEGER NOT NULL DEFAULT 0,
     createdAt TEXT NOT NULL,
     deletedAt TEXT
   );
@@ -76,6 +77,7 @@ db.exec(`
     titleSnapshot TEXT NOT NULL,
     pointsSnapshot INTEGER NOT NULL,
     assignmentModeSnapshot TEXT NOT NULL,
+    requiresApprovalSnapshot INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL,
     completedBy TEXT,
     completedAt TEXT,
@@ -311,5 +313,10 @@ db.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_remediation_session_position
     ON remediation_session_items(sessionId, position);
 `);
+
+const taskTemplateCols = db.prepare('PRAGMA table_info(task_templates)').all() as Array<{ name: string }>;
+addColumnIfMissing(taskTemplateCols.some((c) => c.name === 'requiresApproval'), 'ALTER TABLE task_templates ADD COLUMN requiresApproval INTEGER NOT NULL DEFAULT 0');
+const taskInstanceCols = db.prepare('PRAGMA table_info(task_instances)').all() as Array<{ name: string }>;
+addColumnIfMissing(taskInstanceCols.some((c) => c.name === 'requiresApprovalSnapshot'), 'ALTER TABLE task_instances ADD COLUMN requiresApprovalSnapshot INTEGER NOT NULL DEFAULT 0');
 
 export default db;

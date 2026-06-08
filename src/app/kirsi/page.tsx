@@ -1,14 +1,14 @@
 import ChildHomeDashboard from '@/app/components/ChildHomeDashboard';
 import { childExerciseCards } from '@/lib/childExerciseCards';
 import { getCompletedExerciseIdsToday } from '@/lib/exerciseCompletion';
-import { getActiveLearningExercises } from '@/lib/learningExercises';
+import { getActiveLearningExercises, selectTodaysLearningExercises } from '@/lib/learningExercises';
 import { getOpenRenderableMistakeCount, REMEDIATION_MIN_OPEN_MISTAKES } from '@/lib/remediation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export default function KirsiPage() {
-  const exercises = childExerciseCards('kirsi', getActiveLearningExercises('kirsi'));
+  const exercises = childExerciseCards('kirsi', selectTodaysLearningExercises(getActiveLearningExercises('kirsi'), 'kirsi'));
   const completedExerciseIds = getCompletedExerciseIdsToday('kirsi', exercises);
   const remediationHref = getOpenRenderableMistakeCount('kirsi') >= REMEDIATION_MIN_OPEN_MISTAKES ? '/kirsi/kordamine' : undefined;
 

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import DailyTasksPanel from '@/app/components/DailyTasksPanel';
+import NoticeBoard from '@/app/components/NoticeBoard';
 import { ChildExerciseCard } from '@/lib/childExerciseCards';
 import { Learner } from '@/lib/tasks';
 
@@ -38,16 +39,6 @@ export default function ChildHomeDashboard({
         <section className='child-exercise-section' aria-labelledby={`${child.learner}-exercise-title`}>
           <h2 id={`${child.learner}-exercise-title`}>Harjutused</h2>
           <div className='child-exercise-grid'>
-            {remediationHref ? (
-              <Link className='child-exercise-card' data-accent='green' href={remediationHref}>
-                <span className='child-exercise-icon' aria-hidden>↻</span>
-                <span className='child-exercise-copy'>
-                  <strong>Kordamine</strong>
-                  <small>Harjuta uuesti neid ülesandeid, mis vajavad veel tähelepanu.</small>
-                </span>
-              </Link>
-            ) : null}
-
             {exercises.map((exercise) => (
               <Link key={exercise.id} className='child-exercise-card' data-accent={exercise.accent} href={exercise.route}>
                 {completedExerciseIds?.has(exercise.id) ? <span className='done-today-marker' aria-label='Täna tehtud'>✓</span> : null}
@@ -58,9 +49,21 @@ export default function ChildHomeDashboard({
                 </span>
               </Link>
             ))}
+
+            {remediationHref ? (
+              <Link className='child-exercise-card' data-accent='green' href={remediationHref}>
+                <span className='child-exercise-icon' aria-hidden>↻</span>
+                <span className='child-exercise-copy'>
+                  <strong>Kordamine</strong>
+                  <small>Harjuta uuesti neid ülesandeid, mis vajavad veel tähelepanu.</small>
+                </span>
+              </Link>
+            ) : null}
           </div>
           {exercises.length === 0 && !remediationHref ? <p className='recent-empty'>Harjutusi ei ole praegu aktiivne.</p> : null}
         </section>
+
+        <NoticeBoard />
       </section>
     </main>
   );

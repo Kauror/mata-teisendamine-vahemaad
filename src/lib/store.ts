@@ -314,6 +314,33 @@ export function purchaseStoreItem(learner: Learner, itemId: number, date = today
   return buy();
 }
 
+const ALLATIVE: Record<Learner, string> = { kiur: 'Kiurile', kirsi: 'Kirsile' };
+const ABLATIVE: Record<Learner, string> = { kiur: 'Kiurilt', kirsi: 'Kirsilt' };
+
+// Transfers stars from one child to the other: the giver loses them, the
+// receiver gains them. Both sides get a matching point_gift ledger entry so the
+// move is visible in each child's history.
+export function giftPoints(from: Learner, to: Learner, amount: number) {
+  if (from === to) throw new Error('Ei saa iseendale kinkida.');
+  if (!Number.isInteger(amount) || amount < 1) throw new Error('Kingitus peab olema vähemalt 1 täht.');
+  if (amount > 999) throw new Error('Kingitus võib olla kuni 999 tähte.');
+
+  const transfer = db.transaction(() => {
+    if (getBalance(from) < amount) throw new Error('Tähti ei ole piisavalt.');
+    const createdAt = nowIso();
+    const sent = db.prepare(`
+      INSERT INTO point_ledger (learner, amount, source, description, createdAt, metadataJson)
+      VALUES (?, ?, 'point_gift', ?, ?, ?)
+    `).run(from, -amount, `Kinkisid ${ALLATIVE[to]}`, createdAt, JSON.stringify({ direction: 'sent', from, to }));
+    db.prepare(`
+      INSERT INTO point_ledger (learner, amount, source, description, createdAt, metadataJson)
+      VALUES (?, ?, 'point_gift', ?, ?, ?)
+    `).run(to, amount, `Kingitus ${ABLATIVE[from]}`, createdAt, JSON.stringify({ direction: 'received', from, to, giftLedgerId: sent.lastInsertRowid }));
+    return { balance: getBalance(from) };
+  });
+  return transfer();
+}
+
 export function getParentStoreDashboard(date = todayDateString()) {
   const items = db.prepare('SELECT * FROM store_items WHERE deletedAt IS NULL ORDER BY createdAt DESC').all() as StoreItemRow[];
   const hiddenToday = db.prepare('SELECT storeItemId FROM store_item_hidden_dates WHERE date = ?').all(date) as Array<{ storeItemId: number }>;

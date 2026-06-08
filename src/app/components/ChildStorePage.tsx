@@ -56,6 +56,11 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
   const [confirmItem, setConfirmItem] = useState<StoreItem | null>(null);
   const [success, setSuccess] = useState<{ title: string; price: number; balanceAfter: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const recipient: Learner = learner === 'kiur' ? 'kirsi' : 'kiur';
+  const [giftAmount, setGiftAmount] = useState(1);
+  const [confirmGift, setConfirmGift] = useState(false);
+  const [giftSuccess, setGiftSuccess] = useState<{ amount: number; balanceAfter: number } | null>(null);
+  const [giftBusy, setGiftBusy] = useState(false);
 
   const load = useCallback(() => {
     setError('');
@@ -91,7 +96,32 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
     }
   };
 
+  const sendGift = async () => {
+    setGiftBusy(true);
+    setError('');
+    try {
+      const res = await fetch('/api/store/gift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: learner, to: recipient, amount: giftAmount })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || 'Kinkimine ebaõnnestus.');
+      setGiftSuccess({ amount: giftAmount, balanceAfter: body.balance });
+      setConfirmGift(false);
+      setGiftAmount(1);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kinkimine ebaõnnestus.');
+      setConfirmGift(false);
+    } finally {
+      setGiftBusy(false);
+    }
+  };
+
   const balance = data?.balance ?? 0;
+  const recipientName = childName(recipient);
+  const canGift = giftAmount >= 1 && giftAmount <= balance;
 
   return (
     <main className='store-page'>
@@ -126,6 +156,25 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
           {data && data.items.length === 0 && <p>Poes ei ole praegu esemeid.</p>}
         </section>
 
+        <details className='store-gift'>
+          <summary className='store-gift-summary'>🎁 Kingi tähti {recipientName}le</summary>
+          <div className='store-gift-body'>
+            <p>Sinu tähed lähevad {recipientName}le. Sinul väheneb, {recipientName}l suureneb.</p>
+            <div className='store-gift-row'>
+              <input
+                type='number'
+                min={1}
+                max={balance > 0 ? balance : 1}
+                value={giftAmount}
+                onChange={(event) => setGiftAmount(Math.max(1, Math.floor(Number(event.target.value) || 1)))}
+                aria-label='Kingitavate tähtede arv'
+              />
+              <button type='button' disabled={!canGift} onClick={() => setConfirmGift(true)}>Kingi {recipientName}le</button>
+            </div>
+            {giftAmount > balance && <small className='store-gift-warning'>Sul ei ole nii palju tähti.</small>}
+          </div>
+        </details>
+
         <section className='store-recent'>
           <h2>Hiljuti ostetud</h2>
           {(data?.purchases ?? []).map((purchase) => (
@@ -159,6 +208,32 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
             <span>Kulutasid: {success.price} ⭐</span>
             <strong>Alles: {stars(success.balanceAfter)} ⭐</strong>
             <button type='button' onClick={() => setSuccess(null)}>Selge</button>
+          </div>
+        </div>
+      )}
+
+      {confirmGift && (
+        <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
+          <div className='task-modal'>
+            <h2>Kas kingid {recipientName}le?</h2>
+            <span>Kingitus: {giftAmount} ⭐</span>
+            <span>Sul on praegu: {stars(balance)} ⭐</span>
+            <strong>Pärast kinkimist jääb: {stars(balance - giftAmount)} ⭐</strong>
+            <div className='task-modal-actions'>
+              <button type='button' className='filter-chip' onClick={() => setConfirmGift(false)}>Ei</button>
+              <button type='button' disabled={giftBusy} onClick={sendGift}>Jah, kingin</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {giftSuccess && (
+        <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
+          <div className='task-modal'>
+            <h2>Kingitud! 🎁</h2>
+            <p>Kinkisid {recipientName}le {giftSuccess.amount} ⭐</p>
+            <strong>Sul on alles: {stars(giftSuccess.balanceAfter)} ⭐</strong>
+            <button type='button' onClick={() => setGiftSuccess(null)}>Selge</button>
           </div>
         </div>
       )}

@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
       recurrenceType: body.recurrenceType as RecurrenceType,
       selectedWeekdays: Array.isArray(body.selectedWeekdays) ? body.selectedWeekdays.map(Number) : [],
       startDate: body.startDate || null,
-      onceDate: body.onceDate || null
+      onceDate: body.onceDate || null,
+      requiresApproval: Boolean(body.requiresApproval)
     });
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {

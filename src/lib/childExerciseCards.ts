@@ -65,7 +65,7 @@ function routeFor(exercise: LearningExerciseRow, learner: Learner) {
 
 export function childExerciseCards(learner: Learner, exercises: LearningExerciseRow[]): ChildExerciseCard[] {
   return exercises
-    .filter((exercise) => exercise.childStatus[learner] === 'active')
+    .filter((exercise) => exercise.childStatus[learner] !== 'hidden')
     .map((exercise) => {
       const meta = metadataFor(exercise);
       return {

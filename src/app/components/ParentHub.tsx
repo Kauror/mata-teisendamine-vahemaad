@@ -9,12 +9,14 @@ type Learner = 'kiur' | 'kirsi';
 type StoreVisibility = 'kiur' | 'kirsi' | 'both';
 type StoreStockType = 'unlimited' | 'fixed_stock' | 'daily_stock' | 'one_time_global';
 
-type Template = { id: number; title: string; points: number; assignmentMode: AssignmentMode; recurrenceType: RecurrenceType };
+type Template = { id: number; title: string; points: number; assignmentMode: AssignmentMode; recurrenceType: RecurrenceType; selectedWeekdaysJson: string | null; startDate: string | null; onceDate: string | null; requiresApproval: number };
+type PendingApproval = { assignmentId: number; learner: Learner; title: string; points: number; assignmentMode: AssignmentMode; completedAt: string | null };
 type Dashboard = {
   balances: Record<Learner, number>;
   templates: Template[];
   activeTasks: Array<{ id: number; titleSnapshot: string; pointsSnapshot: number; status: string }>;
   completedTasks: Array<{ titleSnapshot: string; pointsSnapshot: number; learner: Learner; completedAt: string }>;
+  pendingApprovals: PendingApproval[];
 };
 
 type StoreItem = {
@@ -40,7 +42,7 @@ type StoreDashboard = {
   purchases: Array<{ id: number; learner: Learner; titleSnapshot: string; priceSnapshot: number; purchasedAt: string }>;
 };
 
-type LearningExerciseStatus = 'active' | 'hidden';
+type LearningExerciseStatus = 'hidden' | 'rotation' | 'permanent';
 type LearningExerciseSubject = 'matemaatika' | 'inglise-keel' | 'lugemine';
 type LearningExercise = {
   id: string;
@@ -69,7 +71,7 @@ type LearningSettings = {
   streakBonusEnabled: boolean;
 };
 
-type ParentSectionId = 'stars' | 'today' | 'tasks' | 'store' | 'stock' | 'lists' | 'learning' | 'library' | 'password';
+type ParentSectionId = 'stars' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password';
 
 function ParentAccordionSection({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
   return (
@@ -110,10 +112,7 @@ const SUBJECT_LABELS: Record<LearningExerciseSubject, string> = {
   'inglise-keel': 'Inglise keel',
   lugemine: 'Lugemine'
 };
-const STATUS_LABELS: Record<LearningExerciseStatus, string> = {
-  active: 'Aktiivne',
-  hidden: 'Peidetud'
-};
+const SUBJECT_ORDER: LearningExerciseSubject[] = ['matemaatika', 'inglise-keel', 'lugemine'];
 
 const WEEKDAYS = [
   { id: 1, label: 'E' },
@@ -182,6 +181,7 @@ export default function ParentHub() {
   const [learningExercises, setLearningExercises] = useState<LearningExercise[]>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [title, setTitle] = useState('');
   const [points, setPoints] = useState(1);
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>('kiur');
@@ -189,6 +189,7 @@ export default function ParentHub() {
   const [onceDate, setOnceDate] = useState(today());
   const [startDate, setStartDate] = useState(today());
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [requiresApproval, setRequiresApproval] = useState(false);
   const [adjustLearner, setAdjustLearner] = useState<Learner>('kiur');
   const [adjustAmount, setAdjustAmount] = useState(1);
   const [adjustReason, setAdjustReason] = useState('');
@@ -197,7 +198,8 @@ export default function ParentHub() {
   const [learningSettings, setLearningSettings] = useState<LearningSettings>(defaultLearningSettings);
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
-  const [openSections, setOpenSections] = useState<Set<ParentSectionId>>(() => new Set(['stars', 'today']));
+  const [noticeText, setNoticeText] = useState('');
+  const [openSections, setOpenSections] = useState<Set<ParentSectionId>>(() => new Set(['stars']));
   const [exerciseChildFilter, setExerciseChildFilter] = useState<'all' | Learner>('all');
   const [exerciseSubjectFilter, setExerciseSubjectFilter] = useState<'all' | LearningExerciseSubject>('all');
   const [exerciseTopicFilter, setExerciseTopicFilter] = useState('all');
@@ -218,13 +220,15 @@ export default function ParentHub() {
       fetch('/api/parent/dashboard').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/store').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/learning-settings').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/parent/learning-exercises').then((res) => (res.ok ? res.json() : Promise.reject()))
+      fetch('/api/parent/learning-exercises').then((res) => (res.ok ? res.json() : Promise.reject())),
+      fetch('/api/notice').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings, exerciseDashboard]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard, noticeData]) => {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
         setLearningExercises((exerciseDashboard as LearningExerciseDashboard).exercises);
+        setNoticeText(typeof noticeData?.text === 'string' ? noticeData.text : '');
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
   };
@@ -243,16 +247,32 @@ export default function ParentHub() {
     return Array.from(values, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, 'et'));
   }, [learningExercises]);
 
-  const filteredLearningExercises = useMemo(() => learningExercises.filter((exercise) => {
-    const childOk = exerciseChildFilter === 'all' || exercise.learnerScope.includes(exerciseChildFilter);
-    const subjectOk = exerciseSubjectFilter === 'all' || exercise.subject === exerciseSubjectFilter;
-    const topicOk = exerciseTopicFilter === 'all' || exercise.topic === exerciseTopicFilter || exercise.category === exerciseTopicFilter || exercise.title === exerciseTopicFilter;
-    const statusOk = exerciseStatusFilter === 'all'
-      || (exerciseChildFilter === 'all'
-        ? (exercise.childStatus.kiur === exerciseStatusFilter || exercise.childStatus.kirsi === exerciseStatusFilter)
-        : exercise.childStatus[exerciseChildFilter] === exerciseStatusFilter);
-    return childOk && subjectOk && topicOk && statusOk;
-  }), [exerciseChildFilter, exerciseStatusFilter, exerciseSubjectFilter, exerciseTopicFilter, learningExercises]);
+  // Each catalog entry belongs to a single child, so we group by learner (Kiur
+  // first, then Kirsi) instead of interleaving them, and show one compact row
+  // per exercise with that child's status.
+  const exercisesByLearner = useMemo(() => {
+    const result: Record<Learner, LearningExercise[]> = { kiur: [], kirsi: [] };
+    for (const learner of ['kiur', 'kirsi'] as Learner[]) {
+      result[learner] = learningExercises
+        .filter((exercise) => exercise.learnerScope.includes(learner))
+        .filter((exercise) => {
+          const subjectOk = exerciseSubjectFilter === 'all' || exercise.subject === exerciseSubjectFilter;
+          const topicOk = exerciseTopicFilter === 'all' || exercise.topic === exerciseTopicFilter || exercise.category === exerciseTopicFilter || exercise.title === exerciseTopicFilter;
+          const statusOk = exerciseStatusFilter === 'all' || exercise.childStatus[learner] === exerciseStatusFilter;
+          return subjectOk && topicOk && statusOk;
+        })
+        .sort((a, b) => {
+          const subjectDiff = SUBJECT_ORDER.indexOf(a.subject) - SUBJECT_ORDER.indexOf(b.subject);
+          if (subjectDiff !== 0) return subjectDiff;
+          if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+          return a.title.localeCompare(b.title, 'et');
+        });
+    }
+    return result;
+  }, [learningExercises, exerciseStatusFilter, exerciseSubjectFilter, exerciseTopicFilter]);
+
+  const learnersToShow = (exerciseChildFilter === 'all' ? ['kiur', 'kirsi'] : [exerciseChildFilter]) as Learner[];
+  const hasVisibleExercises = learnersToShow.some((learner) => exercisesByLearner[learner].length > 0);
 
   const changeLearningExerciseStatus = async (exerciseId: string, learner: Learner, status: LearningExerciseStatus) => {
     setError('');
@@ -268,31 +288,80 @@ export default function ParentHub() {
       return;
     }
     setLearningExercises((body as LearningExerciseDashboard).exercises);
-    setNotice(status === 'active' ? 'Harjutus lisati tagasi.' : 'Harjutus peideti lapse vaatest.');
+    setNotice(status === 'permanent' ? 'Harjutus on nüüd püsiv.' : status === 'rotation' ? 'Harjutus on rotatsioonis.' : 'Harjutus peideti lapse vaatest.');
+  };
+
+  const resetTaskForm = () => {
+    setEditingTaskId(null);
+    setTitle('');
+    setPoints(1);
+    setAssignmentMode('kiur');
+    setRecurrenceType('daily');
+    setOnceDate(today());
+    setStartDate(today());
+    setSelectedWeekdays([1, 2, 3, 4, 5]);
+    setRequiresApproval(false);
+  };
+
+  const editTask = (template: Template) => {
+    setEditingTaskId(template.id);
+    setTitle(template.title);
+    setPoints(template.points);
+    setAssignmentMode(template.assignmentMode);
+    setRecurrenceType(template.recurrenceType);
+    setOnceDate(template.onceDate || today());
+    setStartDate(template.startDate || today());
+    const weekdays = parseWeekdays(template.selectedWeekdaysJson);
+    setSelectedWeekdays(weekdays.length > 0 ? weekdays : [1, 2, 3, 4, 5]);
+    setRequiresApproval(Boolean(template.requiresApproval));
+    setOpenSections((current) => new Set(current).add('tasks'));
+    setNotice('');
+    setError('');
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const createTask = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
     setNotice('');
-    const res = await fetch('/api/parent/tasks', {
-      method: 'POST',
+    const url = editingTaskId ? `/api/parent/tasks/${editingTaskId}` : '/api/parent/tasks';
+    const res = await fetch(url, {
+      method: editingTaskId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, points, assignmentMode, recurrenceType, onceDate, startDate, selectedWeekdays })
+      body: JSON.stringify({ title, points, assignmentMode, recurrenceType, onceDate, startDate, selectedWeekdays, requiresApproval })
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       setError(body.message || 'Tegevust ei saanud salvestada.');
       return;
     }
-    setTitle('');
-    setPoints(1);
-    setNotice('Tegevus lisatud.');
+    setNotice(editingTaskId ? 'Tegevus muudetud.' : 'Tegevus lisatud.');
+    resetTaskForm();
     load();
   };
 
   const deleteTask = async (id: number) => {
+    if (typeof window !== 'undefined' && !window.confirm('Kas kustutada see tegevus?')) return;
     await fetch(`/api/parent/tasks/${id}`, { method: 'DELETE' });
+    if (editingTaskId === id) resetTaskForm();
+    load();
+  };
+
+  const resolveApproval = async (assignmentId: number, action: 'approve' | 'reject') => {
+    setError('');
+    setNotice('');
+    const res = await fetch('/api/parent/approvals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignmentId, action })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.message || 'Toimingut ei saanud teha.');
+      load();
+      return;
+    }
+    setNotice(action === 'approve' ? 'Tähed kinnitatud.' : 'Tegevus saadeti uuesti tegemiseks.');
     load();
   };
 
@@ -369,6 +438,8 @@ export default function ParentHub() {
       availableWeekdays: parseWeekdays(item.availableWeekdaysJson),
       isActive: Boolean(item.isActive)
     });
+    setOpenSections((current) => new Set(current).add('store'));
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const storePatch = async (id: number, action: string) => {
@@ -407,6 +478,24 @@ export default function ParentHub() {
     setNotice('Parool muudetud.');
   };
 
+  const saveNotice = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setNotice('');
+    const res = await fetch('/api/parent/notice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: noticeText })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.message || 'Teksti ei saanud salvestada.');
+      return;
+    }
+    setNoticeText(typeof body.text === 'string' ? body.text : '');
+    setNotice('Teated ja reeglid salvestatud.');
+  };
+
   const deleteStore = async (id: number) => {
     await fetch(`/api/parent/store/${id}`, { method: 'DELETE' });
     load();
@@ -430,46 +519,97 @@ export default function ParentHub() {
       {error && <p className='error'>{error}</p>}
       {notice && <p className='ok'>{notice}</p>}
 
-      <ParentAccordionSection title='Tähed' summary='Saldod ja punktide muutmine' open={openSections.has('stars')} onToggle={() => toggleSection('stars')}>
-      <section className='parent-grid'>
-        <article className='parent-card'>
-          <h2>Tähed</h2>
-          <div className='parent-balance-grid'>
-            <strong>Kiur: ⭐ {stars(data?.balances.kiur ?? 0)}</strong>
-            <strong>Kirsi: ⭐ {stars(data?.balances.kirsi ?? 0)}</strong>
+      {(data?.pendingApprovals?.length ?? 0) > 0 && (
+        <section className='parent-approvals' aria-label='Vanema kinnitus'>
+          <h2>✋ Vanema kinnitus ({data?.pendingApprovals.length})</h2>
+          <p>Need tegevused ootavad sinu kinnitust, enne kui laps tähed saab.</p>
+          <div className='parent-approval-list'>
+            {(data?.pendingApprovals ?? []).map((item) => (
+              <div key={item.assignmentId} className='parent-approval-row'>
+                <div className='parent-approval-info'>
+                  <strong>{learnerLabel(item.learner)} · {item.title}</strong>
+                  <span>+{item.points} ⭐{item.completedAt ? ` · ${timeLabel(item.completedAt)}` : ''}</span>
+                </div>
+                <div className='parent-approval-actions'>
+                  <button type='button' className='view-button' onClick={() => resolveApproval(item.assignmentId, 'approve')}>Kinnita</button>
+                  <button type='button' className='filter-chip' onClick={() => resolveApproval(item.assignmentId, 'reject')}>Lükka tagasi</button>
+                </div>
+              </div>
+            ))}
           </div>
-        </article>
+        </section>
+      )}
 
-        <article className='parent-card'>
-          <h2>Punktide muutmine</h2>
-          <form className='parent-form' onSubmit={adjustPoints}>
-            <label><span>Laps</span><select value={adjustLearner} onChange={(event) => setAdjustLearner(event.target.value as Learner)}><option value='kiur'>Kiur</option><option value='kirsi'>Kirsi</option></select></label>
-            <label><span>Punktid</span><input type='number' value={adjustAmount} onChange={(event) => setAdjustAmount(Number(event.target.value))} /></label>
-            <label><span>Põhjus</span><input value={adjustReason} onChange={(event) => setAdjustReason(event.target.value)} placeholder='boonus' /></label>
-            <div className='parent-action-row'>
-              <button type='button' className='filter-chip' onClick={() => setAdjustAmount(-Math.abs(adjustAmount || 1))}>Lahuta</button>
-              <button type='button' className='filter-chip' onClick={() => setAdjustAmount(Math.abs(adjustAmount || 1))}>Lisa</button>
-              <button type='submit'>Salvesta</button>
-            </div>
-          </form>
-        </article>
-      </section>
-      </ParentAccordionSection>
-
-      <ParentAccordionSection title='Parool' summary='Lapsevanema ala ligipääs' open={openSections.has('password')} onToggle={() => toggleSection('password')}>
-      <section className='parent-card'>
-        <h2>Muuda parooli</h2>
-        <form className='parent-form parent-task-form' onSubmit={changePassword}>
-          <label><span>Praegune parool</span><input type='password' value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label>
-          <label><span>Uus parool</span><input type='password' value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} /></label>
-          <button type='submit'>Muuda parool</button>
+      <ParentAccordionSection title='Tähed' summary='Saldod ja punktide muutmine' open={openSections.has('stars')} onToggle={() => toggleSection('stars')}>
+      <section className='parent-card parent-stars-card'>
+        <div className='parent-balance-grid'>
+          <strong>Kiur ⭐ {stars(data?.balances.kiur ?? 0)}</strong>
+          <strong>Kirsi ⭐ {stars(data?.balances.kirsi ?? 0)}</strong>
+        </div>
+        <form className='parent-form parent-adjust-form' onSubmit={adjustPoints}>
+          <h3>Punktide muutmine</h3>
+          <label><span>Laps</span><select value={adjustLearner} onChange={(event) => setAdjustLearner(event.target.value as Learner)}><option value='kiur'>Kiur</option><option value='kirsi'>Kirsi</option></select></label>
+          <label><span>Punktid</span><input type='number' value={adjustAmount} onChange={(event) => setAdjustAmount(Number(event.target.value))} /></label>
+          <label className='parent-adjust-reason'><span>Põhjus</span><input value={adjustReason} onChange={(event) => setAdjustReason(event.target.value)} placeholder='boonus' /></label>
+          <div className='parent-action-row'>
+            <button type='button' className='filter-chip' onClick={() => setAdjustAmount(-Math.abs(adjustAmount || 1))}>Lahuta</button>
+            <button type='button' className='filter-chip' onClick={() => setAdjustAmount(Math.abs(adjustAmount || 1))}>Lisa</button>
+            <button type='submit'>Salvesta</button>
+          </div>
         </form>
       </section>
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Lisa tegevus' summary='Uus päevategevus' open={openSections.has('tasks')} onToggle={() => toggleSection('tasks')}>
+      <ParentAccordionSection title='Harjutuste kogu' summary={`${learningExercises.length} harjutust`} open={openSections.has('library')} onToggle={() => toggleSection('library')}>
       <section className='parent-card'>
-        <h2>Lisa tegevus</h2>
+        <p>Lapsele näidatakse päevas kuni 4 harjutust: kõik <strong>püsivad</strong> ja juhuslik valik <strong>rotatsioonist</strong>. Valik vahetub iga päev. Kordamine lisandub 5.-na, kui vaja.</p>
+        <div className='parent-form parent-library-filters'>
+          <label><span>Laps</span><select value={exerciseChildFilter} onChange={(event) => setExerciseChildFilter(event.target.value as 'all' | Learner)}><option value='all'>Kõik</option><option value='kiur'>Kiur</option><option value='kirsi'>Kirsi</option></select></label>
+          <label><span>Aine</span><select value={exerciseSubjectFilter} onChange={(event) => setExerciseSubjectFilter(event.target.value as 'all' | LearningExerciseSubject)}><option value='all'>Kõik ained</option>{Object.entries(SUBJECT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label><span>Teema</span><select value={exerciseTopicFilter} onChange={(event) => setExerciseTopicFilter(event.target.value)}><option value='all'>Kõik teemad</option>{exerciseTopicOptions.map((topic) => <option key={topic.value} value={topic.value}>{topic.label}</option>)}</select></label>
+          <label><span>Staatus</span><select value={exerciseStatusFilter} onChange={(event) => setExerciseStatusFilter(event.target.value as 'all' | LearningExerciseStatus)}><option value='all'>Kõik</option><option value='rotation'>Rotatsioonis</option><option value='permanent'>Püsiv</option><option value='hidden'>Peidetud</option></select></label>
+        </div>
+        <div className='learning-library'>
+          {learningExercises.length === 0 && <p>Harjutuste kogu laaditakse.</p>}
+          {learningExercises.length > 0 && !hasVisibleExercises && <p>Selle filtriga harjutusi ei ole.</p>}
+          {learnersToShow.map((learner) => {
+            const list = exercisesByLearner[learner];
+            if (list.length === 0) return null;
+            const permanentCount = list.filter((exercise) => exercise.childStatus[learner] === 'permanent').length;
+            const rotationCount = list.filter((exercise) => exercise.childStatus[learner] === 'rotation').length;
+            return (
+              <div key={learner} className='learning-learner-group'>
+                <div className='learning-learner-head'>
+                  <strong>{learnerLabel(learner)}</strong>
+                  <span>{permanentCount} püsiv · {rotationCount} rotatsioonis</span>
+                </div>
+                <div className='learning-compact-list'>
+                  {list.map((exercise) => {
+                    const status = exercise.childStatus[learner] ?? 'hidden';
+                    const inPool = status === 'rotation' || status === 'permanent';
+                    return (
+                      <div key={exercise.id} className='learning-compact-row' data-status={status}>
+                        <div className='learning-compact-info'>
+                          <strong>{exercise.title}</strong>
+                          <span>{SUBJECT_LABELS[exercise.subject]}{exercise.topic || exercise.category ? ` · ${exercise.topic || exercise.category}` : ''}</span>
+                        </div>
+                        <div className='learning-compact-actions'>
+                          <label className='learning-toggle'><input type='checkbox' checked={inPool} onChange={(event) => changeLearningExerciseStatus(exercise.id, learner, event.target.checked ? 'rotation' : 'hidden')} /> Rotatsioon</label>
+                          <label className='learning-toggle'><input type='checkbox' checked={status === 'permanent'} disabled={!inPool} onChange={(event) => changeLearningExerciseStatus(exercise.id, learner, event.target.checked ? 'permanent' : 'rotation')} /> Püsiv</label>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      </ParentAccordionSection>
+
+      <ParentAccordionSection title='Tegevused' summary={editingTaskId ? 'Muudad tegevust' : `${data?.templates?.length ?? 0} tegevust`} open={openSections.has('tasks')} onToggle={() => toggleSection('tasks')}>
+      <section className='parent-card'>
         <form className='parent-form parent-task-form' onSubmit={createTask}>
           <label><span>Tegevuse nimi</span><input value={title} maxLength={80} onChange={(event) => setTitle(event.target.value)} placeholder='Pese hambad' /></label>
           <label><span>Punktid</span><input type='number' min={1} max={99} value={points} onChange={(event) => setPoints(Number(event.target.value))} /></label>
@@ -477,14 +617,35 @@ export default function ParentHub() {
           <label><span>Kordumine</span><select value={recurrenceType} onChange={(event) => setRecurrenceType(event.target.value as RecurrenceType)}>{Object.entries(RECURRENCE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           {recurrenceType === 'once' ? <label><span>Kuupäev</span><input type='date' value={onceDate} onChange={(event) => setOnceDate(event.target.value)} /></label> : <label><span>Alguskuupäev</span><input type='date' value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>}
           {recurrenceType === 'selected_weekdays' && <div className='weekday-picker'>{WEEKDAYS.map((day) => <button type='button' key={day.id} className={selectedWeekdays.includes(day.id) ? 'filter-chip active' : 'filter-chip'} onClick={() => setSelectedWeekdays((prev) => prev.includes(day.id) ? prev.filter((x) => x !== day.id) : [...prev, day.id])}>{day.label}</button>)}</div>}
-          <button type='submit'>Salvesta</button>
+          <label className='parent-checkbox parent-approval-toggle'><input type='checkbox' checked={requiresApproval} onChange={(event) => setRequiresApproval(event.target.checked)} /> Vajab vanema kinnitust</label>
+          <div className='parent-action-row'>
+            {editingTaskId && <button type='button' className='filter-chip' onClick={resetTaskForm}>Tühista</button>}
+            <button type='submit'>{editingTaskId ? 'Muuda tegevust' : 'Salvesta'}</button>
+          </div>
         </form>
+      </section>
+      <section className='parent-card'>
+        <h3>Olemasolevad tegevused</h3>
+        <div className='stock-list'>
+          {(data?.templates ?? []).map((task) => (
+            <div key={task.id} className={editingTaskId === task.id ? 'stock-row editing' : 'stock-row'}>
+              <div className='stock-info'>
+                <strong>{task.title}</strong>
+                <span>{ASSIGNMENT_LABELS[task.assignmentMode]} · {RECURRENCE_LABELS[task.recurrenceType]} · +{task.points} ⭐{task.requiresApproval ? ' · ✋ kinnitus' : ''}</span>
+              </div>
+              <div className='stock-actions'>
+                <button type='button' className='view-button' onClick={() => editTask(task)}>Muuda</button>
+                <button type='button' className='delete-button' onClick={() => deleteTask(task.id)}>Kustuta</button>
+              </div>
+            </div>
+          ))}
+          {data && data.templates.length === 0 && <p>Tegevusi ei ole loodud.</p>}
+        </div>
       </section>
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Pood' summary='Lisa või muuda poe esemeid' open={openSections.has('store')} onToggle={() => toggleSection('store')}>
+      <ParentAccordionSection title='Pood' summary={`${store?.items.length ?? 0} eset`} open={openSections.has('store')} onToggle={() => toggleSection('store')}>
       <section className='parent-card'>
-        <h2>Pood</h2>
         <form className='parent-form parent-task-form' onSubmit={saveStoreItem}>
           <label><span>Nimi</span><input value={storeForm.title} maxLength={80} onChange={(event) => setStoreForm({ ...storeForm, title: event.target.value })} placeholder='30 min ekraaniaega' /></label>
           <label><span>Kirjeldus</span><input value={storeForm.description} maxLength={300} onChange={(event) => setStoreForm({ ...storeForm, description: event.target.value })} placeholder='Lisa aeg mängimiseks või video vaatamiseks.' /></label>
@@ -506,11 +667,48 @@ export default function ParentHub() {
           </div>
         </form>
       </section>
+      <section className='parent-card'>
+        <h3>Laoseis</h3>
+        <div className='stock-list'>
+          {(store?.items ?? []).map((item) => (
+            <div key={item.id} className='stock-row'>
+              <div className='stock-info'>
+                <strong>{item.title}</strong>
+                <span>
+                  {VISIBILITY_LABELS[item.visibility]} · {STOCK_LABELS[item.stockType]} · {item.price} ⭐
+                  {item.stockType === 'fixed_stock' && ` · alles ${item.fixedStockRemaining ?? 0}`}
+                  {item.stockType === 'daily_stock' && ` · täna ${item.dailyRemaining ?? 0}/${item.dailyStockLimit}`}
+                  {item.stockType === 'one_time_global' && item.boughtOnce && ' · ostetud'}
+                </span>
+              </div>
+              <div className='stock-actions'>
+                <button type='button' className='view-button' onClick={() => editStoreItem(item)}>Muuda</button>
+                <button type='button' className='filter-chip' onClick={() => storePatch(item.id, item.hiddenToday ? 'show_today' : 'hide_today')}>{item.hiddenToday ? 'Näita' : 'Peida'}</button>
+                <button type='button' className='delete-button' onClick={() => deleteStore(item.id)}>Kustuta</button>
+              </div>
+            </div>
+          ))}
+          {store && store.items.length === 0 && <p>Poe esemeid ei ole loodud.</p>}
+        </div>
+      </section>
+      <section className='parent-card'>
+        <h3>Ostud</h3>
+        <div className='stock-list'>
+          {(store?.purchases ?? []).map((purchase) => (
+            <div key={purchase.id} className='stock-row'>
+              <div className='stock-info'>
+                <strong>{learnerLabel(purchase.learner)} · {purchase.titleSnapshot}</strong>
+                <span>-{purchase.priceSnapshot} ⭐ · {timeLabel(purchase.purchasedAt)}</span>
+              </div>
+            </div>
+          ))}
+          {store && store.purchases.length === 0 && <p>Oste veel ei ole.</p>}
+        </div>
+      </section>
       </ParentAccordionSection>
 
       <ParentAccordionSection title='Õppimise punktid' summary='Harjutuste tähtede reeglid' open={openSections.has('learning')} onToggle={() => toggleSection('learning')}>
       <section className='parent-card'>
-        <h2>Õppimise punktid</h2>
         <p>Õppimise punktid annavad tähti harjutuste tegemise eest. Sama harjutuse kordamisel väheneb tänane väärtus, et vältida lihtsat punktide kogumist.</p>
         <form className='parent-form parent-task-form' onSubmit={saveLearningSettings}>
           <label><span>Algväärtus</span><input type='number' step='0.1' min={0} max={20} value={learningSettings.baseValue} onChange={(event) => setLearningSettings({ ...learningSettings, baseValue: Number(event.target.value) })} /></label>
@@ -526,114 +724,26 @@ export default function ParentHub() {
       </section>
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Harjutuste kogu' summary={`${learningExercises.length} harjutust`} open={openSections.has('library')} onToggle={() => toggleSection('library')}>
+      <ParentAccordionSection title='Parool' summary='Lapsevanema ala ligipääs' open={openSections.has('password')} onToggle={() => toggleSection('password')}>
       <section className='parent-card'>
-        <h2>Harjutuste kogu</h2>
-        <div className='parent-form parent-library-filters'>
-          <label><span>Laps</span><select value={exerciseChildFilter} onChange={(event) => setExerciseChildFilter(event.target.value as 'all' | Learner)}><option value='all'>Kõik</option><option value='kiur'>Kiur</option><option value='kirsi'>Kirsi</option></select></label>
-          <label><span>Aine</span><select value={exerciseSubjectFilter} onChange={(event) => setExerciseSubjectFilter(event.target.value as 'all' | LearningExerciseSubject)}><option value='all'>Kõik ained</option>{Object.entries(SUBJECT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label><span>Teema</span><select value={exerciseTopicFilter} onChange={(event) => setExerciseTopicFilter(event.target.value)}><option value='all'>Kõik teemad</option>{exerciseTopicOptions.map((topic) => <option key={topic.value} value={topic.value}>{topic.label}</option>)}</select></label>
-          <label><span>Staatus</span><select value={exerciseStatusFilter} onChange={(event) => setExerciseStatusFilter(event.target.value as 'all' | LearningExerciseStatus)}><option value='all'>Kõik</option><option value='active'>Aktiivne</option><option value='hidden'>Peidetud</option></select></label>
-        </div>
-        <div className='parent-template-list'>
-          {filteredLearningExercises.map((exercise) => (
-            <div key={exercise.id} className='parent-template-row parent-learning-exercise-row'>
-              <div>
-                <strong>{exercise.title}</strong>
-                <span>{SUBJECT_LABELS[exercise.subject]} · {exercise.topic || exercise.category}</span>
-              </div>
-              <div className='learning-status-grid'>
-                {(['kiur', 'kirsi'] as Learner[]).map((learner) => {
-                  const supported = exercise.learnerScope.includes(learner);
-                  const status = exercise.childStatus[learner];
-                  const childName = learnerLabel(learner);
-                  return (
-                    <div key={learner} className='learning-status-cell'>
-                      <strong>{childName}</strong>
-                      <span>{supported && status ? STATUS_LABELS[status] : 'Ei kuulu'}</span>
-                      {supported && status === 'active' ? <button type='button' className='filter-chip' onClick={() => changeLearningExerciseStatus(exercise.id, learner, 'hidden')}>Peida lapse vaatest</button> : null}
-                      {supported && status === 'hidden' ? <button type='button' className='view-button' onClick={() => changeLearningExerciseStatus(exercise.id, learner, 'active')}>{learner === 'kiur' ? 'Näita Kiurile' : 'Näita Kirsile'}</button> : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-          {learningExercises.length > 0 && filteredLearningExercises.length === 0 && <p>Selle filtriga harjutusi ei ole.</p>}
-          {learningExercises.length === 0 && <p>Harjutuste kogu laaditakse.</p>}
-        </div>
+        <form className='parent-form parent-task-form' onSubmit={changePassword}>
+          <label><span>Praegune parool</span><input type='password' value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label>
+          <label><span>Uus parool</span><input type='password' value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} /></label>
+          <button type='submit'>Muuda parool</button>
+        </form>
       </section>
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Täna' summary='Aktiivsed ja tehtud tegevused' open={openSections.has('today')} onToggle={() => toggleSection('today')}>
-      <section className='parent-grid'>
-        <article className='parent-card'>
-          <h2>Tänased tegevused</h2>
-          <div className='parent-list'>
-            {(data?.activeTasks ?? []).map((task) => <p key={task.id}><strong>{task.titleSnapshot}</strong> +{task.pointsSnapshot} ⭐ <span>{task.status}</span></p>)}
-            {data && data.activeTasks.length === 0 && <p>Tänaseid tegevusi ei ole.</p>}
-          </div>
-        </article>
-        <article className='parent-card'>
-          <h2>Täna tehtud</h2>
-          <div className='parent-list'>
-            {(data?.completedTasks ?? []).map((task, index) => <p key={`${task.completedAt}-${index}`}><strong>{learnerLabel(task.learner)}</strong> {task.titleSnapshot} +{task.pointsSnapshot} ⭐</p>)}
-            {data && data.completedTasks.length === 0 && <p>Veel ei ole tehtud.</p>}
-          </div>
-        </article>
-      </section>
-      </ParentAccordionSection>
-
-      <ParentAccordionSection title='Laoseis' summary={`${store?.items.length ?? 0} poe eset`} open={openSections.has('stock')} onToggle={() => toggleSection('stock')}>
+      <ParentAccordionSection title='Teated ja reeglid' summary='Tekst laste avalehel' open={openSections.has('notice')} onToggle={() => toggleSection('notice')}>
       <section className='parent-card'>
-        <h2>Laoseis</h2>
-        <div className='parent-template-list'>
-          {(store?.items ?? []).map((item) => (
-            <div key={item.id} className='parent-template-row'>
-              <div>
-                <strong>{item.title}</strong>
-                <span>{VISIBILITY_LABELS[item.visibility]} · {STOCK_LABELS[item.stockType]} · Hind {item.price} ⭐</span>
-                {item.stockType === 'fixed_stock' && <span>Alles: {item.fixedStockRemaining ?? 0}</span>}
-                {item.stockType === 'daily_stock' && <span>Täna alles: {item.dailyRemaining ?? 0} / {item.dailyStockLimit}</span>}
-                {item.stockType === 'one_time_global' && item.boughtOnce && <span>Ostetud</span>}
-              </div>
-              <div className='parent-action-row'>
-                <button type='button' className='view-button' onClick={() => editStoreItem(item)}>Muuda</button>
-                <button type='button' className='filter-chip' onClick={() => storePatch(item.id, item.hiddenToday ? 'show_today' : 'hide_today')}>{item.hiddenToday ? 'Näita täna' : 'Peida täna'}</button>
-                <button type='button' className='delete-button' onClick={() => deleteStore(item.id)}>Kustuta</button>
-              </div>
-            </div>
-          ))}
-          {store && store.items.length === 0 && <p>Poe esemeid ei ole loodud.</p>}
-        </div>
-      </section>
-      </ParentAccordionSection>
-
-      <ParentAccordionSection title='Nimekirjad' summary='Tegevused ja ostud' open={openSections.has('lists')} onToggle={() => toggleSection('lists')}>
-      <section className='parent-grid'>
-        <article className='parent-card'>
-          <h2>Tegevused</h2>
-          <div className='parent-template-list'>
-            {(data?.templates ?? []).map((task) => (
-              <div key={task.id} className='parent-template-row'>
-                <div>
-                  <strong>{task.title}</strong>
-                  <span>{ASSIGNMENT_LABELS[task.assignmentMode]} · {RECURRENCE_LABELS[task.recurrenceType]} · +{task.points} ⭐</span>
-                </div>
-                <button type='button' className='delete-button' onClick={() => deleteTask(task.id)}>Kustuta</button>
-              </div>
-            ))}
-            {data && data.templates.length === 0 && <p>Tegevusi ei ole loodud.</p>}
+        <p>See tekst kuvatakse pealehel ja laste avalehel. Jäta tühjaks, et seda peita.</p>
+        <form className='parent-form' onSubmit={saveNotice}>
+          <label><span>Tekst</span><textarea className='parent-notice-input' value={noticeText} maxLength={2000} rows={6} onChange={(event) => setNoticeText(event.target.value)} placeholder={'Näiteks:\n• Enne mängimist tee päevased tegevused\n• Ekraaniaeg kuni 1h'} /></label>
+          <div className='parent-action-row'>
+            {noticeText && <button type='button' className='filter-chip' onClick={() => setNoticeText('')}>Tühjenda</button>}
+            <button type='submit'>Salvesta</button>
           </div>
-        </article>
-
-        <article className='parent-card'>
-          <h2>Ostud</h2>
-          <div className='parent-list'>
-            {(store?.purchases ?? []).map((purchase) => <p key={purchase.id}><strong>{learnerLabel(purchase.learner)} ostis: {purchase.titleSnapshot}</strong><span>-{purchase.priceSnapshot} ⭐ · {timeLabel(purchase.purchasedAt)}</span></p>)}
-            {store && store.purchases.length === 0 && <p>Oste veel ei ole.</p>}
-          </div>
-        </article>
+        </form>
       </section>
       </ParentAccordionSection>
     </section>

@@ -3,7 +3,7 @@ import db from '@/lib/db';
 export type Learner = 'kiur' | 'kirsi';
 export type AssignmentMode = 'kiur' | 'kirsi' | 'both_independent' | 'first_completer';
 export type RecurrenceType = 'once' | 'daily' | 'weekdays' | 'weekends' | 'selected_weekdays';
-export type AssignmentStatus = 'active' | 'completed' | 'missed' | 'locked';
+export type AssignmentStatus = 'active' | 'completed' | 'missed' | 'locked' | 'pending_approval';
 
 export type ChildTask = {
   assignmentId: number;
@@ -12,8 +12,18 @@ export type ChildTask = {
   points: number;
   assignmentMode: AssignmentMode;
   status: AssignmentStatus;
+  requiresApproval: boolean;
   completedAt: string | null;
   completedBy: Learner | null;
+};
+
+export type PendingApproval = {
+  assignmentId: number;
+  learner: Learner;
+  title: string;
+  points: number;
+  assignmentMode: AssignmentMode;
+  completedAt: string | null;
 };
 
 export type ParentTaskTemplate = {
@@ -25,6 +35,7 @@ export type ParentTaskTemplate = {
   selectedWeekdaysJson: string | null;
   startDate: string | null;
   onceDate: string | null;
+  requiresApproval: number;
   createdAt: string;
 };
 
@@ -42,6 +53,7 @@ type TaskInstanceRow = {
   titleSnapshot: string;
   pointsSnapshot: number;
   assignmentModeSnapshot: AssignmentMode;
+  requiresApprovalSnapshot: number;
   status: 'active' | 'completed' | 'missed';
   completedBy: Learner | null;
   completedAt: string | null;
@@ -125,16 +137,18 @@ function createAssignments(taskInstanceId: number, mode: AssignmentMode) {
 }
 
 function childDailyTasksDone(learner: Learner, date: string) {
+  // A task still awaiting parent approval counts as not-yet-done, so the shared
+  // daily bonus waits until every task is settled.
   const row = db.prepare(`
     SELECT
       COUNT(*) as total,
-      SUM(CASE WHEN a.status = 'active' THEN 1 ELSE 0 END) as active,
+      SUM(CASE WHEN a.status IN ('active', 'pending_approval') THEN 1 ELSE 0 END) as pending,
       SUM(CASE WHEN a.status = 'completed' THEN 1 ELSE 0 END) as completed
     FROM task_instance_assignments a
     JOIN task_instances i ON i.id = a.taskInstanceId
-    WHERE a.learner = ? AND i.date = ? AND a.status IN ('active', 'completed', 'locked')
-  `).get(learner, date) as { total: number; active: number | null; completed: number | null } | undefined;
-  return Boolean(row && row.total > 0 && (row.active ?? 0) === 0 && (row.completed ?? 0) > 0);
+    WHERE a.learner = ? AND i.date = ? AND a.status IN ('active', 'pending_approval', 'completed', 'locked')
+  `).get(learner, date) as { total: number; pending: number | null; completed: number | null } | undefined;
+  return Boolean(row && row.total > 0 && (row.pending ?? 0) === 0 && (row.completed ?? 0) > 0);
 }
 
 function awardDailyTaskBonusIfReady(date: string, createdAt: string): DailyBonusResult {
@@ -166,15 +180,15 @@ export function ensureTaskInstancesForDate(date = todayDateString()) {
   const createForDate = db.transaction(() => {
     const templates = db.prepare('SELECT * FROM task_templates WHERE deletedAt IS NULL').all() as TaskTemplateRow[];
     const insertInstance = db.prepare(`
-      INSERT OR IGNORE INTO task_instances (templateId, date, titleSnapshot, pointsSnapshot, assignmentModeSnapshot, status, createdAt)
-      VALUES (?, ?, ?, ?, ?, 'active', ?)
+      INSERT OR IGNORE INTO task_instances (templateId, date, titleSnapshot, pointsSnapshot, assignmentModeSnapshot, requiresApprovalSnapshot, status, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
     `);
     const findInstance = db.prepare('SELECT * FROM task_instances WHERE templateId = ? AND date = ?');
     const createdAt = nowIso();
 
     for (const template of templates) {
       if (!taskAppliesOnDate(template, date)) continue;
-      insertInstance.run(template.id, date, template.title, template.points, template.assignmentMode, createdAt);
+      insertInstance.run(template.id, date, template.title, template.points, template.assignmentMode, template.requiresApproval ? 1 : 0, createdAt);
       const instance = findInstance.get(template.id, date) as TaskInstanceRow | undefined;
       if (instance) createAssignments(instance.id, instance.assignmentModeSnapshot);
     }
@@ -185,26 +199,28 @@ export function ensureTaskInstancesForDate(date = todayDateString()) {
 export function getChildDashboard(learner: Learner, date = todayDateString()) {
   ensureTaskInstancesForDate(date);
   const balance = getBalance(learner);
-  const tasks = db.prepare(`
+  const rows = db.prepare(`
     SELECT
       a.id as assignmentId,
       i.id as taskInstanceId,
       i.titleSnapshot as title,
       i.pointsSnapshot as points,
       i.assignmentModeSnapshot as assignmentMode,
+      i.requiresApprovalSnapshot as requiresApproval,
       a.status,
       a.completedAt,
       i.completedBy
     FROM task_instance_assignments a
     JOIN task_instances i ON i.id = a.taskInstanceId
-    WHERE a.learner = ? AND i.date = ? AND a.status IN ('active', 'completed', 'locked')
+    WHERE a.learner = ? AND i.date = ? AND a.status IN ('active', 'pending_approval', 'completed', 'locked')
     ORDER BY a.status = 'completed', i.createdAt, i.id
-  `).all(learner, date) as ChildTask[];
+  `).all(learner, date) as Array<Omit<ChildTask, 'requiresApproval'> & { requiresApproval: number }>;
+  const tasks: ChildTask[] = rows.map((row) => ({ ...row, requiresApproval: Boolean(row.requiresApproval) }));
 
   return { learner, balance, streak: 0, tasks };
 }
 
-export function createTaskTemplate(input: {
+export type TaskTemplateInput = {
   title: string;
   points: number;
   assignmentMode: AssignmentMode;
@@ -212,7 +228,10 @@ export function createTaskTemplate(input: {
   selectedWeekdays?: number[];
   startDate?: string | null;
   onceDate?: string | null;
-}) {
+  requiresApproval?: boolean;
+};
+
+function normalizeTaskTemplateInput(input: TaskTemplateInput) {
   const title = input.title.trim();
   if (!title) throw new Error('Pealkiri on kohustuslik.');
   if (title.length > 80) throw new Error('Pealkiri võib olla kuni 80 märki.');
@@ -223,17 +242,32 @@ export function createTaskTemplate(input: {
   const selectedWeekdays = input.selectedWeekdays?.filter((day) => Number.isInteger(day) && day >= 1 && day <= 7) ?? [];
   if (input.recurrenceType === 'selected_weekdays' && selectedWeekdays.length === 0) throw new Error('Vali vähemalt üks nädalapäev.');
 
-  const result = db.prepare(`
-    INSERT INTO task_templates (title, points, assignmentMode, recurrenceType, selectedWeekdaysJson, startDate, onceDate, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  return {
     title,
-    input.points,
-    input.assignmentMode,
-    input.recurrenceType,
-    input.recurrenceType === 'selected_weekdays' ? JSON.stringify(selectedWeekdays) : null,
-    input.recurrenceType === 'once' ? null : (input.startDate || todayDateString()),
-    input.recurrenceType === 'once' ? input.onceDate : null,
+    points: input.points,
+    assignmentMode: input.assignmentMode,
+    recurrenceType: input.recurrenceType,
+    selectedWeekdaysJson: input.recurrenceType === 'selected_weekdays' ? JSON.stringify(selectedWeekdays) : null,
+    startDate: input.recurrenceType === 'once' ? null : (input.startDate || todayDateString()),
+    onceDate: input.recurrenceType === 'once' ? input.onceDate : null,
+    requiresApproval: input.requiresApproval ? 1 : 0
+  };
+}
+
+export function createTaskTemplate(input: TaskTemplateInput) {
+  const values = normalizeTaskTemplateInput(input);
+  const result = db.prepare(`
+    INSERT INTO task_templates (title, points, assignmentMode, recurrenceType, selectedWeekdaysJson, startDate, onceDate, requiresApproval, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    values.title,
+    values.points,
+    values.assignmentMode,
+    values.recurrenceType,
+    values.selectedWeekdaysJson,
+    values.startDate,
+    values.onceDate,
+    values.requiresApproval,
     nowIso()
   );
 
@@ -241,43 +275,127 @@ export function createTaskTemplate(input: {
   return result.lastInsertRowid;
 }
 
+// Removes today's instance for a template if it has not been started yet, so an
+// edited template is re-materialised with fresh snapshots/assignments.
+function resetUntouchedInstanceForToday(templateId: number, date: string) {
+  const instance = db.prepare("SELECT id FROM task_instances WHERE templateId = ? AND date = ? AND status = 'active'").get(templateId, date) as { id: number } | undefined;
+  if (!instance) return;
+  const touched = db.prepare("SELECT id FROM task_instance_assignments WHERE taskInstanceId = ? AND status IN ('completed', 'locked', 'pending_approval')").get(instance.id);
+  if (touched) return;
+  db.prepare('DELETE FROM task_instance_assignments WHERE taskInstanceId = ?').run(instance.id);
+  db.prepare('DELETE FROM task_instances WHERE id = ?').run(instance.id);
+}
+
+export function updateTaskTemplate(id: number, input: TaskTemplateInput) {
+  const existing = db.prepare('SELECT id FROM task_templates WHERE id = ? AND deletedAt IS NULL').get(id);
+  if (!existing) throw new Error('Tegevust ei leitud.');
+  const values = normalizeTaskTemplateInput(input);
+
+  const apply = db.transaction(() => {
+    db.prepare(`
+      UPDATE task_templates
+      SET title = ?, points = ?, assignmentMode = ?, recurrenceType = ?, selectedWeekdaysJson = ?, startDate = ?, onceDate = ?, requiresApproval = ?
+      WHERE id = ? AND deletedAt IS NULL
+    `).run(
+      values.title,
+      values.points,
+      values.assignmentMode,
+      values.recurrenceType,
+      values.selectedWeekdaysJson,
+      values.startDate,
+      values.onceDate,
+      values.requiresApproval,
+      id
+    );
+    resetUntouchedInstanceForToday(id, todayDateString());
+  });
+  apply();
+
+  ensureTaskInstancesForDate();
+}
+
 export function deleteTaskTemplate(id: number) {
   db.prepare('UPDATE task_templates SET deletedAt = ? WHERE id = ? AND deletedAt IS NULL').run(nowIso(), id);
 }
 
+type AssignmentRow = {
+  assignmentId: number;
+  assignmentStatus: AssignmentStatus;
+  learner: Learner;
+  taskInstanceId: number;
+  titleSnapshot: string;
+  pointsSnapshot: number;
+  assignmentModeSnapshot: AssignmentMode;
+  requiresApprovalSnapshot: number;
+  instanceStatus: string;
+  completedAt: string | null;
+};
+
+function loadAssignmentRow(assignmentId: number): AssignmentRow | undefined {
+  return db.prepare(`
+    SELECT
+      a.id as assignmentId,
+      a.status as assignmentStatus,
+      a.learner,
+      a.completedAt,
+      i.id as taskInstanceId,
+      i.titleSnapshot,
+      i.pointsSnapshot,
+      i.assignmentModeSnapshot,
+      i.requiresApprovalSnapshot,
+      i.status as instanceStatus
+    FROM task_instance_assignments a
+    JOIN task_instances i ON i.id = a.taskInstanceId
+    WHERE a.id = ?
+  `).get(assignmentId) as AssignmentRow | undefined;
+}
+
+// Awards the tähed for an assignment and settles the instance (locking siblings
+// for first_completer, marking the instance done, and granting the shared daily
+// bonus when ready). Used both for instant completion and for parent approval.
+function settleAssignment(row: AssignmentRow, completedAt: string, date: string) {
+  const learner = row.learner;
+  const ledger = db.prepare(`
+    INSERT INTO point_ledger (learner, amount, source, sourceId, description, createdAt, metadataJson)
+    VALUES (?, ?, 'real_world_task', ?, ?, ?, ?)
+  `).run(
+    learner,
+    row.pointsSnapshot,
+    row.taskInstanceId,
+    row.titleSnapshot,
+    completedAt,
+    JSON.stringify({ assignmentId: row.assignmentId, assignmentMode: row.assignmentModeSnapshot })
+  );
+
+  db.prepare(`
+    UPDATE task_instance_assignments
+    SET status = 'completed', completedAt = ?, pointsAwarded = ?, ledgerEntryId = ?
+    WHERE id = ? AND status IN ('active', 'pending_approval')
+  `).run(completedAt, row.pointsSnapshot, ledger.lastInsertRowid, row.assignmentId);
+
+  if (row.assignmentModeSnapshot === 'first_completer') {
+    db.prepare("UPDATE task_instance_assignments SET status = 'locked' WHERE taskInstanceId = ? AND id <> ? AND status IN ('active', 'pending_approval')").run(row.taskInstanceId, row.assignmentId);
+    db.prepare("UPDATE task_instances SET status = 'completed', completedBy = ?, completedAt = ? WHERE id = ?").run(learner, completedAt, row.taskInstanceId);
+  } else {
+    const open = db.prepare("SELECT id FROM task_instance_assignments WHERE taskInstanceId = ? AND status IN ('active', 'pending_approval')").get(row.taskInstanceId);
+    if (!open) db.prepare("UPDATE task_instances SET status = 'completed', completedBy = ?, completedAt = ? WHERE id = ?").run(learner, completedAt, row.taskInstanceId);
+  }
+
+  const bonus = awardDailyTaskBonusIfReady(date, completedAt);
+  return { awarded: row.pointsSnapshot, balance: getBalance(learner), dailyBonus: bonus };
+}
+
 export function completeTaskAssignment(assignmentId: number, learner: Learner) {
   const complete = db.transaction(() => {
-    const row = db.prepare(`
-      SELECT
-        a.id as assignmentId,
-        a.status as assignmentStatus,
-        a.learner,
-        i.id as taskInstanceId,
-        i.titleSnapshot,
-        i.pointsSnapshot,
-        i.assignmentModeSnapshot,
-        i.status as instanceStatus
-      FROM task_instance_assignments a
-      JOIN task_instances i ON i.id = a.taskInstanceId
-      WHERE a.id = ?
-    `).get(assignmentId) as {
-      assignmentId: number;
-      assignmentStatus: AssignmentStatus;
-      learner: Learner;
-      taskInstanceId: number;
-      titleSnapshot: string;
-      pointsSnapshot: number;
-      assignmentModeSnapshot: AssignmentMode;
-      instanceStatus: string;
-    } | undefined;
+    const row = loadAssignmentRow(assignmentId);
 
     if (!row || row.learner !== learner || row.assignmentStatus !== 'active' || row.instanceStatus !== 'active') {
       throw new Error('Tegevus ei ole enam saadaval.');
     }
 
     if (row.assignmentModeSnapshot === 'first_completer') {
-      const completed = db.prepare("SELECT id FROM task_instance_assignments WHERE taskInstanceId = ? AND status = 'completed'").get(row.taskInstanceId);
-      if (completed) {
+      const taken = db.prepare("SELECT id FROM task_instance_assignments WHERE taskInstanceId = ? AND status IN ('completed', 'pending_approval')").get(row.taskInstanceId);
+      if (taken) {
         db.prepare("UPDATE task_instance_assignments SET status = 'locked' WHERE id = ? AND status = 'active'").run(assignmentId);
         throw new Error('Keegi teine jõudis ette.');
       }
@@ -285,37 +403,59 @@ export function completeTaskAssignment(assignmentId: number, learner: Learner) {
 
     const completedAt = nowIso();
     const date = todayDateString();
-    const ledger = db.prepare(`
-      INSERT INTO point_ledger (learner, amount, source, sourceId, description, createdAt, metadataJson)
-      VALUES (?, ?, 'real_world_task', ?, ?, ?, ?)
-    `).run(
-      learner,
-      row.pointsSnapshot,
-      row.taskInstanceId,
-      row.titleSnapshot,
-      completedAt,
-      JSON.stringify({ assignmentId, assignmentMode: row.assignmentModeSnapshot })
-    );
 
-    db.prepare(`
-      UPDATE task_instance_assignments
-      SET status = 'completed', completedAt = ?, pointsAwarded = ?, ledgerEntryId = ?
-      WHERE id = ? AND status = 'active'
-    `).run(completedAt, row.pointsSnapshot, ledger.lastInsertRowid, assignmentId);
-
-    if (row.assignmentModeSnapshot === 'first_completer') {
-      db.prepare("UPDATE task_instance_assignments SET status = 'locked' WHERE taskInstanceId = ? AND id <> ? AND status = 'active'").run(row.taskInstanceId, assignmentId);
-      db.prepare("UPDATE task_instances SET status = 'completed', completedBy = ?, completedAt = ? WHERE id = ?").run(learner, completedAt, row.taskInstanceId);
-    } else {
-      const open = db.prepare("SELECT id FROM task_instance_assignments WHERE taskInstanceId = ? AND status = 'active'").get(row.taskInstanceId);
-      if (!open) db.prepare("UPDATE task_instances SET status = 'completed', completedBy = ?, completedAt = ? WHERE id = ?").run(learner, completedAt, row.taskInstanceId);
+    if (row.requiresApprovalSnapshot) {
+      db.prepare("UPDATE task_instance_assignments SET status = 'pending_approval', completedAt = ? WHERE id = ? AND status = 'active'").run(completedAt, assignmentId);
+      return { pending: true, awarded: 0, balance: getBalance(learner), dailyBonus: { awarded: false, amount: 0 } };
     }
 
-    const bonus = awardDailyTaskBonusIfReady(date, completedAt);
-    return { awarded: row.pointsSnapshot, balance: getBalance(learner), dailyBonus: bonus };
+    return { pending: false, ...settleAssignment(row, completedAt, date) };
   });
 
   return complete();
+}
+
+export function approveTaskAssignment(assignmentId: number) {
+  const approve = db.transaction(() => {
+    const row = loadAssignmentRow(assignmentId);
+    if (!row || row.assignmentStatus !== 'pending_approval') throw new Error('Kinnitamist ootavat tegevust ei leitud.');
+
+    if (row.assignmentModeSnapshot === 'first_completer') {
+      const taken = db.prepare("SELECT id FROM task_instance_assignments WHERE taskInstanceId = ? AND status = 'completed'").get(row.taskInstanceId);
+      if (taken) {
+        db.prepare("UPDATE task_instance_assignments SET status = 'locked' WHERE id = ? AND status = 'pending_approval'").run(assignmentId);
+        throw new Error('Keegi teine jõudis ette.');
+      }
+    }
+
+    const completedAt = row.completedAt || nowIso();
+    const date = todayDateString();
+    return settleAssignment(row, completedAt, date);
+  });
+  return approve();
+}
+
+export function rejectTaskAssignment(assignmentId: number) {
+  const result = db.prepare("UPDATE task_instance_assignments SET status = 'active', completedAt = NULL WHERE id = ? AND status = 'pending_approval'").run(assignmentId);
+  if (result.changes === 0) throw new Error('Kinnitamist ootavat tegevust ei leitud.');
+  return { ok: true };
+}
+
+export function getPendingApprovals(date = todayDateString()): PendingApproval[] {
+  ensureTaskInstancesForDate(date);
+  return db.prepare(`
+    SELECT
+      a.id as assignmentId,
+      a.learner,
+      a.completedAt,
+      i.titleSnapshot as title,
+      i.pointsSnapshot as points,
+      i.assignmentModeSnapshot as assignmentMode
+    FROM task_instance_assignments a
+    JOIN task_instances i ON i.id = a.taskInstanceId
+    WHERE a.status = 'pending_approval' AND i.date = ?
+    ORDER BY a.completedAt ASC, a.id ASC
+  `).all(date) as PendingApproval[];
 }
 
 export function manualPointAdjustment(learner: Learner, amount: number, reason: string) {
@@ -349,7 +489,7 @@ export function getParentDashboard(date = todayDateString()) {
     ORDER BY a.completedAt DESC
   `).all(date);
 
-  return { date, balances: getBalances(), templates, activeTasks, completedTasks };
+  return { date, balances: getBalances(), templates, activeTasks, completedTasks, pendingApprovals: getPendingApprovals(date) };
 }
 
 export function getTaskHistory() {
@@ -367,7 +507,7 @@ export function getTaskHistory() {
     i.assignmentModeSnapshot
     FROM point_ledger l
     LEFT JOIN task_instances i ON i.id = l.sourceId AND l.source = 'real_world_task'
-    WHERE l.source IN ('real_world_task', 'manual_adjustment', 'daily_task_bonus')
+    WHERE l.source IN ('real_world_task', 'manual_adjustment', 'daily_task_bonus', 'point_gift')
     ORDER BY l.createdAt DESC
   `).all();
 }

@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel } from '@/lib/history';
+import { formatStars } from '@/lib/formatStars';
+import NoticeBoard from '@/app/components/NoticeBoard';
 
 type H = {
   id: number;
@@ -16,7 +18,7 @@ type H = {
   topic?: string | null;
 };
 
-function ChildDashboardCard({ name, href, avatar, accent, attempts, streak }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; streak: number }) {
+function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, balance }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; streak: number; balance: number }) {
   const router = useRouter();
   const latest = attempts.slice(0, 3);
   const today = attempts.filter((a) => isTodayIso(a.createdAt));
@@ -36,6 +38,7 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak }: { 
 
       <div className='child-overview'>
         <p className='streak-badge'><span aria-hidden>🔥</span><strong>{streak}</strong> päeva õpiseeria</p>
+        <p className='stars-badge'><span aria-hidden>⭐</span><strong>{formatStars(balance)}</strong> tähte</p>
       </div>
 
       <div className='recent-panel'>
@@ -63,9 +66,31 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak }: { 
   );
 }
 
+function TodayLeaderboard({ kiurCount, kirsiCount }: { kiurCount: number; kirsiCount: number }) {
+  const tie = kiurCount === kirsiCount;
+  const leader: 'kiur' | 'kirsi' | null = tie ? null : kiurCount > kirsiCount ? 'kiur' : 'kirsi';
+
+  const child = (name: 'Kiur' | 'Kirsi', count: number, isLeader: boolean) => (
+    <div className='leaderboard-child' data-leader={isLeader}>
+      <span className='leaderboard-trophy' aria-hidden>{isLeader ? '🏆' : ''}</span>
+      <span className='leaderboard-name'>{name}</span>
+      <span className='leaderboard-count'>{count} ülesannet</span>
+    </div>
+  );
+
+  return (
+    <section className='today-leaderboard' aria-label='Tänane edetabel'>
+      {child('Kiur', kiurCount, leader === 'kiur')}
+      <span className='leaderboard-vs' aria-hidden>vs</span>
+      {child('Kirsi', kirsiCount, leader === 'kirsi')}
+    </section>
+  );
+}
+
 export default function Home() {
   const [history, setHistory] = useState<H[]>([]);
   const [streaks, setStreaks] = useState({ kiur: 0, kirsi: 0 });
+  const [balances, setBalances] = useState({ kiur: 0, kirsi: 0 });
 
   useEffect(() => {
     fetch('/api/history')
@@ -78,7 +103,13 @@ export default function Home() {
     Promise.all([
       fetch('/api/child-dashboard?learner=kiur').then((response) => response.ok ? response.json() : null),
       fetch('/api/child-dashboard?learner=kirsi').then((response) => response.ok ? response.json() : null)
-    ]).then(([kiur, kirsi]) => setStreaks({ kiur: kiur?.streak ?? 0, kirsi: kirsi?.streak ?? 0 })).catch(() => setStreaks({ kiur: 0, kirsi: 0 }));
+    ]).then(([kiur, kirsi]) => {
+      setStreaks({ kiur: kiur?.streak ?? 0, kirsi: kirsi?.streak ?? 0 });
+      setBalances({ kiur: kiur?.balance ?? 0, kirsi: kirsi?.balance ?? 0 });
+    }).catch(() => {
+      setStreaks({ kiur: 0, kirsi: 0 });
+      setBalances({ kiur: 0, kirsi: 0 });
+    });
   }, []);
 
   const { kiur, kirsi } = useMemo(() => {
@@ -87,12 +118,17 @@ export default function Home() {
     return { kiur, kirsi };
   }, [history]);
 
+  const kiurToday = useMemo(() => kiur.filter((attempt) => isTodayIso(attempt.createdAt)).length, [kiur]);
+  const kirsiToday = useMemo(() => kirsi.filter((attempt) => isTodayIso(attempt.createdAt)).length, [kirsi]);
+
   return (
     <main className='container dashboard'>
+      <TodayLeaderboard kiurCount={kiurToday} kirsiCount={kirsiToday} />
       <div className='children-list'>
-        <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} />
-        <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} />
+        <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} balance={balances.kiur} />
+        <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} balance={balances.kirsi} />
       </div>
+      <NoticeBoard />
       <div className='dashboard-footer-links'>
         <Link href='/history' className='dashboard-history-link'>Ajalugu</Link>
         <Link href='/vanem' className='dashboard-history-link'>Lapsevanema ala</Link>
