@@ -150,6 +150,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
               <span>Õpiseeria: {reward.streakLength} päeva</span>
               {isRemediation && typeof remediationMetadata.resolvedCount === 'number' && <span>Parandatud: {remediationMetadata.resolvedCount}</span>}
               {reward.streakBonusAwarded && <span>Seeriaboonus: +{formatStars(reward.streakBonusAmount)} ⭐</span>}
+              {reward.streakRewards.map((streakReward) => <span key={streakReward.ruleId}>Auhind ({streakReward.thresholdDays} päeva): +{formatStars(streakReward.amount)} ⭐</span>)}
               {reward.capReached && reward.awardedAmount === 0 && <span>Tänane õppimise punktipiir on täis.</span>}
             </div>
           )}

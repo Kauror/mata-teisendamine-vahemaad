@@ -320,6 +320,40 @@ db.exec(`
 
   CREATE UNIQUE INDEX IF NOT EXISTS idx_remediation_session_position
     ON remediation_session_items(sessionId, position);
+
+  CREATE TABLE IF NOT EXISTS reward_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL DEFAULT 'learning_streak',
+    thresholdDays INTEGER NOT NULL,
+    rewardStars REAL NOT NULL,
+    learnerScope TEXT NOT NULL DEFAULT 'both',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL,
+    deletedAt TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS reward_rule_awards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ruleId INTEGER NOT NULL,
+    learner TEXT NOT NULL,
+    thresholdDays INTEGER NOT NULL,
+    streakLength INTEGER NOT NULL,
+    streakDate TEXT NOT NULL,
+    amount REAL NOT NULL,
+    attemptId INTEGER NOT NULL,
+    ledgerEntryId INTEGER NOT NULL,
+    createdAt TEXT NOT NULL,
+    FOREIGN KEY (ruleId) REFERENCES reward_rules(id),
+    FOREIGN KEY (attemptId) REFERENCES attempts(id),
+    FOREIGN KEY (ledgerEntryId) REFERENCES point_ledger(id)
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_reward_rule_awards_unique
+    ON reward_rule_awards(ruleId, learner, streakDate);
+
+  CREATE INDEX IF NOT EXISTS idx_reward_rule_awards_attempt
+    ON reward_rule_awards(attemptId);
 `);
 
 const taskTemplateCols = db.prepare('PRAGMA table_info(task_templates)').all() as Array<{ name: string }>;

@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE() {
   const db = await getDb();
   const deleteHistory = db.transaction(() => {
+    db.prepare('DELETE FROM reward_rule_awards').run();
     db.prepare('DELETE FROM streak_bonus_awards').run();
     db.prepare('DELETE FROM study_attempt_rewards').run();
     db.prepare('DELETE FROM attempts').run();

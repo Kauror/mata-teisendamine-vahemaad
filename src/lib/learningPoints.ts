@@ -1,5 +1,6 @@
 import db from '@/lib/db';
 import { isKirsiAttempt } from '@/lib/history';
+import { awardLearningStreakRewards, AwardedStreakReward, getStreakRewardsForAttempt } from '@/lib/rewardRules';
 import { getBalance, Learner, nowIso, todayDateString } from '@/lib/tasks';
 
 export type LearningPointSettings = {
@@ -31,6 +32,7 @@ export type StudyReward = {
   streakLength: number;
   streakBonusAmount: number;
   streakBonusAwarded: boolean;
+  streakRewards: AwardedStreakReward[];
   balanceAfter: number;
   capReached: boolean;
 };
@@ -310,6 +312,12 @@ export function awardStudyPointsForAttempt(attemptId: number): StudyReward | nul
       }
     }
 
+    // Configurable streak rewards from the parent reward area fire when the
+    // study streak hits a parent-defined threshold (e.g. 5 days → N stars).
+    const streakRewards = meetsRewardThreshold && isNewStreakDay
+      ? awardLearningStreakRewards({ learner, streakLength, streakDate: date, attemptId, createdAt })
+      : [];
+
     const balanceAfterAward = getBalance(learner);
     db.prepare('UPDATE study_attempt_rewards SET metadataJson = ? WHERE attemptId = ?').run(JSON.stringify({ settings, balanceAfterAward }), attemptId);
 
@@ -331,6 +339,7 @@ export function awardStudyPointsForAttempt(attemptId: number): StudyReward | nul
       streakLength,
       streakBonusAmount,
       streakBonusAwarded,
+      streakRewards,
       balanceAfter: balanceAfterAward,
       capReached: settings.learningPointsEnabled && earnedBeforeCap > roundedAwarded
     };
@@ -362,6 +371,7 @@ export function getStudyReward(attemptId: number): StudyReward | null {
     streakLength: getCurrentLearningStreak(learner, todayDateString()),
     streakBonusAmount: row.streakBonusAmount || 0,
     streakBonusAwarded: Boolean(row.streakBonusAmount),
+    streakRewards: getStreakRewardsForAttempt(attemptId),
     balanceAfter: typeof metadata.balanceAfterAward === 'number' ? metadata.balanceAfterAward : getBalance(learner),
     capReached: row.earnedBeforeCap > row.awardedAmount
   };

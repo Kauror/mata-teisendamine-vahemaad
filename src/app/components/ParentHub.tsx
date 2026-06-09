@@ -71,7 +71,17 @@ type LearningSettings = {
   streakBonusEnabled: boolean;
 };
 
-type ParentSectionId = 'stars' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password';
+type RewardLearnerScope = 'both' | 'kiur' | 'kirsi';
+type RewardRule = {
+  id: number;
+  type: 'learning_streak';
+  thresholdDays: number;
+  rewardStars: number;
+  learnerScope: RewardLearnerScope;
+  enabled: boolean;
+};
+
+type ParentSectionId = 'stars' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards';
 
 function ParentAccordionSection({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
   return (
@@ -169,6 +179,15 @@ const emptyStoreForm = {
   isActive: true
 };
 
+const REWARD_SCOPE_LABELS: Record<RewardLearnerScope, string> = { both: 'Mõlemale', kiur: 'Kiur', kirsi: 'Kirsi' };
+
+const emptyRewardForm = {
+  thresholdDays: 5,
+  rewardStars: 5,
+  learnerScope: 'both' as RewardLearnerScope,
+  enabled: true
+};
+
 const defaultLearningSettings: LearningSettings = {
   baseValue: 1,
   decayStep: 0.1,
@@ -201,6 +220,9 @@ export default function ParentHub() {
   const [storeForm, setStoreForm] = useState(emptyStoreForm);
   const [editingStoreId, setEditingStoreId] = useState<number | null>(null);
   const [learningSettings, setLearningSettings] = useState<LearningSettings>(defaultLearningSettings);
+  const [rewardRules, setRewardRules] = useState<RewardRule[]>([]);
+  const [rewardForm, setRewardForm] = useState(emptyRewardForm);
+  const [editingRewardId, setEditingRewardId] = useState<number | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
   const [noticeText, setNoticeText] = useState('');
@@ -226,13 +248,15 @@ export default function ParentHub() {
       fetch('/api/parent/store').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/learning-settings').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/learning-exercises').then((res) => (res.ok ? res.json() : Promise.reject())),
+      fetch('/api/parent/reward-rules').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/notice').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings, exerciseDashboard, noticeData]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData]) => {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
         setLearningExercises((exerciseDashboard as LearningExerciseDashboard).exercises);
+        setRewardRules(Array.isArray(rewardData?.rules) ? rewardData.rules : []);
         setNoticeText(typeof noticeData?.text === 'string' ? noticeData.text : '');
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
@@ -440,6 +464,63 @@ export default function ParentHub() {
     }
     setLearningSettings(body);
     setNotice('Õppimise seaded salvestatud.');
+  };
+
+  const resetRewardForm = () => {
+    setEditingRewardId(null);
+    setRewardForm(emptyRewardForm);
+  };
+
+  const editRewardRule = (rule: RewardRule) => {
+    setEditingRewardId(rule.id);
+    setRewardForm({ thresholdDays: rule.thresholdDays, rewardStars: rule.rewardStars, learnerScope: rule.learnerScope, enabled: rule.enabled });
+    setOpenSections((current) => new Set(current).add('rewards'));
+    setNotice('');
+    setError('');
+  };
+
+  const saveRewardRule = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setNotice('');
+    const url = editingRewardId ? `/api/parent/reward-rules/${editingRewardId}` : '/api/parent/reward-rules';
+    const res = await fetch(url, {
+      method: editingRewardId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...rewardForm, type: 'learning_streak' })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.message || 'Auhinda ei saanud salvestada.');
+      return;
+    }
+    if (Array.isArray(body.rules)) setRewardRules(body.rules);
+    setNotice(editingRewardId ? 'Auhind muudetud.' : 'Auhind lisatud.');
+    resetRewardForm();
+  };
+
+  const deleteRewardRule = async (id: number) => {
+    if (typeof window !== 'undefined' && !window.confirm('Kas kustutada see auhind?')) return;
+    const res = await fetch(`/api/parent/reward-rules/${id}`, { method: 'DELETE' });
+    const body = await res.json().catch(() => ({}));
+    if (Array.isArray(body.rules)) setRewardRules(body.rules);
+    if (editingRewardId === id) resetRewardForm();
+  };
+
+  const toggleRewardEnabled = async (rule: RewardRule) => {
+    setError('');
+    setNotice('');
+    const res = await fetch(`/api/parent/reward-rules/${rule.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thresholdDays: rule.thresholdDays, rewardStars: rule.rewardStars, learnerScope: rule.learnerScope, enabled: !rule.enabled, type: 'learning_streak' })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.message || 'Auhinda ei saanud muuta.');
+      return;
+    }
+    if (Array.isArray(body.rules)) setRewardRules(body.rules);
   };
 
   const editStoreItem = (item: StoreItem) => {
@@ -779,6 +860,41 @@ export default function ParentHub() {
             <button type='submit'>Salvesta</button>
           </div>
         </form>
+      </section>
+      </ParentAccordionSection>
+
+      <ParentAccordionSection title='Auhinnad' summary={rewardRules.length === 0 ? 'Pole seadistatud' : `${rewardRules.length} auhinda`} open={openSections.has('rewards')} onToggle={() => toggleSection('rewards')}>
+      <section className='parent-card'>
+        <p>Auhinnad annavad lisatähti, kui laps jõuab harjutuste tegemisel teatud päevade seeriani. Näiteks 5 päeva järjest harjutamise eest antakse boonustähed. Seeria katkemisel ja uuesti samasse piirini jõudmisel antakse auhind uuesti.</p>
+        <form className='parent-form parent-task-form' onSubmit={saveRewardRule}>
+          <label><span>Päevade seeria</span><input type='number' min={1} max={365} value={rewardForm.thresholdDays} onChange={(event) => setRewardForm({ ...rewardForm, thresholdDays: Number(event.target.value) })} /></label>
+          <label><span>Tähti auhinnaks</span><input type='number' step='0.1' min={0.1} max={1000} value={rewardForm.rewardStars} onChange={(event) => setRewardForm({ ...rewardForm, rewardStars: Number(event.target.value) })} /></label>
+          <label><span>Kellele?</span><select value={rewardForm.learnerScope} onChange={(event) => setRewardForm({ ...rewardForm, learnerScope: event.target.value as RewardLearnerScope })}>{Object.entries(REWARD_SCOPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label className='parent-checkbox'><input type='checkbox' checked={rewardForm.enabled} onChange={(event) => setRewardForm({ ...rewardForm, enabled: event.target.checked })} /> Aktiivne</label>
+          <div className='parent-action-row'>
+            {editingRewardId && <button type='button' className='filter-chip' onClick={resetRewardForm}>Tühista</button>}
+            <button type='submit'>{editingRewardId ? 'Muuda auhinda' : 'Lisa auhind'}</button>
+          </div>
+        </form>
+      </section>
+      <section className='parent-card'>
+        <h3>Seadistatud auhinnad</h3>
+        <div className='stock-list'>
+          {rewardRules.map((rule) => (
+            <div key={rule.id} className={editingRewardId === rule.id ? 'stock-row editing' : 'stock-row'}>
+              <div className='stock-info'>
+                <strong>{rule.thresholdDays} päeva seeria · +{stars(rule.rewardStars)} ⭐</strong>
+                <span>{REWARD_SCOPE_LABELS[rule.learnerScope]}{rule.enabled ? '' : ' · ⏸ peatatud'}</span>
+              </div>
+              <div className='stock-actions'>
+                <button type='button' className='view-button' onClick={() => editRewardRule(rule)}>Muuda</button>
+                <button type='button' className='filter-chip' onClick={() => toggleRewardEnabled(rule)}>{rule.enabled ? 'Peata' : 'Aktiveeri'}</button>
+                <button type='button' className='delete-button' onClick={() => deleteRewardRule(rule.id)}>Kustuta</button>
+              </div>
+            </div>
+          ))}
+          {rewardRules.length === 0 && <p>Auhindu ei ole veel lisatud.</p>}
+        </div>
       </section>
       </ParentAccordionSection>
     </section>
