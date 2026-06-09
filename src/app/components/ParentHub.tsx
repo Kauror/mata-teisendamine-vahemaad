@@ -113,6 +113,11 @@ const SUBJECT_LABELS: Record<LearningExerciseSubject, string> = {
   lugemine: 'Lugemine'
 };
 const SUBJECT_ORDER: LearningExerciseSubject[] = ['matemaatika', 'inglise-keel', 'lugemine'];
+const STATUS_OPTIONS: ReadonlyArray<{ value: LearningExerciseStatus; label: string }> = [
+  { value: 'hidden', label: 'Peidus' },
+  { value: 'rotation', label: 'Rotatsioon' },
+  { value: 'permanent', label: 'Püsiv' }
+];
 
 const WEEKDAYS = [
   { id: 1, label: 'E' },
@@ -236,6 +241,20 @@ export default function ParentHub() {
   useEffect(() => {
     load();
   }, []);
+
+  // Auto-hide the success toast so it fades away after a brief moment.
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(''), 2600);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  // Errors linger a little longer than confirmations, then fade away too.
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => setError(''), 5000);
+    return () => clearTimeout(timer);
+  }, [error]);
 
   const exerciseTopicOptions = useMemo(() => {
     const values = new Map<string, string>();
@@ -516,8 +535,12 @@ export default function ParentHub() {
         <button type='button' className='filter-chip' onClick={logout}>Välju</button>
       </header>
 
-      {error && <p className='error'>{error}</p>}
-      {notice && <p className='ok'>{notice}</p>}
+      {(error || notice) && (
+        <div className='parent-toast-stack'>
+          {error && <div className='parent-toast parent-toast-error' role='alert' key={`e-${error}`}>{error}</div>}
+          {notice && <div className='parent-toast' role='status' aria-live='polite' key={`n-${notice}`}>{notice}</div>}
+        </div>
+      )}
 
       {(data?.pendingApprovals?.length ?? 0) > 0 && (
         <section className='parent-approvals' aria-label='Vanema kinnitus'>
@@ -586,7 +609,6 @@ export default function ParentHub() {
                 <div className='learning-compact-list'>
                   {list.map((exercise) => {
                     const status = exercise.childStatus[learner] ?? 'hidden';
-                    const inPool = status === 'rotation' || status === 'permanent';
                     return (
                       <div key={exercise.id} className='learning-compact-row' data-status={status}>
                         <div className='learning-compact-info'>
@@ -594,8 +616,21 @@ export default function ParentHub() {
                           <span>{SUBJECT_LABELS[exercise.subject]}{exercise.topic || exercise.category ? ` · ${exercise.topic || exercise.category}` : ''}</span>
                         </div>
                         <div className='learning-compact-actions'>
-                          <label className='learning-toggle'><input type='checkbox' checked={inPool} onChange={(event) => changeLearningExerciseStatus(exercise.id, learner, event.target.checked ? 'rotation' : 'hidden')} /> Rotatsioon</label>
-                          <label className='learning-toggle'><input type='checkbox' checked={status === 'permanent'} disabled={!inPool} onChange={(event) => changeLearningExerciseStatus(exercise.id, learner, event.target.checked ? 'permanent' : 'rotation')} /> Püsiv</label>
+                          <div className='learning-status-toggle' role='group' aria-label='Staatus'>
+                            {STATUS_OPTIONS.map((option) => (
+                              <button
+                                key={option.value}
+                                type='button'
+                                className='learning-status-option'
+                                data-value={option.value}
+                                data-active={status === option.value}
+                                aria-pressed={status === option.value}
+                                onClick={() => { if (status !== option.value) changeLearningExerciseStatus(exercise.id, learner, option.value); }}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     );

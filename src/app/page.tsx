@@ -21,19 +21,12 @@ type H = {
 function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, balance }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; streak: number; balance: number }) {
   const router = useRouter();
   const latest = attempts.slice(0, 3);
-  const today = attempts.filter((a) => isTodayIso(a.createdAt));
-  const last = attempts[0];
-  const lastText = last ? `Viimati harjutas ${relativeDateTimeLabel(last.createdAt)}` : 'Harjutusi pole veel tehtud';
 
   return (
     <section className='child-dashboard-card' data-accent={accent} role='button' tabIndex={0} onClick={() => router.push(href)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); router.push(href); } }}>
       <div className='child-profile'>
         <div className='child-avatar' aria-hidden>{avatar}</div>
-        <div>
-          <h2 className='child-name'>{name}</h2>
-          <p className='last-practiced'>{lastText}</p>
-          <p className='today-practiced'>Täna tehtud: {today.length} harjutust</p>
-        </div>
+        <h2 className='child-name'>{name}</h2>
       </div>
 
       <div className='child-overview'>

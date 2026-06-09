@@ -1,0 +1,115 @@
+import db from '@/lib/db';
+import { isKirsiAttempt } from '@/lib/history';
+import { nowIso, todayDateString } from '@/lib/tasks';
+
+// 'tie' = both children did the same number of exercises that day.
+export type DailyWinner = 'kiur' | 'kirsi' | 'tie';
+
+export type DailyLeaderboardRow = {
+  date: string;
+  kiurCount: number;
+  kirsiCount: number;
+  winner: DailyWinner;
+};
+
+type AttemptCountRow = { category: string; learner: string | null; createdAt: string };
+
+// Local (Europe/Kiev) calendar date for an attempt timestamp, e.g. '2026-06-09'.
+// Matches todayDateString() so a snapshot lines up with the dashboard's "today".
+const kievDateFormat = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Kiev',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+});
+
+function localDate(createdAt: string): string | null {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return null;
+  return kievDateFormat.format(date);
+}
+
+function winnerOf(kiurCount: number, kirsiCount: number): DailyWinner {
+  if (kiurCount === kirsiCount) return 'tie';
+  return kiurCount > kirsiCount ? 'kiur' : 'kirsi';
+}
+
+function allAttempts(): AttemptCountRow[] {
+  return db.prepare('SELECT category, learner, createdAt FROM attempts').all() as AttemptCountRow[];
+}
+
+// Counts the exercises each child completed on the given local date, using the
+// same Kiur/Kirsi split as the dashboard leaderboard.
+function countsForDate(date: string) {
+  let kiurCount = 0;
+  let kirsiCount = 0;
+  for (const row of allAttempts()) {
+    if (localDate(row.createdAt) !== date) continue;
+    if (isKirsiAttempt(row.category, row.learner)) kirsiCount++;
+    else kiurCount++;
+  }
+  return { kiurCount, kirsiCount };
+}
+
+const upsertStmt = db.prepare(`
+  INSERT INTO daily_leaderboard (date, kiurCount, kirsiCount, winner, updatedAt)
+  VALUES (?, ?, ?, ?, ?)
+  ON CONFLICT(date) DO UPDATE SET
+    kiurCount = excluded.kiurCount,
+    kirsiCount = excluded.kirsiCount,
+    winner = excluded.winner,
+    updatedAt = excluded.updatedAt
+`);
+
+let backfilled = false;
+
+// One-time fill of past days from the existing attempt history, so the
+// statistics board has data from before daily snapshots were introduced.
+function backfillFromAttempts() {
+  if (backfilled) return;
+  const existing = db.prepare('SELECT COUNT(*) AS count FROM daily_leaderboard').get() as { count: number };
+  if (existing.count === 0) {
+    const byDate = new Map<string, { kiur: number; kirsi: number }>();
+    for (const row of allAttempts()) {
+      const date = localDate(row.createdAt);
+      if (!date) continue;
+      const entry = byDate.get(date) ?? { kiur: 0, kirsi: 0 };
+      if (isKirsiAttempt(row.category, row.learner)) entry.kirsi++;
+      else entry.kiur++;
+      byDate.set(date, entry);
+    }
+
+    const now = nowIso();
+    const fill = db.transaction(() => {
+      for (const [date, entry] of byDate) {
+        upsertStmt.run(date, entry.kiur, entry.kirsi, winnerOf(entry.kiur, entry.kirsi), now);
+      }
+    });
+    fill();
+  }
+  // Only mark done once the fill (or empty check) completed without throwing,
+  // so a transient failure retries on the next call.
+  backfilled = true;
+}
+
+// Snapshots the daily leaderboard standings for the given date (defaults to
+// today). Called whenever an attempt is recorded so the winner stays accurate
+// and is preserved for a future statistics board.
+export function recordDailyLeaderboard(date = todayDateString()) {
+  backfillFromAttempts();
+  const { kiurCount, kirsiCount } = countsForDate(date);
+  const winner = winnerOf(kiurCount, kirsiCount);
+  upsertStmt.run(date, kiurCount, kirsiCount, winner, nowIso());
+  return { date, kiurCount, kirsiCount, winner };
+}
+
+// Full per-day history (most recent first) plus how many days each child has won.
+export function getLeaderboardHistory() {
+  backfillFromAttempts();
+  const days = db
+    .prepare('SELECT date, kiurCount, kirsiCount, winner FROM daily_leaderboard ORDER BY date DESC')
+    .all() as DailyLeaderboardRow[];
+  const totals = { kiur: 0, kirsi: 0, tie: 0 };
+  for (const day of days) totals[day.winner] += 1;
+  return { days, totals };
+}
