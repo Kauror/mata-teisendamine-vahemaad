@@ -7,6 +7,7 @@ import {
   isLearningExerciseSubject
 } from '@/lib/learningExercises';
 import { captureMistakesForAttempt } from '@/lib/remediation';
+import { recordDailyLeaderboard } from '@/lib/leaderboard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -70,6 +71,11 @@ export async function POST(req: NextRequest) {
     console.warn('Mistake capture failed', error);
   }
   const reward = awardStudyPointsForAttempt(Number(result.lastInsertRowid));
+  try {
+    recordDailyLeaderboard();
+  } catch (error) {
+    console.warn('Daily leaderboard snapshot failed', error);
+  }
   return NextResponse.json({ id: result.lastInsertRowid, reward }, { status: 201 });
 }
 

@@ -67,13 +67,6 @@ function earnedStars(items: HistoryItem[]) {
   }, 0);
 }
 
-function tone(avg: number | null) {
-  if (avg === null) return 'average-neutral';
-  if (avg >= 80) return 'average-good';
-  if (avg >= 60) return 'average-medium';
-  return 'average-low';
-}
-
 function subjectKey(a: ExerciseHistory): SubjectFilter {
   const subj = (a.subject || '').toLowerCase();
   const topic = (a.topic || '').toLowerCase();
@@ -149,9 +142,6 @@ export default function HistoryPage() {
     });
   }, [history, taskHistory, storeHistory, childFilter, subjectFilter]);
 
-  const todayItems = useMemo(() => filtered.filter((a) => dayLabel(itemDate(a)) === 'Täna'), [filtered]);
-  const todayAvg = avgPercent(todayItems.filter((item): item is ExerciseHistory => item.kind === 'exercise'));
-  const todayStars = earnedStars(todayItems);
   const groups = useMemo(() => groupHistoryByDay(filtered), [filtered]);
 
   const toggleDay = (day: string) => {
@@ -199,9 +189,6 @@ export default function HistoryPage() {
           <div>
             <h1>Ajalugu</h1>
             <p>Kõik harjutused, päevategevused ja poe ostud</p>
-          </div>
-          <div className={`summary-pill ${tone(todayAvg)}`}>
-            <p>Täna: {todayItems.length} kirjet · Keskmine {todayAvg === null ? '—' : `${todayAvg}%`} · ⭐ {formatStars(todayStars)}</p>
           </div>
         </header>
 

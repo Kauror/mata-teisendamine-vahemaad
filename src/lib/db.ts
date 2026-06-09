@@ -228,6 +228,14 @@ db.exec(`
     FOREIGN KEY (kirsiLedgerEntryId) REFERENCES point_ledger(id)
   );
 
+  CREATE TABLE IF NOT EXISTS daily_leaderboard (
+    date TEXT PRIMARY KEY,
+    kiurCount INTEGER NOT NULL DEFAULT 0,
+    kirsiCount INTEGER NOT NULL DEFAULT 0,
+    winner TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS learning_exercises (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
