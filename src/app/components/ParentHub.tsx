@@ -81,6 +81,16 @@ type RewardRule = {
   enabled: boolean;
 };
 
+type MonthlyStanding = {
+  month: string;
+  kiurTrophies: number;
+  kirsiTrophies: number;
+  kiurExercises: number;
+  kirsiExercises: number;
+  leader: Learner | 'tie';
+};
+type MonthlyPrize = { prizeStars: number; standing: MonthlyStanding };
+
 type ParentSectionId = 'stars' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards';
 
 function ParentAccordionSection({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
@@ -223,6 +233,8 @@ export default function ParentHub() {
   const [rewardRules, setRewardRules] = useState<RewardRule[]>([]);
   const [rewardForm, setRewardForm] = useState(emptyRewardForm);
   const [editingRewardId, setEditingRewardId] = useState<number | null>(null);
+  const [monthlyPrize, setMonthlyPrize] = useState<MonthlyPrize | null>(null);
+  const [monthlyPrizeInput, setMonthlyPrizeInput] = useState(10);
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
   const [noticeText, setNoticeText] = useState('');
@@ -249,15 +261,18 @@ export default function ParentHub() {
       fetch('/api/parent/learning-settings').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/learning-exercises').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/reward-rules').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/notice').then((res) => (res.ok ? res.json() : Promise.reject()))
+      fetch('/api/notice').then((res) => (res.ok ? res.json() : Promise.reject())),
+      fetch('/api/parent/monthly-prize').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData, monthlyPrizeData]) => {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
         setLearningExercises((exerciseDashboard as LearningExerciseDashboard).exercises);
         setRewardRules(Array.isArray(rewardData?.rules) ? rewardData.rules : []);
         setNoticeText(typeof noticeData?.text === 'string' ? noticeData.text : '');
+        setMonthlyPrize(monthlyPrizeData as MonthlyPrize);
+        setMonthlyPrizeInput((monthlyPrizeData as MonthlyPrize)?.prizeStars ?? 10);
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
   };
@@ -596,6 +611,25 @@ export default function ParentHub() {
     setNotice('Teated ja reeglid salvestatud.');
   };
 
+  const saveMonthlyPrize = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setNotice('');
+    const res = await fetch('/api/parent/monthly-prize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prizeStars: monthlyPrizeInput })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.message || 'Auhinda ei saanud salvestada.');
+      return;
+    }
+    setMonthlyPrize(body as MonthlyPrize);
+    setMonthlyPrizeInput((body as MonthlyPrize)?.prizeStars ?? monthlyPrizeInput);
+    setNotice('Kuu auhind salvestatud.');
+  };
+
   const deleteStore = async (id: number) => {
     await fetch(`/api/parent/store/${id}`, { method: 'DELETE' });
     load();
@@ -865,6 +899,22 @@ export default function ParentHub() {
 
       <ParentAccordionSection title='Auhinnad' summary={rewardRules.length === 0 ? 'Pole seadistatud' : `${rewardRules.length} auhinda`} open={openSections.has('rewards')} onToggle={() => toggleSection('rewards')}>
       <section className='parent-card'>
+        <h3>🏆 Kuu võistlus</h3>
+        <p>Iga päev saab rohkem ülesandeid lahendanud laps ühe karika. Kuu lõpus võidab see, kellel on rohkem karikaid, ja saab auhinnaks tähed. Auhind makstakse välja automaatselt uue kuu esimesel päeval. Viigi korral auhinda ei anta.</p>
+        <form className='parent-form parent-task-form' onSubmit={saveMonthlyPrize}>
+          <label><span>Auhind võitjale (tähti)</span><input type='number' step='0.1' min={0} max={1000} value={monthlyPrizeInput} onChange={(event) => setMonthlyPrizeInput(Number(event.target.value))} /></label>
+          <button type='submit'>Salvesta auhind</button>
+        </form>
+        {monthlyPrize && (
+          <div className='monthly-standing'>
+            <span>Jooksev kuu ({monthlyPrize.standing.month}):</span>
+            <strong>Kiur {monthlyPrize.standing.kiurTrophies} 🏆 · Kirsi {monthlyPrize.standing.kirsiTrophies} 🏆</strong>
+            <span>{monthlyPrize.standing.leader === 'tie' ? 'Hetkel viik' : `Juhib ${learnerLabel(monthlyPrize.standing.leader)}`}</span>
+          </div>
+        )}
+      </section>
+      <section className='parent-card'>
+        <h3>Õpiseeria auhinnad</h3>
         <p>Auhinnad annavad lisatähti, kui laps jõuab harjutuste tegemisel teatud päevade seeriani. Näiteks 5 päeva järjest harjutamise eest antakse boonustähed. Seeria katkemisel ja uuesti samasse piirini jõudmisel antakse auhind uuesti.</p>
         <form className='parent-form parent-task-form' onSubmit={saveRewardRule}>
           <label><span>Päevade seeria</span><input type='number' min={1} max={365} value={rewardForm.thresholdDays} onChange={(event) => setRewardForm({ ...rewardForm, thresholdDays: Number(event.target.value) })} /></label>

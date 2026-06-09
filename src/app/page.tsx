@@ -18,7 +18,13 @@ type H = {
   topic?: string | null;
 };
 
-function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, balance }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; streak: number; balance: number }) {
+// Estonian uses the partitive ("karikat") after a number, except the bare
+// nominative "karikas" after exactly 1.
+function trophyWord(count: number) {
+  return count === 1 ? 'karikas' : 'karikat';
+}
+
+function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, balance, trophies }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; streak: number; balance: number; trophies: number }) {
   const router = useRouter();
   const latest = attempts.slice(0, 3);
 
@@ -32,6 +38,7 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, bala
       <div className='child-overview'>
         <p className='streak-badge'><span aria-hidden>🔥</span><strong>{streak}</strong> päeva õpiseeria</p>
         <p className='stars-badge'><span aria-hidden>⭐</span><strong>{formatStars(balance)}</strong> tähte</p>
+        <p className='trophy-badge'><span aria-hidden>🏆</span><strong>{trophies}</strong> {trophyWord(trophies)}</p>
       </div>
 
       <div className='recent-panel'>
@@ -84,6 +91,7 @@ export default function Home() {
   const [history, setHistory] = useState<H[]>([]);
   const [streaks, setStreaks] = useState({ kiur: 0, kirsi: 0 });
   const [balances, setBalances] = useState({ kiur: 0, kirsi: 0 });
+  const [trophies, setTrophies] = useState({ kiur: 0, kirsi: 0 });
 
   useEffect(() => {
     fetch('/api/history')
@@ -99,9 +107,11 @@ export default function Home() {
     ]).then(([kiur, kirsi]) => {
       setStreaks({ kiur: kiur?.streak ?? 0, kirsi: kirsi?.streak ?? 0 });
       setBalances({ kiur: kiur?.balance ?? 0, kirsi: kirsi?.balance ?? 0 });
+      setTrophies({ kiur: kiur?.trophies ?? 0, kirsi: kirsi?.trophies ?? 0 });
     }).catch(() => {
       setStreaks({ kiur: 0, kirsi: 0 });
       setBalances({ kiur: 0, kirsi: 0 });
+      setTrophies({ kiur: 0, kirsi: 0 });
     });
   }, []);
 
@@ -118,8 +128,8 @@ export default function Home() {
     <main className='container dashboard'>
       <TodayLeaderboard kiurCount={kiurToday} kirsiCount={kirsiToday} />
       <div className='children-list'>
-        <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} balance={balances.kiur} />
-        <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} balance={balances.kirsi} />
+        <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} balance={balances.kiur} trophies={trophies.kiur} />
+        <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} balance={balances.kirsi} trophies={trophies.kirsi} />
       </div>
       <NoticeBoard />
       <div className='dashboard-footer-links'>

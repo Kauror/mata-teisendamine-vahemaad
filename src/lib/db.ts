@@ -236,6 +236,19 @@ db.exec(`
     updatedAt TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS monthly_competition_awards (
+    month TEXT PRIMARY KEY,
+    winner TEXT NOT NULL,
+    kiurTrophies INTEGER NOT NULL,
+    kirsiTrophies INTEGER NOT NULL,
+    kiurExercises INTEGER NOT NULL,
+    kirsiExercises INTEGER NOT NULL,
+    prizeStars REAL NOT NULL,
+    ledgerEntryId INTEGER,
+    createdAt TEXT NOT NULL,
+    FOREIGN KEY (ledgerEntryId) REFERENCES point_ledger(id)
+  );
+
   CREATE TABLE IF NOT EXISTS learning_exercises (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
