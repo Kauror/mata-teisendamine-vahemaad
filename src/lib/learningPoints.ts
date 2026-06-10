@@ -1,6 +1,7 @@
 import db from '@/lib/db';
 import { isKirsiAttempt } from '@/lib/history';
 import { awardLearningStreakRewards, AwardedStreakReward, getStreakRewardsForAttempt } from '@/lib/rewardRules';
+import { sprintAttemptQualifies } from '@/lib/sprintReward';
 import { getBalance, Learner, nowIso, todayDateString } from '@/lib/tasks';
 
 export type LearningPointSettings = {
@@ -70,7 +71,6 @@ const DEFAULT_SETTINGS: LearningPointSettings = {
 };
 
 const MIN_REWARD_SCORE_PERCENT = 0.5;
-const MIN_ENGLISH_SPRINT_WORDS_FOR_REWARD = 5;
 
 const KEY_BY_CATEGORY: Record<string, string> = {
   'Inglise keel - sprint': 'kiur.english.sprint',
@@ -266,7 +266,9 @@ export function awardStudyPointsForAttempt(attemptId: number): StudyReward | nul
     const decayedBaseValue = settings.baseValue - settings.decayStep * (attemptNumber - 1);
     const baseValue = settings.learningPointsEnabled ? Math.max(settings.minimumValue, decayedBaseValue) : 0;
     const scorePercent = Math.max(0, Math.min(1, attempt.score / attempt.questionCount));
-    const meetsMinimumWork = !(learner === 'kiur' && attempt.subject === 'inglise-keel' && attempt.topic === 'sprint') || attempt.questionCount >= MIN_ENGLISH_SPRINT_WORDS_FOR_REWARD;
+    // Kiur's sprint must clear half of his standing record; everything else
+    // always clears this gate (it is constrained only by the score percent).
+    const meetsMinimumWork = sprintAttemptQualifies({ id: attempt.id, subject: attempt.subject, topic: attempt.topic, score: attempt.score });
     const meetsRewardThreshold = meetsMinimumWork && scorePercent >= MIN_REWARD_SCORE_PERCENT;
     const earnedBeforeCap = meetsRewardThreshold ? baseValue : 0;
     const before = dailyLearningEarned(learner, date);

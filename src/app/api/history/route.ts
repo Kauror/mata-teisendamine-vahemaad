@@ -8,6 +8,7 @@ import {
 } from '@/lib/learningExercises';
 import { captureMistakesForAttempt } from '@/lib/remediation';
 import { recordDailyLeaderboard } from '@/lib/leaderboard';
+import { deleteAllHistory } from '@/lib/historyMaintenance';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -80,13 +81,12 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE() {
-  const db = await getDb();
-  const deleteHistory = db.transaction(() => {
-    db.prepare('DELETE FROM reward_rule_awards').run();
-    db.prepare('DELETE FROM streak_bonus_awards').run();
-    db.prepare('DELETE FROM study_attempt_rewards').run();
-    db.prepare('DELETE FROM attempts').run();
-  });
-  deleteHistory();
-  return NextResponse.json({ ok: true });
+  await getDb();
+  try {
+    deleteAllHistory();
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('History wipe failed', error);
+    return NextResponse.json({ message: 'Kogu ajaloo kustutamine ebaõnnestus.' }, { status: 500 });
+  }
 }

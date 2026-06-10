@@ -36,7 +36,7 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, bala
       </div>
 
       <div className='child-overview'>
-        <p className='streak-badge'><span aria-hidden>🔥</span><strong>{streak}</strong> päeva õpiseeria</p>
+        <p className='streak-badge'><span aria-hidden>🔥</span><strong>{streak}</strong> õpiseeria</p>
         <p className='stars-badge'><span aria-hidden>⭐</span><strong>{formatStars(balance)}</strong> tähte</p>
         <p className='trophy-badge'><span aria-hidden>🏆</span><strong>{trophies}</strong> {trophyWord(trophies)}</p>
       </div>

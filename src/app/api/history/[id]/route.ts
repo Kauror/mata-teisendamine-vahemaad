@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { deleteAttempt } from '@/lib/historyMaintenance';
+import { recordDailyLeaderboard } from '@/lib/leaderboard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -26,16 +28,24 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const db = await getDb();
+  await getDb();
   const { id } = await params;
   const attemptId = Number(id);
   if (!Number.isInteger(attemptId)) return NextResponse.json({ message: 'Vale tulemus.' }, { status: 400 });
 
-  const deleteAttempt = db.transaction(() => {
-    db.prepare('DELETE FROM streak_bonus_awards WHERE attemptId = ?').run(attemptId);
-    db.prepare('DELETE FROM study_attempt_rewards WHERE attemptId = ?').run(attemptId);
-    db.prepare('DELETE FROM attempts WHERE id = ?').run(attemptId);
-  });
-  deleteAttempt();
-  return NextResponse.json({ ok: true });
+  try {
+    const removed = deleteAttempt(attemptId);
+    if (removed === 0) return NextResponse.json({ message: 'Tulemust ei leitud.' }, { status: 404 });
+    // Deleting an attempt changes today's exercise counts, so refresh the
+    // leaderboard snapshot the trophies are derived from.
+    try {
+      recordDailyLeaderboard();
+    } catch (error) {
+      console.warn('Daily leaderboard snapshot failed after delete', error);
+    }
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('History delete failed', error);
+    return NextResponse.json({ message: 'Kustutamine ebaõnnestus.' }, { status: 500 });
+  }
 }

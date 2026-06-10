@@ -1,5 +1,6 @@
 import db from '@/lib/db';
 import { isKirsiAttempt } from '@/lib/history';
+import { sprintAttemptQualifies } from '@/lib/sprintReward';
 import { nowIso, todayDateString } from '@/lib/tasks';
 
 // 'tie' = both children did the same number of exercises that day.
@@ -12,7 +13,7 @@ export type DailyLeaderboardRow = {
   winner: DailyWinner;
 };
 
-type AttemptCountRow = { category: string; learner: string | null; createdAt: string };
+type AttemptCountRow = { id: number; category: string; learner: string | null; createdAt: string; subject: string | null; topic: string | null; score: number };
 
 // Local (Europe/Kiev) calendar date for an attempt timestamp, e.g. '2026-06-09'.
 // Matches todayDateString() so a snapshot lines up with the dashboard's "today".
@@ -35,7 +36,13 @@ function winnerOf(kiurCount: number, kirsiCount: number): DailyWinner {
 }
 
 function allAttempts(): AttemptCountRow[] {
-  return db.prepare('SELECT category, learner, createdAt FROM attempts').all() as AttemptCountRow[];
+  return db.prepare('SELECT id, category, learner, createdAt, subject, topic, score FROM attempts').all() as AttemptCountRow[];
+}
+
+// A sprint run that does not clear Kiur's half-of-record threshold earns no
+// trophy, so it must not be counted towards the daily competition either.
+function countsTowardsLeaderboard(row: AttemptCountRow) {
+  return sprintAttemptQualifies(row);
 }
 
 // Counts the exercises each child completed on the given local date, using the
@@ -45,6 +52,7 @@ function countsForDate(date: string) {
   let kirsiCount = 0;
   for (const row of allAttempts()) {
     if (localDate(row.createdAt) !== date) continue;
+    if (!countsTowardsLeaderboard(row)) continue;
     if (isKirsiAttempt(row.category, row.learner)) kirsiCount++;
     else kiurCount++;
   }
@@ -73,6 +81,7 @@ function backfillFromAttempts() {
     for (const row of allAttempts()) {
       const date = localDate(row.createdAt);
       if (!date) continue;
+      if (!countsTowardsLeaderboard(row)) continue;
       const entry = byDate.get(date) ?? { kiur: 0, kirsi: 0 };
       if (isKirsiAttempt(row.category, row.learner)) entry.kirsi++;
       else entry.kiur++;

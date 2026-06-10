@@ -79,14 +79,23 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .stars-badge strong{font-size:18px;color:#713f12}
 .trophy-badge{margin:0;display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 11px;border-radius:999px;background:#f5f3ff;border:1px solid #ddd6fe;color:#6d28d9;font-size:14px;font-weight:850;line-height:1}
 .trophy-badge strong{font-size:18px;color:#5b21b6}
+@media (max-width:640px){
+  .child-overview{gap:5px}
+  .child-overview .streak-badge,.child-overview .stars-badge,.child-overview .trophy-badge{gap:4px;min-height:28px;padding:4px 8px;font-size:11.5px}
+  .child-overview .streak-badge strong,.child-overview .stars-badge strong,.child-overview .trophy-badge strong{font-size:14px}
+  .child-dashboard-card .recent-panel{padding:7px 9px;border-radius:11px;gap:2px}
+  .child-dashboard-card .recent-title{font-size:12.5px}
+  .child-dashboard-card .exercise-list{gap:2px}
+  .child-dashboard-card .exercise-row,.child-dashboard-card .recent-empty{font-size:12px}
+}
 .average-good{background:#dcfce7;border-color:#86efac}
 .average-medium{background:#fef3c7;border-color:#fcd34d}
 .average-low{background:#ffedd5;border-color:#fdba74}
 .average-neutral{background:#f3f6ff;border-color:#dbe3ff}
 .recent-panel{background:#f8faff;border:1px solid #e2e8ff;border-radius:13px;padding:8px 10px;display:grid;gap:4px}
-.recent-title{margin:0;font-size:15px;line-height:1.2}
-.exercise-list{display:grid;gap:4px}
-.exercise-row{margin:0;color:#33416f;word-break:break-word;line-height:1.25}
+.recent-title{margin:0;font-size:14px;line-height:1.2}
+.exercise-list{display:grid;gap:3px}
+.exercise-row{margin:0;font-size:13.5px;color:#33416f;word-break:break-word;line-height:1.25}
 .recent-empty{margin:0;color:#64748b;font-size:14px;line-height:1.25}
 .card-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:2px}
 .subject-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:50px;padding:0 22px;border:0;border-radius:17px;background:linear-gradient(180deg,#3b82f6 0%,#2563eb 100%);color:#fff;font-size:18px;font-weight:800;letter-spacing:-.01em;cursor:pointer;box-shadow:0 12px 26px rgba(37,99,235,.28);transition:transform 160ms ease,box-shadow 160ms ease,opacity 160ms ease}
@@ -100,7 +109,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .noticeboard-text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#6b5a32;font-weight:600;font-size:13px;line-height:1.4}
 .dashboard-footer-links{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:2px}
 .dashboard-history-link{width:fit-content;min-height:44px;margin:2px auto 0;display:inline-flex;align-items:center;color:#2563eb;font-size:16px;font-weight:800;text-decoration:none;border-bottom:1px dashed currentColor}
-@media (max-width:560px){.dashboard{padding:8px}.children-list{gap:8px}.child-dashboard-card{border-radius:16px;padding:10px;gap:7px}.child-profile{gap:9px}.child-avatar{font-size:31px}.child-name{font-size:21px}.last-practiced{font-size:13px}.today-practiced{font-size:13px}.streak-badge{min-height:32px;font-size:13px}.recent-panel{padding:7px 8px;border-radius:12px;gap:3px}.recent-title{font-size:14px}.exercise-row,.recent-empty{font-size:13px}.card-actions{margin-top:0}.subject-button{width:100%;min-height:44px;border-radius:15px;font-size:16px}.history-link{justify-content:center}.dashboard-footer-links{gap:12px}}
+@media (max-width:560px){.dashboard{padding:8px}.children-list{gap:8px}.child-dashboard-card{border-radius:16px;padding:10px;gap:7px}.child-profile{gap:9px}.child-avatar{font-size:31px}.child-name{font-size:21px}.last-practiced{font-size:13px}.today-practiced{font-size:13px}.streak-badge{min-height:32px;font-size:13px}.card-actions{margin-top:0}.subject-button{width:100%;min-height:38px;border-radius:12px;padding:0 16px;gap:8px;font-size:14px;box-shadow:0 5px 13px rgba(37,99,235,.2)}.child-dashboard-card[data-accent="pink"] .subject-button{box-shadow:0 5px 13px rgba(219,39,119,.18)}.history-link{justify-content:center}.dashboard-footer-links{gap:12px}}
 
 
 .subject-flow-page{max-width:900px}
