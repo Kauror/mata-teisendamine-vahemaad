@@ -39,6 +39,21 @@ function previousMonth(date: string) {
 
 type DayRow = { kiurCount: number; kirsiCount: number; winner: string };
 
+// Manual trophy add/remove a parent made within the given month. Trophies are
+// otherwise derived from daily wins, so these adjustments are layered on top.
+// Bucketed by the stored Kiev `month` so it lines up with the daily standings
+// (createdAt is UTC and would skew rows near a month boundary).
+function trophyAdjustmentsForMonth(month: string): Record<Learner, number> {
+  const rows = db
+    .prepare('SELECT learner, COALESCE(SUM(amount), 0) AS total FROM trophy_adjustments WHERE month = ? GROUP BY learner')
+    .all(month) as Array<{ learner: string; total: number }>;
+  const totals: Record<Learner, number> = { kiur: 0, kirsi: 0 };
+  for (const row of rows) {
+    if (row.learner === 'kiur' || row.learner === 'kirsi') totals[row.learner] = row.total;
+  }
+  return totals;
+}
+
 function standingForMonth(month: string): MonthlyStanding {
   const rows = db
     .prepare('SELECT kiurCount, kirsiCount, winner FROM daily_leaderboard WHERE substr(date, 1, 7) = ?')
@@ -53,8 +68,23 @@ function standingForMonth(month: string): MonthlyStanding {
     kiurExercises += row.kiurCount;
     kirsiExercises += row.kirsiCount;
   }
+  const adjustments = trophyAdjustmentsForMonth(month);
+  kiurTrophies = Math.max(0, kiurTrophies + adjustments.kiur);
+  kirsiTrophies = Math.max(0, kirsiTrophies + adjustments.kirsi);
   const leader: Learner | 'tie' = kiurTrophies === kirsiTrophies ? 'tie' : kiurTrophies > kirsiTrophies ? 'kiur' : 'kirsi';
   return { month, kiurTrophies, kirsiTrophies, kiurExercises, kirsiExercises, leader };
+}
+
+// Parent-driven trophy change (add or subtract), mirroring manual star
+// adjustments. Counts towards the current month's competition. Returns the
+// updated standings.
+export function adjustTrophies(learner: Learner, amount: number, reason: string): MonthlyStanding {
+  const value = Math.trunc(Number(amount));
+  if (!Number.isInteger(value) || value === 0) throw new Error('Karikate arv peab olema täisarv ja mitte null.');
+  const clean = reason ? String(reason).slice(0, 200) : null;
+  const today = todayDateString();
+  db.prepare('INSERT INTO trophy_adjustments (learner, month, amount, reason, createdAt) VALUES (?, ?, ?, ?, ?)').run(learner, monthOf(today), value, clean, nowIso());
+  return getMonthlyStanding(today);
 }
 
 export function getMonthlyStanding(today = todayDateString()): MonthlyStanding {

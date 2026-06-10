@@ -13,13 +13,13 @@ type SprintAttemptLike = {
   score: number;
 };
 
-export function isSprintAttempt(attempt: { subject?: string | null; topic?: string | null }): boolean {
+function isSprintAttempt(attempt: { subject?: string | null; topic?: string | null }): boolean {
   return attempt.subject === 'inglise-keel' && attempt.topic === 'sprint';
 }
 
 // Best sprint score recorded strictly before this attempt (its standing
 // record). Returns 0 when there is no earlier sprint.
-export function bestSprintScoreBefore(attemptId: number): number {
+function bestSprintScoreBefore(attemptId: number): number {
   const row = db
     .prepare("SELECT COALESCE(MAX(score), 0) AS best FROM attempts WHERE subject = 'inglise-keel' AND topic = 'sprint' AND id < ?")
     .get(attemptId) as { best: number } | undefined;
@@ -27,7 +27,7 @@ export function bestSprintScoreBefore(attemptId: number): number {
 }
 
 // Words he must reach for a sprint run to count, given his standing record.
-export function sprintRewardThreshold(record: number): number {
+function sprintRewardThreshold(record: number): number {
   return Math.max(1, Math.ceil(Math.max(0, record) / 2));
 }
 

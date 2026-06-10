@@ -249,6 +249,15 @@ db.exec(`
     FOREIGN KEY (ledgerEntryId) REFERENCES point_ledger(id)
   );
 
+  CREATE TABLE IF NOT EXISTS trophy_adjustments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    learner TEXT NOT NULL,
+    month TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    reason TEXT,
+    createdAt TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS learning_exercises (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -373,5 +382,10 @@ const taskTemplateCols = db.prepare('PRAGMA table_info(task_templates)').all() a
 addColumnIfMissing(taskTemplateCols.some((c) => c.name === 'requiresApproval'), 'ALTER TABLE task_templates ADD COLUMN requiresApproval INTEGER NOT NULL DEFAULT 0');
 const taskInstanceCols = db.prepare('PRAGMA table_info(task_instances)').all() as Array<{ name: string }>;
 addColumnIfMissing(taskInstanceCols.some((c) => c.name === 'requiresApprovalSnapshot'), 'ALTER TABLE task_instances ADD COLUMN requiresApprovalSnapshot INTEGER NOT NULL DEFAULT 0');
+const trophyAdjustmentCols = db.prepare('PRAGMA table_info(trophy_adjustments)').all() as Array<{ name: string }>;
+addColumnIfMissing(trophyAdjustmentCols.some((c) => c.name === 'month'), "ALTER TABLE trophy_adjustments ADD COLUMN month TEXT NOT NULL DEFAULT ''");
+// Index created after the migration above so it works whether the table is
+// brand new (month from CREATE TABLE) or pre-existing (month just added).
+db.exec('CREATE INDEX IF NOT EXISTS idx_trophy_adjustments_month_learner ON trophy_adjustments(month, learner)');
 
 export default db;

@@ -224,8 +224,7 @@ export default function ParentHub() {
   const [startDate, setStartDate] = useState(today());
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [requiresApproval, setRequiresApproval] = useState(false);
-  const [adjustLearner, setAdjustLearner] = useState<Learner>('kiur');
-  const [adjustAmount, setAdjustAmount] = useState(1);
+  const [adjustAmount, setAdjustAmount] = useState('1');
   const [adjustReason, setAdjustReason] = useState('');
   const [storeForm, setStoreForm] = useState(emptyStoreForm);
   const [editingStoreId, setEditingStoreId] = useState<number | null>(null);
@@ -423,23 +422,32 @@ export default function ParentHub() {
     load();
   };
 
-  const adjustPoints = async (event: FormEvent) => {
-    event.preventDefault();
+  // Stars and trophies adjust the same way: +/- a positive magnitude for one
+  // child, via their own endpoint. Only the endpoint and wording differ.
+  const ADJUST_KINDS = {
+    points: { url: '/api/parent/adjust-points', fail: 'Punkte ei saanud muuta.', addNoun: 'tähte', removeVerb: 'tähti vähendati' },
+    trophies: { url: '/api/parent/adjust-trophies', fail: 'Karikaid ei saanud muuta.', addNoun: 'karikat', removeVerb: 'karikaid vähendati' }
+  } as const;
+
+  const submitAdjustment = async (kind: keyof typeof ADJUST_KINDS, learner: Learner, direction: 1 | -1) => {
     setError('');
     setNotice('');
-    const res = await fetch('/api/parent/adjust-points', {
+    const magnitude = Math.max(1, Math.trunc(Math.abs(Number(adjustAmount) || 1)));
+    const config = ADJUST_KINDS[kind];
+    const res = await fetch(config.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ learner: adjustLearner, amount: adjustAmount, reason: adjustReason })
+      body: JSON.stringify({ learner, amount: magnitude * direction, reason: adjustReason })
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      setError(body.message || 'Punkte ei saanud muuta.');
+      setError(body.message || config.fail);
       return;
     }
-    setAdjustAmount(1);
     setAdjustReason('');
-    setNotice(adjustAmount > 0 ? `${learnerLabel(adjustLearner)} sai +${adjustAmount} tähte.` : `${learnerLabel(adjustLearner)} tähti vähendati ${Math.abs(adjustAmount)} võrra.`);
+    setNotice(direction > 0
+      ? `${learnerLabel(learner)} sai +${magnitude} ${config.addNoun}.`
+      : `${learnerLabel(learner)} ${config.removeVerb} ${magnitude} võrra.`);
     load();
   };
 
@@ -678,23 +686,40 @@ export default function ParentHub() {
         </section>
       )}
 
-      <ParentAccordionSection title='Tähed' summary='Saldod ja punktide muutmine' open={openSections.has('stars')} onToggle={() => toggleSection('stars')}>
-      <section className='parent-card parent-stars-card'>
-        <div className='parent-balance-grid'>
-          <strong>Kiur ⭐ {stars(data?.balances.kiur ?? 0)}</strong>
-          <strong>Kirsi ⭐ {stars(data?.balances.kirsi ?? 0)}</strong>
+      <ParentAccordionSection title='Tähed ja karikad' summary='Saldod, punktide ja karikate muutmine' open={openSections.has('stars')} onToggle={() => toggleSection('stars')}>
+      <section className='parent-card parent-adjust-card'>
+        <div className='parent-form parent-adjust-controls'>
+          <label className='parent-adjust-amount'><span>Kogus</span><input type='number' inputMode='numeric' min={1} step={1} value={adjustAmount} onChange={(event) => { const next = event.target.value; if (next === '' || /^\d+$/.test(next)) setAdjustAmount(next); }} onBlur={() => setAdjustAmount(String(Math.max(1, Math.trunc(Number(adjustAmount) || 1))))} /></label>
+          <label className='parent-adjust-reason-field'><span>Põhjus (valikuline)</span><input value={adjustReason} onChange={(event) => setAdjustReason(event.target.value)} placeholder='boonus' /></label>
         </div>
-        <form className='parent-form parent-adjust-form' onSubmit={adjustPoints}>
-          <h3>Punktide muutmine</h3>
-          <label><span>Laps</span><select value={adjustLearner} onChange={(event) => setAdjustLearner(event.target.value as Learner)}><option value='kiur'>Kiur</option><option value='kirsi'>Kirsi</option></select></label>
-          <label><span>Punktid</span><input type='number' value={adjustAmount} onChange={(event) => setAdjustAmount(Number(event.target.value))} /></label>
-          <label className='parent-adjust-reason'><span>Põhjus</span><input value={adjustReason} onChange={(event) => setAdjustReason(event.target.value)} placeholder='boonus' /></label>
-          <div className='parent-action-row'>
-            <button type='button' className='filter-chip' onClick={() => setAdjustAmount(-Math.abs(adjustAmount || 1))}>Lahuta</button>
-            <button type='button' className='filter-chip' onClick={() => setAdjustAmount(Math.abs(adjustAmount || 1))}>Lisa</button>
-            <button type='submit'>Salvesta</button>
+        <div className='parent-adjust-grid'>
+          <div className='parent-adjust-block'>
+            <h3>⭐ Tähed</h3>
+            {(['kiur', 'kirsi'] as Learner[]).map((child) => (
+              <div key={child} className='parent-adjust-row'>
+                <span className='parent-adjust-name'>{learnerLabel(child)}</span>
+                <strong className='parent-adjust-value'>{stars(data?.balances[child] ?? 0)}</strong>
+                <div className='parent-stepper'>
+                  <button type='button' className='parent-step-minus' aria-label={`Eemalda ${learnerLabel(child)}lt tähti`} onClick={() => submitAdjustment('points', child, -1)}>−</button>
+                  <button type='button' className='parent-step-plus' aria-label={`Lisa ${learnerLabel(child)}le tähti`} onClick={() => submitAdjustment('points', child, 1)}>+</button>
+                </div>
+              </div>
+            ))}
           </div>
-        </form>
+          <div className='parent-adjust-block'>
+            <h3>🏆 Karikad</h3>
+            {(['kiur', 'kirsi'] as Learner[]).map((child) => (
+              <div key={child} className='parent-adjust-row'>
+                <span className='parent-adjust-name'>{learnerLabel(child)}</span>
+                <strong className='parent-adjust-value'>{(child === 'kiur' ? monthlyPrize?.standing.kiurTrophies : monthlyPrize?.standing.kirsiTrophies) ?? 0}</strong>
+                <div className='parent-stepper'>
+                  <button type='button' className='parent-step-minus' aria-label={`Eemalda ${learnerLabel(child)}lt karikaid`} onClick={() => submitAdjustment('trophies', child, -1)}>−</button>
+                  <button type='button' className='parent-step-plus' aria-label={`Lisa ${learnerLabel(child)}le karikaid`} onClick={() => submitAdjustment('trophies', child, 1)}>+</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
       </ParentAccordionSection>
 

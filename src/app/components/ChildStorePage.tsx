@@ -57,7 +57,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
   const [success, setSuccess] = useState<{ title: string; price: number; balanceAfter: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const recipient: Learner = learner === 'kiur' ? 'kirsi' : 'kiur';
-  const [giftAmount, setGiftAmount] = useState(1);
+  const [giftAmount, setGiftAmount] = useState('1');
   const [confirmGift, setConfirmGift] = useState(false);
   const [giftSuccess, setGiftSuccess] = useState<{ amount: number; balanceAfter: number } | null>(null);
   const [giftBusy, setGiftBusy] = useState(false);
@@ -103,13 +103,13 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
       const res = await fetch('/api/store/gift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: learner, to: recipient, amount: giftAmount })
+        body: JSON.stringify({ from: learner, to: recipient, amount: giftValue })
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.message || 'Kinkimine ebaõnnestus.');
-      setGiftSuccess({ amount: giftAmount, balanceAfter: body.balance });
+      setGiftSuccess({ amount: giftValue, balanceAfter: body.balance });
       setConfirmGift(false);
-      setGiftAmount(1);
+      setGiftAmount('1');
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kinkimine ebaõnnestus.');
@@ -121,7 +121,8 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
 
   const balance = data?.balance ?? 0;
   const recipientName = childName(recipient);
-  const canGift = giftAmount >= 1 && giftAmount <= balance;
+  const giftValue = Math.floor(Number(giftAmount)) || 0;
+  const canGift = giftValue >= 1 && giftValue <= balance;
 
   return (
     <main className='store-page'>
@@ -163,15 +164,20 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
             <div className='store-gift-row'>
               <input
                 type='number'
+                inputMode='numeric'
                 min={1}
                 max={balance > 0 ? balance : 1}
                 value={giftAmount}
-                onChange={(event) => setGiftAmount(Math.max(1, Math.floor(Number(event.target.value) || 1)))}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  if (next === '' || /^\d+$/.test(next)) setGiftAmount(next);
+                }}
+                onBlur={() => setGiftAmount(String(Math.max(1, giftValue)))}
                 aria-label='Kingitavate tähtede arv'
               />
               <button type='button' disabled={!canGift} onClick={() => setConfirmGift(true)}>Kingi {recipientName}le</button>
             </div>
-            {giftAmount > balance && <small className='store-gift-warning'>Sul ei ole nii palju tähti.</small>}
+            {giftValue > balance && <small className='store-gift-warning'>Sul ei ole nii palju tähti.</small>}
           </div>
         </details>
 
@@ -216,9 +222,9 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
         <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
           <div className='task-modal'>
             <h2>Kas kingid {recipientName}le?</h2>
-            <span>Kingitus: {giftAmount} ⭐</span>
+            <span>Kingitus: {giftValue} ⭐</span>
             <span>Sul on praegu: {stars(balance)} ⭐</span>
-            <strong>Pärast kinkimist jääb: {stars(balance - giftAmount)} ⭐</strong>
+            <strong>Pärast kinkimist jääb: {stars(balance - giftValue)} ⭐</strong>
             <div className='task-modal-actions'>
               <button type='button' className='filter-chip' onClick={() => setConfirmGift(false)}>Ei</button>
               <button type='button' disabled={giftBusy} onClick={sendGift}>Jah, kingin</button>
