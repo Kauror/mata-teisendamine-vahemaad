@@ -5,7 +5,7 @@ harjutavad matemaatikat, inglise keelt, lugemist ja loodusõpetust, teenivad sel
 eest tähti ⭐ ning saavad neid vanema seatud poes kulutada. Rahulik, suurte
 kaartide ja pastelsete värvidega lapsesõbralik kujundus.
 
-> Rakendus kuvab pealkirjana „Harjutamine". Live: harjutaja.orgusaar.ee
+> Rakendus kuvab pealkirjana „Harjutamine".
 
 ## Lapsed ja ained
 
