@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import DailyTasksPanel from '@/app/components/DailyTasksPanel';
 import NoticeBoard from '@/app/components/NoticeBoard';
+import YesterdayPointsPopup from '@/app/components/YesterdayPointsPopup';
 import { ChildExerciseCard } from '@/lib/childExerciseCards';
+import { getYesterdayPointsSummary } from '@/lib/dailyPointsSummary';
 import { Learner } from '@/lib/tasks';
 
 type ChildProfile = {
@@ -21,8 +23,11 @@ export default function ChildHomeDashboard({
   remediationHref?: string;
   completedExerciseIds?: Set<string>;
 }) {
+  const yesterdayPoints = getYesterdayPointsSummary(child.learner);
+
   return (
     <main className='container child-home-page'>
+      <YesterdayPointsPopup learner={child.learner} childName={child.name} summary={yesterdayPoints} />
       <section className='child-home-shell'>
         <Link className='child-home-back' href='/'>← Rollivalik</Link>
 

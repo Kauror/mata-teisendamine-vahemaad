@@ -1,0 +1,73 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { formatStars } from '@/lib/formatStars';
+import type { Learner } from '@/lib/tasks';
+import type { YesterdayPointsSummary } from '@/lib/dailyPointsSummary';
+
+// Shows a friendly recap of yesterday's earned stars the first time the child
+// opens their page on a given day. The "seen" marker is keyed by the recap date,
+// so it appears once per day and naturally resets the next day.
+export default function YesterdayPointsPopup({
+  learner,
+  childName,
+  summary
+}: {
+  learner: Learner;
+  childName: string;
+  summary: YesterdayPointsSummary;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const storageKey = `harjutaja:points-recap:${learner}`;
+
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(storageKey) === summary.date) return;
+    } catch {
+      // localStorage unavailable (private mode) — just show the recap.
+    }
+    setOpen(true);
+  }, [storageKey, summary.date]);
+
+  const close = () => {
+    try {
+      window.localStorage.setItem(storageKey, summary.date);
+    } catch {
+      // Ignore storage failures; closing still works for this visit.
+    }
+    setOpen(false);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className='task-modal-backdrop' role='dialog' aria-modal='true' aria-labelledby='points-recap-title'>
+      <div className='task-modal points-recap'>
+        {summary.hasEarnings ? (
+          <>
+            <span className='points-recap-emoji' aria-hidden>🎉</span>
+            <h2 id='points-recap-title'>Eile teenisid tähti!</h2>
+            <strong className='points-recap-total'>+{formatStars(summary.total)} ⭐</strong>
+            <ul className='points-recap-list'>
+              {summary.breakdown.map((item) => (
+                <li key={item.key} className='points-recap-row'>
+                  <span className='points-recap-label'><span aria-hidden>{item.emoji}</span> {item.label}</span>
+                  <span className='points-recap-amount'>+{formatStars(item.amount)} ⭐</span>
+                </li>
+              ))}
+            </ul>
+            <button type='button' className='next-button' onClick={close}>Tubli, {childName}!</button>
+          </>
+        ) : (
+          <>
+            <span className='points-recap-emoji' aria-hidden>😔</span>
+            <h2 id='points-recap-title'>Eile tähti ei tulnud</h2>
+            <p className='points-recap-empty'>Eile sa tähti ei teeninud. Täna on uus võimalus — alustame!</p>
+            <button type='button' className='next-button' onClick={close}>Lähme harjutama</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
