@@ -12,6 +12,7 @@ export type YesterdayPointsSummary = {
   date: string; // yesterday's local (Europe/Kiev) date, 'YYYY-MM-DD'
   total: number;
   hasEarnings: boolean;
+  practicedYesterday: boolean; // did at least one exercise, even if it earned 0 stars
   breakdown: PointsBreakdownItem[];
 };
 
@@ -92,5 +93,12 @@ export function getYesterdayPointsSummary(learner: Learner, today = todayDateStr
 
   const total = roundTenths(breakdown.reduce((sum, item) => sum + item.amount, 0));
 
-  return { date: yesterday, total, hasEarnings: breakdown.length > 0 && total > 0, breakdown };
+  // Did the child do any exercise yesterday (regardless of stars earned)? Lets the
+  // UI show a neutral face after a low-scoring/capped day instead of a sad one.
+  const attemptRows = db
+    .prepare("SELECT createdAt FROM attempts WHERE learner = ? AND createdAt >= ?")
+    .all(learner, windowStart.toISOString()) as Array<{ createdAt: string }>;
+  const practicedYesterday = attemptRows.some((row) => kievDate(row.createdAt) === yesterday);
+
+  return { date: yesterday, total, hasEarnings: breakdown.length > 0 && total > 0, practicedYesterday, breakdown };
 }
