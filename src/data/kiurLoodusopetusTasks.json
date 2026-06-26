@@ -1,0 +1,5780 @@
+{
+  "metadata": {
+    "title": "Kiur 4. klassi alguse loodusõpetuse segaharjutused",
+    "language": "et",
+    "fileKind": "txt containing JSON",
+    "createdDate": "2026-06-25",
+    "subject": {
+      "id": "loodusopetus",
+      "name": "Loodusõpetus",
+      "emoji": "🔬"
+    },
+    "targetLearner": "kiur",
+    "gradeBand": "3_to_4",
+    "exerciseCount": 140,
+    "exerciseMix": {
+      "visual_choice": 40,
+      "reading_choice": 30,
+      "sort": 25,
+      "match": 25,
+      "data_evidence": 20
+    },
+    "recommendedSessionSizes": [
+      10,
+      25
+    ],
+    "designNotes": [
+      "Kasuta suuri valikuid ja kaarte; ülesanded on mõeldud rahulikule lapsevaatele.",
+      "Diagrammid on emoji/ASCII/CSS-sketši kavandid, mitte lõplik pildigraafika.",
+      "Kõigil diagrammülesannetel on diagramExplanation väli, mida saab kasutada õpetaja/vanema või tagasiside tekstina.",
+      "interactiveIdea on arendusvihje: drag/drop, hotspot, järjestamine, sobitamine või tabeli lugemine.",
+      "Valikvastuste correctAnswer on tähe ID; correctAnswerText on kontrolliks ja valikute segamiseks turvalisem."
+    ],
+    "scienceScope": [
+      "maailmaruum",
+      "planeet Maa, kaart ja loodusnähtused",
+      "veeringe ja ilm",
+      "elusloodus, organismid, elupaigad ja toiduahelad",
+      "inimene ja tervis",
+      "vaatlus, mõõtmine, andmed ja järeldus"
+    ],
+    "researchBasis": [
+      {
+        "source": "Opiq 4. klassi loodusõpetuse teemad",
+        "url": "https://www.opiq.ee/Kit/Details/492"
+      },
+      {
+        "source": "TaskuTark 4. klassi loodusõpetuse tööraamat",
+        "url": "https://www.taskutark.ee/study/loodusopetuse-tooraamat-4-klassile/"
+      },
+      {
+        "source": "NASA Solar System",
+        "url": "https://science.nasa.gov/solar-system/"
+      },
+      {
+        "source": "NASA Moonlight",
+        "url": "https://science.nasa.gov/moon/moonlight/"
+      },
+      {
+        "source": "NASA seasons / Earth tilt",
+        "url": "https://science.nasa.gov/kids/earth/eo-kids/all-about-that-tilt-sun-and-seasons/"
+      },
+      {
+        "source": "USGS volcanoes",
+        "url": "https://www.usgs.gov/programs/VHP/about-volcanoes"
+      },
+      {
+        "source": "USGS earthquakes",
+        "url": "https://www.usgs.gov/programs/earthquake-hazards/science-earthquakes"
+      },
+      {
+        "source": "NOAA water cycle",
+        "url": "https://www.noaa.gov/education/resource-collections/freshwater/water-cycle"
+      },
+      {
+        "source": "KidsHealth body systems for kids",
+        "url": "https://kidshealth.org/en/kids/center/htbw-main-page.html"
+      },
+      {
+        "source": "NIAMS bones, joints, muscles, skin classroom resources",
+        "url": "https://www.niams.nih.gov/health-topics/educational-resources"
+      }
+    ],
+    "validation": {
+      "status": "passed",
+      "checks": [
+        "unique task IDs",
+        "correctAnswer exists in choices",
+        "correctAnswerText matches selected choice",
+        "sort assignments cover exactly all items",
+        "match definitions preserve all correct pairs",
+        "visual tasks include diagram and diagramExplanation",
+        "count by task type matches target mix"
+      ],
+      "errors": []
+    }
+  },
+  "tasks": [
+    {
+      "id": "SCI-VIS-001",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Päike, Maa ja Kuu",
+      "prompt": "Mida näitab skeem?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kuu tiirleb ümber Maa."
+        },
+        {
+          "id": "B",
+          "text": "Päike tiirleb ümber Kuu."
+        },
+        {
+          "id": "C",
+          "text": "Maa tiirleb ümber Kuu."
+        },
+        {
+          "id": "D",
+          "text": "Kuu on täht."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Kuu tiirleb ümber Maa.",
+      "explanation": "Kuu on Maa kaaslane ja liigub ümber Maa. Maa liigub samal ajal ümber Päikese.",
+      "interactiveIdea": "Tee Maa ja Kuu lohistatavaks: laps saab Kuu Maa ümber liikuvale rajale asetada.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "☀️  --------  🌍  ----  🌙",
+      "diagramExplanation": "Skeemil on Päike vasakul, Maa keskel ja Kuu Maa juures. Lühike joon Maa ja Kuu vahel näitab nende lähemat seost."
+    },
+    {
+      "id": "SCI-VIS-002",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Päev ja öö",
+      "prompt": "Mis põhjustab Maal päeva ja öö vaheldumise?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kuu varjab iga päev Päikese ära."
+        },
+        {
+          "id": "B",
+          "text": "Pilved liiguvad Päikese ette."
+        },
+        {
+          "id": "C",
+          "text": "Päike kustub ööseks."
+        },
+        {
+          "id": "D",
+          "text": "Maa pöörleb ümber oma telje."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Maa pöörleb ümber oma telje.",
+      "explanation": "Päev ja öö tekivad seepärast, et Maa pöörleb ümber oma telje. Päikese poole pööratud küljel on päev, teisel küljel öö.",
+      "interactiveIdea": "Lisa pööratav Maa: laps vajutab nuppu ja näeb, kuidas sama koht liigub päeva poolelt öö poolele.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "        ☀️ valgus →  🌍↻\n                   päev | öö",
+      "diagramExplanation": "Nooled näitavad Päikese valgust. Pöörlev Maa tähendab, et erinevad kohad jõuavad kord valguse poole, kord eemale."
+    },
+    {
+      "id": "SCI-VIS-003",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Aasta",
+      "prompt": "Mida näitab Maa liikumine ümber Päikese?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Aasta möödumist."
+        },
+        {
+          "id": "B",
+          "text": "Ühe tunni möödumist."
+        },
+        {
+          "id": "C",
+          "text": "Kuu muutumist täheks."
+        },
+        {
+          "id": "D",
+          "text": "Ühe minuti möödumist."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Aasta möödumist.",
+      "explanation": "Üks aasta on aeg, mille jooksul Maa teeb ühe tiiru ümber Päikese.",
+      "interactiveIdea": "Lohista Maa orbiidil ühe täistiiru võrra edasi ja näita loendurit: 1 tiir = 1 aasta.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "        🌍\n      /     \\\n   🌍   ☀️   🌍\n      \\     /\n        🌍",
+      "diagramExplanation": "Ringikujuline rada näitab Maa tiirlemist ümber Päikese. Päris orbiit ei ole täiuslik ring, aga selline mudel sobib põhimõtte õppimiseks."
+    },
+    {
+      "id": "SCI-VIS-004",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Aastaajad",
+      "prompt": "Milline vastus sobib kõige paremini aastaaegade tekkimise kohta?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Tähed soojendavad suvel Maad rohkem."
+        },
+        {
+          "id": "B",
+          "text": "Päike liigub talvel Maast väga kaugele."
+        },
+        {
+          "id": "C",
+          "text": "Kuu teeb talvel Maale varju."
+        },
+        {
+          "id": "D",
+          "text": "Maa telg on kaldu ja Maa tiirleb ümber Päikese."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Maa telg on kaldu ja Maa tiirleb ümber Päikese.",
+      "explanation": "Aastaajad tekivad peamiselt Maa telje kalde ja Maa tiirlemise tõttu ümber Päikese. Suvel langeb päikesevalgus meie piirkonnale otsesemalt ja päevad on pikemad.",
+      "interactiveIdea": "Näita nelja asendit ümber Päikese ja lase lapsel valida, millises asendis on Eestis suvi.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "☀️ →   🌍\n       / telg kaldu",
+      "diagramExplanation": "Kaldus joon Maal näitab Maa telge. Telje kalle aitab selgitada, miks eri aastaaegadel jõuab samasse kohta erinevalt päikesevalgust."
+    },
+    {
+      "id": "SCI-VIS-005",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Kuu valgus",
+      "prompt": "Miks näeme Kuud taevas heledana?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kuu teeb ise valgust nagu täht."
+        },
+        {
+          "id": "B",
+          "text": "Maa saadab Kuule elektrit."
+        },
+        {
+          "id": "C",
+          "text": "Kuu peegeldab Päikese valgust."
+        },
+        {
+          "id": "D",
+          "text": "Kuu põleb nagu lamp."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Kuu peegeldab Päikese valgust.",
+      "explanation": "Kuu ei ole täht ega tee ise valgust. Me näeme Kuud, sest selle pind peegeldab Päikese valgust.",
+      "interactiveIdea": "Lisa valguskiire animatsioon: Päike → Kuu → vaatleja.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "☀️ valgus → 🌙 → 👀",
+      "diagramExplanation": "Nooled näitavad, et valgus tuleb Päikeselt, põrkub Kuu pinnalt ja jõuab meie silmani."
+    },
+    {
+      "id": "SCI-VIS-006",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Täiskuu",
+      "prompt": "Milline kujutis näitab täiskuud?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "🌓"
+        },
+        {
+          "id": "B",
+          "text": "🌘"
+        },
+        {
+          "id": "C",
+          "text": "🌕"
+        },
+        {
+          "id": "D",
+          "text": "🌑"
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "🌕",
+      "explanation": "Täiskuu ajal näeme Maalt Kuu valgustatud külge peaaegu tervikuna.",
+      "interactiveIdea": "Lase lapsel puudutada õiget Kuu kujutist; vale vastuse korral näita, milline osa on valgustatud.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "🌑   🌓   🌕   🌘",
+      "diagramExplanation": "Emojid näitavad eri Kuu faase. Täiskuu on üleni hele ketas."
+    },
+    {
+      "id": "SCI-VIS-007",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Noorkuu",
+      "prompt": "Milline kujutis näitab noorkuud?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "🌕"
+        },
+        {
+          "id": "B",
+          "text": "🌑"
+        },
+        {
+          "id": "C",
+          "text": "🌓"
+        },
+        {
+          "id": "D",
+          "text": "🌔"
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "🌑",
+      "explanation": "Noorkuu ajal on Maalt nähtav Kuu külg peaaegu tume. Kuu ise ei kao ära, aga valgustatud osa ei paista meile.",
+      "interactiveIdea": "Lase lapsel faasikaartidest valida kõige tumedam Kuu.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "🌑   🌒   🌓   🌕",
+      "diagramExplanation": "Noorkuu on tume ketas. See on lihtsustatud sümbol Kuu faasi õppimiseks."
+    },
+    {
+      "id": "SCI-VIS-008",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Lähim planeet Päikesele",
+      "prompt": "Milline planeet on Päikesele kõige lähemal?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Jupiter"
+        },
+        {
+          "id": "B",
+          "text": "Neptuun"
+        },
+        {
+          "id": "C",
+          "text": "Merkuur"
+        },
+        {
+          "id": "D",
+          "text": "Maa"
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Merkuur",
+      "explanation": "Merkuur on Päikesele lähim planeet. Maa on Päikesest kolmas planeet.",
+      "interactiveIdea": "Tee planeedikaardid lohistatavaks ja lase lapsel järjestada need Päikesest kaugemale.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "☀️ - Merkuur - Veenus - Maa - Marss - Jupiter - Saturn - Uraan - Neptuun",
+      "diagramExplanation": "Joon näitab planeete Päikesest väljapoole liikudes. Vahed ei ole mõõtkavas."
+    },
+    {
+      "id": "SCI-VIS-009",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Kolmas planeet",
+      "prompt": "Milline planeet tuleb jadas puuduva koha peale?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Maa"
+        },
+        {
+          "id": "B",
+          "text": "Marss"
+        },
+        {
+          "id": "C",
+          "text": "Neptuun"
+        },
+        {
+          "id": "D",
+          "text": "Saturn"
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Maa",
+      "explanation": "Planeetide algusjärjestus Päikesest on Merkuur, Veenus, Maa ja Marss.",
+      "interactiveIdea": "Lase lapsel lohistada õige planeedi kaart küsimärgi kohale.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "☀️ - Merkuur - Veenus - ? - Marss",
+      "diagramExplanation": "Küsimärk on kolmanda planeedi kohal. Kolmas planeet Päikesest on Maa."
+    },
+    {
+      "id": "SCI-VIS-010",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Saturni rõngad",
+      "prompt": "Milline planeet on tuntud suurte rõngaste poolest?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Marss"
+        },
+        {
+          "id": "B",
+          "text": "Maa"
+        },
+        {
+          "id": "C",
+          "text": "Saturn"
+        },
+        {
+          "id": "D",
+          "text": "Merkuur"
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Saturn",
+      "explanation": "Saturnil on väga silmatorkav rõngaste süsteem. Rõngad koosnevad peamiselt jää- ja kiviosakestest.",
+      "interactiveIdea": "Tee valik pildikaartidena: laps puudutab rõngastega planeeti.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "🪐",
+      "diagramExplanation": "Rõngastega planeedi emoji sobib lihtsaks Saturni märgiks, kuigi päris planeedi detailid on keerukamad."
+    },
+    {
+      "id": "SCI-VIS-011",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Täht ja planeet",
+      "prompt": "Mis vahe on tähel ja planeedil?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Planeet teeb ise valgust, täht mitte."
+        },
+        {
+          "id": "B",
+          "text": "Täht teeb ise valgust, planeet mitte."
+        },
+        {
+          "id": "C",
+          "text": "Kõik tähed on külmad kivid."
+        },
+        {
+          "id": "D",
+          "text": "Kõik planeedid on sama suured."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Täht teeb ise valgust, planeet mitte.",
+      "explanation": "Täht, näiteks Päike, kiirgab ise valgust. Planeedid paistavad, sest nad peegeldavad tähe valgust.",
+      "interactiveIdea": "Lisa kaks kaarti: 'teeb valgust' ja 'peegeldab valgust', mida saab tähe ja planeedi alla lohistada.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "⭐ teeb valgust     🌍 peegeldab valgust",
+      "diagramExplanation": "Vasakul on täht kui valgusallikas. Paremal on planeet, mis ei ole ise valgusallikas."
+    },
+    {
+      "id": "SCI-VIS-012",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Päike",
+      "prompt": "Mis on Päike?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Komeet."
+        },
+        {
+          "id": "B",
+          "text": "Planeet."
+        },
+        {
+          "id": "C",
+          "text": "Kuu."
+        },
+        {
+          "id": "D",
+          "text": "Täht."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Täht.",
+      "explanation": "Päike on täht. See on meie Päikesesüsteemi keskne valgus- ja soojusallikas.",
+      "interactiveIdea": "Lase lapsel valida, millise sildi ('täht', 'planeet', 'kuu') ta Päikesele paneb.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "          ☀️\nMerkuur  Veenus  Maa  Marss ...",
+      "diagramExplanation": "Päike on skeemi keskel, planeedid liiguvad selle ümber."
+    },
+    {
+      "id": "SCI-VIS-013",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Tähtkuju",
+      "prompt": "Mida nimetatakse tähtkujuks?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Pilvede kuju päeval."
+        },
+        {
+          "id": "B",
+          "text": "Ühte suurt planeeti."
+        },
+        {
+          "id": "C",
+          "text": "Maa varju Kuul."
+        },
+        {
+          "id": "D",
+          "text": "Taevas nähtavat tähtede mustrit."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Taevas nähtavat tähtede mustrit.",
+      "explanation": "Tähtkuju on taevas nähtav tähtede muster, millele inimesed on nime andnud.",
+      "interactiveIdea": "Lase lapsel tähtede vahele jooni tõmmata ja moodustada lihtne muster.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "⭐      ⭐\n   ⭐\n⭐      ⭐",
+      "diagramExplanation": "Tähed on ühendatud mõtteliste joontega mustriks. Tegelikult võivad need tähed olla üksteisest väga eri kaugustel."
+    },
+    {
+      "id": "SCI-VIS-014",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Orbiit",
+      "prompt": "Mida tähendab orbiit?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Pilvest langevat vihma."
+        },
+        {
+          "id": "B",
+          "text": "Taevakeha liikumisteed teise keha ümber."
+        },
+        {
+          "id": "C",
+          "text": "Taime juurt."
+        },
+        {
+          "id": "D",
+          "text": "Vulkaanist väljuvat laavat."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Taevakeha liikumisteed teise keha ümber.",
+      "explanation": "Orbiit on rada, mida mööda keha liigub ümber teise keha, näiteks Maa liigub orbiidil ümber Päikese.",
+      "interactiveIdea": "Lase lapsel joonistada sõrmega Maa rada ümber Päikese.",
+      "tags": [
+        "maailmaruum",
+        "diagramm"
+      ],
+      "diagram": "      🌍\n   (   ☀️   )",
+      "diagramExplanation": "Kaarekujuline joon ümber Päikese näitab lihtsustatud orbiiti."
+    },
+    {
+      "id": "SCI-VIS-015",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Gloobus",
+      "prompt": "Mille mudel on gloobus?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kuu sisemuse mudel."
+        },
+        {
+          "id": "B",
+          "text": "Maa mudel."
+        },
+        {
+          "id": "C",
+          "text": "Ühe linna mudel."
+        },
+        {
+          "id": "D",
+          "text": "Päikese mudel."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Maa mudel.",
+      "explanation": "Gloobus on vähendatud ümar mudel Maast. Selle abil saab näidata mandreid, ookeane ja suundi.",
+      "interactiveIdea": "Lase lapsel keerata gloobust ja puudutada, kus võiks olla Euroopa.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "      🌐",
+      "diagramExplanation": "Gloobus näitab Maa kuju lihtsustatud mudelina."
+    },
+    {
+      "id": "SCI-VIS-016",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Ekvaator",
+      "prompt": "Mis on ekvaator?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Üks ookean."
+        },
+        {
+          "id": "B",
+          "text": "Üks mandri nimi."
+        },
+        {
+          "id": "C",
+          "text": "Mõtteline joon ümber Maa keskkoha."
+        },
+        {
+          "id": "D",
+          "text": "Maa kõige külmem koht."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Mõtteline joon ümber Maa keskkoha.",
+      "explanation": "Ekvaator on mõtteline joon, mis jagab Maa põhja- ja lõunapoolkeraks.",
+      "interactiveIdea": "Lase lapsel lohistada ekvaatori joon gloobuse keskele.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "      🌍\n   ─────────  ekvaator",
+      "diagramExplanation": "Horisontaalne joon üle Maa keskosa tähistab ekvaatorit."
+    },
+    {
+      "id": "SCI-VIS-017",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Ilmakaared",
+      "prompt": "Kui liigud kaardil põhjast paremale, mis ilmakaare suunas liigud?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Lõunasse."
+        },
+        {
+          "id": "B",
+          "text": "Üles kosmosesse."
+        },
+        {
+          "id": "C",
+          "text": "Itta."
+        },
+        {
+          "id": "D",
+          "text": "Läände."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Itta.",
+      "explanation": "Tavalises kaardisuunas on põhi üleval, ida paremal, lõuna all ja lääs vasakul.",
+      "interactiveIdea": "Tee kompassi nooled puudutatavaks: laps valib õige noole.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "      N\n      ↑\nW  ←  +  →  E\n      ↓\n      S",
+      "diagramExplanation": "Kompassiroos näitab nelja peamist ilmakaart. Paremal on ida."
+    },
+    {
+      "id": "SCI-VIS-018",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Eesti asukoht",
+      "prompt": "Millises maailmajaos asub Eesti?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Aafrikas."
+        },
+        {
+          "id": "B",
+          "text": "Antarktikas."
+        },
+        {
+          "id": "C",
+          "text": "Austraalias."
+        },
+        {
+          "id": "D",
+          "text": "Euroopas."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Euroopas.",
+      "explanation": "Eesti asub Euroopas, Läänemere ääres.",
+      "interactiveIdea": "Lisa Euroopa lihtkaart ja lase lapsel puudutada Eesti asukohta.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "Euroopa kaart:  [Läänemeri]  🇪🇪 Eesti",
+      "diagramExplanation": "Lihtne kaart võiks näidata Euroopat ja Eesti kohta Läänemere lähedal."
+    },
+    {
+      "id": "SCI-VIS-019",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Manner ja ookean",
+      "prompt": "Milline neist on ookean?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Eesti"
+        },
+        {
+          "id": "B",
+          "text": "Saaremaa"
+        },
+        {
+          "id": "C",
+          "text": "Euroopa"
+        },
+        {
+          "id": "D",
+          "text": "Atlandi ookean"
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Atlandi ookean",
+      "explanation": "Atlandi ookean on ookean. Euroopa on maailmajagu, Eesti on riik ja Saaremaa on saar.",
+      "interactiveIdea": "Lase lapsel sortida nimetused nelja rühma: ookean, maailmajagu, riik, saar.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "🌍  sinine ala = ookean, roheline/pruun ala = maismaa",
+      "diagramExplanation": "Kaardil kujutatakse vett tavaliselt sinisena ja maismaad rohelise või pruuni alana."
+    },
+    {
+      "id": "SCI-VIS-020",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Maa kihid",
+      "prompt": "Milline Maa kiht on kõige välimine?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Pilvekiht"
+        },
+        {
+          "id": "B",
+          "text": "Tuum"
+        },
+        {
+          "id": "C",
+          "text": "Maakoor"
+        },
+        {
+          "id": "D",
+          "text": "Sisemine tuum"
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Maakoor",
+      "explanation": "Maa kõige välimine tahke kiht on maakoor. Selle all on vahevöö ja sügavamal tuum.",
+      "interactiveIdea": "Tee kihid puudutatavaks ja küsi, milline on kõige välimine.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "   [maakoor]\n  [vahevöö]\n [tuum]",
+      "diagramExplanation": "Kihiline skeem on lihtsustus. See aitab näha, et maakoor on õhuke välimine osa."
+    },
+    {
+      "id": "SCI-VIS-021",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Vulkaan",
+      "prompt": "Kuidas nimetatakse mäe ülaosas olevat ava, kust võib purske ajal materjali välja tulla?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Orbiit"
+        },
+        {
+          "id": "B",
+          "text": "Kraater"
+        },
+        {
+          "id": "C",
+          "text": "Juur"
+        },
+        {
+          "id": "D",
+          "text": "Ekvaator"
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Kraater",
+      "explanation": "Vulkaani ülaosas olevat ava nimetatakse kraatriks. Sealt võivad purske ajal väljuda gaasid, tuhk ja laava.",
+      "interactiveIdea": "Tee vulkaaniskeem hotspotiks: laps puudutab kraatri kohta.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "       kraater\n         ↓\n       /\\\n      /  \\\n     /____\\",
+      "diagramExplanation": "Nool näitab ava vulkaani tipus. Kolmnurk on lihtsustatud vulkaanikoonus."
+    },
+    {
+      "id": "SCI-VIS-022",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Magma ja laava",
+      "prompt": "Millal nimetatakse sulanud kivimit laavaks?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kui see on veel sügaval Maa sees."
+        },
+        {
+          "id": "B",
+          "text": "Kui see jõuab Maa pinnale."
+        },
+        {
+          "id": "C",
+          "text": "Kui see külmub jääks."
+        },
+        {
+          "id": "D",
+          "text": "Kui see muutub pilveks."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Kui see jõuab Maa pinnale.",
+      "explanation": "Magma on sulanud kivim Maa sees. Kui magma jõuab vulkaanist Maa pinnale, nimetatakse seda laavaks.",
+      "interactiveIdea": "Lase lapsel lohistada sildid 'magma' ja 'laava' skeemi õigesse kohta.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "Maa sees: magma ↑   pinnal: laava",
+      "diagramExplanation": "Noole alumine osa on Maa sees ja ülemine osa pinnal. Nimetus muutub siis, kui materjal jõuab pinnale."
+    },
+    {
+      "id": "SCI-VIS-023",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Maavärin",
+      "prompt": "Mis on maavärin?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Pilve aeglane liikumine."
+        },
+        {
+          "id": "B",
+          "text": "Päikese kuumenemine."
+        },
+        {
+          "id": "C",
+          "text": "Maa pinna äkiline värisemine."
+        },
+        {
+          "id": "D",
+          "text": "Kuu muutumine uduks."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Maa pinna äkiline värisemine.",
+      "explanation": "Maavärin on Maa pinna värisemine, mis tekib siis, kui maakoores vabaneb järsku energia.",
+      "interactiveIdea": "Näita lühike raputuse animatsioon ja lase lapsel valida nähtuse nimi.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "maapind:  ______/\\/\\______",
+      "diagramExplanation": "Sakiline joon näitab värisemist või murdekohta maapinnas lihtsustatud kujul."
+    },
+    {
+      "id": "SCI-VIS-024",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Veeringe: aurumine",
+      "prompt": "Milline veeringe osa toimub siis, kui päike soojendab vett ja vesi muutub veeauruks?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Settimine"
+        },
+        {
+          "id": "B",
+          "text": "Külmumine"
+        },
+        {
+          "id": "C",
+          "text": "Aurumine"
+        },
+        {
+          "id": "D",
+          "text": "Kondenseerumine"
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Aurumine",
+      "explanation": "Aurumisel muutub vedel vesi gaasiliseks veeauruks ja liigub õhku.",
+      "interactiveIdea": "Pane ülespoole liikuvate piiskade animatsioon: vesi → veeaur.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "☀️\n  ↓ soojus\n🌊  ↑ veeaur",
+      "diagramExplanation": "Päike soojendab veepinda ja ülespoole suunduv nool näitab veeauru liikumist õhku."
+    },
+    {
+      "id": "SCI-VIS-025",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Veeringe: kondenseerumine",
+      "prompt": "Mis tekib siis, kui veeaur õhus jahtub ja muutub väikesteks veepiiskadeks?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Liiv"
+        },
+        {
+          "id": "B",
+          "text": "Pilv"
+        },
+        {
+          "id": "C",
+          "text": "Täht"
+        },
+        {
+          "id": "D",
+          "text": "Kivi"
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Pilv",
+      "explanation": "Kui veeaur jahtub, võib see muutuda väikesteks veepiiskadeks või jääkristallideks. Nii tekivad pilved.",
+      "interactiveIdea": "Lase lapsel tõsta veeauru kaart külma õhu alasse ja näita pilve tekkimist.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "veeaur ↑  →  ☁️",
+      "diagramExplanation": "Nooled näitavad veeauru tõusmist ja pilve moodustumist."
+    },
+    {
+      "id": "SCI-VIS-026",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Veeringe: sademed",
+      "prompt": "Mida nimetatakse sademeteks?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Päikese valguskiired."
+        },
+        {
+          "id": "B",
+          "text": "Maa ümber tiirlevad planeedid."
+        },
+        {
+          "id": "C",
+          "text": "Kivid Maa sisemuses."
+        },
+        {
+          "id": "D",
+          "text": "Vesi, mis langeb pilvedest alla, näiteks vihm või lumi."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Vesi, mis langeb pilvedest alla, näiteks vihm või lumi.",
+      "explanation": "Sademed on pilvedest maapinnale langev vesi, näiteks vihm, lumi, lörts või rahe.",
+      "interactiveIdea": "Lase lapsel valida sademete liigid pildikaartidelt: vihm, lumi, rahe.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "☁️\n💧💧💧\n🌱🌱🌱",
+      "diagramExplanation": "Pilvest langevad piisad näitavad vihma kui üht sademete vormi."
+    },
+    {
+      "id": "SCI-VIS-027",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Veeringe tervikuna",
+      "prompt": "Milline järjekord kirjeldab lihtsat veeringet kõige paremini?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Sademed → Päike kustub → planeedid tekivad."
+        },
+        {
+          "id": "B",
+          "text": "Aurumine → pilvede teke → sademed → vesi koguneb."
+        },
+        {
+          "id": "C",
+          "text": "Pilved muutuvad tähtedeks → tähed sajavad alla."
+        },
+        {
+          "id": "D",
+          "text": "Vesi muutub kiviks → kivi muutub Kuuks."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Aurumine → pilvede teke → sademed → vesi koguneb.",
+      "explanation": "Lihtsas veeringes vesi aurub, veeaurust tekivad pilved, pilvedest langevad sademed ja vesi koguneb taas veekogudesse või maasse.",
+      "interactiveIdea": "Tee neljaosaline lohistamisring: laps paneb sammud õigesse kohta.",
+      "tags": [
+        "planeet_maa",
+        "diagramm"
+      ],
+      "diagram": "🌊 ↑  ☁️  ↓  🌧️  →  🌊",
+      "diagramExplanation": "Skeem näitab veeringet ringina: üles aurumine, pilv, alla sademed ja vesi tagasi veekogusse."
+    },
+    {
+      "id": "SCI-VIS-028",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Taime osad",
+      "prompt": "Milline taime osa võtab mullast vett?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Vili"
+        },
+        {
+          "id": "B",
+          "text": "Õis"
+        },
+        {
+          "id": "C",
+          "text": "Juur"
+        },
+        {
+          "id": "D",
+          "text": "Leht ainult öösel"
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Juur",
+      "explanation": "Juured kinnitavad taime mulda ja võtavad mullast vett ning mineraalaineid.",
+      "interactiveIdea": "Tee taimeosad hotspotiks: laps puudutab juuri.",
+      "tags": [
+        "elusloodus",
+        "diagramm"
+      ],
+      "diagram": "      🌸\n      │ vars\n    🍃│🍃 lehed\n      │\n     / \\ juured",
+      "diagramExplanation": "Skeemil on juured all mullas, vars keskel, lehed ja õis üleval."
+    },
+    {
+      "id": "SCI-VIS-029",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Lehed",
+      "prompt": "Milleks on taimel lehti eriti vaja?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Vee muutmiseks metalliks."
+        },
+        {
+          "id": "B",
+          "text": "Valguse abil toidu valmistamiseks."
+        },
+        {
+          "id": "C",
+          "text": "Kivide kasvatamiseks."
+        },
+        {
+          "id": "D",
+          "text": "Planeetide liigutamiseks."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Valguse abil toidu valmistamiseks.",
+      "explanation": "Rohelised lehed aitavad taimel valguse abil toitu valmistada. Selleks vajab taim ka vett ja süsihappegaasi.",
+      "interactiveIdea": "Lohista taime juurde kolm vajalikku kaarti: valgus, vesi, õhk.",
+      "tags": [
+        "elusloodus",
+        "diagramm"
+      ],
+      "diagram": "☀️ → 🍃\nvesi ↑     õhk",
+      "diagramExplanation": "Päike näitab valgusenergiat, leht on koht, kus taim valmistab endale toitu."
+    },
+    {
+      "id": "SCI-VIS-030",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Toiduahel",
+      "prompt": "Milline noolte suund sobib toiduahelasse?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "jänes → Päike → rebane"
+        },
+        {
+          "id": "B",
+          "text": "kivi → rebane → pilv"
+        },
+        {
+          "id": "C",
+          "text": "rohi → jänes → rebane"
+        },
+        {
+          "id": "D",
+          "text": "rebane → jänes → rohi"
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "rohi → jänes → rebane",
+      "explanation": "Toiduahel näitab, kes keda sööb. Rohi on toit jänesele ja jänes võib olla toit rebasele.",
+      "interactiveIdea": "Lase lapsel lohistada kolm kaarti õigesse toiduahela järjekorda.",
+      "tags": [
+        "elusloodus",
+        "diagramm"
+      ],
+      "diagram": "🌱 → 🐇 → 🦊",
+      "diagramExplanation": "Nool liigub toidult sööjani: rohi annab energiat jänesele, jänes rebasele."
+    },
+    {
+      "id": "SCI-VIS-031",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Tootja",
+      "prompt": "Kes on selles toiduahelas tootja?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Jänes"
+        },
+        {
+          "id": "B",
+          "text": "Rohi"
+        },
+        {
+          "id": "C",
+          "text": "Kõik kolm on tootjad"
+        },
+        {
+          "id": "D",
+          "text": "Rebane"
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Rohi",
+      "explanation": "Tootja on tavaliselt taim, sest taim suudab valguse abil ise toitu valmistada.",
+      "interactiveIdea": "Lase lapsel puudutada toiduahela alguses olevat tootjat.",
+      "tags": [
+        "elusloodus",
+        "diagramm"
+      ],
+      "diagram": "🌱 → 🐇 → 🦊",
+      "diagramExplanation": "Sama toiduahelas on alguses taim. See alustab energia liikumist ahelas."
+    },
+    {
+      "id": "SCI-VIS-032",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Lagundajad",
+      "prompt": "Milline rühm lagundab surnud organismide jäänuseid?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Seened ja paljud bakterid."
+        },
+        {
+          "id": "B",
+          "text": "Ainult planeedid."
+        },
+        {
+          "id": "C",
+          "text": "Ainult kivid."
+        },
+        {
+          "id": "D",
+          "text": "Ainult tähed."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Seened ja paljud bakterid.",
+      "explanation": "Lagundajad, näiteks paljud seened ja bakterid, lagundavad surnud organismide jäänuseid ja aitavad ainetel looduses ringelda.",
+      "interactiveIdea": "Lase lapsel lohistada surnud leht lagundajate juurde ja näita noolt mulda.",
+      "tags": [
+        "elusloodus",
+        "diagramm"
+      ],
+      "diagram": "surnud leht 🍂 → seened 🍄 / bakterid → muld",
+      "diagramExplanation": "Skeem näitab, et lagundajad muudavad surnud taimejäänuseid lihtsamateks aineteks mullas."
+    },
+    {
+      "id": "SCI-VIS-033",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Elupaik",
+      "prompt": "Milline loom sobib kõige paremini polaarala elupaika?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kõrbelõoke"
+        },
+        {
+          "id": "B",
+          "text": "Jääkaru"
+        },
+        {
+          "id": "C",
+          "text": "Ahv troopilises metsas"
+        },
+        {
+          "id": "D",
+          "text": "Kaamel"
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Jääkaru",
+      "explanation": "Jääkaru elab arktilistel aladel ja on kohastunud külma keskkonnaga. Kaamel sobib paremini kõrbe näitega.",
+      "interactiveIdea": "Lase lapsel lohistada loomad elupaigakaartidele: polaarala, kõrb, mets.",
+      "tags": [
+        "elusloodus",
+        "diagramm"
+      ],
+      "diagram": "❄️ jää ja lumi  →  🐻‍❄️",
+      "diagramExplanation": "Lumi ja jää viitavad polaarsele elupaigale."
+    },
+    {
+      "id": "SCI-VIS-034",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Kõrbe kohastumus",
+      "prompt": "Milline omadus aitab kaktusel kuivas elupaigas hakkama saada?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Suured õhukesed lehed, mis kaotavad palju vett."
+        },
+        {
+          "id": "B",
+          "text": "Paks vars, mis aitab vett säilitada."
+        },
+        {
+          "id": "C",
+          "text": "Tiivad lendamiseks."
+        },
+        {
+          "id": "D",
+          "text": "Uimed kiireks ujumiseks."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Paks vars, mis aitab vett säilitada.",
+      "explanation": "Paljudel kaktustel on paks veerikas vars ja okkad, mis aitavad veekadu vähendada.",
+      "interactiveIdea": "Lase lapsel valida, milline taimeosa võiks kuivas kohas vett hoida.",
+      "tags": [
+        "elusloodus",
+        "diagramm"
+      ],
+      "diagram": "☀️🏜️  🌵",
+      "diagramExplanation": "Kõrbe sümbolid näitavad kuiva ja päikeselist elupaika. Kaktus on sellesse keskkonda kohastunud."
+    },
+    {
+      "id": "SCI-VIS-035",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Putukas",
+      "prompt": "Mitu jalga on putukal?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "6"
+        },
+        {
+          "id": "B",
+          "text": "4"
+        },
+        {
+          "id": "C",
+          "text": "8"
+        },
+        {
+          "id": "D",
+          "text": "10"
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "6",
+      "explanation": "Putukatel on kuus jalga. Ämblikel on kaheksa jalga, seega ämblik ei ole putukas.",
+      "interactiveIdea": "Lase lapsel puudutada ja kokku lugeda putuka jalad.",
+      "tags": [
+        "elusloodus",
+        "diagramm"
+      ],
+      "diagram": "putukas:  3 jalga vasakul + 3 jalga paremal = 6",
+      "diagramExplanation": "Skeem peaks näitama putuka keha ja kuut jalga. Oluline on jalgade arv."
+    },
+    {
+      "id": "SCI-VIS-036",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Linnu nokk",
+      "prompt": "Mida võib linnu noka kuju kohta järeldada?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kõik nokad töötavad täpselt samamoodi."
+        },
+        {
+          "id": "B",
+          "text": "Noka kuju ei ole kunagi seotud toiduga."
+        },
+        {
+          "id": "C",
+          "text": "Nokk näitab, mitu planeeti taevas on."
+        },
+        {
+          "id": "D",
+          "text": "Nokk võib olla kohastunud erineva toidu söömiseks."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Nokk võib olla kohastunud erineva toidu söömiseks.",
+      "explanation": "Linnu noka kuju võib aidata tal süüa kindlat toitu, näiteks seemneid, putukaid või kala.",
+      "interactiveIdea": "Lase lapsel sobitada nokakuju toidukaardiga.",
+      "tags": [
+        "elusloodus",
+        "diagramm"
+      ],
+      "diagram": "lühike tugev nokk = seemned\npikk peenike nokk = putukad või nektar",
+      "diagramExplanation": "Kaks lihtsat nokakuju näitavad, et kehaehitus võib olla seotud elupaiga ja toiduga."
+    },
+    {
+      "id": "SCI-VIS-037",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Kopsud",
+      "prompt": "Milline elund aitab kehal õhust hapnikku saada?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Põlv"
+        },
+        {
+          "id": "B",
+          "text": "Magu"
+        },
+        {
+          "id": "C",
+          "text": "Kopsud"
+        },
+        {
+          "id": "D",
+          "text": "Juuksed"
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Kopsud",
+      "explanation": "Kopsudes liigub hapnik sissehingatud õhust verre. Keha vajab hapnikku energia saamiseks.",
+      "interactiveIdea": "Lisa hingamise animatsioon: kopsud suurenevad sissehingamisel ja vähenevad väljahingamisel.",
+      "tags": [
+        "inimene",
+        "diagramm"
+      ],
+      "diagram": "      nina/suu\n         ↓\n       🫁 kopsud",
+      "diagramExplanation": "Nool näitab õhu liikumist hingamisel kopsudesse."
+    },
+    {
+      "id": "SCI-VIS-038",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Süda",
+      "prompt": "Mida teeb süda?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Muudab õhu kiviks."
+        },
+        {
+          "id": "B",
+          "text": "Seedib kogu toidu üksi."
+        },
+        {
+          "id": "C",
+          "text": "Pumpab verd kehas ringi."
+        },
+        {
+          "id": "D",
+          "text": "Teeb luud pehmeks."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Pumpab verd kehas ringi.",
+      "explanation": "Süda pumpab verd. Veri kannab kehas hapnikku ja toitaineid.",
+      "interactiveIdea": "Näita pulseerivat südant ja vere liikumist nooltena.",
+      "tags": [
+        "inimene",
+        "diagramm"
+      ],
+      "diagram": "❤️ → veri liigub kehas",
+      "diagramExplanation": "Süda on kujutatud pumbana, mis saadab verd vereringesse."
+    },
+    {
+      "id": "SCI-VIS-039",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Luustik",
+      "prompt": "Milline luustiku osa kaitseb aju?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kolju"
+        },
+        {
+          "id": "B",
+          "text": "Kannaluu"
+        },
+        {
+          "id": "C",
+          "text": "Sõrmeluu"
+        },
+        {
+          "id": "D",
+          "text": "Küünarnukk"
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Kolju",
+      "explanation": "Kolju ümbritseb ja kaitseb aju.",
+      "interactiveIdea": "Lase lapsel sobitada elund ja seda kaitsev luu: aju → kolju.",
+      "tags": [
+        "inimene",
+        "diagramm"
+      ],
+      "diagram": "🧠 aju sees\n💀 kolju ümber",
+      "diagramExplanation": "Skeem näitab aju ja seda ümbritsevat koljut kaitsekihina."
+    },
+    {
+      "id": "SCI-VIS-040",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "visual_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Lihased ja meeled",
+      "prompt": "Mille abil liiguvad luud liigestes?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Ainult juuste abil."
+        },
+        {
+          "id": "B",
+          "text": "Lihaste abil."
+        },
+        {
+          "id": "C",
+          "text": "Pilvede abil."
+        },
+        {
+          "id": "D",
+          "text": "Planeetide abil."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Lihaste abil.",
+      "explanation": "Lihased tõmbuvad kokku ja aitavad luid liigutada. Nii saame näiteks kätt painutada.",
+      "interactiveIdea": "Lisa lihtne käe painutamise animatsioon: sirge käsi → kõverdatud käsi.",
+      "tags": [
+        "inimene",
+        "diagramm"
+      ],
+      "diagram": "õlavars — küünarliiges — käsivars\n💪 lihas tõmbub kokku",
+      "diagramExplanation": "Skeem peaks näitama lihast luu küljes. Lihase kokkutõmme aitab liigest liigutada."
+    },
+    {
+      "id": "SCI-READ-001",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Päikese roll",
+      "prompt": "Miks on Päike Maale tähtis?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "See teeb kõik planeedid nähtamatuks."
+        },
+        {
+          "id": "B",
+          "text": "See annab valgust ja soojust."
+        },
+        {
+          "id": "C",
+          "text": "See on külm kivipall."
+        },
+        {
+          "id": "D",
+          "text": "See on Maa kaaslane."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "See annab valgust ja soojust.",
+      "explanation": "Tekst ütleb, et Päike annab Maale valgust ja soojust.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "maailmaruum",
+        "lugemine"
+      ],
+      "text": "Päike on täht. See annab Maale valgust ja soojust. Ilma Päikese energiata oleks Maal väga külm ja taimed ei saaks tavaliselt kasvada."
+    },
+    {
+      "id": "SCI-READ-002",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Kuu ei tee ise valgust",
+      "prompt": "Miks Kuu paistab?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "See peegeldab Päikese valgust."
+        },
+        {
+          "id": "B",
+          "text": "See saab valgust Maa lampidelt."
+        },
+        {
+          "id": "C",
+          "text": "See on väike Päike."
+        },
+        {
+          "id": "D",
+          "text": "See põleb nagu küünal."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "See peegeldab Päikese valgust.",
+      "explanation": "Kuu paistab, sest peegeldab Päikese valgust.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "maailmaruum",
+        "lugemine"
+      ],
+      "text": "Kuu paistab öötaevas heledana. Tegelikult ei tee Kuu ise valgust. Kuu pind peegeldab Päikese valgust meie silmade poole."
+    },
+    {
+      "id": "SCI-READ-003",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Maa pöörlemine",
+      "prompt": "Mis põhjustab öö ja päeva vaheldumist?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Maa pöörlemine ümber oma telje."
+        },
+        {
+          "id": "B",
+          "text": "Päikese kustumine."
+        },
+        {
+          "id": "C",
+          "text": "Kuu värvuse muutumine."
+        },
+        {
+          "id": "D",
+          "text": "Pilvede kogunemine."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Maa pöörlemine ümber oma telje.",
+      "explanation": "Päev ja öö on seotud Maa pöörlemisega.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "maailmaruum",
+        "lugemine"
+      ],
+      "text": "Maa pöörleb ümber oma telje. Kui sinu kodukoht on Päikese poole pööratud, on päev. Kui kodukoht on Päikesest eemale pööratud, on öö."
+    },
+    {
+      "id": "SCI-READ-004",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Planeedid",
+      "prompt": "Mitmes planeet Päikesest on Maa?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kaheksas."
+        },
+        {
+          "id": "B",
+          "text": "Kolmas."
+        },
+        {
+          "id": "C",
+          "text": "Esimene."
+        },
+        {
+          "id": "D",
+          "text": "Viies."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Kolmas.",
+      "explanation": "Tekstis on kirjas, et Maa on Päikesest kolmas planeet.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "maailmaruum",
+        "lugemine"
+      ],
+      "text": "Planeedid liiguvad ümber Päikese. Päikesele lähim planeet on Merkuur. Maa on Päikesest kolmas planeet."
+    },
+    {
+      "id": "SCI-READ-005",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Orbiit",
+      "prompt": "Mis on orbiit?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Maa sees olev kuum kivim."
+        },
+        {
+          "id": "B",
+          "text": "Pilvest langev vihm."
+        },
+        {
+          "id": "C",
+          "text": "Taime juur."
+        },
+        {
+          "id": "D",
+          "text": "Keha liikumistee teise keha ümber."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Keha liikumistee teise keha ümber.",
+      "explanation": "Orbiit on liikumistee näiteks ümber Päikese.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "maailmaruum",
+        "lugemine"
+      ],
+      "text": "Planeedi tee ümber Päikese on orbiit. Maa orbiit ei ole joon, mida saaks kosmoses käega katsuda. See on kujuteldav rada, mille järgi Maa liigub."
+    },
+    {
+      "id": "SCI-READ-006",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Gloobus ja kaart",
+      "prompt": "Milleks kasutatakse gloobust ja kaarti?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kuu faaside muutmiseks."
+        },
+        {
+          "id": "B",
+          "text": "Söögi soojendamiseks."
+        },
+        {
+          "id": "C",
+          "text": "Südame töö kuulamiseks."
+        },
+        {
+          "id": "D",
+          "text": "Asukohtade ja pindade kujutamiseks."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Asukohtade ja pindade kujutamiseks.",
+      "explanation": "Gloobus ja kaart aitavad asukohti kujutada.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "planeet_maa",
+        "lugemine"
+      ],
+      "text": "Gloobus on Maa ümar mudel. Kaart on Maa või mingi piirkonna kujutis tasapinnal. Mõlemad aitavad näha, kus asuvad maad, mered ja ookeanid."
+    },
+    {
+      "id": "SCI-READ-007",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Eesti",
+      "prompt": "Milline väide on teksti põhjal õige?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Eesti asub Antarktikas."
+        },
+        {
+          "id": "B",
+          "text": "Eesti asub Euroopas."
+        },
+        {
+          "id": "C",
+          "text": "Eesti on Kuu kaaslane."
+        },
+        {
+          "id": "D",
+          "text": "Eesti on ookean."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Eesti asub Euroopas.",
+      "explanation": "Tekst ütleb, et Eesti on riik Euroopas.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "planeet_maa",
+        "lugemine"
+      ],
+      "text": "Eesti on riik Euroopas. Eesti asub Läänemere ääres. Eesti naaberriigid maismaal on Läti ja Venemaa."
+    },
+    {
+      "id": "SCI-READ-008",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Vulkaan",
+      "prompt": "Millal saab magmast laava?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kui see kaob kosmosesse."
+        },
+        {
+          "id": "B",
+          "text": "Kui see jõuab Maa pinnale."
+        },
+        {
+          "id": "C",
+          "text": "Kui see muutub lumeks."
+        },
+        {
+          "id": "D",
+          "text": "Kui see muutub taimeks."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Kui see jõuab Maa pinnale.",
+      "explanation": "Magma on Maa sees, laava on pinnale jõudnud sulanud kivim.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "planeet_maa",
+        "lugemine"
+      ],
+      "text": "Vulkaanist võib purske ajal väljuda laava, tuhk ja gaasid. Magma on sulanud kivim Maa sees. Kui magma jõuab pinnale, nimetatakse seda laavaks."
+    },
+    {
+      "id": "SCI-READ-009",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Maavärin",
+      "prompt": "Mis on maavärin?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Lille kasvamine."
+        },
+        {
+          "id": "B",
+          "text": "Pilve aeglane muutumine."
+        },
+        {
+          "id": "C",
+          "text": "Maa pinna värisemine."
+        },
+        {
+          "id": "D",
+          "text": "Planeedi sündimine."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Maa pinna värisemine.",
+      "explanation": "Tekst kirjeldab maavärinat Maa pinna värisemisena.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "planeet_maa",
+        "lugemine"
+      ],
+      "text": "Maavärin on Maa pinna värisemine. See võib tekkida, kui maakoores vabaneb järsku energia. Tugev maavärin võib kahjustada hooneid ja teid."
+    },
+    {
+      "id": "SCI-READ-010",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Veeringe",
+      "prompt": "Milline protsess paneb vee õhku liikuma veeauruna?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kivistumine."
+        },
+        {
+          "id": "B",
+          "text": "Kuu faas."
+        },
+        {
+          "id": "C",
+          "text": "Lagunemine."
+        },
+        {
+          "id": "D",
+          "text": "Aurumine."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Aurumine.",
+      "explanation": "Päikese soojus põhjustab aurumist.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "planeet_maa",
+        "lugemine"
+      ],
+      "text": "Vesi liigub looduses pidevalt. Päikese soojus paneb vee auruma. Pilvedest langeb vesi tagasi maapinnale vihma või lumena."
+    },
+    {
+      "id": "SCI-READ-011",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Pilved",
+      "prompt": "Millest pilved koosnevad?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Ainult liivast."
+        },
+        {
+          "id": "B",
+          "text": "Ainult tulest."
+        },
+        {
+          "id": "C",
+          "text": "Väikestest veepiiskadest või jääkristallidest."
+        },
+        {
+          "id": "D",
+          "text": "Metallist."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Väikestest veepiiskadest või jääkristallidest.",
+      "explanation": "Pilvedes on väikesed veepiisad või jääkristallid.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "planeet_maa",
+        "lugemine"
+      ],
+      "text": "Pilved koosnevad väga väikestest veepiiskadest või jääkristallidest. Pilv ei ole suur tükk vatti. Kui piisad muutuvad suuremaks ja raskemaks, võivad need sademetena alla langeda."
+    },
+    {
+      "id": "SCI-READ-012",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Äike",
+      "prompt": "Mis tekitab müristamise heli?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Välgu tõttu kiiresti kuumenenud ja paisunud õhk."
+        },
+        {
+          "id": "B",
+          "text": "Päikese kustumine."
+        },
+        {
+          "id": "C",
+          "text": "Kuu kukkumine."
+        },
+        {
+          "id": "D",
+          "text": "Jääkaru möirgamine taevas."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Välgu tõttu kiiresti kuumenenud ja paisunud õhk.",
+      "explanation": "Müristamine on seotud välgu ümber kiiresti muutunud õhuga.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "planeet_maa",
+        "lugemine"
+      ],
+      "text": "Äikese ajal näeme välku ja kuuleme müristamist. Välk kuumutab õhku väga kiiresti. Õhu järsk paisumine tekitab heli, mida kuuleme müristamisena."
+    },
+    {
+      "id": "SCI-READ-013",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Elusolendi tunnused",
+      "prompt": "Milline neist on elusolend?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kivi."
+        },
+        {
+          "id": "B",
+          "text": "Plastpudel."
+        },
+        {
+          "id": "C",
+          "text": "Lusikas."
+        },
+        {
+          "id": "D",
+          "text": "Seen."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Seen.",
+      "explanation": "Seen on elusolend, kivi ja plastpudel ei ole elusolendid.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "elusloodus",
+        "lugemine"
+      ],
+      "text": "Elusolendid kasvavad, vajavad energiat ja reageerivad ümbrusele. Taimed, loomad, seened ja bakterid on elusolendid. Kivi ei kasva ega vaja toitu."
+    },
+    {
+      "id": "SCI-READ-014",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Bakterid",
+      "prompt": "Milline väide bakterite kohta on õige?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Baktereid näeb alati palja silmaga."
+        },
+        {
+          "id": "B",
+          "text": "Kõik bakterid on suured loomad."
+        },
+        {
+          "id": "C",
+          "text": "Kõik bakterid ei ole kahjulikud."
+        },
+        {
+          "id": "D",
+          "text": "Bakterid on planeedid."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Kõik bakterid ei ole kahjulikud.",
+      "explanation": "Tekst ütleb, et osa baktereid on kasulikud.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "elusloodus",
+        "lugemine"
+      ],
+      "text": "Bakterid on väga väikesed elusolendid. Neid ei näe tavaliselt palja silmaga. Mõned bakterid võivad haigusi põhjustada, aga paljud bakterid on looduses ja inimese kehas kasulikud."
+    },
+    {
+      "id": "SCI-READ-015",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Seened",
+      "prompt": "Mis on paljude seente tähtis ülesanne looduses?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Päikese valguse tekitamine."
+        },
+        {
+          "id": "B",
+          "text": "Ookeani soolaseks muutmine."
+        },
+        {
+          "id": "C",
+          "text": "Surnud jäänuste lagundamine."
+        },
+        {
+          "id": "D",
+          "text": "Planeetide liigutamine."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Surnud jäänuste lagundamine.",
+      "explanation": "Seened aitavad lagundada surnud organismide jäänuseid.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "elusloodus",
+        "lugemine"
+      ],
+      "text": "Seened ei ole taimed ega loomad. Paljud seened lagundavad surnud organismide jäänuseid. Nii aitavad nad ainetel looduses ringelda."
+    },
+    {
+      "id": "SCI-READ-016",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Taimed ja valgus",
+      "prompt": "Milleks vajab taim valgust?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kivide söömiseks."
+        },
+        {
+          "id": "B",
+          "text": "Maa pööramiseks."
+        },
+        {
+          "id": "C",
+          "text": "Vee muutmiseks metalliks."
+        },
+        {
+          "id": "D",
+          "text": "Toidu valmistamiseks."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Toidu valmistamiseks.",
+      "explanation": "Valgus aitab taimel toitu valmistada.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "elusloodus",
+        "lugemine"
+      ],
+      "text": "Taim vajab kasvamiseks vett, valgust ja õhust süsihappegaasi. Rohelised taimeosad valmistavad valguse abil taimele toitu. Juured võtavad mullast vett."
+    },
+    {
+      "id": "SCI-READ-017",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Toiduahel",
+      "prompt": "Millega algab selline toiduahel tavaliselt?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kiviga."
+        },
+        {
+          "id": "B",
+          "text": "Pilvega."
+        },
+        {
+          "id": "C",
+          "text": "Taimega."
+        },
+        {
+          "id": "D",
+          "text": "Maa tuumaga."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Taimega.",
+      "explanation": "Tekst ütleb, et toiduahel algab sageli taimest.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "elusloodus",
+        "lugemine"
+      ],
+      "text": "Toiduahel algab sageli taimest. Taim valmistab ise toitu. Taimtoiduline loom sööb taime ja kiskja võib süüa taimtoidulist looma."
+    },
+    {
+      "id": "SCI-READ-018",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Elupaik",
+      "prompt": "Mis on elupaik?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Üks Kuu faas."
+        },
+        {
+          "id": "B",
+          "text": "Planeedi ümber olev rada."
+        },
+        {
+          "id": "C",
+          "text": "Ainult koolimaja."
+        },
+        {
+          "id": "D",
+          "text": "Koht, kus organism elab."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Koht, kus organism elab.",
+      "explanation": "Elupaik tähendab organismi elukohta looduses.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "elusloodus",
+        "lugemine"
+      ],
+      "text": "Elupaik on koht, kus organism elab. Elupaigas peab olema toitu, vett või muud organismile vajalikku. Näiteks kala elupaik võib olla järv, jõgi või meri."
+    },
+    {
+      "id": "SCI-READ-019",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Kohastumus",
+      "prompt": "Mis on kohastumus?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Maa tiir ümber Päikese."
+        },
+        {
+          "id": "B",
+          "text": "Kompassi põhjasuund."
+        },
+        {
+          "id": "C",
+          "text": "Vulkaanist väljuv laava."
+        },
+        {
+          "id": "D",
+          "text": "Omadus, mis aitab elupaigas toime tulla."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Omadus, mis aitab elupaigas toime tulla.",
+      "explanation": "Kohastumus aitab organismil oma keskkonnas hakkama saada.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "elusloodus",
+        "lugemine"
+      ],
+      "text": "Kohastumus on omadus, mis aitab organismil oma elupaigas toime tulla. Paks karv võib aidata külmas. Kõrbes aitab mõnel taimel vett säilitada paks vars."
+    },
+    {
+      "id": "SCI-READ-020",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Putukad",
+      "prompt": "Miks ämblik ei ole putukas?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Ta on liiga väike."
+        },
+        {
+          "id": "B",
+          "text": "Ta ei liigu kunagi."
+        },
+        {
+          "id": "C",
+          "text": "Ta elab Maal."
+        },
+        {
+          "id": "D",
+          "text": "Tal on kaheksa jalga, mitte kuus."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Tal on kaheksa jalga, mitte kuus.",
+      "explanation": "Putukal on kuus jalga, ämblikul kaheksa.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "elusloodus",
+        "lugemine"
+      ],
+      "text": "Putukatel on kuus jalga. Paljudel putukatel on kolm kehaosa: pea, rindmik ja tagakeha. Ämblikul on kaheksa jalga, seega ei ole ämblik putukas."
+    },
+    {
+      "id": "SCI-READ-021",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Süda ja veri",
+      "prompt": "Mida teeb süda?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Muudab toidu kiviks."
+        },
+        {
+          "id": "B",
+          "text": "Pumpab verd."
+        },
+        {
+          "id": "C",
+          "text": "Valmistab valgust."
+        },
+        {
+          "id": "D",
+          "text": "Hoiab planeete reas."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Pumpab verd.",
+      "explanation": "Tekst võrdleb südant pumbaga.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "inimene",
+        "lugemine"
+      ],
+      "text": "Süda töötab nagu pump. See saadab vere kehas ringi. Veri kannab hapnikku ja toitaineid keha eri osadesse."
+    },
+    {
+      "id": "SCI-READ-022",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Kopsud",
+      "prompt": "Milleks on kopsud tähtsad?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Need hoiavad juukseid kinni."
+        },
+        {
+          "id": "B",
+          "text": "Need teevad luud kõvaks."
+        },
+        {
+          "id": "C",
+          "text": "Need aitavad hapnikul õhust verre liikuda."
+        },
+        {
+          "id": "D",
+          "text": "Need asendavad südant."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Need aitavad hapnikul õhust verre liikuda.",
+      "explanation": "Kopsud on hingamisel vajalikud ja aitavad hapnikul verre liikuda.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "inimene",
+        "lugemine"
+      ],
+      "text": "Hingamisel liigub õhk kopsudesse ja sealt välja. Kopsudes liigub hapnik õhust verre. Keha kasutab hapnikku elutegevuseks."
+    },
+    {
+      "id": "SCI-READ-023",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Seedimine",
+      "prompt": "Millega on magu seotud?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kuulmisega."
+        },
+        {
+          "id": "B",
+          "text": "Nägemisega."
+        },
+        {
+          "id": "C",
+          "text": "Maa pöörlemisega."
+        },
+        {
+          "id": "D",
+          "text": "Seedimisega."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Seedimisega.",
+      "explanation": "Tekst ütleb, et magu on seedimisega seotud elund.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "inimene",
+        "lugemine"
+      ],
+      "text": "Toit annab kehale energiat ja ehitusmaterjali. Seedimisel lagundatakse toit väiksemateks osadeks. Magu on üks seedimisega seotud elund."
+    },
+    {
+      "id": "SCI-READ-024",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Luud",
+      "prompt": "Mida teeb kolju?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Teeb pilvi."
+        },
+        {
+          "id": "B",
+          "text": "Kaitseb aju."
+        },
+        {
+          "id": "C",
+          "text": "Pumpab verd."
+        },
+        {
+          "id": "D",
+          "text": "Seedib toitu."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Kaitseb aju.",
+      "explanation": "Tekst ütleb, et kolju kaitseb aju.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "inimene",
+        "lugemine"
+      ],
+      "text": "Luustik toetab keha. Luud kaitsevad ka elundeid: kolju kaitseb aju ja rinnakorv kaitseb südant ning kopse. Luud töötavad koos lihastega."
+    },
+    {
+      "id": "SCI-READ-025",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Lihased",
+      "prompt": "Milleks on lihased vajalikud?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Vihma tekitamiseks."
+        },
+        {
+          "id": "B",
+          "text": "Planeetide nimetamiseks."
+        },
+        {
+          "id": "C",
+          "text": "Liikumiseks."
+        },
+        {
+          "id": "D",
+          "text": "Kivide kasvatamiseks."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Liikumiseks.",
+      "explanation": "Lihased aitavad luudel liikuda.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "inimene",
+        "lugemine"
+      ],
+      "text": "Lihased aitavad kehal liikuda. Kui lihas tõmbub kokku, saab see luud liigutada. Näiteks käelihased aitavad kätt painutada."
+    },
+    {
+      "id": "SCI-READ-026",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Meeled",
+      "prompt": "Milline meeleelund aitab kuulda?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kõrvad."
+        },
+        {
+          "id": "B",
+          "text": "Süda."
+        },
+        {
+          "id": "C",
+          "text": "Magu."
+        },
+        {
+          "id": "D",
+          "text": "Põlv."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Kõrvad.",
+      "explanation": "Kõrvad on kuulmise meeleelundid.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "inimene",
+        "lugemine"
+      ],
+      "text": "Inimene saab ümbrusest infot meelte abil. Silmad aitavad näha, kõrvad kuulda ja nina lõhna tunda. Nahk aitab tunda puudutust, sooja ja külma."
+    },
+    {
+      "id": "SCI-READ-027",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Tervislik liikumine",
+      "prompt": "Miks hingamine jooksmisel kiireneb?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Luud muutuvad pehmeks."
+        },
+        {
+          "id": "B",
+          "text": "Kuu tõmbab õhku ära."
+        },
+        {
+          "id": "C",
+          "text": "Magu lõpetab töö."
+        },
+        {
+          "id": "D",
+          "text": "Keha vajab rohkem hapnikku."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Keha vajab rohkem hapnikku.",
+      "explanation": "Jooksmisel vajavad lihased rohkem hapnikku.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "inimene",
+        "lugemine"
+      ],
+      "text": "Liikumine aitab kehal tugevam püsida. Jooksmise ajal vajavad lihased rohkem hapnikku. Seetõttu hakkavad süda ja hingamine kiiremini tööle."
+    },
+    {
+      "id": "SCI-READ-028",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Katse",
+      "prompt": "Miks hoitakse katses muud tingimused sarnased?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Et vastus oleks alati juhuslik."
+        },
+        {
+          "id": "B",
+          "text": "Et katse muutuks kaardiks."
+        },
+        {
+          "id": "C",
+          "text": "Et teada, millise asja mõju uuritakse."
+        },
+        {
+          "id": "D",
+          "text": "Et taim ei vajaks vett."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Et teada, millise asja mõju uuritakse.",
+      "explanation": "Kui muudetakse ainult üht asja, on lihtsam aru saada, mis tulemuse põhjustas.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "teaduslik_motlemine",
+        "lugemine"
+      ],
+      "text": "Katses muudetakse tavaliselt üht asja ja vaadatakse, mis juhtub. Kui tahame teada, kas valgus mõjutab taime kasvu, peavad muud tingimused olema võimalikult sarnased. Nii on järeldus usaldusväärsem."
+    },
+    {
+      "id": "SCI-READ-029",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Vaatlus",
+      "prompt": "Mis on hea vaatluse tunnus?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "See peab olema salajane."
+        },
+        {
+          "id": "B",
+          "text": "See ei põhine millelgi."
+        },
+        {
+          "id": "C",
+          "text": "See kirjeldab nähtut võimalikult täpselt."
+        },
+        {
+          "id": "D",
+          "text": "See on alati väljamõeldud."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "See kirjeldab nähtut võimalikult täpselt.",
+      "explanation": "Vaatlus peaks kirjeldama tegelikult nähtut.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "teaduslik_motlemine",
+        "lugemine"
+      ],
+      "text": "Vaatlus tähendab, et uurija jälgib nähtust hoolikalt. Ta võib teha märkmeid, joonistada või mõõta. Hea vaatlus kirjeldab seda, mida tegelikult nähti."
+    },
+    {
+      "id": "SCI-READ-030",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "reading_choice",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Järeldus",
+      "prompt": "Miks on mitu taime katses parem kui ainult üks?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Tulemus on usaldusväärsem."
+        },
+        {
+          "id": "B",
+          "text": "Siis ei ole vaja küsimust."
+        },
+        {
+          "id": "C",
+          "text": "Siis muutub taim planeediks."
+        },
+        {
+          "id": "D",
+          "text": "Siis ei pea mõõtma."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Tulemus on usaldusväärsem.",
+      "explanation": "Mitme taimega on väiksem oht, et tulemus sõltub ainult ühest juhusest.",
+      "interactiveIdea": "Näita tekst kaardina; laps loeb ja valib vastuse. Võib lisada 'loe ette' nupu.",
+      "tags": [
+        "teaduslik_motlemine",
+        "lugemine"
+      ],
+      "text": "Järeldus vastab küsimusele, mida andmed näitavad. Kui kolm taime valguses kasvasid paremini kui kolm taime pimedas, võib järeldada, et valgus aitas selles katses kasvada. Ühe taime põhjal oleks järeldus nõrgem."
+    },
+    {
+      "id": "SCI-SORT-001",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Elus, eluta, kunagi elus olnud",
+      "prompt": "Sorteeri asjad rühmadesse.",
+      "groups": [
+        "elus",
+        "eluta",
+        "kunagi elus olnud"
+      ],
+      "items": [
+        "kass",
+        "kivi",
+        "kuivanud leht",
+        "seen",
+        "plastpudel",
+        "puutükk"
+      ],
+      "correctGroups": {
+        "elus": [
+          "kass",
+          "seen"
+        ],
+        "eluta": [
+          "kivi",
+          "plastpudel"
+        ],
+        "kunagi elus olnud": [
+          "kuivanud leht",
+          "puutükk"
+        ]
+      },
+      "explanation": "Kass ja seen on elusolendid. Kivi ja plastpudel ei ole elusolendid. Kuivanud leht ja puutükk pärinesid kunagi elusast taimest.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-002",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Taevakehad",
+      "prompt": "Sorteeri taevakehad õigesse rühma.",
+      "groups": [
+        "täht",
+        "planeet",
+        "kuu"
+      ],
+      "items": [
+        "Päike",
+        "Maa",
+        "Kuu",
+        "Marss",
+        "Saturn",
+        "Jupiteri kuu Europa"
+      ],
+      "correctGroups": {
+        "täht": [
+          "Päike"
+        ],
+        "planeet": [
+          "Maa",
+          "Marss",
+          "Saturn"
+        ],
+        "kuu": [
+          "Kuu",
+          "Jupiteri kuu Europa"
+        ]
+      },
+      "explanation": "Päike on täht. Maa, Marss ja Saturn on planeedid. Maa Kuu ja Jupiteri kuu Europa on kuud.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-003",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Kaardi mõisted",
+      "prompt": "Sorteeri nimetused.",
+      "groups": [
+        "riik",
+        "maailmajagu",
+        "ookean",
+        "saar"
+      ],
+      "items": [
+        "Eesti",
+        "Euroopa",
+        "Atlandi ookean",
+        "Saaremaa",
+        "Aafrika",
+        "Jaapan"
+      ],
+      "correctGroups": {
+        "riik": [
+          "Eesti",
+          "Jaapan"
+        ],
+        "maailmajagu": [
+          "Euroopa",
+          "Aafrika"
+        ],
+        "ookean": [
+          "Atlandi ookean"
+        ],
+        "saar": [
+          "Saaremaa"
+        ]
+      },
+      "explanation": "Eesti ja Jaapan on riigid. Euroopa ja Aafrika on maailmajaod. Atlandi ookean on ookean. Saaremaa on saar.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-004",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Ilmakaared",
+      "prompt": "Sorteeri kaardil liikumise suunad.",
+      "groups": [
+        "põhi",
+        "lõuna",
+        "ida",
+        "lääs"
+      ],
+      "items": [
+        "üles",
+        "alla",
+        "paremale",
+        "vasakule"
+      ],
+      "correctGroups": {
+        "põhi": [
+          "üles"
+        ],
+        "lõuna": [
+          "alla"
+        ],
+        "ida": [
+          "paremale"
+        ],
+        "lääs": [
+          "vasakule"
+        ]
+      },
+      "explanation": "Tavalisel kaardil on põhi üleval, lõuna all, ida paremal ja lääs vasakul.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-005",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Veeringe sammud",
+      "prompt": "Sorteeri kirjeldused veeringe osade alla.",
+      "groups": [
+        "aurumine",
+        "kondenseerumine",
+        "sademed",
+        "kogunemine"
+      ],
+      "items": [
+        "vesi muutub veeauruks",
+        "veeaurust tekivad pilvepiisad",
+        "vihm langeb pilvest",
+        "vesi jõuab jõkke või järve"
+      ],
+      "correctGroups": {
+        "aurumine": [
+          "vesi muutub veeauruks"
+        ],
+        "kondenseerumine": [
+          "veeaurust tekivad pilvepiisad"
+        ],
+        "sademed": [
+          "vihm langeb pilvest"
+        ],
+        "kogunemine": [
+          "vesi jõuab jõkke või järve"
+        ]
+      },
+      "explanation": "Need on lihtsa veeringe põhisammud.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-006",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Vee olekud",
+      "prompt": "Sorteeri vee näited oleku järgi.",
+      "groups": [
+        "tahke",
+        "vedel",
+        "gaasiline"
+      ],
+      "items": [
+        "jää",
+        "lumi",
+        "vihmavesi",
+        "järvevesi",
+        "veeaur",
+        "aur potist"
+      ],
+      "correctGroups": {
+        "tahke": [
+          "jää",
+          "lumi"
+        ],
+        "vedel": [
+          "vihmavesi",
+          "järvevesi"
+        ],
+        "gaasiline": [
+          "veeaur",
+          "aur potist"
+        ]
+      },
+      "explanation": "Vesi võib olla tahke jää või lumena, vedel veena ja gaasiline veeauruna.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-007",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Loodusnähtused",
+      "prompt": "Sorteeri nähtused sobivasse rühma.",
+      "groups": [
+        "ilmaga seotud",
+        "Maa sisemusega seotud"
+      ],
+      "items": [
+        "vihm",
+        "tuul",
+        "äike",
+        "vulkaanipurse",
+        "maavärin",
+        "laava"
+      ],
+      "correctGroups": {
+        "ilmaga seotud": [
+          "vihm",
+          "tuul",
+          "äike"
+        ],
+        "Maa sisemusega seotud": [
+          "vulkaanipurse",
+          "maavärin",
+          "laava"
+        ]
+      },
+      "explanation": "Vihm, tuul ja äike on ilmaga seotud. Vulkaanipurse, maavärin ja laava on seotud Maa siseehituse ja maakoorega.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-008",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Vulkaan või maavärin",
+      "prompt": "Sorteeri kirjeldused nähtuse järgi.",
+      "groups": [
+        "vulkaan",
+        "maavärin"
+      ],
+      "items": [
+        "laava jõuab pinnale",
+        "maapind väriseb",
+        "kraater tipus",
+        "energia vabaneb maakoores",
+        "tuhk ja gaasid paiskuvad välja",
+        "hooned võivad raputada saada"
+      ],
+      "correctGroups": {
+        "vulkaan": [
+          "laava jõuab pinnale",
+          "kraater tipus",
+          "tuhk ja gaasid paiskuvad välja"
+        ],
+        "maavärin": [
+          "maapind väriseb",
+          "energia vabaneb maakoores",
+          "hooned võivad raputada saada"
+        ]
+      },
+      "explanation": "Vulkaaniga on seotud laava, kraater, tuhk ja gaasid. Maavärinaga on seotud maapinna värisemine.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-009",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Organismide rühmad",
+      "prompt": "Sorteeri organismid rühmadesse.",
+      "groups": [
+        "taim",
+        "loom",
+        "seen",
+        "bakter"
+      ],
+      "items": [
+        "kuusk",
+        "rebane",
+        "kukeseen",
+        "piimhappebakter",
+        "sammal",
+        "räim"
+      ],
+      "correctGroups": {
+        "taim": [
+          "kuusk",
+          "sammal"
+        ],
+        "loom": [
+          "rebane",
+          "räim"
+        ],
+        "seen": [
+          "kukeseen"
+        ],
+        "bakter": [
+          "piimhappebakter"
+        ]
+      },
+      "explanation": "Kuusk ja sammal on taimed. Rebane ja räim on loomad. Kukeseen on seen. Piimhappebakter on bakter.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-010",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Toiduahela rollid",
+      "prompt": "Sorteeri rollid toiduahelas.",
+      "groups": [
+        "tootja",
+        "tarbija",
+        "lagundaja"
+      ],
+      "items": [
+        "rohi",
+        "mustikas",
+        "jänes",
+        "rebane",
+        "seen",
+        "bakter"
+      ],
+      "correctGroups": {
+        "tootja": [
+          "rohi",
+          "mustikas"
+        ],
+        "tarbija": [
+          "jänes",
+          "rebane"
+        ],
+        "lagundaja": [
+          "seen",
+          "bakter"
+        ]
+      },
+      "explanation": "Taimed on tootjad. Loomad on tarbijad. Seened ja paljud bakterid on lagundajad.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-011",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Söömistüübid",
+      "prompt": "Sorteeri loomad selle järgi, mida nad söövad.",
+      "groups": [
+        "taimtoiduline",
+        "kiskja/lihasööja",
+        "kõigesööja"
+      ],
+      "items": [
+        "lehm",
+        "jänes",
+        "hunt",
+        "ilves",
+        "karu",
+        "inimene"
+      ],
+      "correctGroups": {
+        "taimtoiduline": [
+          "lehm",
+          "jänes"
+        ],
+        "kiskja/lihasööja": [
+          "hunt",
+          "ilves"
+        ],
+        "kõigesööja": [
+          "karu",
+          "inimene"
+        ]
+      },
+      "explanation": "Lehm ja jänes söövad peamiselt taimi. Hunt ja ilves söövad loomi. Karu ja inimene võivad süüa nii taimset kui loomset toitu.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-012",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Elupaigad",
+      "prompt": "Sorteeri organismid sobivasse elupaika.",
+      "groups": [
+        "mets",
+        "veekogu",
+        "kõrb",
+        "polaarala"
+      ],
+      "items": [
+        "orav",
+        "haug",
+        "kaktus",
+        "jääkaru",
+        "kuusk",
+        "kaamel"
+      ],
+      "correctGroups": {
+        "mets": [
+          "orav",
+          "kuusk"
+        ],
+        "veekogu": [
+          "haug"
+        ],
+        "kõrb": [
+          "kaktus",
+          "kaamel"
+        ],
+        "polaarala": [
+          "jääkaru"
+        ]
+      },
+      "explanation": "Organismid on kohastunud eri elupaikadega: orav ja kuusk metsas, haug vees, kaktus ja kaamel kõrbes, jääkaru polaaralal.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-013",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Taime osad",
+      "prompt": "Sorteeri taimeosad asukoha järgi.",
+      "groups": [
+        "mullas",
+        "maapinna kohal"
+      ],
+      "items": [
+        "juur",
+        "vars",
+        "leht",
+        "õis",
+        "vili"
+      ],
+      "correctGroups": {
+        "mullas": [
+          "juur"
+        ],
+        "maapinna kohal": [
+          "vars",
+          "leht",
+          "õis",
+          "vili"
+        ]
+      },
+      "explanation": "Juur on tavaliselt mullas. Vars, lehed, õied ja viljad on enamasti maapinna kohal.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-014",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Kohastumused",
+      "prompt": "Sorteeri omadused elupaiga järgi.",
+      "groups": [
+        "külm elupaik",
+        "kuiv elupaik",
+        "veekeskkond"
+      ],
+      "items": [
+        "paks karv",
+        "rasvakiht",
+        "paks vett hoidev vars",
+        "okkad lehtede asemel",
+        "uimed",
+        "voolujooneline keha"
+      ],
+      "correctGroups": {
+        "külm elupaik": [
+          "paks karv",
+          "rasvakiht"
+        ],
+        "kuiv elupaik": [
+          "paks vett hoidev vars",
+          "okkad lehtede asemel"
+        ],
+        "veekeskkond": [
+          "uimed",
+          "voolujooneline keha"
+        ]
+      },
+      "explanation": "Eri omadused aitavad eri keskkondades: külmas sooja hoida, kuivas vett säästa ja vees liikuda.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-015",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Putukas või mitte",
+      "prompt": "Sorteeri loomad rühma 'putukas' või 'mitte putukas'.",
+      "groups": [
+        "putukas",
+        "mitte putukas"
+      ],
+      "items": [
+        "liblikas",
+        "mesilane",
+        "sipelgas",
+        "ämblik",
+        "vihmauss",
+        "tigu"
+      ],
+      "correctGroups": {
+        "putukas": [
+          "liblikas",
+          "mesilane",
+          "sipelgas"
+        ],
+        "mitte putukas": [
+          "ämblik",
+          "vihmauss",
+          "tigu"
+        ]
+      },
+      "explanation": "Putukatel on kuus jalga. Ämblik on ämblikulaadne, vihmauss on uss ja tigu on limune.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-016",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Elundid ja ülesanded",
+      "prompt": "Sorteeri elundid peamise ülesande järgi.",
+      "groups": [
+        "hingamine",
+        "vere liigutamine",
+        "seedimine",
+        "juhtimine ja mõtlemine"
+      ],
+      "items": [
+        "kopsud",
+        "süda",
+        "magu",
+        "aju"
+      ],
+      "correctGroups": {
+        "hingamine": [
+          "kopsud"
+        ],
+        "vere liigutamine": [
+          "süda"
+        ],
+        "seedimine": [
+          "magu"
+        ],
+        "juhtimine ja mõtlemine": [
+          "aju"
+        ]
+      },
+      "explanation": "Kopsud on seotud hingamisega, süda vere liikumisega, magu seedimisega ja aju keha juhtimisega.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-017",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Meeled ja meeleelundid",
+      "prompt": "Sorteeri meeleelundid sobiva meele alla.",
+      "groups": [
+        "nägemine",
+        "kuulmine",
+        "haistmine",
+        "maitsmine",
+        "kompimine"
+      ],
+      "items": [
+        "silm",
+        "kõrv",
+        "nina",
+        "keel",
+        "nahk"
+      ],
+      "correctGroups": {
+        "nägemine": [
+          "silm"
+        ],
+        "kuulmine": [
+          "kõrv"
+        ],
+        "haistmine": [
+          "nina"
+        ],
+        "maitsmine": [
+          "keel"
+        ],
+        "kompimine": [
+          "nahk"
+        ]
+      },
+      "explanation": "Silm aitab näha, kõrv kuulda, nina lõhna tunda, keel maitsta ja nahk puudutust tunda.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-018",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Tervislikud harjumused",
+      "prompt": "Sorteeri tegevused.",
+      "groups": [
+        "aitab tervist hoida",
+        "võib tervist kahjustada"
+      ],
+      "items": [
+        "käte pesemine enne sööki",
+        "piisav uni",
+        "igapäevane liikumine",
+        "hammaste harjamata jätmine",
+        "väga vähene uni",
+        "ainult magusate jookide joomine"
+      ],
+      "correctGroups": {
+        "aitab tervist hoida": [
+          "käte pesemine enne sööki",
+          "piisav uni",
+          "igapäevane liikumine"
+        ],
+        "võib tervist kahjustada": [
+          "hammaste harjamata jätmine",
+          "väga vähene uni",
+          "ainult magusate jookide joomine"
+        ]
+      },
+      "explanation": "Hügieen, uni ja liikumine aitavad tervist hoida. Halb hügieen, vähene uni ja väga ühekülgne toitumine võivad tervist kahjustada.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-019",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Vaatlus või arvamus",
+      "prompt": "Sorteeri laused.",
+      "groups": [
+        "vaatlus",
+        "arvamus"
+      ],
+      "items": [
+        "Taim on 12 cm kõrge.",
+        "Mulle meeldib see taim kõige rohkem.",
+        "Vesi on klaasis hägune.",
+        "See kivi on kindlasti maailma ilusaim.",
+        "Õues on 8 °C.",
+        "Pilv näeb välja nagu draakon."
+      ],
+      "correctGroups": {
+        "vaatlus": [
+          "Taim on 12 cm kõrge.",
+          "Vesi on klaasis hägune.",
+          "Õues on 8 °C."
+        ],
+        "arvamus": [
+          "Mulle meeldib see taim kõige rohkem.",
+          "See kivi on kindlasti maailma ilusaim.",
+          "Pilv näeb välja nagu draakon."
+        ]
+      },
+      "explanation": "Vaatlus kirjeldab või mõõdab nähtut. Arvamus väljendab hinnangut või tunnet.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-020",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Katse osad",
+      "prompt": "Sorteeri katse tekstiosad.",
+      "groups": [
+        "uurimisküsimus",
+        "tingimus",
+        "mõõtmine",
+        "järeldus"
+      ],
+      "items": [
+        "Kas valgus mõjutab taime kasvu?",
+        "Üks taim on valguses, teine pimedas.",
+        "Mõõdan taime kõrgust iga päev.",
+        "Valguses olnud taim kasvas rohkem."
+      ],
+      "correctGroups": {
+        "uurimisküsimus": [
+          "Kas valgus mõjutab taime kasvu?"
+        ],
+        "tingimus": [
+          "Üks taim on valguses, teine pimedas."
+        ],
+        "mõõtmine": [
+          "Mõõdan taime kõrgust iga päev."
+        ],
+        "järeldus": [
+          "Valguses olnud taim kasvas rohkem."
+        ]
+      },
+      "explanation": "Katse algab küsimusest, siis määratakse tingimused, tehakse mõõtmised ja lõpuks järeldus.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-021",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Ilmavaatlused",
+      "prompt": "Sorteeri mõõtmised ja kirjeldused.",
+      "groups": [
+        "temperatuur",
+        "tuul",
+        "sademed",
+        "pilvisus"
+      ],
+      "items": [
+        "12 °C",
+        "tuul 6 m/s",
+        "vihm 4 mm",
+        "poolpilves taevas"
+      ],
+      "correctGroups": {
+        "temperatuur": [
+          "12 °C"
+        ],
+        "tuul": [
+          "tuul 6 m/s"
+        ],
+        "sademed": [
+          "vihm 4 mm"
+        ],
+        "pilvisus": [
+          "poolpilves taevas"
+        ]
+      },
+      "explanation": "Ilma saab kirjeldada temperatuuri, tuule, sademete ja pilvisuse abil.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-022",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Liikumised kosmoses",
+      "prompt": "Sorteeri liikumised.",
+      "groups": [
+        "pöörlemine",
+        "tiirlemine"
+      ],
+      "items": [
+        "Maa keerleb ümber oma telje.",
+        "Maa liigub ümber Päikese.",
+        "Kuu liigub ümber Maa.",
+        "Vurr keerleb oma keskme ümber."
+      ],
+      "correctGroups": {
+        "pöörlemine": [
+          "Maa keerleb ümber oma telje.",
+          "Vurr keerleb oma keskme ümber."
+        ],
+        "tiirlemine": [
+          "Maa liigub ümber Päikese.",
+          "Kuu liigub ümber Maa."
+        ]
+      },
+      "explanation": "Pöörlemine on keerlemine ümber oma telje. Tiirlemine on liikumine ümber teise keha.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-023",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Ohutus äikese ajal",
+      "prompt": "Sorteeri tegevused.",
+      "groups": [
+        "ohutum käitumine äikese ajal",
+        "ohtlik käitumine äikese ajal"
+      ],
+      "items": [
+        "lähen siseruumi",
+        "väldin üksiku puu all seismist",
+        "ujun äikese ajal järves",
+        "hoian metallist aiapostist kinni",
+        "ootan autos või majas"
+      ],
+      "correctGroups": {
+        "ohutum käitumine äikese ajal": [
+          "lähen siseruumi",
+          "väldin üksiku puu all seismist",
+          "ootan autos või majas"
+        ],
+        "ohtlik käitumine äikese ajal": [
+          "ujun äikese ajal järves",
+          "hoian metallist aiapostist kinni"
+        ]
+      },
+      "explanation": "Äikese ajal on turvalisem minna siseruumi või autosse, mitte olla vees ega üksiku puu või metallobjekti juures.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-024",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Kasvamiseks vajalik",
+      "prompt": "Sorteeri, mida taim tavaliselt vajab kasvamiseks.",
+      "groups": [
+        "vajab",
+        "ei vaja"
+      ],
+      "items": [
+        "vesi",
+        "valgus",
+        "õhk",
+        "sobiv temperatuur",
+        "kommid",
+        "telefon"
+      ],
+      "correctGroups": {
+        "vajab": [
+          "vesi",
+          "valgus",
+          "õhk",
+          "sobiv temperatuur"
+        ],
+        "ei vaja": [
+          "kommid",
+          "telefon"
+        ]
+      },
+      "explanation": "Taim vajab kasvuks vett, valgust, õhku ja sobivat temperatuuri, mitte komme ega telefoni.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-SORT-025",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "sort",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Keha kaitsmine",
+      "prompt": "Sorteeri kehaosad või elundid kaitse seose järgi.",
+      "groups": [
+        "kaitseb",
+        "vajab kaitset"
+      ],
+      "items": [
+        "kolju",
+        "rinnakorv",
+        "nahk",
+        "aju",
+        "süda",
+        "kopsud"
+      ],
+      "correctGroups": {
+        "kaitseb": [
+          "kolju",
+          "rinnakorv",
+          "nahk"
+        ],
+        "vajab kaitset": [
+          "aju",
+          "süda",
+          "kopsud"
+        ]
+      },
+      "explanation": "Kolju kaitseb aju, rinnakorv südant ja kopse ning nahk kaitseb keha väljastpoolt.",
+      "interactiveIdea": "Lohista kaardid õigesse rühma.",
+      "tags": []
+    },
+    {
+      "id": "SCI-MATCH-001",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Põhimõisted kosmoses",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "planeet",
+        "täht",
+        "kuu",
+        "orbiit"
+      ],
+      "definitions": [
+        "Taevakeha, mis tiirleb ümber planeedi.",
+        "Taevakeha, mis tiirleb ümber tähe ja ei tee ise valgust.",
+        "Keha liikumistee teise keha ümber.",
+        "Taevakeha, mis kiirgab ise valgust ja soojust."
+      ],
+      "correctMatches": {
+        "planeet": "Taevakeha, mis tiirleb ümber tähe ja ei tee ise valgust.",
+        "täht": "Taevakeha, mis kiirgab ise valgust ja soojust.",
+        "kuu": "Taevakeha, mis tiirleb ümber planeedi.",
+        "orbiit": "Keha liikumistee teise keha ümber."
+      },
+      "explanation": "Need mõisted aitavad eristada tähti, planeete, kuid ja nende liikumisteid.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "maailmaruum",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-002",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Maa liikumised",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "telg",
+        "pöörlemine",
+        "tiirlemine",
+        "aasta"
+      ],
+      "definitions": [
+        "Aeg, mil Maa teeb ühe tiiru ümber Päikese.",
+        "Keerlemine ümber oma telje.",
+        "Mõtteline joon, mille ümber Maa pöörleb.",
+        "Liikumine ümber teise keha."
+      ],
+      "correctMatches": {
+        "telg": "Mõtteline joon, mille ümber Maa pöörleb.",
+        "pöörlemine": "Keerlemine ümber oma telje.",
+        "tiirlemine": "Liikumine ümber teise keha.",
+        "aasta": "Aeg, mil Maa teeb ühe tiiru ümber Päikese."
+      },
+      "explanation": "Päev-öö ja aasta mõistmiseks on vaja eristada pöörlemist ja tiirlemist.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "maailmaruum",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-003",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "maailmaruum",
+      "difficulty": "easy",
+      "title": "Päikesesüsteem",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "Päikesesüsteem",
+        "asteroid",
+        "komeet",
+        "meteoor"
+      ],
+      "definitions": [
+        "Valgusjälg taevas, kui väike kosmosekeha põleb atmosfääris.",
+        "Jääst, tolmust ja kivimist keha, millel võib Päikese lähedal tekkida saba.",
+        "Väike kivine taevakeha, mis tiirleb ümber Päikese.",
+        "Päike ja kõik objektid, mis liiguvad selle ümber."
+      ],
+      "correctMatches": {
+        "Päikesesüsteem": "Päike ja kõik objektid, mis liiguvad selle ümber.",
+        "asteroid": "Väike kivine taevakeha, mis tiirleb ümber Päikese.",
+        "komeet": "Jääst, tolmust ja kivimist keha, millel võib Päikese lähedal tekkida saba.",
+        "meteoor": "Valgusjälg taevas, kui väike kosmosekeha põleb atmosfääris."
+      },
+      "explanation": "Need on Päikesesüsteemis leiduvad objektid ja nähtused.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "maailmaruum",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-004",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Gloobus ja kaart",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "ekvaator",
+        "poolus",
+        "gloobus",
+        "kaart"
+      ],
+      "definitions": [
+        "Mõtteline joon ümber Maa keskkoha.",
+        "Piirkonna kujutis tasapinnal.",
+        "Maa põhja- või lõunapoolne otsapiirkond.",
+        "Maa ümar mudel."
+      ],
+      "correctMatches": {
+        "ekvaator": "Mõtteline joon ümber Maa keskkoha.",
+        "poolus": "Maa põhja- või lõunapoolne otsapiirkond.",
+        "gloobus": "Maa ümar mudel.",
+        "kaart": "Piirkonna kujutis tasapinnal."
+      },
+      "explanation": "Gloobus ja kaart on mudelid, millega kujutatakse Maad.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "planeet_maa",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-005",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Maismaa ja vesi",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "manner",
+        "ookean",
+        "meri",
+        "saar"
+      ],
+      "definitions": [
+        "Maismaa, mida ümbritseb igast küljest vesi.",
+        "Väga suur maismaa-ala.",
+        "Ookeanist väiksem suur soolase vee ala.",
+        "Väga suur soolase vee ala."
+      ],
+      "correctMatches": {
+        "manner": "Väga suur maismaa-ala.",
+        "ookean": "Väga suur soolase vee ala.",
+        "meri": "Ookeanist väiksem suur soolase vee ala.",
+        "saar": "Maismaa, mida ümbritseb igast küljest vesi."
+      },
+      "explanation": "Need mõisted aitavad kirjeldada Maa pinda.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "planeet_maa",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-006",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Vulkaan",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "vulkaan",
+        "kraater",
+        "laava",
+        "magma"
+      ],
+      "definitions": [
+        "Koht, kust Maa sisemusest võib pinnale tulla laavat, tuhka ja gaase.",
+        "Ava või lohk vulkaani tipus või pinnal.",
+        "Maa pinnale jõudnud sulanud kivim.",
+        "Maa sees olev sulanud kivim."
+      ],
+      "correctMatches": {
+        "vulkaan": "Koht, kust Maa sisemusest võib pinnale tulla laavat, tuhka ja gaase.",
+        "kraater": "Ava või lohk vulkaani tipus või pinnal.",
+        "laava": "Maa pinnale jõudnud sulanud kivim.",
+        "magma": "Maa sees olev sulanud kivim."
+      },
+      "explanation": "Magma ja laava erinevad asukoha poolest: magma on sees, laava pinnal.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "planeet_maa",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-007",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Maavärina sõnad",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "maavärin",
+        "maakoor",
+        "murrang",
+        "seismoloog"
+      ],
+      "definitions": [
+        "Maa välimine tahke kiht.",
+        "Teadlane, kes uurib maavärinaid.",
+        "Pragu või murdekoht maakoores, mille ääres kivimid võivad liikuda.",
+        "Maa pinna äkiline värisemine."
+      ],
+      "correctMatches": {
+        "maavärin": "Maa pinna äkiline värisemine.",
+        "maakoor": "Maa välimine tahke kiht.",
+        "murrang": "Pragu või murdekoht maakoores, mille ääres kivimid võivad liikuda.",
+        "seismoloog": "Teadlane, kes uurib maavärinaid."
+      },
+      "explanation": "Maavärinate mõistmiseks kasutatakse maakoore, murrangu ja uurija mõisteid.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "planeet_maa",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-008",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Veeringe mõisted",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "aurumine",
+        "kondenseerumine",
+        "sademed",
+        "veeringe"
+      ],
+      "definitions": [
+        "Vedel vesi muutub veeauruks.",
+        "Veeaur jahtub ja muutub veepiiskadeks või jääkristallideks.",
+        "Pilvedest maapinnale langev vesi, näiteks vihm või lumi.",
+        "Vee pidev liikumine Maa, õhu ja veekogude vahel."
+      ],
+      "correctMatches": {
+        "aurumine": "Vedel vesi muutub veeauruks.",
+        "kondenseerumine": "Veeaur jahtub ja muutub veepiiskadeks või jääkristallideks.",
+        "sademed": "Pilvedest maapinnale langev vesi, näiteks vihm või lumi.",
+        "veeringe": "Vee pidev liikumine Maa, õhu ja veekogude vahel."
+      },
+      "explanation": "Need neli mõistet moodustavad veeringe õppimise põhja.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "planeet_maa",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-009",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Vesi ja õhk",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "pilv",
+        "udu",
+        "jää",
+        "veeaur"
+      ],
+      "definitions": [
+        "Õhus hõljuvad väga väikesed veepiisad või jääkristallid.",
+        "Gaasilises olekus vesi.",
+        "Tahkes olekus vesi.",
+        "Maapinna lähedal olev pilvetaoline nähtus."
+      ],
+      "correctMatches": {
+        "pilv": "Õhus hõljuvad väga väikesed veepiisad või jääkristallid.",
+        "udu": "Maapinna lähedal olev pilvetaoline nähtus.",
+        "jää": "Tahkes olekus vesi.",
+        "veeaur": "Gaasilises olekus vesi."
+      },
+      "explanation": "Vesi võib esineda eri olekutes ja kujundada pilvi või udu.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "planeet_maa",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-010",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Elu põhimõisted",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "elusolend",
+        "rakk",
+        "bakter",
+        "seen"
+      ],
+      "definitions": [
+        "Väga väike üherakuline organism.",
+        "Organism, mis täidab elutegevusi, näiteks kasvab ja vajab energiat.",
+        "Väga väike ehitusüksus, millest organismid koosnevad.",
+        "Organismirühm, kuhu kuuluvad näiteks hallitusseened ja söögiseened."
+      ],
+      "correctMatches": {
+        "elusolend": "Organism, mis täidab elutegevusi, näiteks kasvab ja vajab energiat.",
+        "rakk": "Väga väike ehitusüksus, millest organismid koosnevad.",
+        "bakter": "Väga väike üherakuline organism.",
+        "seen": "Organismirühm, kuhu kuuluvad näiteks hallitusseened ja söögiseened."
+      },
+      "explanation": "Elusloodus koosneb paljudest organismirühmadest.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "elusloodus",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-011",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Taim, loom ja lagundaja",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "taim",
+        "loom",
+        "lagundaja",
+        "tootja"
+      ],
+      "definitions": [
+        "Organism, mis saab valguse abil endale toitu valmistada.",
+        "Organism, kes saab energiat teisi organisme või nende osi süües.",
+        "Organism, kes valmistab ise toitu; toiduahelas sageli taim.",
+        "Organism, mis lagundab surnud jäänuseid."
+      ],
+      "correctMatches": {
+        "taim": "Organism, mis saab valguse abil endale toitu valmistada.",
+        "loom": "Organism, kes saab energiat teisi organisme või nende osi süües.",
+        "lagundaja": "Organism, mis lagundab surnud jäänuseid.",
+        "tootja": "Organism, kes valmistab ise toitu; toiduahelas sageli taim."
+      },
+      "explanation": "Toiduahelates on tootjad, tarbijad ja lagundajad.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "elusloodus",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-012",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Loomade toitumine",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "kiskja",
+        "saakloom",
+        "taimtoiduline",
+        "kõigesööja"
+      ],
+      "definitions": [
+        "Loom, kes püüab ja sööb teisi loomi.",
+        "Loom, kes sööb peamiselt taimi.",
+        "Loom, keda teine loom võib püüda ja süüa.",
+        "Loom, kes võib süüa nii taimset kui loomset toitu."
+      ],
+      "correctMatches": {
+        "kiskja": "Loom, kes püüab ja sööb teisi loomi.",
+        "saakloom": "Loom, keda teine loom võib püüda ja süüa.",
+        "taimtoiduline": "Loom, kes sööb peamiselt taimi.",
+        "kõigesööja": "Loom, kes võib süüa nii taimset kui loomset toitu."
+      },
+      "explanation": "Need mõisted kirjeldavad loomade toitumissuhteid.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "elusloodus",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-013",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Elupaik ja suhted",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "elupaik",
+        "kohastumus",
+        "toiduahel",
+        "kooslus"
+      ],
+      "definitions": [
+        "Koht, kus organism elab.",
+        "Jada, mis näitab, kes keda sööb.",
+        "Ühes paigas koos elavad eri liiki organismid.",
+        "Omadus, mis aitab organismil elupaigas toime tulla."
+      ],
+      "correctMatches": {
+        "elupaik": "Koht, kus organism elab.",
+        "kohastumus": "Omadus, mis aitab organismil elupaigas toime tulla.",
+        "toiduahel": "Jada, mis näitab, kes keda sööb.",
+        "kooslus": "Ühes paigas koos elavad eri liiki organismid."
+      },
+      "explanation": "Elupaik, kohastumused ja toiduahelad aitavad mõista ökosüsteeme.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "elusloodus",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-014",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Taime osad",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "juur",
+        "vars",
+        "leht",
+        "õis"
+      ],
+      "definitions": [
+        "Taime osa, millest võib areneda vili ja seemned.",
+        "Taime osa, mis toetab taime ja ühendab juuri lehtedega.",
+        "Taime osa, kus taim valmistab valguse abil toitu.",
+        "Taime osa, mis kinnitab taime ja võtab mullast vett."
+      ],
+      "correctMatches": {
+        "juur": "Taime osa, mis kinnitab taime ja võtab mullast vett.",
+        "vars": "Taime osa, mis toetab taime ja ühendab juuri lehtedega.",
+        "leht": "Taime osa, kus taim valmistab valguse abil toitu.",
+        "õis": "Taime osa, millest võib areneda vili ja seemned."
+      },
+      "explanation": "Taimeosadel on erinevad ülesanded.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "elusloodus",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-015",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Fotosünteesi lihtmõisted",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "valgus",
+        "süsihappegaas",
+        "hapnik",
+        "klorofüll"
+      ],
+      "definitions": [
+        "Roheline aine taimes, mis aitab valgust kasutada.",
+        "Õhus olev gaas, mida taim kasutab toidu valmistamisel.",
+        "Gaas, mida paljud elusolendid hingamiseks vajavad.",
+        "Energia, mida taim kasutab toidu valmistamiseks."
+      ],
+      "correctMatches": {
+        "valgus": "Energia, mida taim kasutab toidu valmistamiseks.",
+        "süsihappegaas": "Õhus olev gaas, mida taim kasutab toidu valmistamisel.",
+        "hapnik": "Gaas, mida paljud elusolendid hingamiseks vajavad.",
+        "klorofüll": "Roheline aine taimes, mis aitab valgust kasutada."
+      },
+      "explanation": "Lihtsas tasemes piisab teadmisest, et taim valmistab toitu valguse, vee ja õhus oleva süsihappegaasi abil.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "elusloodus",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-016",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Elundid",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "süda",
+        "kopsud",
+        "magu",
+        "aju"
+      ],
+      "definitions": [
+        "Aitavad õhust hapnikku verre saada.",
+        "Juhib keha tööd ja aitab mõelda.",
+        "Osaleb toidu seedimises.",
+        "Pumpab verd kehas ringi."
+      ],
+      "correctMatches": {
+        "süda": "Pumpab verd kehas ringi.",
+        "kopsud": "Aitavad õhust hapnikku verre saada.",
+        "magu": "Osaleb toidu seedimises.",
+        "aju": "Juhib keha tööd ja aitab mõelda."
+      },
+      "explanation": "Need on inimese põhilised siseelundid ja nende lihtsad ülesanded.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "inimene",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-017",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Keha osad ja kaitse",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "luustik",
+        "lihas",
+        "nahk",
+        "veri"
+      ],
+      "definitions": [
+        "Kaitseb keha väljastpoolt ja aitab tunda puudutust.",
+        "Toetab keha ja aitab elundeid kaitsta.",
+        "Kannab kehas hapnikku ja toitaineid.",
+        "Aitab keha liigutada."
+      ],
+      "correctMatches": {
+        "luustik": "Toetab keha ja aitab elundeid kaitsta.",
+        "lihas": "Aitab keha liigutada.",
+        "nahk": "Kaitseb keha väljastpoolt ja aitab tunda puudutust.",
+        "veri": "Kannab kehas hapnikku ja toitaineid."
+      },
+      "explanation": "Kehaosad töötavad koos, et keha liiguks, püsiks ja saaks vajalikku.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "inimene",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-018",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Meeled",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "nägemine",
+        "kuulmine",
+        "haistmine",
+        "maitsmine"
+      ],
+      "definitions": [
+        "Kõrvade abil helide tajumine.",
+        "Nina abil lõhnade tajumine.",
+        "Keele abil maitsete tajumine.",
+        "Silmade abil valguse ja kujude tajumine."
+      ],
+      "correctMatches": {
+        "nägemine": "Silmade abil valguse ja kujude tajumine.",
+        "kuulmine": "Kõrvade abil helide tajumine.",
+        "haistmine": "Nina abil lõhnade tajumine.",
+        "maitsmine": "Keele abil maitsete tajumine."
+      },
+      "explanation": "Meeled annavad infot ümbruse kohta.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "inimene",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-019",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Uurimise sõnad",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "tõend",
+        "vaatlus",
+        "katse",
+        "järeldus"
+      ],
+      "definitions": [
+        "Hoolikas jälgimine ja kirjeldamine.",
+        "Andmed või vaatlus, mis aitab väidet kontrollida.",
+        "Vastus, mis tehakse andmete või vaatluste põhjal.",
+        "Uurimisviis, kus tingimusi muudetakse ja tulemust jälgitakse."
+      ],
+      "correctMatches": {
+        "tõend": "Andmed või vaatlus, mis aitab väidet kontrollida.",
+        "vaatlus": "Hoolikas jälgimine ja kirjeldamine.",
+        "katse": "Uurimisviis, kus tingimusi muudetakse ja tulemust jälgitakse.",
+        "järeldus": "Vastus, mis tehakse andmete või vaatluste põhjal."
+      },
+      "explanation": "Teaduslik mõtlemine kasutab tõendeid, vaatlust, katseid ja järeldusi.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "teaduslik_motlemine",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-020",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Andmed",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "andmed",
+        "tabel",
+        "graafik",
+        "mõõtmine"
+      ],
+      "definitions": [
+        "Joonis, mis aitab andmeid võrrelda.",
+        "Kogutud mõõtmised või tähelepanekud.",
+        "Andmete esitamise viis ridade ja veergudena.",
+        "Suuruse leidmine mõõteriista abil."
+      ],
+      "correctMatches": {
+        "andmed": "Kogutud mõõtmised või tähelepanekud.",
+        "tabel": "Andmete esitamise viis ridade ja veergudena.",
+        "graafik": "Joonis, mis aitab andmeid võrrelda.",
+        "mõõtmine": "Suuruse leidmine mõõteriista abil."
+      },
+      "explanation": "Andmeid saab koguda ja esitada tabeli või graafikuna.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "teaduslik_motlemine",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-021",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Ilma sõnad",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "temperatuur",
+        "tuul",
+        "sademed",
+        "ilm"
+      ],
+      "definitions": [
+        "Näitab, kui soe või külm on.",
+        "Õhu seisund kindlas kohas ja ajal.",
+        "Õhu liikumine.",
+        "Pilvedest langev vesi, näiteks vihm või lumi."
+      ],
+      "correctMatches": {
+        "temperatuur": "Näitab, kui soe või külm on.",
+        "tuul": "Õhu liikumine.",
+        "sademed": "Pilvedest langev vesi, näiteks vihm või lumi.",
+        "ilm": "Õhu seisund kindlas kohas ja ajal."
+      },
+      "explanation": "Ilma kirjeldamiseks on vaja mitut näitajat.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "planeet_maa",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-022",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Kompass ja kaart",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "kompass",
+        "põhi",
+        "lõuna",
+        "mõõtkava"
+      ],
+      "definitions": [
+        "Ilmakaar, mis on tavalisel kaardil all.",
+        "Vahend ilmakaare leidmiseks.",
+        "Ilmakaar, mis on tavalisel kaardil üleval.",
+        "Näitab, kuidas kaardil olev vahemaa vastab tegelikule vahemaale."
+      ],
+      "correctMatches": {
+        "kompass": "Vahend ilmakaare leidmiseks.",
+        "põhi": "Ilmakaar, mis on tavalisel kaardil üleval.",
+        "lõuna": "Ilmakaar, mis on tavalisel kaardil all.",
+        "mõõtkava": "Näitab, kuidas kaardil olev vahemaa vastab tegelikule vahemaale."
+      },
+      "explanation": "Kompass ja mõõtkava aitavad kaarti kasutada.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "planeet_maa",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-023",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Kivimid ja muld",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "kivim",
+        "muld",
+        "mineraal",
+        "setted"
+      ],
+      "definitions": [
+        "Looduslik tahke aine, millest koosneb osa maakoorest.",
+        "Looduslik aine, millest kivimid võivad koosneda.",
+        "Väikesed osakesed, mis võivad vees või tuules kuhjuda.",
+        "Maapinna pealmine kiht, kus saavad kasvada taimed."
+      ],
+      "correctMatches": {
+        "kivim": "Looduslik tahke aine, millest koosneb osa maakoorest.",
+        "muld": "Maapinna pealmine kiht, kus saavad kasvada taimed.",
+        "mineraal": "Looduslik aine, millest kivimid võivad koosneda.",
+        "setted": "Väikesed osakesed, mis võivad vees või tuules kuhjuda."
+      },
+      "explanation": "Need mõisted aitavad kirjeldada maapinda ja selle materjale.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "planeet_maa",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-024",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Valgus ja vari",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "valgus",
+        "vari",
+        "soojus",
+        "läbipaistev"
+      ],
+      "definitions": [
+        "Tumedam ala, kuhu valgus ei pääse otse.",
+        "Energia, mis võimaldab meil näha.",
+        "Omadus, kui valgus pääseb ainest hästi läbi.",
+        "Energia, mida tajume soojana."
+      ],
+      "correctMatches": {
+        "valgus": "Energia, mis võimaldab meil näha.",
+        "vari": "Tumedam ala, kuhu valgus ei pääse otse.",
+        "soojus": "Energia, mida tajume soojana.",
+        "läbipaistev": "Omadus, kui valgus pääseb ainest hästi läbi."
+      },
+      "explanation": "Valgus, soojus ja vari sobivad lihtsate vaatluste ja katsete teemaks.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "teaduslik_motlemine",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-MATCH-025",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "match",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Tervise sõnad",
+      "prompt": "Ühenda mõiste õige seletusega.",
+      "terms": [
+        "tervis",
+        "uni",
+        "liikumine",
+        "hügieen"
+      ],
+      "definitions": [
+        "Puhkeaeg, mida keha ja aju vajavad.",
+        "Keha aktiivne kasutamine, näiteks kõndimine või jooksmine.",
+        "Keha ja enesetunde hea seisund.",
+        "Puhtuse hoidmine, näiteks kätepesu ja hammaste pesemine."
+      ],
+      "correctMatches": {
+        "tervis": "Keha ja enesetunde hea seisund.",
+        "uni": "Puhkeaeg, mida keha ja aju vajavad.",
+        "liikumine": "Keha aktiivne kasutamine, näiteks kõndimine või jooksmine.",
+        "hügieen": "Puhtuse hoidmine, näiteks kätepesu ja hammaste pesemine."
+      },
+      "explanation": "Uni, liikumine ja hügieen on tervise hoidmisel olulised.",
+      "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
+      "tags": [
+        "inimene",
+        "mõisted"
+      ]
+    },
+    {
+      "id": "SCI-DATA-001",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Valgus ja taime kasv",
+      "prompt": "Mida andmed kõige paremini näitavad?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Mõlemad taimed kasvasid täpselt sama palju."
+        },
+        {
+          "id": "B",
+          "text": "Pimedas olnud taim kasvas rohkem."
+        },
+        {
+          "id": "C",
+          "text": "Valgus muutis taime kiviks."
+        },
+        {
+          "id": "D",
+          "text": "Valguses olnud taim kasvas rohkem."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Valguses olnud taim kasvas rohkem.",
+      "explanation": "Taim A kasvas 6 cm ja taim B 1 cm. Selles katses kasvas valguses olnud taim rohkem.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "teaduslik_motlemine",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Taim",
+            "Tingimus",
+            "Kasv 7 päevaga"
+          ],
+          [
+            "A",
+            "valguses",
+            "6 cm"
+          ],
+          [
+            "B",
+            "pimedas",
+            "1 cm"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-002",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Seemned ja vesi",
+      "prompt": "Milline järeldus sobib tabeliga?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Veega seemned idanesid paremini."
+        },
+        {
+          "id": "B",
+          "text": "Vesi ei ole selles katses oluline."
+        },
+        {
+          "id": "C",
+          "text": "Ilma veeta idanesid kõik seemned."
+        },
+        {
+          "id": "D",
+          "text": "Seemned muutusid planeetideks."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Veega seemned idanesid paremini.",
+      "explanation": "Veega idanes 8 seemet 10st, ilma veeta 0 seemet 10st. Andmed näitavad, et vesi oli idanemiseks vajalik.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "teaduslik_motlemine",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Rühm",
+            "Tingimus",
+            "Idanes"
+          ],
+          [
+            "1",
+            "vesi iga päev",
+            "8 seemet 10st"
+          ],
+          [
+            "2",
+            "vett ei antud",
+            "0 seemet 10st"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-003",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Aurumine soojas ja jahedas",
+      "prompt": "Kus aurus vesi kiiremini?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Vesi ei aurunud üldse."
+        },
+        {
+          "id": "B",
+          "text": "Soojas kohas."
+        },
+        {
+          "id": "C",
+          "text": "Mõlemas täpselt sama kiiresti."
+        },
+        {
+          "id": "D",
+          "text": "Jahedas kohas."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Soojas kohas.",
+      "explanation": "Soojas kohas vähenes vee kogus 20 ml, jahedas 5 ml. Suurem vähenemine näitab kiiremat aurumist.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "planeet_maa",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Nõu",
+            "Koht",
+            "Vett alguses",
+            "Vett pärast 2 päeva"
+          ],
+          [
+            "A",
+            "soe aknalaud",
+            "100 ml",
+            "80 ml"
+          ],
+          [
+            "B",
+            "jahe nurk",
+            "100 ml",
+            "95 ml"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-004",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Vihmasadu nädalas",
+      "prompt": "Millisel päeval sadas kõige rohkem?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Neljapäeval."
+        },
+        {
+          "id": "B",
+          "text": "Kolmapäeval."
+        },
+        {
+          "id": "C",
+          "text": "Teisipäeval."
+        },
+        {
+          "id": "D",
+          "text": "Esmaspäeval."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Kolmapäeval.",
+      "explanation": "Kolmapäeval oli sademete hulk 12 mm, mis on tabeli suurim väärtus.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "planeet_maa",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Päev",
+            "Sademed"
+          ],
+          [
+            "Esmaspäev",
+            "2 mm"
+          ],
+          [
+            "Teisipäev",
+            "0 mm"
+          ],
+          [
+            "Kolmapäev",
+            "12 mm"
+          ],
+          [
+            "Neljapäev",
+            "5 mm"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-005",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Tuule kiirus",
+      "prompt": "Millal oli tuul kõige tugevam?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kell 12."
+        },
+        {
+          "id": "B",
+          "text": "Kell 9."
+        },
+        {
+          "id": "C",
+          "text": "Kell 15."
+        },
+        {
+          "id": "D",
+          "text": "Kell 18."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Kell 18.",
+      "explanation": "Kõige suurem tuule kiirus tabelis on 11 m/s kell 18.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "planeet_maa",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Aeg",
+            "Tuule kiirus"
+          ],
+          [
+            "9:00",
+            "3 m/s"
+          ],
+          [
+            "12:00",
+            "5 m/s"
+          ],
+          [
+            "15:00",
+            "8 m/s"
+          ],
+          [
+            "18:00",
+            "11 m/s"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-006",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Varju pikkus",
+      "prompt": "Millal oli vari kõige lühem?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kell 15."
+        },
+        {
+          "id": "B",
+          "text": "Kell 12."
+        },
+        {
+          "id": "C",
+          "text": "Kell 9."
+        },
+        {
+          "id": "D",
+          "text": "Kõigil aegadel oli sama pikk."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Kell 12.",
+      "explanation": "Tabelis on kõige lühem vari 40 cm kell 12. Päeva jooksul muutub varju pikkus Päikese asendi tõttu.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "teaduslik_motlemine",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Aeg",
+            "Varju pikkus"
+          ],
+          [
+            "9:00",
+            "120 cm"
+          ],
+          [
+            "12:00",
+            "40 cm"
+          ],
+          [
+            "15:00",
+            "100 cm"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-007",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Pulss enne ja pärast liikumist",
+      "prompt": "Mida andmed näitavad?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Pärast jooksu pulss kadus."
+        },
+        {
+          "id": "B",
+          "text": "Pulss ei muutu kunagi."
+        },
+        {
+          "id": "C",
+          "text": "Pärast jooksu oli pulss kiirem."
+        },
+        {
+          "id": "D",
+          "text": "Puhkeolekus oli pulss kõige kiirem."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Pärast jooksu oli pulss kiirem.",
+      "explanation": "Pulss tõusis 78 löögilt minutis 124 löögini minutis. See näitab, et süda töötas pärast jooksu kiiremini.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "inimene",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Olukord",
+            "Pulss"
+          ],
+          [
+            "puhkeolekus",
+            "78 lööki/min"
+          ],
+          [
+            "pärast 2 min jooksu",
+            "124 lööki/min"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-008",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Hingamine enne ja pärast liikumist",
+      "prompt": "Milline järeldus sobib?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Keha ei vaja liikumisel hapnikku."
+        },
+        {
+          "id": "B",
+          "text": "Pärast hüplemist hingati minutis rohkem kordi."
+        },
+        {
+          "id": "C",
+          "text": "Hingamine muutus kiviks."
+        },
+        {
+          "id": "D",
+          "text": "Hingamine jäi täpselt samaks."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Pärast hüplemist hingati minutis rohkem kordi.",
+      "explanation": "Hingamiste arv kasvas 16 korralt 28 korrani minutis. Liikumisel vajab keha rohkem hapnikku.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "inimene",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Olukord",
+            "Hingamisi minutis"
+          ],
+          [
+            "enne hüplemist",
+            "16"
+          ],
+          [
+            "pärast hüplemist",
+            "28"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-009",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Jää sulamine",
+      "prompt": "Kus sulas jää kiiremini?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Mõlemas sama kiiresti."
+        },
+        {
+          "id": "B",
+          "text": "Toas laual."
+        },
+        {
+          "id": "C",
+          "text": "Jää ei saa sulada."
+        },
+        {
+          "id": "D",
+          "text": "Sügavkülmas."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Toas laual.",
+      "explanation": "Toas oli jää 30 minutiga sulanud. Sügavkülmas jäi jääks, sest seal on temperatuur alla vee külmumispunkti.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "planeet_maa",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Koht",
+            "Tulemus 30 minuti pärast"
+          ],
+          [
+            "toas laual",
+            "jää sulas veeks"
+          ],
+          [
+            "sügavkülmas",
+            "jää jäi jääks"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-010",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Magneti katse",
+      "prompt": "Milline ese tõmbus magneti külge?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kummikustutuskumm."
+        },
+        {
+          "id": "B",
+          "text": "Raudkirjaklamber."
+        },
+        {
+          "id": "C",
+          "text": "Paberileht."
+        },
+        {
+          "id": "D",
+          "text": "Puitpulk."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Raudkirjaklamber.",
+      "explanation": "Magnet tõmbas raudkirjaklambrit. Kõik materjalid ei tõmbu magneti külge.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "teaduslik_motlemine",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Ese",
+            "Kas tõmbus magneti külge?"
+          ],
+          [
+            "raudkirjaklamber",
+            "jah"
+          ],
+          [
+            "puitpulk",
+            "ei"
+          ],
+          [
+            "kustutuskumm",
+            "ei"
+          ],
+          [
+            "paberileht",
+            "ei"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-011",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Toiduahela muutus",
+      "prompt": "Kui jäneseid jääb palju vähemaks, mis võib rebastega juhtuda?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Rebased hakkavad fotosünteesima."
+        },
+        {
+          "id": "B",
+          "text": "Päike hakkab tiirlema ümber rebase."
+        },
+        {
+          "id": "C",
+          "text": "Rohi kaob alati kohe täielikult."
+        },
+        {
+          "id": "D",
+          "text": "Rebastel võib olla vähem toitu."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Rebastel võib olla vähem toitu.",
+      "explanation": "Selles toiduahelas sööb rebane jänest. Kui jäneseid on vähem, võib rebastel olla vähem toitu.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "elusloodus",
+        "andmed",
+        "järeldus"
+      ],
+      "diagram": "🌱 rohi → 🐇 jänes → 🦊 rebane\nVaatlus: jäneseid jäi haiguste tõttu vähemaks.",
+      "diagramExplanation": "Skeem näitab lihtsat tõendit või mudelit, mille põhjal tuleb järeldus teha.",
+      "data": {
+        "diagram": "🌱 rohi → 🐇 jänes → 🦊 rebane\nVaatlus: jäneseid jäi haiguste tõttu vähemaks."
+      }
+    },
+    {
+      "id": "SCI-DATA-012",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Taimede kõrgus",
+      "prompt": "Milline taim oli 4. päeval kõrgeim?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Taim C."
+        },
+        {
+          "id": "B",
+          "text": "Taim B."
+        },
+        {
+          "id": "C",
+          "text": "Taim A."
+        },
+        {
+          "id": "D",
+          "text": "Kõik olid sama kõrged."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Taim C.",
+      "explanation": "4. päeval oli taim C 9 cm, taim A 7 cm ja taim B 5 cm. Suurim väärtus on 9 cm.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "elusloodus",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Taim",
+            "Kõrgus 4. päeval"
+          ],
+          [
+            "A",
+            "7 cm"
+          ],
+          [
+            "B",
+            "5 cm"
+          ],
+          [
+            "C",
+            "9 cm"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-013",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Mulla vee läbilaskmine",
+      "prompt": "Millisest mullast liikus vesi kõige kiiremini läbi?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Liivane muld."
+        },
+        {
+          "id": "B",
+          "text": "Vesi ei liikunud kummastki läbi."
+        },
+        {
+          "id": "C",
+          "text": "Mõlemast täpselt sama kiiresti."
+        },
+        {
+          "id": "D",
+          "text": "Savine muld."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Liivane muld.",
+      "explanation": "Liivasest mullast tuli 2 minutiga läbi 80 ml vett, savisest 25 ml. Selles katses lasi liivane muld vett kiiremini läbi.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "planeet_maa",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Mulla tüüp",
+            "2 minutiga läbi tulnud vesi"
+          ],
+          [
+            "liivane muld",
+            "80 ml"
+          ],
+          [
+            "savine muld",
+            "25 ml"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-014",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Päeva temperatuur",
+      "prompt": "Millal oli temperatuur kõige kõrgem?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Kell 10."
+        },
+        {
+          "id": "B",
+          "text": "Kell 7."
+        },
+        {
+          "id": "C",
+          "text": "Kell 21."
+        },
+        {
+          "id": "D",
+          "text": "Kell 15."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Kell 15.",
+      "explanation": "Tabelis on kõige kõrgem temperatuur 19 °C kell 15.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "planeet_maa",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Aeg",
+            "Temperatuur"
+          ],
+          [
+            "7:00",
+            "9 °C"
+          ],
+          [
+            "10:00",
+            "14 °C"
+          ],
+          [
+            "15:00",
+            "19 °C"
+          ],
+          [
+            "21:00",
+            "12 °C"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-015",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Õiglane katse",
+      "prompt": "Mis peaks katses olema mõlemal taimel sama, kui uuritakse ainult valguse mõju?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Vee kogus ja taime liik."
+        },
+        {
+          "id": "B",
+          "text": "Ühel taimel peaks olema vett, teisel mitte."
+        },
+        {
+          "id": "C",
+          "text": "Üks taim peaks olema teisel planeedil."
+        },
+        {
+          "id": "D",
+          "text": "Üks taim peaks olema plastist."
+        }
+      ],
+      "correctAnswer": "A",
+      "correctAnswerText": "Vee kogus ja taime liik.",
+      "explanation": "Kui uuritakse valguse mõju, peaksid teised tingimused olema võimalikult samad. Muidu ei tea, mis muutuse põhjustas.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "teaduslik_motlemine",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "setup": "Taim A on valguses. Taim B on pimedas. Uurimisküsimus: kas valgus mõjutab kasvu?"
+      }
+    },
+    {
+      "id": "SCI-DATA-016",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Milline väide on tõendiga toetatud?",
+      "prompt": "Milline väide põhineb tabeli andmetel?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Metsas ei nähtud ühtegi lindu."
+        },
+        {
+          "id": "B",
+          "text": "Kõige rohkem linde nähti rannas."
+        },
+        {
+          "id": "C",
+          "text": "Kõik kohad olid täpselt samad."
+        },
+        {
+          "id": "D",
+          "text": "Kõige rohkem linde nähti pargis."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Kõige rohkem linde nähti pargis.",
+      "explanation": "Pargis nähti 18 lindu, metsas 11 ja rannas 7. Suurim arv on 18.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "teaduslik_motlemine",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Koht",
+            "Nähtud linde"
+          ],
+          [
+            "park",
+            "18"
+          ],
+          [
+            "mets",
+            "11"
+          ],
+          [
+            "rand",
+            "7"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-017",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "elusloodus",
+      "difficulty": "easy",
+      "title": "Linnu nokk ja toit",
+      "prompt": "Milline toit sobib kõige paremini lühikese tugeva nokaga linnule selles ülesandes?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Muld."
+        },
+        {
+          "id": "B",
+          "text": "Kivi."
+        },
+        {
+          "id": "C",
+          "text": "Kõvad seemned."
+        },
+        {
+          "id": "D",
+          "text": "Suur kala tervelt."
+        }
+      ],
+      "correctAnswer": "C",
+      "correctAnswerText": "Kõvad seemned.",
+      "explanation": "Lühike tugev nokk võib aidata seemneid purustada. See on lihtne kohastumuse näide.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "elusloodus",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "cards": [
+          [
+            "Nokk",
+            "lühike ja tugev"
+          ],
+          [
+            "Võimalik toit",
+            "seemned, putukad, kala"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-018",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "inimene",
+      "difficulty": "easy",
+      "title": "Uni ja keskendumine",
+      "prompt": "Millisel päeval magas laps kõige kauem?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Esmaspäeval."
+        },
+        {
+          "id": "B",
+          "text": "Kolmapäeval."
+        },
+        {
+          "id": "C",
+          "text": "Teisipäeval."
+        },
+        {
+          "id": "D",
+          "text": "Neljapäeval."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Kolmapäeval.",
+      "explanation": "Kolmapäeval oli uneaeg 10 tundi, mis on tabeli suurim väärtus.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "inimene",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Päev",
+            "Uneaeg"
+          ],
+          [
+            "Esmaspäev",
+            "8 tundi"
+          ],
+          [
+            "Teisipäev",
+            "7 tundi"
+          ],
+          [
+            "Kolmapäev",
+            "10 tundi"
+          ],
+          [
+            "Neljapäev",
+            "8 tundi"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-019",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "planeet_maa",
+      "difficulty": "easy",
+      "title": "Pilved ja vihm",
+      "prompt": "Millisel päeval oli kõige tõenäolisem vihmase ilmaga vaatlus?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Päev A."
+        },
+        {
+          "id": "B",
+          "text": "Kõigil päevadel sadas sama palju."
+        },
+        {
+          "id": "C",
+          "text": "Päev C."
+        },
+        {
+          "id": "D",
+          "text": "Päev B."
+        }
+      ],
+      "correctAnswer": "D",
+      "correctAnswerText": "Päev B.",
+      "explanation": "Päev B kirjeldab tumedaid pilvi ja mõõdetud sademeid 9 mm. See toetab vihmase ilma järeldust.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "planeet_maa",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "table": [
+          [
+            "Päev",
+            "Pilved",
+            "Sademed"
+          ],
+          [
+            "A",
+            "selge taevas",
+            "0 mm"
+          ],
+          [
+            "B",
+            "tumedad pilved",
+            "9 mm"
+          ],
+          [
+            "C",
+            "üksikud pilved",
+            "0 mm"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SCI-DATA-020",
+      "subject": "loodusopetus",
+      "targetLearner": "kiur",
+      "gradeBand": "3_to_4",
+      "type": "data_evidence",
+      "topic": "teaduslik_motlemine",
+      "difficulty": "easy",
+      "title": "Järeldus väikese valimi kohta",
+      "prompt": "Miks ei ole ühe mõõtmise põhjal alati hea suurt järeldust teha?",
+      "choices": [
+        {
+          "id": "A",
+          "text": "Üks mõõtmine tõestab alati kõik ära."
+        },
+        {
+          "id": "B",
+          "text": "Üks tulemus võib olla juhuslik või mõõtmisviga."
+        },
+        {
+          "id": "C",
+          "text": "Andmeid ei tohi kunagi kasutada."
+        },
+        {
+          "id": "D",
+          "text": "Järeldus peab olema alati ilma tõendita."
+        }
+      ],
+      "correctAnswer": "B",
+      "correctAnswerText": "Üks tulemus võib olla juhuslik või mõõtmisviga.",
+      "explanation": "Mitme mõõtmisega saab kontrollida, kas tulemus kordub. See teeb järelduse usaldusväärsemaks.",
+      "interactiveIdea": "Näita tabelit, skeemi või kaarte; laps valib, millist järeldust andmed toetavad.",
+      "tags": [
+        "teaduslik_motlemine",
+        "andmed",
+        "järeldus"
+      ],
+      "data": {
+        "example": "Taim A mõõdeti ühel päeval 10 cm kõrguseks. Järgmisel päeval mõõdeti uuesti ja saadi 11 cm."
+      }
+    }
+  ]
+}

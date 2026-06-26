@@ -539,3 +539,46 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .sprint-secondary-button{border:1px solid #dbeafe;background:#fff;color:#0b1b45}
 .sprint-primary-button:focus-visible,.sprint-secondary-button:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
 @media (max-width:760px){.sprint-result-stats-grid{grid-template-columns:1fr}.sprint-result-actions{grid-template-columns:1fr}}
+
+/* Loodusõpetus (science) — calm setup + runner */
+.science-setup-shell{align-content:start}
+.science-setup-card{text-align:left}
+.science-setup-subtitle{margin:0;color:#475569;font-size:clamp(16px,2.4vw,20px);font-weight:700}
+.science-summary{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.science-summary li{background:#eef5ff;border:1px solid #dbeafe;color:#1e3a8a;border-radius:999px;padding:8px 14px;font-size:15px;font-weight:800}
+.science-count-block{display:grid;gap:12px}
+.science-count-heading{margin:0;font-size:clamp(20px,3vw,26px);font-weight:900;color:#0b1b45}
+.science-count-grid{width:100%}
+.science-start-button{margin-top:4px}
+.science-title{font-size:clamp(24px,4vw,38px)}
+.science-prompt{margin:0;font-size:clamp(19px,2.6vw,24px);font-weight:850;color:#0b1b45}
+.science-diagram{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;text-align:center;font-size:clamp(22px,4vw,30px);line-height:1.5;background:#eff6ff;border:1px solid #dbeafe;border-radius:22px;padding:clamp(16px,3vw,28px);color:#0b1b45}
+.science-reading-text{font-size:clamp(17px,2.4vw,21px);line-height:1.55;font-weight:600;color:#1e293b;background:#fffdf5;border:1px solid #fde68a;border-radius:22px;padding:clamp(16px,3vw,24px)}
+.science-data{display:grid;gap:12px}
+.science-table-wrap{overflow-x:auto;border-radius:18px;border:1px solid #dbeafe}
+.science-table{width:100%;border-collapse:collapse;background:#fff;font-size:clamp(15px,2.2vw,18px)}
+.science-table th,.science-table td{padding:12px 14px;text-align:left;border-bottom:1px solid #eef2ff;color:#0b1b45}
+.science-table th{background:#eff6ff;font-weight:900}
+.science-table tr:last-child td{border-bottom:0}
+.science-data-cards{display:flex;flex-wrap:wrap;gap:10px}
+.science-data-card{display:grid;gap:2px;min-width:140px;flex:1 1 160px;background:#eff6ff;border:1px solid #dbeafe;border-radius:16px;padding:12px 14px}
+.science-data-card strong{color:#1e3a8a;font-size:14px}
+.science-data-card span{color:#0b1b45;font-size:17px;font-weight:800}
+.science-info-box{margin:0;background:#fffdf5;border:1px solid #fde68a;border-radius:18px;padding:14px 16px;font-size:clamp(16px,2.3vw,19px);line-height:1.5;font-weight:650;color:#1e293b}
+.science-sort-list,.science-match-list{display:grid;gap:10px}
+.science-sort-item{display:grid;gap:8px;background:#f8fbff;border:1px solid #dfe8f6;border-radius:18px;padding:12px 14px}
+.science-sort-label{font-size:clamp(18px,2.6vw,22px);font-weight:900;color:#0b1b45}
+.science-sort-groups{display:flex;flex-wrap:wrap;gap:8px}
+.science-group-chip{min-height:52px;padding:0 16px;border-radius:16px;border:2px solid #dbeafe;background:#fff;color:#0b1b45;font-size:16px;font-weight:850;cursor:pointer}
+.science-group-chip.selected,.science-group-chip[aria-pressed='true']{background:linear-gradient(180deg,#3b82f6,#2563eb);border-color:#2563eb;color:#fff}
+.science-group-chip:disabled{cursor:default;opacity:.85}
+.science-match-row{display:grid;gap:6px}
+.science-match-term{font-size:clamp(18px,2.6vw,22px);font-weight:900;color:#0b1b45}
+.science-match-select{min-height:54px;border:2px solid #dbeafe;border-radius:16px;background:#fff;color:#0b1b45;font-size:16px;font-weight:700;padding:0 14px}
+.science-match-select:disabled{opacity:.85}
+.science-feedback{display:grid;gap:6px;padding:14px 16px;border-radius:18px;font-size:clamp(16px,2.3vw,18px);font-weight:750;line-height:1.45}
+.science-feedback.correct{background:#dcfce7;border:1px solid #86efac;color:#166534}
+.science-feedback.wrong{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
+.science-feedback strong{font-size:clamp(18px,2.6vw,21px)}
+.science-group-chip:focus-visible,.science-match-select:focus-visible,.science-start-button:focus-visible,.science-count-grid .choice-answer-button:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+@media (max-width:640px){.science-diagram{font-size:clamp(20px,6vw,26px);border-radius:18px}.science-group-chip{flex:1 1 auto;min-height:50px}.science-match-select{min-height:52px}}

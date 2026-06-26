@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "next build && tsc --noEmit"
+    "typecheck": "next build && tsc --noEmit",
+    "validate:science": "node scripts/validate-loodusopetus.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

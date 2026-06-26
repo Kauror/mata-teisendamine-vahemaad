@@ -51,7 +51,10 @@ export async function POST(req: NextRequest) {
   const stmt = db.prepare('INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic, exerciseId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const isLearningAttempt = body.subject !== 'inglise-keel';
   const isTextProblems = body.subject === 'matemaatika' && (topic === 'tekstulesanded' || category === 'Tekstülesanded');
-  const questionCount = body.subject === 'lugemine' || isTextProblems ? Number(body.questionCount) || 0 : isLearningAttempt ? 15 : Number(body.questionCount) || 0;
+  // Subjects whose session length is variable use the count sent by the client;
+  // the fixed 15-question maths sessions are normalised below.
+  const usesProvidedCount = body.subject === 'lugemine' || body.subject === 'loodusopetus' || isTextProblems;
+  const questionCount = usesProvidedCount ? Number(body.questionCount) || 0 : isLearningAttempt ? 15 : Number(body.questionCount) || 0;
   const score = Math.max(0, Math.min(Math.floor(Number(body.score) || 0), questionCount));
   const result = stmt.run(
     body.createdAt,

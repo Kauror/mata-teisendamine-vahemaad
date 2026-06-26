@@ -46,6 +46,7 @@ export function subjectLabel(subject?: string | null) {
   if (!subject || subject === 'matemaatika') return 'Matemaatika';
   if (subject === 'inglise-keel') return 'Inglise keel';
   if (subject === 'lugemine') return 'Lugemine';
+  if (subject === 'loodusopetus') return 'Loodusõpetus';
   return subject;
 }
 
@@ -65,6 +66,7 @@ export function compactTopicLabel(topic?: string | null, category?: string | nul
   if (topic === 'arvutamine') return 'Arvutamine';
   if (topic === 'loendamine') return 'Loendamine';
   if (topic === 'mustrid') return 'Mustrid';
+  if (topic === 'segaharjutus') return 'Segaharjutus';
   return category || '';
 }
 

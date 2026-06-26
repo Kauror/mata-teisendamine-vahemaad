@@ -106,6 +106,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   const retryCategory = (retryTopic === 'ring-ja-ringjoon' || retryTopic === 'mustrid') ? 'Segaharjutus' : row.category;
 
   const isEnglish = row.subject === 'inglise-keel';
+  const isScience = row.subject === 'loodusopetus';
   const isKirsiReading = row.learner === 'kirsi' && row.subject === 'lugemine';
   const isKiurReading = row.learner === 'kiur' && row.subject === 'lugemine';
   const isReading = row.subject === 'lugemine';
@@ -124,6 +125,8 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
     ? (row.learner === 'kirsi' ? '/kirsi' : '/kiur')
     : isEnglish
     ? '/kiur/inglise-keel/sprint'
+    : isScience
+    ? '/kiur/loodusopetus'
     : isKiurReading
       ? '/kiur/lugemine'
     : isKirsiReading && row.topic === 'esimene-haalik'
