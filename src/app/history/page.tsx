@@ -56,13 +56,14 @@ function avgPercent(items: ExerciseHistory[]) {
   return Math.round(items.reduce((sum, a) => sum + scorePercent(a.score, a.questionCount), 0) / items.length);
 }
 
-// Stars the child gained that day: learning points from exercises plus task,
-// bonus and parent-adjustment ledger amounts. Store purchases are spending, so
-// they are excluded.
+// Net stars for that day: learning points from exercises plus task, bonus and
+// parent-adjustment ledger amounts, minus store spending. Purchases count as
+// negative so the day total (and the store-filtered view) can show a minus.
 function earnedStars(items: HistoryItem[]) {
   return items.reduce((sum, item) => {
     if (item.kind === 'exercise') return sum + (item.earnedStars ?? 0);
     if (item.kind === 'task') return sum + item.amount;
+    if (item.kind === 'store') return sum - item.priceSnapshot;
     return sum;
   }, 0);
 }

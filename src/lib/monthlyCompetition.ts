@@ -30,6 +30,29 @@ function monthOf(date: string) {
   return date.slice(0, 7);
 }
 
+function daysInMonth(month: string) {
+  const [year, m] = month.split('-').map(Number);
+  // Day 0 of the next month is the last day of this month.
+  return new Date(Date.UTC(year, m, 0)).getUTCDate();
+}
+
+// Number of days in the month on which the child completed at least one
+// exercise (daily_leaderboard holds one row per active day with that child's
+// exercise count).
+function activeDaysInMonth(month: string, learner: Learner) {
+  const column = learner === 'kiur' ? 'kiurCount' : 'kirsiCount';
+  const row = db
+    .prepare(`SELECT COUNT(*) AS days FROM daily_leaderboard WHERE substr(date, 1, 7) = ? AND ${column} > 0`)
+    .get(month) as { days: number } | undefined;
+  return row?.days ?? 0;
+}
+
+// The monthly prize is only awarded if the winner was consistent: they must have
+// practiced on more than half of the calendar days of that month.
+function metPrizeAttendance(month: string, learner: Learner) {
+  return activeDaysInMonth(month, learner) * 2 > daysInMonth(month);
+}
+
 function previousMonth(date: string) {
   const [year, month] = date.split('-').map(Number);
   const cursor = new Date(Date.UTC(year, month - 1, 1));
@@ -147,7 +170,7 @@ export function ensureMonthlyPrizeAwarded(today = todayDateString()) {
 
     let ledgerEntryId: number | null = null;
     let awardedStars = 0;
-    if (standing.leader !== 'tie' && prizeStars > 0) {
+    if (standing.leader !== 'tie' && prizeStars > 0 && metPrizeAttendance(month, standing.leader)) {
       const trophies = standing.leader === 'kiur' ? standing.kiurTrophies : standing.kirsiTrophies;
       const exercises = standing.leader === 'kiur' ? standing.kiurExercises : standing.kirsiExercises;
       const ledger = db.prepare(`

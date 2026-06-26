@@ -300,8 +300,10 @@ function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gener
   }
 
   if (t === 8) {
-    const start = pick(rng, [1000, 2000, 5000]);
     const step = pick(rng, [200, 300, -300]);
+    // For a decreasing chain, keep the start high enough that the answer
+    // (start + 4*step) never goes negative — the answer input has no minus key.
+    const start = step < 0 ? pick(rng, [2000, 5000]) : pick(rng, [1000, 2000, 5000]);
     const seq = [start, start + step, start + 2 * step, start + 3 * step];
     return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'arvu-ja-loogikamustrid', question: `Jätka arvutusahelat: ${seq.join(' → ')} → __`, correctAnswer: start + 4 * step, explanation: `Sama tehe kordub: ${step > 0 ? '+' + step : String(step)}.` };
   }

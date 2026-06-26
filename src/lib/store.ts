@@ -99,7 +99,7 @@ function validateItemInput(input: {
   if (!title) throw new Error('Nimi on kohustuslik.');
   if (title.length > 80) throw new Error('Nimi võib olla kuni 80 märki.');
   if (description.length > 300) throw new Error('Kirjeldus võib olla kuni 300 märki.');
-  if (!Number.isInteger(input.price) || input.price < 1 || input.price > 999) throw new Error('Hind peab olema 1-999 tähte.');
+  if (!Number.isInteger(input.price) || input.price < 1 || input.price > 9999) throw new Error('Hind peab olema 1-9999 tähte.');
   if (!['kiur', 'kirsi', 'both'].includes(input.visibility)) throw new Error('Vale nähtavus.');
   if (!['unlimited', 'fixed_stock', 'daily_stock', 'one_time_global'].includes(input.stockType)) throw new Error('Vale tüüp.');
   if (input.stockType === 'fixed_stock' && (!Number.isInteger(input.fixedStockRemaining) || Number(input.fixedStockRemaining) < 0)) throw new Error('Kogus peab olema vähemalt 0.');
@@ -323,7 +323,7 @@ const ABLATIVE: Record<Learner, string> = { kiur: 'Kiurilt', kirsi: 'Kirsilt' };
 export function giftPoints(from: Learner, to: Learner, amount: number) {
   if (from === to) throw new Error('Ei saa iseendale kinkida.');
   if (!Number.isInteger(amount) || amount < 1) throw new Error('Kingitus peab olema vähemalt 1 täht.');
-  if (amount > 999) throw new Error('Kingitus võib olla kuni 999 tähte.');
+  if (amount > 9999) throw new Error('Kingitus võib olla kuni 9999 tähte.');
 
   const transfer = db.transaction(() => {
     if (getBalance(from) < amount) throw new Error('Tähti ei ole piisavalt.');

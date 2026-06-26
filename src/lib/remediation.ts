@@ -159,11 +159,26 @@ function choicesWithDistractors(snapshot: PromptSnapshot, seed: number, total = 
   return shuffle(unique([...base, ...fillers]).slice(0, total), seed);
 }
 
+// Comparison questions (e.g. "83 ___ 78") carry no choiceOptions; their
+// correctAnswer is encoded as -1/0/1 meaning </=/>. Everywhere else in the app
+// these render as the three sign buttons, so we map them the same way here.
+function comparisonSign(code: number): string {
+  return code === -1 ? '<' : code === 0 ? '=' : code === 1 ? '>' : '';
+}
+
+function isComparisonQuestion(question: { kind?: string; choiceOptions?: string[] }) {
+  return question.kind === 'choice' && !question.choiceOptions?.length;
+}
+
 function correctLabel(question: SavedQuestion) {
   if (typeof question.correctAnswerText === 'string') return question.correctAnswerText;
   if (typeof question.correctWord === 'string') return question.correctWord;
   if (typeof question.correctLetter === 'string') return question.correctLetter;
   if (question.choiceOptions?.length && typeof question.correctAnswer === 'number') return question.choiceOptions[question.correctAnswer] ?? '';
+  if (isComparisonQuestion(question) && typeof question.correctAnswer === 'number') {
+    const sign = comparisonSign(question.correctAnswer);
+    if (sign) return sign;
+  }
   if (typeof question.correctAnswer === 'number') return String(question.correctAnswer);
   return '';
 }
@@ -203,6 +218,8 @@ function buildSnapshot(input: {
   const exerciseKey = exerciseKeyForAttempt(input.learner, input.category, input.topic);
   const choices = rendererType === 'math_numeric'
     ? undefined
+    : isComparisonQuestion(input.question)
+    ? ['<', '=', '>']
     : unique([...(input.question.choiceOptions ?? []), correctAnswerLabel, wrongAnswerLabel]);
   const isKirsiMath = input.learner === 'kirsi' && input.subject === 'matemaatika';
   const promptText = rendererType === 'initial_sound'
@@ -300,9 +317,24 @@ function parseSnapshot(raw: string): PromptSnapshot | null {
   }
 }
 
+// Repairs comparison snapshots captured before the </=/> mapping fix, where the
+// correct answer was stored as the raw code "-1"/"0"/"1" and the choices ended
+// up as e.g. ["1", "<"] — making the question impossible. Mutates in place.
+function repairLegacyComparison(snapshot: PromptSnapshot) {
+  if (snapshot.rendererType !== 'math_multiple_choice') return;
+  const original = snapshot.originalQuestionData;
+  if (original?.choiceOptions?.length) return; // real multiple-choice, not a comparison
+  if (!/^-?[01]$/.test(String(snapshot.correctAnswerLabel))) return;
+  const sign = comparisonSign(Number(snapshot.correctAnswerLabel));
+  if (!sign) return;
+  snapshot.correctAnswerLabel = sign;
+  snapshot.choices = ['<', '=', '>'];
+}
+
 function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0): RemediationQuestion | null {
   const snapshot = parseSnapshot(row.promptSnapshotJson);
   if (!snapshot) return null;
+  repairLegacyComparison(snapshot);
   const seed = row.id * 997 + position * 37;
   const choices = snapshot.rendererType === 'math_numeric' ? undefined : choicesWithDistractors(snapshot, seed, snapshot.rendererType === 'initial_sound' ? 3 : 5);
   const original = snapshot.originalQuestionData ?? {};
