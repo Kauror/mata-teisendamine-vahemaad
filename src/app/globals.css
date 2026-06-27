@@ -591,6 +591,5 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .points-recap-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#f8fbff;border:1px solid #e2eafc;border-radius:14px;padding:10px 14px}
 .points-recap-label{font-size:17px;font-weight:800;color:#0b1b45}
 .points-recap-amount{font-size:17px;font-weight:900;color:#16a34a;white-space:nowrap}
-.points-recap-empty{font-size:18px;font-weight:700;color:#475569;line-height:1.45}
 .points-recap .next-button{margin-top:4px}
 @media (max-width:640px){.points-recap-emoji{font-size:46px}.points-recap-total{font-size:34px}}

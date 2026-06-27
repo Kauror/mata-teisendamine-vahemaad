@@ -63,14 +63,12 @@ export default function YesterdayPointsPopup({
           <>
             <span className='points-recap-emoji' aria-hidden>😐</span>
             <h2 id='points-recap-title'>Eile tähti ei tulnud</h2>
-            <p className='points-recap-empty'>Sa harjutasid, aga tähti seekord ei kogunenud. Täna läheb kindlasti paremini!</p>
             <button type='button' className='next-button' onClick={close}>Lähme harjutama</button>
           </>
         ) : (
           <>
             <span className='points-recap-emoji' aria-hidden>😔</span>
             <h2 id='points-recap-title'>Eile jäi harjutamata</h2>
-            <p className='points-recap-empty'>Eile sa ei harjutanud. Täna on uus võimalus — alustame!</p>
             <button type='button' className='next-button' onClick={close}>Lähme harjutama</button>
           </>
         )}
