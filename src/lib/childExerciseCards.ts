@@ -24,7 +24,8 @@ const KIRSI_EXERCISE_META: Record<string, Pick<ChildExerciseCard, 'emoji' | 'acc
   'Arvutamine 10 piires': { emoji: '🍎', accent: 'pink', description: 'Liida ja lahuta kümne piires.' },
   'Arvutamine 20 piires': { emoji: '🧩', accent: 'purple', description: 'Harjuta arvutamist kahekümne piires.' },
   'Suurem või väiksem kuni 100': { emoji: '⚖️', accent: 'amber', description: 'Võrdle arve saja piires.' },
-  Segaülesanded: { emoji: '🎲', accent: 'green', description: 'Erinevad Kirsi matemaatikaülesanded.' }
+  Segaülesanded: { emoji: '🎲', accent: 'green', description: 'Erinevad Kirsi matemaatikaülesanded.' },
+  Kellaaeg: { emoji: '🕒', accent: 'teal', description: 'Vaata seieritega kella ja vali õige aeg.' }
 };
 
 const STATIC_EXERCISE_META: Record<string, Pick<ChildExerciseCard, 'emoji' | 'accent' | 'description'> & { route?: string }> = {
