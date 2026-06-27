@@ -2,13 +2,13 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Harjutamine',
+  title: 'harjutaja',
   description: 'Kiuri ja Kirsi harjutuste äpp',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Harjutamine'
+    title: 'harjutaja'
   }
 };
 

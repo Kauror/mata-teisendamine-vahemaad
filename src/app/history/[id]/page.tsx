@@ -110,7 +110,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   const isKirsiReading = row.learner === 'kirsi' && row.subject === 'lugemine';
   const isKiurReading = row.learner === 'kiur' && row.subject === 'lugemine';
   const isReading = row.subject === 'lugemine';
-  const attemptLabel = compactTopicLabel(row.topic, row.category) || row.category;
+  const attemptLabel = isScience ? 'Loodusõpetus' : (compactTopicLabel(row.topic, row.category) || row.category);
 
   const retryParams = new URLSearchParams({
     learner: row.learner || (isKirsi ? 'kirsi' : 'kiur'),

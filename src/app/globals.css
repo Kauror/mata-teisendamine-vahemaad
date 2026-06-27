@@ -543,7 +543,6 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 /* Loodusõpetus (science) — calm setup + runner */
 .science-setup-shell{align-content:start}
 .science-setup-card{text-align:left}
-.science-setup-subtitle{margin:0;color:#475569;font-size:clamp(16px,2.4vw,20px);font-weight:700}
 .science-summary{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
 .science-summary li{background:#eef5ff;border:1px solid #dbeafe;color:#1e3a8a;border-radius:999px;padding:8px 14px;font-size:15px;font-weight:800}
 .science-count-block{display:grid;gap:12px}
@@ -552,7 +551,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .science-start-button{margin-top:4px}
 .science-title{font-size:clamp(24px,4vw,38px)}
 .science-prompt{margin:0;font-size:clamp(19px,2.6vw,24px);font-weight:850;color:#0b1b45}
-.science-diagram{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;text-align:center;font-size:clamp(22px,4vw,30px);line-height:1.5;background:#eff6ff;border:1px solid #dbeafe;border-radius:22px;padding:clamp(16px,3vw,28px);color:#0b1b45}
+.science-diagram{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;overflow-x:auto;text-align:center;font-size:clamp(14px,2.6vw,20px);line-height:1.5;background:#eff6ff;border:1px solid #dbeafe;border-radius:22px;padding:clamp(14px,3vw,24px);color:#0b1b45}
+.choice-answer-button.science-choice{font-size:clamp(15px,2.3vw,19px);line-height:1.18;font-weight:850;overflow-wrap:anywhere;word-break:break-word;hyphens:auto;padding:10px 12px}
 .science-reading-text{font-size:clamp(17px,2.4vw,21px);line-height:1.55;font-weight:600;color:#1e293b;background:#fffdf5;border:1px solid #fde68a;border-radius:22px;padding:clamp(16px,3vw,24px)}
 .science-data{display:grid;gap:12px}
 .science-table-wrap{overflow-x:auto;border-radius:18px;border:1px solid #dbeafe}
@@ -576,12 +576,17 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .science-match-term{font-size:clamp(18px,2.6vw,22px);font-weight:900;color:#0b1b45}
 .science-match-select{min-height:54px;border:2px solid #dbeafe;border-radius:16px;background:#fff;color:#0b1b45;font-size:16px;font-weight:700;padding:0 14px}
 .science-match-select:disabled{opacity:.85}
-.science-feedback{display:grid;gap:6px;padding:14px 16px;border-radius:18px;font-size:clamp(16px,2.3vw,18px);font-weight:750;line-height:1.45}
+.science-feedback{display:grid;gap:6px;padding:12px 14px;border-radius:16px;font-size:clamp(13px,1.9vw,15px);font-weight:650;line-height:1.4}
 .science-feedback.correct{background:#dcfce7;border:1px solid #86efac;color:#166534}
 .science-feedback.wrong{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
-.science-feedback strong{font-size:clamp(18px,2.6vw,21px)}
+.science-feedback strong{font-size:clamp(15px,2.1vw,17px)}
+.science-feedback-pairs{display:grid;gap:2px}
+.science-feedback-heading{font-weight:800}
+.science-feedback-pair{font-weight:800;color:#15803d}
+.science-feedback-answer{font-weight:800;color:#15803d}
+.science-feedback-explanation{font-weight:600}
 .science-group-chip:focus-visible,.science-match-select:focus-visible,.science-start-button:focus-visible,.science-count-grid .choice-answer-button:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
-@media (max-width:640px){.science-diagram{font-size:clamp(20px,6vw,26px);border-radius:18px}.science-group-chip{flex:1 1 auto;min-height:50px}.science-match-select{min-height:52px}}
+@media (max-width:640px){.science-diagram{font-size:clamp(13px,3.4vw,18px);border-radius:18px}.science-group-chip{flex:1 1 auto;min-height:50px}.science-match-select{min-height:52px}.choice-answer-button.science-choice{font-size:clamp(15px,4.4vw,18px)}}
 
 /* Yesterday points recap popup */
 .points-recap{gap:14px}

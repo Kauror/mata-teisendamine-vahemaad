@@ -54,6 +54,12 @@ function shuffleStable<T>(values: T[], seedKey: string): T[] {
   return shuffleWithRng(seededRng(hashString(seedKey)), [...values]);
 }
 
+// Answers in the data are written as full sentences ending with a period; the
+// trailing dot is dropped when an answer is shown as a short label.
+function cleanAnswer(value: string) {
+  return value.replace(/\s*\.\s*$/, '').trim();
+}
+
 function correctGroupOfItem(groups: Record<string, string[]>, item: string) {
   for (const [group, items] of Object.entries(groups)) {
     if (items.includes(item)) return group;
@@ -62,11 +68,11 @@ function correctGroupOfItem(groups: Record<string, string[]>, item: string) {
 }
 
 function formatGrouping(groups: string[], itemsFor: (group: string) => string[]) {
-  return groups.map((group) => `${group}: ${itemsFor(group).join(', ') || '—'}`).join(' · ');
+  return groups.map((group) => `${group}: ${itemsFor(group).map(cleanAnswer).join(', ') || '—'}`).join(' · ');
 }
 
 function formatPairs(terms: string[], definitionFor: (term: string) => string | undefined) {
-  return terms.map((term) => `${term} → ${definitionFor(term) || '—'}`).join(' · ');
+  return terms.map((term) => `${cleanAnswer(term)} → ${cleanAnswer(definitionFor(term) ?? '') || '—'}`).join(' · ');
 }
 
 function ScienceDataPanel({ data }: { data: ScienceData }) {
@@ -150,8 +156,13 @@ function ScienceTestContent() {
 
   const current = session[index];
 
-  const displayChoices = useMemo(() => (current && isChoiceTask(current) ? shuffleStable(current.choices, current.id) : []), [current]);
-  const displayDefinitions = useMemo(() => (current && current.type === 'match' ? shuffleStable(current.definitions, current.id) : []), [current]);
+  // The data often lists choices/items/groups in an order where the correct
+  // answer sits on a predictable diagonal. Shuffle the display order (mixing in
+  // the session seed) so answer positions vary and reveal no pattern.
+  const displayChoices = useMemo(() => (current && isChoiceTask(current) ? shuffleStable(current.choices, `${current.id}:${seed}:choices`) : []), [current, seed]);
+  const displayDefinitions = useMemo(() => (current && current.type === 'match' ? shuffleStable(current.definitions, `${current.id}:${seed}:defs`) : []), [current, seed]);
+  const displaySortItems = useMemo(() => (current && current.type === 'sort' ? shuffleStable(current.items, `${current.id}:${seed}:items`) : []), [current, seed]);
+  const displaySortGroups = useMemo(() => (current && current.type === 'sort' ? shuffleStable(current.groups, `${current.id}:${seed}:groups`) : []), [current, seed]);
 
   if (!current) {
     return (
@@ -212,8 +223,8 @@ function ScienceTestContent() {
 
     if (isChoiceTask(task)) {
       const selected = task.choices.find((choice) => choice.id === choiceSel[i]);
-      base.userAnswer = selected?.text ?? '—';
-      base.correctAnswerText = task.correctAnswerText;
+      base.userAnswer = selected ? cleanAnswer(selected.text) : '—';
+      base.correctAnswerText = cleanAnswer(task.correctAnswerText);
       base.selectedChoiceId = choiceSel[i] ?? null;
       if (task.type === 'visual_choice') {
         base.diagram = task.diagram;
@@ -354,10 +365,10 @@ function ScienceTestContent() {
                   key={choice.id}
                   aria-pressed={choiceSel[index] === choice.id}
                   disabled={isChecked}
-                  className={choiceSel[index] === choice.id ? 'choice-answer-button selected' : 'choice-answer-button'}
+                  className={choiceSel[index] === choice.id ? 'choice-answer-button science-choice selected' : 'choice-answer-button science-choice'}
                   onClick={() => setChoiceSel((prev) => ({ ...prev, [index]: choice.id }))}
                 >
-                  {choice.text}
+                  {cleanAnswer(choice.text)}
                 </button>
               ))}
             </div>
@@ -365,11 +376,11 @@ function ScienceTestContent() {
 
           {current.type === 'sort' ? (
             <div className='science-sort-list'>
-              {current.items.map((item) => (
+              {displaySortItems.map((item) => (
                 <div key={item} className='science-sort-item'>
-                  <span className='science-sort-label'>{item}</span>
+                  <span className='science-sort-label'>{cleanAnswer(item)}</span>
                   <div className='science-sort-groups'>
-                    {current.groups.map((group) => (
+                    {displaySortGroups.map((group) => (
                       <button
                         type='button'
                         key={group}
@@ -403,7 +414,7 @@ function ScienceTestContent() {
                     >
                       <option value='' disabled>Vali seletus…</option>
                       {displayDefinitions.map((definition) => (
-                        <option key={definition} value={definition} disabled={usedElsewhere.has(definition)}>{definition}</option>
+                        <option key={definition} value={definition} disabled={usedElsewhere.has(definition)}>{cleanAnswer(definition)}</option>
                       ))}
                     </select>
                   </label>
@@ -416,15 +427,25 @@ function ScienceTestContent() {
             <div className={`science-feedback ${correct ? 'correct' : 'wrong'}`}>
               <strong>{correct ? 'Õige!' : 'Vaata õiget vastust'}</strong>
               {current.type === 'sort' ? (
-                <span>Õige jaotus: {formatGrouping(current.groups, (group) => current.correctGroups[group] ?? [])}</span>
+                <div className='science-feedback-pairs'>
+                  <span className='science-feedback-heading'>Õige jaotus:</span>
+                  {current.groups.map((group) => (
+                    <span key={group} className='science-feedback-pair'>{group}: {(current.correctGroups[group] ?? []).map(cleanAnswer).join(', ')}</span>
+                  ))}
+                </div>
               ) : current.type === 'match' ? (
-                <span>Õiged paarid: {formatPairs(current.terms, (term) => current.correctMatches[term])}</span>
+                <div className='science-feedback-pairs'>
+                  <span className='science-feedback-heading'>Õiged paarid:</span>
+                  {current.terms.map((term) => (
+                    <span key={term} className='science-feedback-pair'>{cleanAnswer(term)} → {cleanAnswer(current.correctMatches[term])}</span>
+                  ))}
+                </div>
               ) : (
-                <span>Õige vastus: {current.correctAnswerText}</span>
+                <span>Õige vastus: <strong className='science-feedback-answer'>{cleanAnswer(current.correctAnswerText)}</strong></span>
               )}
-              <span>Selgitus: {current.explanation}</span>
-              {current.type === 'visual_choice' ? <span>Skeemi selgitus: {current.diagramExplanation}</span> : null}
-              {current.type === 'data_evidence' && current.diagramExplanation ? <span>Skeemi selgitus: {current.diagramExplanation}</span> : null}
+              <span className='science-feedback-explanation'>Selgitus: {current.explanation}</span>
+              {current.type === 'visual_choice' ? <span className='science-feedback-explanation'>Skeemi selgitus: {current.diagramExplanation}</span> : null}
+              {current.type === 'data_evidence' && current.diagramExplanation ? <span className='science-feedback-explanation'>Skeemi selgitus: {current.diagramExplanation}</span> : null}
             </div>
           ) : null}
         </section>

@@ -755,7 +755,7 @@
         "planeet_maa",
         "diagramm"
       ],
-      "diagram": "      N\n      ↑\nW  ←  +  →  E\n      ↓\n      S",
+      "diagram": "Põhi\n↑\nLääs ← + → Ida\n↓\nLõuna",
       "diagramExplanation": "Kompassiroos näitab nelja peamist ilmakaart. Paremal on ida."
     },
     {
@@ -4308,7 +4308,7 @@
         "hapnik": "Gaas, mida paljud elusolendid hingamiseks vajavad.",
         "klorofüll": "Roheline aine taimes, mis aitab valgust kasutada."
       },
-      "explanation": "Lihtsas tasemes piisab teadmisest, et taim valmistab toitu valguse, vee ja õhus oleva süsihappegaasi abil.",
+      "explanation": "Lihtsustades piisab teadmisest, et taim valmistab toitu valguse, vee ja õhus oleva süsihappegaasi abil.",
       "interactiveIdea": "Ühenda mõiste ja seletus joonega või lohista paarid kokku.",
       "tags": [
         "elusloodus",

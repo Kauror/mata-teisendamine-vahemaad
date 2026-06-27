@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Harjutamine',
-    short_name: 'Harjutamine',
+    name: 'harjutaja',
+    short_name: 'harjutaja',
     description: 'Kiuri ja Kirsi harjutuste äpp',
     start_url: '/',
     display: 'standalone',
