@@ -7,7 +7,8 @@ export const CATEGORIES = [
   'Puuduv arv',
   'Ümbermõõt',
   'Tekstülesanded',
-  'Segaharjutus'
+  'Segaharjutus',
+  'Kellaaeg'
 ] as const;
 
 export const DIFFICULTIES = ['Lihtne', 'Keskmine', 'Raske'] as const;
@@ -50,6 +51,9 @@ export type GeneratedQuestion = {
   orderingDirection?: 'asc' | 'desc';
   visual?: QuestionVisual;
   visualKnownDegrees?: number;
+  clockHour?: number;
+  clockMinutes?: 0 | 15 | 30 | 45;
+  clockType?: 'full-hour' | 'half-hour' | 'quarter-hour';
 };
 
 export type QuestionResult = GeneratedQuestion & {

@@ -1,11 +1,12 @@
 import { Category, GeneratedQuestion } from '@/lib/types';
 import { RNG, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
 
-type KirsiCategory = 'Loendamine' | 'Arvutamine 10 piires' | 'Arvutamine 20 piires' | 'Suurem või väiksem kuni 100' | 'Segaülesanded';
+type KirsiCategory = 'Loendamine' | 'Arvutamine 10 piires' | 'Arvutamine 20 piires' | 'Suurem või väiksem kuni 100' | 'Segaülesanded' | 'Kellaaeg';
 
 const rInt = randomInt;
 const shuffle = shuffleWithRng;
 const COUNTING_EXERCISE_KEY = 'kirsi.math.counting-20';
+const CLOCK_EXERCISE_KEY = 'kirsi.math.kellaaeg';
 
 const COUNTING_BANK = [
   { emoji: '🍎', objectLabel: 'õun', counts: [1, 5, 9, 13, 17] },
@@ -115,8 +116,84 @@ function compare100(rng: RNG, i: number): GeneratedQuestion {
   };
 }
 
+type ClockMinutes = 0 | 15 | 30 | 45;
+type ClockType = 'full-hour' | 'half-hour' | 'quarter-hour';
+
+type ClockTask = {
+  id: string;
+  hour: number;
+  minutes: ClockMinutes;
+  clockType: ClockType;
+};
+
+function normalizeHour(hour: number): number {
+  const h = hour % 12;
+  return h === 0 ? 12 : h;
+}
+
+function formatClockTime(hour: number, minutes: ClockMinutes): string {
+  return `${normalizeHour(hour)}:${String(minutes).padStart(2, '0')}`;
+}
+
+function buildClockChoices(rng: RNG, hour: number, minutes: ClockMinutes): string[] {
+  const prev = formatClockTime(hour - 1, 0);
+  const onHour = formatClockTime(hour, 0);
+  const next = formatClockTime(hour + 1, 0);
+  let base: string[];
+  if (minutes === 0) base = [prev, onHour, next];
+  else if (minutes === 30) base = [onHour, formatClockTime(hour, 30), next];
+  else if (minutes === 15) base = [onHour, formatClockTime(hour, 15), formatClockTime(hour, 30)];
+  else base = [formatClockTime(hour, 30), formatClockTime(hour, 45), next];
+  return shuffle(rng, Array.from(new Set(base)));
+}
+
+function buildClockBank(): ClockTask[] {
+  const bank: ClockTask[] = [];
+  for (let h = 1; h <= 12; h++) bank.push({ id: `full-${h}`, hour: h, minutes: 0, clockType: 'full-hour' });
+  for (let h = 1; h <= 12; h++) bank.push({ id: `half-${h}`, hour: h, minutes: 30, clockType: 'half-hour' });
+  for (let h = 1; h <= 12; h++) bank.push({ id: `q15-${h}`, hour: h, minutes: 15, clockType: 'quarter-hour' });
+  for (let h = 1; h <= 12; h++) bank.push({ id: `q45-${h}`, hour: h, minutes: 45, clockType: 'quarter-hour' });
+  // Two extra anchor variants to round the bank to ~50 distinct items.
+  bank.push({ id: 'anchor-12-00', hour: 12, minutes: 0, clockType: 'full-hour' });
+  bank.push({ id: 'anchor-12-30', hour: 12, minutes: 30, clockType: 'half-hour' });
+  return bank;
+}
+
+function clockExplanation(task: ClockTask): string {
+  const next = normalizeHour(task.hour + 1);
+  if (task.minutes === 0) return `Pikk seier on 12 peal ja väike seier näitab ${normalizeHour(task.hour)}.`;
+  if (task.minutes === 30) return `Pikk seier on 6 peal ja väike seier on ${normalizeHour(task.hour)} ja ${next} vahel.`;
+  if (task.minutes === 15) return `Pikk seier on 3 peal ja väike seier on natuke pärast ${normalizeHour(task.hour)}.`;
+  return `Pikk seier on 9 peal ja väike seier liigub ${next} poole.`;
+}
+
+function clockSession(count: number, seed: number): GeneratedQuestion[] {
+  const rng = seededRng(seed);
+  return shuffle(rng, buildClockBank()).slice(0, count).map((task, index) => {
+    const choices = buildClockChoices(rng, task.hour, task.minutes);
+    const correctText = formatClockTime(task.hour, task.minutes);
+    return {
+      id: `kirsi-clock-${task.id}-${index}`,
+      type: 'clock',
+      category: 'Kellaaeg' as Category,
+      difficulty: 'Lihtne',
+      question: 'Mis kell on?',
+      kind: 'choice',
+      clockHour: task.hour,
+      clockMinutes: task.minutes,
+      clockType: task.clockType,
+      choiceOptions: choices,
+      correctAnswer: choices.indexOf(correctText),
+      correctAnswerText: correctText,
+      explanation: clockExplanation(task),
+      exerciseKey: CLOCK_EXERCISE_KEY
+    };
+  });
+}
+
 export function generateKirsiSession(mode: KirsiCategory, count: number, seed: number): GeneratedQuestion[] {
   if (mode === 'Loendamine') return countingSession(count, seed);
+  if (mode === 'Kellaaeg') return clockSession(count, seed);
   const rng = seededRng(seed);
   const types = mode === 'Segaülesanded'
     ? (count <= 3 ? shuffle(rng, ['Arvutamine 10 piires', 'Arvutamine 20 piires', 'Suurem või väiksem kuni 100']).slice(0, count)

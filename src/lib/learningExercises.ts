@@ -79,6 +79,16 @@ const STATIC_LEARNING_EXERCISES: LearningExerciseCatalogEntry[] = [
     sortOrder: 299
   },
   {
+    id: 'kirsi.math.kellaaeg',
+    title: 'Kellaaeg',
+    learnerScope: ['kirsi'],
+    subject: 'matemaatika',
+    topic: 'kellaaeg',
+    category: 'Kellaaeg',
+    routePath: '/kirsi/matemaatika',
+    sortOrder: 305
+  },
+  {
     id: 'kiur.english.sprint',
     title: 'Sprint',
     learnerScope: ['kiur'],

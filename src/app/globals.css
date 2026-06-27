@@ -396,6 +396,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .counting-feedback{width:min(520px,100%);display:grid;gap:4px;justify-items:center;margin:0 auto;padding:12px 14px;border-radius:18px;font-size:18px;font-weight:850;text-align:center}
 .counting-feedback.correct{background:#dcfce7;color:#166534}
 .counting-feedback.wrong{background:#fff7ed;color:#9a3412}
+.clock-question-visual{display:flex;justify-content:center;margin:18px 0 22px}
+.clock-face{width:min(280px,82vw);height:auto}
 .ordering-panel{display:grid;gap:10px;width:100%}.ordering-panel p{margin:0}
 .ordering-move-button{width:48px;min-width:48px;padding:0;font-size:24px;line-height:1}
 .test-error{padding:12px 16px;border-radius:18px;background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;font-size:16px;font-weight:800}
