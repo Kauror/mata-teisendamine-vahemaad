@@ -1,14 +1,18 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
+import path from 'node:path';
 
 const dataDir = '/data';
-const dbFile = `${dataDir}/maths-game.sqlite`;
+const dbFile = process.env.MATHS_GAME_DB_FILE || `${dataDir}/maths-game.sqlite`;
 
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+if (dbFile !== ':memory:') {
+  const parentDir = path.dirname(dbFile);
+  if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir, { recursive: true });
+}
 
-const db = new Database(dbFile);
-db.pragma('journal_mode = WAL');
-db.pragma('busy_timeout = 5000');
+const db = new Database(dbFile, { timeout: 30000 });
+db.pragma('busy_timeout = 30000');
+if (dbFile !== ':memory:') db.pragma('journal_mode = WAL');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS attempts (
