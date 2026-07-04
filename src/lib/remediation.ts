@@ -43,6 +43,8 @@ type SavedQuestion = {
   objectLabel?: string;
   count?: number;
   choices?: number[];
+  clockHour?: number;
+  clockMinutes?: 0 | 15 | 30 | 45;
 };
 
 export type RemediationQuestion = {
@@ -58,6 +60,8 @@ export type RemediationQuestion = {
   readingText?: string;
   correctAnswerLabel: string;
   expectedUnit?: string;
+  clockHour?: number;
+  clockMinutes?: 0 | 15 | 30 | 45;
   choices?: string[];
 };
 
@@ -246,6 +250,8 @@ function buildSnapshot(input: {
     correctAnswerLabel,
     wrongAnswerLabel,
     expectedUnit: isKirsiMath ? undefined : input.question.expectedUnit,
+    clockHour: input.question.type === 'clock' ? input.question.clockHour : undefined,
+    clockMinutes: input.question.type === 'clock' ? input.question.clockMinutes : undefined,
     choices,
     originalQuestionData: input.question
   };
@@ -360,6 +366,8 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
     readingText: original.text ?? snapshot.readingText,
     correctAnswerLabel: snapshot.correctAnswerLabel,
     expectedUnit,
+    clockHour: original.type === 'clock' ? original.clockHour ?? snapshot.clockHour : snapshot.clockHour,
+    clockMinutes: original.type === 'clock' ? original.clockMinutes ?? snapshot.clockMinutes : snapshot.clockMinutes,
     choices
   };
 }
@@ -474,6 +482,8 @@ export function submitRemediationSession(input: {
         isCorrect,
         kind: question.rendererType === 'math_numeric' ? 'numeric' as const : 'choice' as const,
         choiceOptions: question.choices,
+        clockHour: question.clockHour,
+        clockMinutes: question.clockMinutes,
         expectedUnit: question.expectedUnit
       };
     });

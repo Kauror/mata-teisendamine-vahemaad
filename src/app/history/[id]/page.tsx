@@ -3,6 +3,7 @@ import { formatDateTime, formatElapsed } from '@/lib/validation';
 import { compactTopicLabel, isKirsiAttempt } from '@/lib/history';
 import { KIUR_LENGTH_TOPIC_ID } from '@/lib/kiurMathTopics';
 import { formatStars, getStudyReward } from '@/lib/learningPoints';
+import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,6 +37,8 @@ type SavedQuestion = {
   emoji?: string;
   objectLabel?: string;
   count?: number;
+  clockHour?: number;
+  clockMinutes?: 0 | 15 | 30 | 45;
 };
 
 async function getDb() {
@@ -80,6 +83,15 @@ function CountingHistoryGrid({ question }: { question: SavedQuestion }) {
   return (
     <div className='counting-object-grid' aria-label={`${question.count} ${question.objectLabel ?? 'asja'}`}>
       {Array.from({ length: question.count }, (_, index) => <span key={index}>{question.emoji}</span>)}
+    </div>
+  );
+}
+
+function ClockHistoryVisual({ question }: { question: SavedQuestion }) {
+  if (question.clockHour == null || question.clockMinutes == null) return null;
+  return (
+    <div className='clock-question-visual'>
+      <AnalogClockVisual hour={question.clockHour} minutes={question.clockMinutes} />
     </div>
   );
 }
@@ -184,6 +196,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             <article key={q.id || `q-${i}`} className={q.isCorrect ? 'result-review-card correct' : 'result-review-card wrong'}>
               <p className='result-question'>{i + 1}. {isEnglishPair || isReadingPair ? q.question.replace('—', '↔') : q.question}</p>
               <CountingHistoryGrid question={q} />
+              <ClockHistoryVisual question={q} />
               {q.kind === 'ordering'
                 ? <div className='answer-review-grid'><p className='answer-line'><span>Sinu järjestus:</span> <strong>{q.userAnswer || '—'}</strong></p><p className='answer-line'><span>Õige järjestus:</span> <strong>{order || '—'}</strong></p></div>
                 : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{correctChoiceAnswer}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}

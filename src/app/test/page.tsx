@@ -7,6 +7,7 @@ import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { compactTopicLabel } from '@/lib/history';
 import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
+import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 
 type ActiveLearningExercise = {
   subject: string;
@@ -71,33 +72,6 @@ function ShapeVisual({ question }: { question: GeneratedQuestion }) {
   }
   if (!question.question.includes('Ristküliku')) return null;
   return <svg width='180' height='120' aria-label='Ristküliku joonis'><rect x='20' y='20' width='140' height='70' fill='#e9ffe9' stroke='#2e7d32' /></svg>;
-}
-
-function AnalogClockVisual({ hour, minutes }: { hour: number; minutes: 0 | 15 | 30 | 45 }) {
-  const minuteAngle = minutes * 6;
-  const hourAngle = (hour % 12) * 30 + minutes * 0.5;
-  const handPoint = (angle: number, length: number) => {
-    const radians = ((angle - 90) * Math.PI) / 180;
-    return { x: 100 + length * Math.cos(radians), y: 100 + length * Math.sin(radians) };
-  };
-  const minuteHand = handPoint(minuteAngle, 68);
-  const hourHand = handPoint(hourAngle, 48);
-  const numbers = Array.from({ length: 12 }, (_, i) => {
-    const num = i + 1;
-    const radians = ((num * 30 - 90) * Math.PI) / 180;
-    return { num, x: 100 + 64 * Math.cos(radians), y: 100 + 64 * Math.sin(radians) };
-  });
-  return (
-    <svg className='clock-face' viewBox='0 0 200 200' role='img' aria-label={`Kell ${hour}:${String(minutes).padStart(2, '0')}`}>
-      <circle cx='100' cy='100' r='82' fill='#f8fbff' stroke='#2563eb' strokeWidth='5' />
-      {numbers.map(({ num, x, y }) => (
-        <text key={num} x={x} y={y} fontSize='20' fontWeight='800' fill='#0b1b45' textAnchor='middle' dominantBaseline='central'>{num}</text>
-      ))}
-      <line x1='100' y1='100' x2={hourHand.x} y2={hourHand.y} stroke='#0b1b45' strokeWidth='7' strokeLinecap='round' />
-      <line x1='100' y1='100' x2={minuteHand.x} y2={minuteHand.y} stroke='#2563eb' strokeWidth='4' strokeLinecap='round' />
-      <circle cx='100' cy='100' r='6' fill='#0b1b45' />
-    </svg>
-  );
 }
 
 function choiceLabels(question: GeneratedQuestion) {

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 import { formatStars } from '@/lib/formatStars';
 
 type Learner = 'kiur' | 'kirsi';
@@ -20,6 +21,8 @@ type RemediationQuestion = {
   readingText?: string;
   correctAnswerLabel: string;
   expectedUnit?: string;
+  clockHour?: number;
+  clockMinutes?: 0 | 15 | 30 | 45;
   choices?: string[];
 };
 
@@ -74,6 +77,15 @@ function CountingReviewGrid({ question }: { question: RemediationQuestion }) {
   return (
     <div className='counting-object-grid' aria-label={`${question.count} ${question.objectLabel ?? 'asja'}`}>
       {Array.from({ length: question.count }, (_, index) => <span key={index}>{question.promptEmoji}</span>)}
+    </div>
+  );
+}
+
+function ClockReviewVisual({ question }: { question: RemediationQuestion }) {
+  if (question.clockHour == null || question.clockMinutes == null) return null;
+  return (
+    <div className='clock-question-visual'>
+      <AnalogClockVisual hour={question.clockHour} minutes={question.clockMinutes} />
     </div>
   );
 }
@@ -186,6 +198,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
                   <p className='result-question'>{i + 1}. {question.promptText || promptEyebrow(question)}</p>
                   {question.promptImage ? <div className='remediation-prompt-image'>{question.promptImage}</div> : null}
                   <CountingReviewGrid question={question} />
+                  <ClockReviewVisual question={question} />
                   <div className='answer-review-grid'>
                     <p className='answer-line'><span>Sinu vastus:</span> <strong>{answer?.answer || '—'}</strong></p>
                     <p className='answer-line'><span>Õige vastus:</span> <strong>{question.correctAnswerLabel}</strong></p>
@@ -228,6 +241,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
           {current.promptImage ? <div className='remediation-prompt-image' aria-label='Pilt'>{current.promptImage}</div> : null}
           <CountingReviewGrid question={current} />
           {current.rendererType !== 'initial_sound' && current.rendererType !== 'word_picture_choice' ? <h1 className='question-text'>{current.promptText}</h1> : null}
+          <ClockReviewVisual question={current} />
           {current.rendererType === 'initial_sound' && current.targetWord ? (
             <div className='first-sound-hint-row'>
               {hintVisible || answered ? <strong className='first-sound-word'>Vihje: {current.targetWord}</strong> : <button type='button' className='settings-toggle' onClick={() => setHintVisible(true)}>Näita vihjet</button>}
