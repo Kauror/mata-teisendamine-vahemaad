@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { formatStars } from '@/lib/formatStars';
+import { trophyWord } from '@/lib/history';
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -32,16 +34,6 @@ type ChildDashboard = {
   tasks: ChildTask[];
   monthlyCelebration: MonthlyCelebration | null;
 };
-
-function stars(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toLocaleString('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
-// Estonian uses the partitive ("karikat") after a number, except the bare
-// nominative "karikas" after exactly 1.
-function trophyWord(count: number) {
-  return count === 1 ? 'karikas' : 'karikat';
-}
 
 function learnerName(learner: Learner) {
   return learner === 'kiur' ? 'Kiuri' : 'Kirsi';
@@ -132,12 +124,12 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
           <div className='monthly-celebration-text'>
             <strong>Sa olid eelmise kuu parim!</strong>
             <span>Said {celebration.trophies} {trophyWord(celebration.trophies)}, lahendades {celebration.exercises} ülesannet.</span>
-            {celebration.prizeStars > 0 && <span className='monthly-celebration-prize'>Auhind: +{stars(celebration.prizeStars)} ⭐</span>}
+            {celebration.prizeStars > 0 && <span className='monthly-celebration-prize'>Auhind: +{formatStars(celebration.prizeStars)} ⭐</span>}
           </div>
         </div>
       )}
       <div className='daily-summary'>
-        <span>⭐ {stars(balance)} tähte</span>
+        <span>⭐ {formatStars(balance)} tähte</span>
         <span>🔥 Õpiseeria: {data?.streak ?? 0} päeva</span>
         <span>🏆 Sul on {trophies} {trophyWord(trophies)}</span>
         <Link href={storeHref}>🛒 Pood</Link>

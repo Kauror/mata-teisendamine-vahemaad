@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
 import { compactTopicLabel, isKirsiAttempt } from '@/lib/history';
 import { KIUR_LENGTH_TOPIC_ID } from '@/lib/kiurMathTopics';
-import { formatStars, getStudyReward } from '@/lib/learningPoints';
+import { formatStars } from '@/lib/formatStars';
+import { getStudyReward } from '@/lib/learningPoints';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 
 export const dynamic = 'force-dynamic';

@@ -17,6 +17,12 @@ export function learnerLabel(category: string, learner?: string | null) {
   return isKirsiAttempt(category, learner) ? 'Kirsi' : 'Kiur';
 }
 
+// Estonian uses the partitive ("karikat") after a number, except the bare
+// nominative "karikas" after exactly 1.
+export function trophyWord(count: number) {
+  return count === 1 ? 'karikas' : 'karikat';
+}
+
 
 export function scorePercent(score: number, questionCount: number) {
   if (!Number.isFinite(score) || !Number.isFinite(questionCount) || questionCount <= 0) return 0;

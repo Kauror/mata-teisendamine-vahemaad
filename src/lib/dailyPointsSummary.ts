@@ -1,5 +1,5 @@
 import db from '@/lib/db';
-import { todayDateString, type Learner } from '@/lib/tasks';
+import { isoToAppDate, todayDateString, type Learner } from '@/lib/tasks';
 
 export type PointsBreakdownItem = {
   key: string;
@@ -33,19 +33,6 @@ const SOURCE_CATEGORY: Record<string, Category> = {
 
 const CATEGORY_ORDER = ['exercises', 'streak', 'tasks', 'bonus', 'gift', 'prize', 'manual'];
 
-const kievDateFormat = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Kiev',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit'
-});
-
-function kievDate(iso: string): string | null {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return kievDateFormat.format(date);
-}
-
 function previousDay(date: string) {
   // Noon UTC keeps the arithmetic clear of any DST edge.
   const cursor = new Date(`${date}T12:00:00Z`);
@@ -73,7 +60,7 @@ export function getYesterdayPointsSummary(learner: Learner, today = todayDateStr
 
   const totals = new Map<string, { label: string; emoji: string; amount: number }>();
   for (const row of rows) {
-    if (kievDate(row.createdAt) !== yesterday) continue;
+    if (isoToAppDate(row.createdAt) !== yesterday) continue;
     const category = SOURCE_CATEGORY[row.source];
     if (!category) continue;
     const current = totals.get(category.key) ?? { label: category.label, emoji: category.emoji, amount: 0 };
@@ -98,7 +85,7 @@ export function getYesterdayPointsSummary(learner: Learner, today = todayDateStr
   const attemptRows = db
     .prepare("SELECT createdAt FROM attempts WHERE learner = ? AND createdAt >= ?")
     .all(learner, windowStart.toISOString()) as Array<{ createdAt: string }>;
-  const practicedYesterday = attemptRows.some((row) => kievDate(row.createdAt) === yesterday);
+  const practicedYesterday = attemptRows.some((row) => isoToAppDate(row.createdAt) === yesterday);
 
   return { date: yesterday, total, hasEarnings: breakdown.length > 0 && total > 0, practicedYesterday, breakdown };
 }
