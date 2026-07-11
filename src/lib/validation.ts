@@ -1,4 +1,5 @@
-const answerRegex = /^\d+(?:[,.]\d+)?$/;
+// Optional leading minus so negative answers are accepted.
+const answerRegex = /^-?\d+(?:[,.]\d+)?$/;
 
 export function validateAnswerInput(value: string): string | null {
   if (!value.trim()) return 'Palun sisesta vastus.';

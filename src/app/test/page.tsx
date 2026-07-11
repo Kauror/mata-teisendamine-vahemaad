@@ -263,6 +263,16 @@ function TestPageContent() {
     return inputRef.current?.value ?? answers[index] ?? '';
   };
 
+  // Flip the sign of the numeric answer. `inputMode='decimal'` never exposes a
+  // minus key on mobile, so this button is the way to enter negative answers.
+  const toggleSign = () => {
+    const copy = [...answers];
+    const cur = copy[index] ?? '';
+    copy[index] = cur.startsWith('-') ? cur.slice(1) : `-${cur}`;
+    setAnswers(copy);
+    inputRef.current?.focus();
+  };
+
   const chooseCountingAnswer = (answer: string) => {
     if (!current || !isCountingQuestion || countingFeedback) return;
     const correct = choiceLabels(current).includes(answer);
@@ -450,7 +460,12 @@ function TestPageContent() {
               </div>
             ) : (
               <div className='answer-input-row'>
-                <input onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleSubmit(); } }} ref={inputRef} aria-label='Vastus' aria-describedby={error ? 'vastuse-viga' : undefined} className={error ? 'answer-input input-error' : 'answer-input'} inputMode={isTextQuestion ? 'text' : 'decimal'} value={answers[index] ?? ''} disabled={isTextQuestion && Boolean(textFeedback)} onChange={(e) => { const next = e.target.value; if (isTextQuestion || /^\d*([,.]\d*)?$/.test(next)) { const copy = [...answers]; copy[index] = next; setAnswers(copy); } }} placeholder={isTextQuestion ? 'Sisesta vastus' : 'Sisesta number'} />
+                <div className='answer-entry'>
+                  {!isTextQuestion && (
+                    <button type='button' className='answer-sign-toggle' aria-label='Muuda märki (miinus/pluss)' aria-pressed={(answers[index] ?? '').startsWith('-')} disabled={isTextQuestion && Boolean(textFeedback)} onClick={toggleSign}>±</button>
+                  )}
+                  <input onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleSubmit(); } }} ref={inputRef} aria-label='Vastus' aria-describedby={error ? 'vastuse-viga' : undefined} className={error ? 'answer-input input-error' : 'answer-input'} inputMode={isTextQuestion ? 'text' : 'decimal'} value={answers[index] ?? ''} disabled={isTextQuestion && Boolean(textFeedback)} onChange={(e) => { const next = e.target.value; if (isTextQuestion || /^-?\d*([,.]\d*)?$/.test(next)) { const copy = [...answers]; copy[index] = next; setAnswers(copy); } }} placeholder={isTextQuestion ? 'Sisesta vastus' : 'Sisesta number'} />
+                </div>
                 {!isKirsiMath && current.expectedUnit && <strong className='answer-unit-pill'>{current.expectedUnit}</strong>}
               </div>
             )}
