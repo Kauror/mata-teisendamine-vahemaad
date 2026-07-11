@@ -1,5 +1,6 @@
 import db from '@/lib/db';
-import { isoToAppDate, todayDateString, type Learner } from '@/lib/tasks';
+import { isoToAppDate, previousAppDate, todayDateString } from '@/lib/appDate';
+import { type Learner } from '@/lib/tasks';
 
 export type PointsBreakdownItem = {
   key: string;
@@ -9,7 +10,7 @@ export type PointsBreakdownItem = {
 };
 
 export type YesterdayPointsSummary = {
-  date: string; // yesterday's local (Europe/Kiev) date, 'YYYY-MM-DD'
+  date: string; // yesterday's local date, 'YYYY-MM-DD'
   total: number;
   hasEarnings: boolean;
   practicedYesterday: boolean; // did at least one exercise, even if it earned 0 stars
@@ -33,13 +34,6 @@ const SOURCE_CATEGORY: Record<string, Category> = {
 
 const CATEGORY_ORDER = ['exercises', 'streak', 'tasks', 'bonus', 'gift', 'prize', 'manual'];
 
-function previousDay(date: string) {
-  // Noon UTC keeps the arithmetic clear of any DST edge.
-  const cursor = new Date(`${date}T12:00:00Z`);
-  cursor.setUTCDate(cursor.getUTCDate() - 1);
-  return cursor.toISOString().slice(0, 10);
-}
-
 function roundTenths(value: number) {
   return Math.round(value * 10) / 10;
 }
@@ -47,7 +41,7 @@ function roundTenths(value: number) {
 // Points the child earned yesterday (local day), grouped by source. Only positive
 // ledger entries count, so spending and point removals never appear.
 export function getYesterdayPointsSummary(learner: Learner, today = todayDateString()): YesterdayPointsSummary {
-  const yesterday = previousDay(today);
+  const yesterday = previousAppDate(today);
 
   // Pull a small UTC window that safely brackets "yesterday" in Kiev time, then
   // bucket precisely by local date in JS.

@@ -603,3 +603,50 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .points-recap-amount{font-size:17px;font-weight:900;color:#16a34a;white-space:nowrap}
 .points-recap .next-button{margin-top:4px}
 @media (max-width:640px){.points-recap-emoji{font-size:46px}.points-recap-total{font-size:34px}}
+
+/* Achievements strip (child dashboard) */
+.achievement-strip{display:flex;flex-wrap:wrap;gap:10px}
+.achievement-badge{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;border:1px solid #e2eafc;background:#f8fbff;min-width:0}
+.achievement-badge.unlocked{background:#fffbeb;border-color:#fde68a}
+.achievement-badge.locked{opacity:.7}
+.achievement-emoji{font-size:24px;line-height:1;flex:0 0 auto}
+.achievement-text{display:flex;flex-direction:column;line-height:1.15}
+.achievement-text strong{font-size:14px;font-weight:850;color:#0b1b45}
+.achievement-text small{font-size:12px;font-weight:700;color:#64748b}
+.achievement-badge.unlocked .achievement-text small{color:#b45309}
+
+/* Weekly digest (parent hub) */
+.weekly-digest-card{gap:12px}
+.weekly-digest-range{margin:0;font-size:13px;font-weight:700;color:#64748b}
+.weekly-digest-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.weekly-digest-child{background:#f8fbff;border:1px solid #dfe8f6;border-radius:14px;padding:12px}
+.weekly-digest-child h3{margin:0 0 8px;font-size:16px;font-weight:900;color:#0b1b45}
+.weekly-digest-stats{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.weekly-digest-stats li{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.weekly-digest-stats span{font-size:13px;font-weight:700;color:#64748b}
+.weekly-digest-stats strong{font-size:15px;font-weight:900;color:#0b1b45}
+.weekly-digest-link{width:fit-content;color:#2563eb;font-weight:850;text-decoration:none;border-bottom:1px dashed currentColor}
+@media (max-width:560px){.weekly-digest-grid{grid-template-columns:1fr}}
+
+/* Stats dashboard */
+.stats-page{display:grid;gap:16px}
+.stats-topbar{display:grid;gap:2px}
+.stats-back{width:fit-content;color:#2563eb;font-weight:800;text-decoration:none}
+.stats-topbar h1{margin:0;font-size:26px;font-weight:900;color:#0b1b45}
+.stats-range{margin:0;font-size:14px;font-weight:700;color:#64748b}
+.stats-totals{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stats-total-card{background:rgba(255,255,255,.94);border:1px solid #dfe8f6;border-radius:18px;padding:14px;box-shadow:0 12px 30px rgba(30,64,175,.07)}
+.stats-total-card[data-child="kiur"]{border-top:4px solid #3b82f6}
+.stats-total-card[data-child="kirsi"]{border-top:4px solid #ec4899}
+.stats-total-card h2{margin:0 0 8px;font-size:18px;font-weight:900;color:#0b1b45}
+.stats-total-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:3px 0}
+.stats-total-row span{font-size:13px;font-weight:700;color:#64748b}
+.stats-total-row strong{font-size:16px;font-weight:900;color:#0b1b45}
+.stats-legend{display:flex;gap:18px;align-items:center}
+.stats-legend span{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:800;color:#334155}
+.stats-legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.stats-section{background:rgba(255,255,255,.94);border:1px solid #dfe8f6;border-radius:18px;padding:14px;box-shadow:0 12px 30px rgba(30,64,175,.07);display:grid;gap:8px}
+.stats-section h2{margin:0;font-size:16px;font-weight:850;color:#0b1b45}
+.stats-chart-scroll{overflow-x:auto}
+.stats-chart{display:block;width:100%;min-width:320px;height:auto}
+@media (max-width:560px){.stats-totals{grid-template-columns:1fr}.stats-chart{min-width:520px}}

@@ -1,4 +1,5 @@
 import db from '@/lib/db';
+import { addAppDays, isoToAppDate } from '@/lib/appDate';
 import { isKirsiAttempt } from '@/lib/history';
 import { awardLearningStreakRewards, AwardedStreakReward, getStreakRewardsForAttempt } from '@/lib/rewardRules';
 import { sprintAttemptQualifies } from '@/lib/sprintReward';
@@ -173,32 +174,27 @@ function parseLearner(row: AttemptRow): Learner | null {
   return isKirsiAttempt(row.category, row.learner) ? 'kirsi' : 'kiur';
 }
 
+// createdAt is stored as a UTC ISO string, but a day is reckoned in the app's
+// local timezone (see appDate). Bucketing therefore happens in JS via
+// isoToAppDate rather than a SQL substr, which would slice the UTC date and
+// mis-attribute attempts made near local midnight.
 function dateOf(value: string) {
-  return value.slice(0, 10);
+  return isoToAppDate(value) ?? value.slice(0, 10);
 }
 
 function dailyLearningEarned(learner: Learner, date: string) {
-  const row = db.prepare("SELECT COALESCE(SUM(amount), 0) as total FROM point_ledger WHERE learner = ? AND source = 'study_exercise' AND substr(createdAt, 1, 10) = ?").get(learner, date) as { total: number } | undefined;
-  return row?.total ?? 0;
+  const rows = db.prepare("SELECT amount, createdAt FROM point_ledger WHERE learner = ? AND source = 'study_exercise'").all(learner) as Array<{ amount: number; createdAt: string }>;
+  return rows.reduce((total, row) => (isoToAppDate(row.createdAt) === date ? total + row.amount : total), 0);
 }
 
 function decayCountToday(learner: Learner, exerciseKey: string, date: string) {
-  const row = db.prepare(`
-    SELECT COUNT(*) as count
-    FROM study_attempt_rewards
-    WHERE learner = ? AND exerciseKey = ? AND substr(createdAt, 1, 10) = ?
-  `).get(learner, exerciseKey, date) as { count: number } | undefined;
-  return row?.count ?? 0;
+  const rows = db.prepare('SELECT createdAt FROM study_attempt_rewards WHERE learner = ? AND exerciseKey = ?').all(learner, exerciseKey) as Array<{ createdAt: string }>;
+  return rows.filter((row) => isoToAppDate(row.createdAt) === date).length;
 }
 
 function studyDates(learner: Learner) {
-  const rows = db.prepare(`
-    SELECT DISTINCT substr(createdAt, 1, 10) as day
-    FROM study_attempt_rewards
-    WHERE learner = ?
-    ORDER BY day DESC
-  `).all(learner) as Array<{ day: string }>;
-  return new Set(rows.map((row) => row.day));
+  const rows = db.prepare('SELECT createdAt FROM study_attempt_rewards WHERE learner = ?').all(learner) as Array<{ createdAt: string }>;
+  return new Set(rows.map((row) => isoToAppDate(row.createdAt)).filter((day): day is string => day !== null));
 }
 
 function countLearningStreakFrom(dates: Set<string>, startDate: string) {
@@ -217,6 +213,22 @@ export function getCurrentLearningStreak(learner: Learner, today = todayDateStri
   return countLearningStreakFrom(studyDates(learner), today);
 }
 
+// The longest run of consecutive study days the child has ever had. Unlike the
+// current streak, this never decreases, so it is the right basis for a
+// "practised a full week" achievement.
+export function getLongestLearningStreak(learner: Learner) {
+  const dates = [...studyDates(learner)].sort();
+  let longest = 0;
+  let run = 0;
+  let previous: string | null = null;
+  for (const day of dates) {
+    run = previous !== null && addAppDays(previous, 1) === day ? run + 1 : 1;
+    if (run > longest) longest = run;
+    previous = day;
+  }
+  return longest;
+}
+
 export function getActiveLearningStreak(learner: Learner, today = todayDateString()) {
   const dates = studyDates(learner);
   const todayStreak = countLearningStreakFrom(dates, today);
@@ -228,12 +240,8 @@ export function getActiveLearningStreak(learner: Learner, today = todayDateStrin
 }
 
 function hadStudyAttemptBeforeToday(learner: Learner, date: string, attemptId: number) {
-  const row = db.prepare(`
-    SELECT id FROM study_attempt_rewards
-    WHERE attemptId <> ? AND substr(createdAt, 1, 10) = ? AND learner = ?
-    LIMIT 1
-  `).get(attemptId, date, learner);
-  return Boolean(row);
+  const rows = db.prepare('SELECT attemptId, createdAt FROM study_attempt_rewards WHERE learner = ? AND attemptId <> ?').all(learner, attemptId) as Array<{ createdAt: string }>;
+  return rows.some((row) => isoToAppDate(row.createdAt) === date);
 }
 
 export function awardStudyPointsForAttempt(attemptId: number): StudyReward | null {

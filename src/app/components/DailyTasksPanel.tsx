@@ -26,6 +26,16 @@ type MonthlyCelebration = {
   prizeStars: number;
 };
 
+type Achievement = {
+  id: string;
+  title: string;
+  emoji: string;
+  description: string;
+  unlocked: boolean;
+  current: number;
+  target: number;
+};
+
 type ChildDashboard = {
   learner: Learner;
   balance: number;
@@ -33,6 +43,7 @@ type ChildDashboard = {
   trophies: number;
   tasks: ChildTask[];
   monthlyCelebration: MonthlyCelebration | null;
+  achievements: Achievement[];
 };
 
 function learnerName(learner: Learner) {
@@ -89,6 +100,7 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
   const balance = data?.balance ?? 0;
   const trophies = data?.trophies ?? 0;
   const celebration = data?.monthlyCelebration ?? null;
+  const achievements = data?.achievements ?? [];
   const tasks = data?.tasks ?? [];
   const isDone = (task: ChildTask) => task.status === 'completed' || task.status === 'locked';
   const activeTasks = tasks.filter((task) => !isDone(task));
@@ -135,6 +147,24 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
         <Link href={storeHref}>🛒 Pood</Link>
         <Link href='/history'>📄 Ajalugu</Link>
       </div>
+
+      {achievements.length > 0 && (
+        <div className='achievement-strip' aria-label='Saavutused'>
+          {achievements.map((achievement) => (
+            <div
+              key={achievement.id}
+              className={achievement.unlocked ? 'achievement-badge unlocked' : 'achievement-badge locked'}
+              title={achievement.unlocked ? `${achievement.title} — tehtud!` : `${achievement.description} (${achievement.current}/${achievement.target})`}
+            >
+              <span className='achievement-emoji' aria-hidden>{achievement.unlocked ? achievement.emoji : '🔒'}</span>
+              <span className='achievement-text'>
+                <strong>{achievement.title}</strong>
+                <small>{achievement.unlocked ? 'Tehtud!' : `${achievement.current}/${achievement.target}`}</small>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className='daily-task-card'>
         <h2>Päevased tegevused</h2>

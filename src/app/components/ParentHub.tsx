@@ -2,6 +2,7 @@
 
 import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { todayDateString } from '@/lib/appDate';
 import { formatStars } from '@/lib/formatStars';
 
 type AssignmentMode = 'kiur' | 'kirsi' | 'both_independent' | 'first_completer';
@@ -92,7 +93,10 @@ type MonthlyStanding = {
 };
 type MonthlyPrize = { prizeStars: number; standing: MonthlyStanding };
 
-type ParentSectionId = 'stars' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards';
+type WeeklyChildDigest = { exercises: number; accuracyPercent: number; starsEarned: number; trophies: number; streak: number };
+type WeeklyDigest = { from: string; to: string; learners: Record<Learner, WeeklyChildDigest> };
+
+type ParentSectionId = 'stars' | 'weekly' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards';
 
 function ParentAccordionSection({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
   return (
@@ -151,7 +155,7 @@ const WEEKDAYS = [
 ];
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateString();
 }
 
 function learnerLabel(learner: Learner) {
@@ -230,6 +234,7 @@ export default function ParentHub() {
   const [rewardForm, setRewardForm] = useState(emptyRewardForm);
   const [editingRewardId, setEditingRewardId] = useState<number | null>(null);
   const [monthlyPrize, setMonthlyPrize] = useState<MonthlyPrize | null>(null);
+  const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigest | null>(null);
   const [monthlyPrizeInput, setMonthlyPrizeInput] = useState(10);
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
@@ -258,9 +263,10 @@ export default function ParentHub() {
       fetch('/api/parent/learning-exercises').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/reward-rules').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/notice').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/parent/monthly-prize').then((res) => (res.ok ? res.json() : Promise.reject()))
+      fetch('/api/parent/monthly-prize').then((res) => (res.ok ? res.json() : Promise.reject())),
+      fetch('/api/parent/weekly-digest').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData, monthlyPrizeData]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData, monthlyPrizeData, weeklyDigestData]) => {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
@@ -269,6 +275,7 @@ export default function ParentHub() {
         setNoticeText(typeof noticeData?.text === 'string' ? noticeData.text : '');
         setMonthlyPrize(monthlyPrizeData as MonthlyPrize);
         setMonthlyPrizeInput((monthlyPrizeData as MonthlyPrize)?.prizeStars ?? 10);
+        setWeeklyDigest(weeklyDigestData as WeeklyDigest);
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
   };
@@ -717,6 +724,34 @@ export default function ParentHub() {
             ))}
           </div>
         </div>
+      </section>
+      </ParentAccordionSection>
+
+      <ParentAccordionSection title='Nädala kokkuvõte' summary={weeklyDigest ? `Viimased 7 päeva` : 'Viimased 7 päeva'} open={openSections.has('weekly')} onToggle={() => toggleSection('weekly')}>
+      <section className='parent-card weekly-digest-card'>
+        {!weeklyDigest ? <p>Laadin...</p> : (
+          <>
+            <p className='weekly-digest-range'>{weeklyDigest.from} – {weeklyDigest.to}</p>
+            <div className='weekly-digest-grid'>
+              {(['kiur', 'kirsi'] as Learner[]).map((child) => {
+                const digest = weeklyDigest.learners[child];
+                return (
+                  <div key={child} className='weekly-digest-child'>
+                    <h3>{learnerLabel(child)}</h3>
+                    <ul className='weekly-digest-stats'>
+                      <li><span>Harjutusi</span><strong>{digest.exercises}</strong></li>
+                      <li><span>Täpsus</span><strong>{digest.accuracyPercent}%</strong></li>
+                      <li><span>Tähti teenitud</span><strong>{formatStars(digest.starsEarned)} ⭐</strong></li>
+                      <li><span>Karikaid</span><strong>{digest.trophies} 🏆</strong></li>
+                      <li><span>Õpiseeria</span><strong>{digest.streak} 🔥</strong></li>
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+            <a className='weekly-digest-link' href='/stats'>📊 Vaata täielikku statistikat</a>
+          </>
+        )}
       </section>
       </ParentAccordionSection>
 

@@ -1,3 +1,5 @@
+import { APP_TIME_ZONE, isoToAppDate, previousAppDate, todayDateString } from '@/lib/appDate';
+
 export const KIRSI_CATEGORIES = new Set([
   'Arvutamine 10 piires',
   'Arvutamine 20 piires',
@@ -30,21 +32,18 @@ export function scorePercent(score: number, questionCount: number) {
 }
 
 export function isTodayIso(createdAt: string) {
-  const d = new Date(createdAt);
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  return isoToAppDate(createdAt) === todayDateString();
 }
 
 export function relativeDateTimeLabel(createdAt: string) {
-  const d = new Date(createdAt);
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  const time = d.toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
+  const day = isoToAppDate(createdAt);
+  const today = todayDateString();
+  const time = new Date(createdAt).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit', timeZone: APP_TIME_ZONE });
 
-  if (d.toDateString() === now.toDateString()) return `täna ${time}`;
-  if (d.toDateString() === yesterday.toDateString()) return `eile ${time}`;
-  return `${d.toLocaleDateString('et-EE', { day: '2-digit', month: '2-digit' })} ${time}`;
+  if (day === today) return `täna ${time}`;
+  if (day === previousAppDate(today)) return `eile ${time}`;
+  const date = new Date(createdAt).toLocaleDateString('et-EE', { day: '2-digit', month: '2-digit', timeZone: APP_TIME_ZONE });
+  return `${date} ${time}`;
 }
 
 export function subjectLabel(subject?: string | null) {
@@ -80,13 +79,11 @@ export function compactTopicLabel(topic?: string | null, category?: string | nul
 export type AttemptLike = { createdAt: string };
 
 export function dayLabel(createdAt: string) {
-  const d = new Date(createdAt);
-  const now = new Date();
-  const y = new Date(now);
-  y.setDate(now.getDate() - 1);
-  if (d.toDateString() == now.toDateString()) return 'Täna';
-  if (d.toDateString() == y.toDateString()) return 'Eile';
-  return d.toLocaleDateString('et-EE');
+  const day = isoToAppDate(createdAt);
+  const today = todayDateString();
+  if (day === today) return 'Täna';
+  if (day === previousAppDate(today)) return 'Eile';
+  return new Date(createdAt).toLocaleDateString('et-EE', { timeZone: APP_TIME_ZONE });
 }
 
 export function groupAttemptsByDay<T extends AttemptLike>(items: T[]) {

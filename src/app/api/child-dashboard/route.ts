@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getChildDashboard, Learner } from '@/lib/tasks';
+import { getAchievements } from '@/lib/achievements';
 import { getActiveLearningStreak } from '@/lib/learningPoints';
 import { ensureMonthlyPrizeAwarded, getMonthlyCelebration, getMonthlyTrophies } from '@/lib/monthlyCompetition';
 
@@ -18,6 +19,7 @@ export async function GET(req: NextRequest) {
     ...getChildDashboard(learner),
     streak: getActiveLearningStreak(learner),
     trophies: getMonthlyTrophies(learner),
-    monthlyCelebration: getMonthlyCelebration(learner)
+    monthlyCelebration: getMonthlyCelebration(learner),
+    achievements: getAchievements(learner)
   });
 }
