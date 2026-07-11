@@ -1,4 +1,5 @@
 import db from '@/lib/db';
+import { learnersForMode as sharedLearnersForMode, taskAppliesOnDate as sharedTaskAppliesOnDate } from '@/lib/shared/taskProjection';
 
 export type Learner = 'kiur' | 'kirsi';
 export type AssignmentMode = 'kiur' | 'kirsi' | 'both_independent' | 'first_completer';
@@ -44,7 +45,7 @@ type DailyBonusResult = {
   amount: number;
 };
 
-type TaskTemplateRow = ParentTaskTemplate & { deletedAt: string | null };
+export type TaskTemplateRow = ParentTaskTemplate & { deletedAt: string | null };
 
 type TaskInstanceRow = {
   id: number;
@@ -60,7 +61,6 @@ type TaskInstanceRow = {
   createdAt: string;
 };
 
-const LEARNERS: Learner[] = ['kiur', 'kirsi'];
 
 // The app's day-boundary helpers live in the client-safe appDate module; re-export
 // them here so existing server-side imports from '@/lib/tasks' keep working.
@@ -89,38 +89,15 @@ export function getBalance(learner: Learner) {
   return Math.max(0, row?.balance ?? 0);
 }
 
-function weekdayForDate(date: string) {
-  const day = new Date(`${date}T12:00:00Z`).getUTCDay();
-  return day === 0 ? 7 : day;
-}
-
-function parseSelectedWeekdays(raw: string | null) {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((day) => Number.isInteger(day) && day >= 1 && day <= 7) as number[] : [];
-  } catch {
-    return [];
-  }
-}
-
+// Delegates the recurrence rule to the shared, client-safe projection so the
+// server and the offline client agree; adds the server-only deletedAt guard.
 function taskAppliesOnDate(template: TaskTemplateRow, date: string) {
   if (template.deletedAt) return false;
-  if (template.recurrenceType === 'once') return template.onceDate === date;
-  if (template.startDate && template.startDate > date) return false;
-
-  const weekday = weekdayForDate(date);
-  if (template.recurrenceType === 'daily') return true;
-  if (template.recurrenceType === 'weekdays') return weekday >= 1 && weekday <= 5;
-  if (template.recurrenceType === 'weekends') return weekday === 6 || weekday === 7;
-  if (template.recurrenceType === 'selected_weekdays') return parseSelectedWeekdays(template.selectedWeekdaysJson).includes(weekday);
-  return false;
+  return sharedTaskAppliesOnDate(template, date);
 }
 
 function learnersForMode(mode: AssignmentMode): Learner[] {
-  if (mode === 'kiur') return ['kiur'];
-  if (mode === 'kirsi') return ['kirsi'];
-  return LEARNERS;
+  return sharedLearnersForMode(mode);
 }
 
 function createAssignments(taskInstanceId: number, mode: AssignmentMode) {
@@ -379,7 +356,10 @@ function settleAssignment(row: AssignmentRow, completedAt: string, date: string)
   return { awarded: row.pointsSnapshot, balance: getBalance(learner), dailyBonus: bonus };
 }
 
-export function completeTaskAssignment(assignmentId: number, learner: Learner) {
+// Generalised completion: `completedAt`/`date` default to now/today for the live
+// online path, but the offline sync path passes the action's effective completion
+// time and task date so a late arrival settles against the right day.
+export function completeTaskAssignmentAt(assignmentId: number, learner: Learner, completedAt: string, date: string) {
   const complete = db.transaction(() => {
     const row = loadAssignmentRow(assignmentId);
 
@@ -395,9 +375,6 @@ export function completeTaskAssignment(assignmentId: number, learner: Learner) {
       }
     }
 
-    const completedAt = nowIso();
-    const date = todayDateString();
-
     if (row.requiresApprovalSnapshot) {
       db.prepare("UPDATE task_instance_assignments SET status = 'pending_approval', completedAt = ? WHERE id = ? AND status = 'active'").run(completedAt, assignmentId);
       return { pending: true, awarded: 0, balance: getBalance(learner), dailyBonus: { awarded: false, amount: 0 } };
@@ -407,6 +384,34 @@ export function completeTaskAssignment(assignmentId: number, learner: Learner) {
   });
 
   return complete();
+}
+
+export function completeTaskAssignment(assignmentId: number, learner: Learner) {
+  return completeTaskAssignmentAt(assignmentId, learner, nowIso(), todayDateString());
+}
+
+// The assignment id for (template, date, learner), if it has been materialised.
+export function findAssignmentId(templateId: number, date: string, learner: Learner): number | null {
+  const row = db.prepare(`
+    SELECT a.id AS id
+    FROM task_instance_assignments a
+    JOIN task_instances i ON i.id = a.taskInstanceId
+    WHERE i.templateId = ? AND i.date = ? AND a.learner = ?
+  `).get(templateId, date, learner) as { id: number } | undefined;
+  return row?.id ?? null;
+}
+
+export function getAssignmentStatusById(assignmentId: number): string | null {
+  const row = db.prepare('SELECT status FROM task_instance_assignments WHERE id = ?').get(assignmentId) as { status: string } | undefined;
+  return row?.status ?? null;
+}
+
+export function getActiveTaskTemplates() {
+  return db.prepare('SELECT * FROM task_templates WHERE deletedAt IS NULL ORDER BY id ASC').all() as TaskTemplateRow[];
+}
+
+export function getTaskTemplateById(id: number) {
+  return db.prepare('SELECT * FROM task_templates WHERE id = ?').get(id) as TaskTemplateRow | undefined;
 }
 
 export function approveTaskAssignment(assignmentId: number) {

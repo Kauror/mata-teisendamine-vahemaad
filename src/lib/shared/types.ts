@@ -101,6 +101,30 @@ export type ServerAttempt = {
   earnedStars: number | null;
 };
 
+// ---- Task actions (offline daily-task completion) ----
+
+export type TaskActionStatus = 'applied' | 'duplicate' | 'pending_approval' | 'conflict' | 'rejected' | 'needs_review';
+
+export type OfflineTaskActionPayload = {
+  clientActionId: string;
+  deviceId: string;
+  learner: Learner;
+  actionType: 'complete';
+  templateId: number | null;
+  templateVersion: string | null;
+  taskDate: string; // 'YYYY-MM-DD'
+  snapshot?: { title: string; points: number; assignmentMode: string; requiresApproval: boolean } | null;
+  completedAt: string | null; // effective ISO
+};
+
+export type TaskActionResult = {
+  clientActionId: string;
+  status: TaskActionStatus;
+  reasonCode?: string;
+  message?: string;
+  serverState?: unknown;
+};
+
 // ---- Sync protocol (POST /api/offline/sync) ----
 
 export type OfflineSyncRequest = {
@@ -120,6 +144,7 @@ export type OfflineSyncRequest = {
   };
   pending: {
     attempts: OfflineAttemptPayload[];
+    taskActions?: OfflineTaskActionPayload[];
   };
 };
 
@@ -128,10 +153,12 @@ export type OfflineSyncResponse = {
   serverTime: string;
   historyEpoch: number;
   attemptResults: AttemptResult[];
+  taskActionResults: TaskActionResult[];
   pull: {
     attempts: ServerAttempt[];
     catalogues: Record<Learner, OfflineCatalogue>;
     dashboards: Record<Learner, ChildDashboardSnapshot>;
+    taskTemplates: import('@/lib/shared/taskProjection').SyncTaskTemplate[];
     notices?: unknown;
   };
   nextCursor: {

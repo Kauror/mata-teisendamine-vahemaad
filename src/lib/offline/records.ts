@@ -3,8 +3,10 @@ import type {
   Learner,
   OfflineAttemptPayload,
   OfflineCatalogue,
+  OfflineTaskActionPayload,
   ServerAttempt
 } from '@/lib/shared/types';
+import type { SyncTaskTemplate } from '@/lib/shared/taskProjection';
 
 // Sync lifecycle of a locally-created attempt.
 export type LocalAttemptStatus = 'pending' | 'syncing' | 'confirmed' | 'rejected' | 'needs_review';
@@ -49,3 +51,15 @@ export type MetaRecord = {
 export type ConfirmedAttempt = ServerAttempt;
 export type CatalogueRecord = OfflineCatalogue;
 export type SnapshotRecord = ChildDashboardSnapshot;
+export type TaskTemplateRecord = SyncTaskTemplate;
+
+export type LocalTaskActionStatus = 'pending' | 'syncing' | 'applied' | 'duplicate' | 'pending_approval' | 'conflict' | 'rejected' | 'needs_review';
+
+// A queued offline task completion. Once resolved by the server it stays for
+// visibility (conflict/needs_review) or is cleared (applied/duplicate).
+export type LocalTaskAction = OfflineTaskActionPayload & {
+  status: LocalTaskActionStatus;
+  reasonCode?: string;
+  serverState?: unknown;
+  createdLocallyAt: string;
+};

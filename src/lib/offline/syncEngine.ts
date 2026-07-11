@@ -1,18 +1,33 @@
-import { attemptRepo, catalogRepo, historyRepo, snapshotRepo } from '@/lib/offline/repositories';
+import { attemptRepo, catalogRepo, historyRepo, snapshotRepo, taskActionRepo, taskTemplateRepo } from '@/lib/offline/repositories';
 import { getCursor, setCursor, getDeviceId, getServerOffsetMs } from '@/lib/offline/meta';
 import { pingServer } from '@/lib/offline/connection';
 import { withSyncLock } from '@/lib/offline/syncLock';
-import type { LocalAttempt } from '@/lib/offline/records';
+import type { LocalAttempt, LocalTaskAction } from '@/lib/offline/records';
 import {
   APP_VERSION,
   OFFLINE_PROTOCOL_VERSION,
   type AttemptResult,
   type OfflineAttemptPayload,
   type OfflineSyncRequest,
-  type OfflineSyncResponse
+  type OfflineSyncResponse,
+  type OfflineTaskActionPayload
 } from '@/lib/shared/types';
 
 export type SyncOutcome = { ok: boolean; reason?: string; pushed: number; pulled: number; attemptResults?: AttemptResult[] };
+
+function toActionPayload(a: LocalTaskAction): OfflineTaskActionPayload {
+  return {
+    clientActionId: a.clientActionId,
+    deviceId: a.deviceId,
+    learner: a.learner,
+    actionType: a.actionType,
+    templateId: a.templateId,
+    templateVersion: a.templateVersion,
+    taskDate: a.taskDate,
+    snapshot: a.snapshot,
+    completedAt: a.completedAt
+  };
+}
 
 function toPayload(a: LocalAttempt): OfflineAttemptPayload {
   return {
@@ -54,12 +69,19 @@ async function runSyncCycle(): Promise<SyncOutcome> {
   const deviceId = await getDeviceId();
   const cursor = await getCursor();
   const pending = await attemptRepo.pending();
+  const pendingTaskActions = await taskActionRepo.pending();
 
   // Mark pending → syncing so a concurrent finish doesn't double-send.
   for (const attempt of pending) {
     if (attempt.status === 'pending') {
       attempt.status = 'syncing';
       await attemptRepo.put(attempt);
+    }
+  }
+  for (const action of pendingTaskActions) {
+    if (action.status === 'pending') {
+      action.status = 'syncing';
+      await taskActionRepo.put(action);
     }
   }
 
@@ -78,7 +100,7 @@ async function runSyncCycle(): Promise<SyncOutcome> {
       catalogueVersions: cursor.catalogueVersions,
       lastSuccessfulSyncAt: cursor.lastSuccessfulSyncAt
     },
-    pending: { attempts: pending.map(toPayload) }
+    pending: { attempts: pending.map(toPayload), taskActions: pendingTaskActions.map(toActionPayload) }
   };
 
   let response: OfflineSyncResponse;
@@ -99,6 +121,13 @@ async function runSyncCycle(): Promise<SyncOutcome> {
         current.lastError = String(error);
         current.retryCount += 1;
         await attemptRepo.put(current);
+      }
+    }
+    for (const action of pendingTaskActions) {
+      const current = await taskActionRepo.get(action.clientActionId);
+      if (current && current.status === 'syncing') {
+        current.status = 'pending';
+        await taskActionRepo.put(current);
       }
     }
     return { ok: false, reason: 'transient', pushed: 0, pulled: 0 };
@@ -124,12 +153,28 @@ async function runSyncCycle(): Promise<SyncOutcome> {
     }
   }
 
+  // Apply task-action acknowledgements: applied/duplicate clear the local queue;
+  // conflict/needs_review/rejected stay for visibility with the server verdict.
+  for (const result of response.taskActionResults ?? []) {
+    const action = await taskActionRepo.get(result.clientActionId);
+    if (!action) continue;
+    if (result.status === 'applied' || result.status === 'duplicate') {
+      await taskActionRepo.delete(action.clientActionId);
+    } else {
+      action.status = result.status;
+      action.reasonCode = result.reasonCode;
+      action.serverState = result.serverState;
+      await taskActionRepo.put(action);
+    }
+  }
+
   // 3. Merge pulled server data (never clobbering remaining pending work).
   await catalogRepo.put(response.pull.catalogues.kiur);
   await catalogRepo.put(response.pull.catalogues.kirsi);
   await snapshotRepo.put(response.pull.dashboards.kiur);
   await snapshotRepo.put(response.pull.dashboards.kirsi);
   await historyRepo.putMany(response.pull.attempts);
+  if (response.pull.taskTemplates) await taskTemplateRepo.replaceAll(response.pull.taskTemplates);
 
   // 4. Save the new cursor + last-sync time.
   await setCursor({

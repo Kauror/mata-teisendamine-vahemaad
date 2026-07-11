@@ -1,5 +1,5 @@
 import { offlineDb } from '@/lib/offline/db';
-import type { ConfirmedAttempt, LocalAttempt, LocalSession } from '@/lib/offline/records';
+import type { ConfirmedAttempt, LocalAttempt, LocalSession, LocalTaskAction, TaskTemplateRecord } from '@/lib/offline/records';
 import type { ChildDashboardSnapshot, Learner, OfflineCatalogue } from '@/lib/shared/types';
 
 // Small, responsibility-separated repositories over the IndexedDB stores. The UI
@@ -97,5 +97,42 @@ export const historyRepo = {
   async clear() {
     const db = await offlineDb();
     await db.clear('history');
+  }
+};
+
+export const taskTemplateRepo = {
+  async replaceAll(templates: TaskTemplateRecord[]) {
+    const db = await offlineDb();
+    const tx = db.transaction('taskTemplates', 'readwrite');
+    await tx.store.clear();
+    await Promise.all(templates.map((template) => tx.store.put(template)));
+    await tx.done;
+  },
+  async all(): Promise<TaskTemplateRecord[]> {
+    const db = await offlineDb();
+    return db.getAll('taskTemplates');
+  }
+};
+
+export const taskActionRepo = {
+  async put(action: LocalTaskAction) {
+    const db = await offlineDb();
+    await db.put('taskActions', action);
+  },
+  async get(clientActionId: string): Promise<LocalTaskAction | undefined> {
+    const db = await offlineDb();
+    return db.get('taskActions', clientActionId);
+  },
+  async all(): Promise<LocalTaskAction[]> {
+    const db = await offlineDb();
+    return db.getAll('taskActions');
+  },
+  async pending(): Promise<LocalTaskAction[]> {
+    const all = await this.all();
+    return all.filter((a) => a.status === 'pending' || a.status === 'syncing');
+  },
+  async delete(clientActionId: string) {
+    const db = await offlineDb();
+    await db.delete('taskActions', clientActionId);
   }
 };

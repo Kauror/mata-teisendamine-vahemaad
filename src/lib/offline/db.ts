@@ -1,11 +1,11 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { CatalogueRecord, ConfirmedAttempt, LocalAttempt, LocalSession, MetaRecord, SnapshotRecord } from '@/lib/offline/records';
+import type { CatalogueRecord, ConfirmedAttempt, LocalAttempt, LocalSession, LocalTaskAction, MetaRecord, SnapshotRecord, TaskTemplateRecord } from '@/lib/offline/records';
 
 // The single client-side IndexedDB database. Never use localStorage for attempts,
 // sessions, history or the sync queue — everything durable lives here.
 
 export const OFFLINE_DB_NAME = 'harjutaja-offline';
-export const OFFLINE_DB_VERSION = 1;
+export const OFFLINE_DB_VERSION = 2;
 
 interface OfflineDB extends DBSchema {
   meta: { key: string; value: MetaRecord };
@@ -14,6 +14,8 @@ interface OfflineDB extends DBSchema {
   attempts: { key: string; value: LocalAttempt; indexes: { byStatus: string } }; // key = clientAttemptId
   history: { key: number; value: ConfirmedAttempt; indexes: { byCompletedAt: string } }; // key = server id
   snapshots: { key: string; value: SnapshotRecord }; // key = learner
+  taskTemplates: { key: number; value: TaskTemplateRecord }; // key = template id
+  taskActions: { key: string; value: LocalTaskAction; indexes: { byStatus: string } }; // key = clientActionId
 }
 
 let dbPromise: Promise<IDBPDatabase<OfflineDB>> | null = null;
@@ -38,6 +40,12 @@ export function offlineDb() {
           store.createIndex('byCompletedAt', 'completedAt');
         }
         if (!db.objectStoreNames.contains('snapshots')) db.createObjectStore('snapshots', { keyPath: 'learner' });
+        // v2: offline daily tasks
+        if (!db.objectStoreNames.contains('taskTemplates')) db.createObjectStore('taskTemplates', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('taskActions')) {
+          const store = db.createObjectStore('taskActions', { keyPath: 'clientActionId' });
+          store.createIndex('byStatus', 'status');
+        }
       }
     });
   }

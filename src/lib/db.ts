@@ -438,6 +438,25 @@ db.exec(`
     historyEpoch INTEGER NOT NULL DEFAULT 0,
     updatedAt TEXT NOT NULL
   );
+
+  -- Idempotent record of offline task-completion actions, keyed by the device's
+  -- clientActionId. Retrying the same action returns the stored result.
+  CREATE TABLE IF NOT EXISTS offline_task_actions (
+    clientActionId TEXT PRIMARY KEY,
+    deviceId TEXT,
+    learner TEXT NOT NULL,
+    actionType TEXT NOT NULL,
+    templateId INTEGER,
+    templateVersion TEXT,
+    taskDate TEXT NOT NULL,
+    snapshotJson TEXT,
+    completedAt TEXT,
+    status TEXT NOT NULL,
+    reasonCode TEXT,
+    serverResultJson TEXT,
+    createdAt TEXT NOT NULL,
+    processedAt TEXT
+  );
 `);
 db.prepare("INSERT OR IGNORE INTO offline_sync_state (id, historyEpoch, updatedAt) VALUES (1, 0, ?)").run(new Date().toISOString());
 

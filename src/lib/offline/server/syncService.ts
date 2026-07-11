@@ -4,6 +4,7 @@ import { getActiveLearningStreak } from '@/lib/learningPoints';
 import { getMonthlyTrophies } from '@/lib/monthlyCompetition';
 import { insertAttempt } from '@/lib/offline/server/insertAttempt';
 import { getCurrentCatalogue } from '@/lib/offline/server/catalogVersions';
+import { applyOfflineTaskAction, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
 import {
   MAX_HISTORY_PULL_PER_SYNC,
   MAX_PENDING_ATTEMPTS_PER_SYNC,
@@ -12,7 +13,8 @@ import {
   type OfflineCatalogue,
   type OfflineSyncRequest,
   type OfflineSyncResponse,
-  type ServerAttempt
+  type ServerAttempt,
+  type TaskActionResult
 } from '@/lib/shared/types';
 
 function historyEpoch(): number {
@@ -74,8 +76,20 @@ export function runSync(request: OfflineSyncRequest): OfflineSyncResponse {
     });
   }
 
+  // Task actions are processed after attempts (both are child activity) and in
+  // submission order; each is idempotent via clientActionId.
+  const taskActionResults: TaskActionResult[] = [];
+  for (const action of request.pending?.taskActions ?? []) {
+    if (!action?.clientActionId || typeof action.clientActionId !== 'string') {
+      taskActionResults.push({ clientActionId: String(action?.clientActionId ?? ''), status: 'rejected', reasonCode: 'bad_payload' });
+      continue;
+    }
+    taskActionResults.push(applyOfflineTaskAction(action));
+  }
+
   const catalogues = { kiur: getCurrentCatalogue('kiur'), kirsi: getCurrentCatalogue('kirsi') } as Record<Learner, OfflineCatalogue>;
   const dashboards = { kiur: dashboardFor('kiur'), kirsi: dashboardFor('kirsi') } as Record<Learner, ChildDashboardSnapshot>;
+  const taskTemplates = getSyncTaskTemplates();
 
   const cursorId = Number(request.cursor?.lastServerAttemptId ?? 0) || 0;
   const pulledAttempts = attemptsAfter(cursorId);
@@ -86,10 +100,12 @@ export function runSync(request: OfflineSyncRequest): OfflineSyncResponse {
     serverTime,
     historyEpoch: historyEpoch(),
     attemptResults,
+    taskActionResults,
     pull: {
       attempts: pulledAttempts,
       catalogues,
-      dashboards
+      dashboards,
+      taskTemplates
     },
     nextCursor: {
       lastServerAttemptId: maxId,

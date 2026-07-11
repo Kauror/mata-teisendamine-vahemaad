@@ -1,9 +1,10 @@
-import { attemptRepo, catalogRepo, historyRepo, sessionRepo, snapshotRepo } from '@/lib/offline/repositories';
+import { attemptRepo, catalogRepo, historyRepo, sessionRepo, snapshotRepo, taskActionRepo, taskTemplateRepo } from '@/lib/offline/repositories';
 import { correctedNow, getDeviceId, getServerOffsetMs } from '@/lib/offline/meta';
 import { syncNow } from '@/lib/offline/syncEngine';
-import type { LocalAttempt, LocalSession } from '@/lib/offline/records';
+import type { LocalAttempt, LocalSession, LocalTaskAction } from '@/lib/offline/records';
 import { childExerciseCards, type ChildExerciseCard } from '@/lib/childExerciseCards';
 import { selectTodaysLearningExercises } from '@/lib/shared/rotation';
+import { projectTasksForDate } from '@/lib/shared/taskProjection';
 import { todayDateString } from '@/lib/appDate';
 import type { ChildDashboardSnapshot, Learner } from '@/lib/shared/types';
 
@@ -213,8 +214,85 @@ export async function getMergedExerciseHistory(): Promise<OfflineHistoryItem[]> 
 }
 
 export async function getPendingCount(): Promise<number> {
-  const all = await attemptRepo.all();
-  return all.filter((a) => a.status === 'pending' || a.status === 'syncing').length;
+  const [attempts, actions] = await Promise.all([attemptRepo.all(), taskActionRepo.all()]);
+  const pendingAttempts = attempts.filter((a) => a.status === 'pending' || a.status === 'syncing').length;
+  const pendingActions = actions.filter((a) => a.status === 'pending' || a.status === 'syncing').length;
+  return pendingAttempts + pendingActions;
+}
+
+// ---- Offline daily tasks ----
+
+export type OfflineDailyTask = {
+  templateId: number;
+  templateVersion: string;
+  title: string;
+  points: number;
+  assignmentMode: string;
+  requiresApproval: boolean;
+  status: 'active' | 'completed' | 'pending_approval' | 'locked';
+  reasonCode?: string;
+};
+
+// Today's projected tasks from the cached templates, with any queued local
+// completion overlaid so a task the child finished offline shows as done.
+export async function getDailyTasksOffline(learner: Learner, date = todayDateString()): Promise<OfflineDailyTask[]> {
+  const [templates, actions] = await Promise.all([taskTemplateRepo.all(), taskActionRepo.all()]);
+  if (templates.length === 0) return [];
+  const projected = projectTasksForDate(templates, learner, date);
+  const actionFor = (templateId: number) => actions.find((a) => a.templateId === templateId && a.taskDate === date && a.learner === learner);
+
+  return projected.map((task) => {
+    const action = actionFor(task.templateId);
+    let status: OfflineDailyTask['status'] = 'active';
+    if (action) {
+      if (action.status === 'conflict') status = 'locked';
+      else if (task.requiresApproval) status = 'pending_approval';
+      else status = 'completed';
+    }
+    return {
+      templateId: task.templateId,
+      templateVersion: task.templateVersion,
+      title: task.title,
+      points: task.points,
+      assignmentMode: task.assignmentMode,
+      requiresApproval: task.requiresApproval,
+      status,
+      reasonCode: action?.reasonCode
+    };
+  });
+}
+
+export type CompleteTaskOfflineResult = { clientActionId: string; queued: boolean };
+
+// Queue an offline task completion (idempotent per template/date/learner) and try
+// a best-effort sync. Never mints stars locally — the server settles on sync.
+export async function completeTaskOffline(input: { learner: Learner; templateId: number; templateVersion: string; taskDate: string; snapshot: { title: string; points: number; assignmentMode: string; requiresApproval: boolean } }): Promise<CompleteTaskOfflineResult> {
+  const existing = (await taskActionRepo.all()).find((a) => a.templateId === input.templateId && a.taskDate === input.taskDate && a.learner === input.learner);
+  if (existing) return { clientActionId: existing.clientActionId, queued: false };
+
+  const deviceId = await getDeviceId();
+  const offsetMs = await getServerOffsetMs();
+  const clientActionId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const action: LocalTaskAction = {
+    clientActionId,
+    deviceId,
+    learner: input.learner,
+    actionType: 'complete',
+    templateId: input.templateId,
+    templateVersion: input.templateVersion,
+    taskDate: input.taskDate,
+    snapshot: input.snapshot,
+    completedAt: correctedNow(offsetMs).toISOString(),
+    status: 'pending',
+    createdLocallyAt: new Date().toISOString()
+  };
+  await taskActionRepo.put(action);
+  try {
+    await syncNow('task-complete');
+  } catch {
+    /* stays pending */
+  }
+  return { clientActionId, queued: true };
 }
 
 export { syncNow };
