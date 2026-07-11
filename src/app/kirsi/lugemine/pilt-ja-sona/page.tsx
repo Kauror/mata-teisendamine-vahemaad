@@ -8,6 +8,7 @@ import { fetchBestKirsiReadingSprintScore } from '@/lib/kirsiReadingHistory';
 import { KIRSI_READING_PAIRS, KirsiReadingPair } from '@/lib/kirsiReadingPairs';
 import { formatStars } from '@/lib/formatStars';
 import { formatElapsed } from '@/lib/validation';
+import { completeAttempt, getCatalogueVersion, isExercisePermittedOffline } from '@/lib/offline/api';
 
 type ReviewItem = {
   id: string;
@@ -68,8 +69,9 @@ export default function KirsiPictureWordSprintPage() {
       .then((body: { exerciseIds?: string[] }) => {
         if (!cancelled) setExerciseActive(Boolean(body.exerciseIds?.includes('kirsi.reading.pilt-ja-sona')));
       })
-      .catch(() => {
-        if (!cancelled) setExerciseActive(false);
+      .catch(async () => {
+        const permitted = await isExercisePermittedOffline('kirsi', { exerciseId: 'kirsi.reading.pilt-ja-sona', subject: 'lugemine', topic: 'pilt-ja-sona', category: 'Lugemine - pilt ja sõna' }).catch(() => false);
+        if (!cancelled) setExerciseActive(permitted);
       });
     return () => {
       cancelled = true;
@@ -98,24 +100,24 @@ export default function KirsiPictureWordSprintPage() {
       setBest(score);
     }
 
-    void fetch('/api/history', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        createdAt: new Date().toISOString(),
+    void (async () => {
+      const catalogueVersion = await getCatalogueVersion('kirsi').catch(() => null);
+      const outcome = await completeAttempt({
         learner: 'kirsi',
         subject: 'lugemine',
         topic: 'pilt-ja-sona',
         category: 'Lugemine - pilt ja sõna',
         difficulty: 'Sprint',
+        exerciseId: 'kirsi.reading.pilt-ja-sona',
+        catalogueVersion,
+        startedAt: new Date(startedAtRef.current).toISOString(),
         questionCount: score + 1,
         score,
         elapsedSeconds,
         questions: reviewItems
-      })
-    }).then((response) => response.ok ? response.json() : null)
-      .then((body) => setReward(body?.reward ?? null))
-      .catch(() => setReward(null));
+      });
+      setReward((outcome.reward as SprintReward) ?? null);
+    })();
   }, [best, elapsedSeconds, ended, exerciseActive, reviewItems, score]);
 
   const startGame = () => {

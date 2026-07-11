@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
 import { trophyWord } from '@/lib/history';
+import { completeTaskOffline, getDailyTasksOffline, getDashboardSnapshot } from '@/lib/offline/api';
+import { todayDateString } from '@/lib/appDate';
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -17,6 +19,11 @@ type ChildTask = {
   requiresApproval?: boolean;
   completedAt: string | null;
   completedBy: Learner | null;
+  // Offline-projected tasks carry their template identity instead of a server
+  // assignment id, so completion queues an offline action.
+  offline?: boolean;
+  templateId?: number;
+  templateVersion?: string;
 };
 
 type MonthlyCelebration = {
@@ -63,7 +70,36 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
     fetch(`/api/child-dashboard?learner=${learner}`)
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then(setData)
-      .catch(() => setError('Päevategevusi ei saanud laadida.'));
+      .catch(async () => {
+        // Offline: show the last confirmed balance/streak/trophies from the cached
+        // snapshot, plus today's tasks projected from the cached templates with any
+        // queued local completion overlaid.
+        const [snapshot, offlineTasks] = await Promise.all([
+          getDashboardSnapshot(learner).catch(() => undefined),
+          getDailyTasksOffline(learner).catch(() => [])
+        ]);
+        const tasks: ChildTask[] = offlineTasks.map((task) => ({
+          assignmentId: -task.templateId,
+          taskInstanceId: -task.templateId,
+          title: task.title,
+          points: task.points,
+          assignmentMode: task.assignmentMode,
+          status: task.status,
+          requiresApproval: task.requiresApproval,
+          completedAt: null,
+          completedBy: null,
+          offline: true,
+          templateId: task.templateId,
+          templateVersion: task.templateVersion
+        }));
+        if (snapshot) {
+          setData({ learner, balance: snapshot.balance, streak: snapshot.streak, trophies: snapshot.trophies, tasks, monthlyCelebration: null, achievements: [] });
+        } else if (tasks.length > 0) {
+          setData({ learner, balance: 0, streak: 0, trophies: 0, tasks, monthlyCelebration: null, achievements: [] });
+        } else {
+          setError('Päevategevusi ei saanud laadida.');
+        }
+      });
   }, [learner]);
 
   useEffect(() => {
@@ -75,6 +111,21 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
     setBusyId(confirmTask.assignmentId);
     setError('');
     try {
+      // Offline-projected task → queue an offline action (server settles on sync).
+      if (confirmTask.offline && confirmTask.templateId != null && confirmTask.templateVersion) {
+        await completeTaskOffline({
+          learner,
+          templateId: confirmTask.templateId,
+          templateVersion: confirmTask.templateVersion,
+          taskDate: todayDateString(),
+          snapshot: { title: confirmTask.title, points: confirmTask.points, assignmentMode: confirmTask.assignmentMode, requiresApproval: Boolean(confirmTask.requiresApproval) }
+        });
+        setNotice(confirmTask.requiresApproval ? 'Saadetud vanemale kinnitamiseks.' : 'Salvestatud. Sünkroonitakse, kui internet naaseb.');
+        setConfirmTask(null);
+        load();
+        return;
+      }
+
       const res = await fetch('/api/tasks/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

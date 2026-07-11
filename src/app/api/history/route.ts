@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { awardStudyPointsForAttempt } from '@/lib/learningPoints';
-import {
-  findLearningExerciseForAttempt,
-  isLearner,
-  isLearningExerciseActiveForAttempt,
-  isLearningExerciseSubject
-} from '@/lib/learningExercises';
-import { captureMistakesForAttempt } from '@/lib/remediation';
-import { recordDailyLeaderboard } from '@/lib/leaderboard';
+import { insertAttempt } from '@/lib/offline/server/insertAttempt';
 import { deleteAllHistory } from '@/lib/historyMaintenance';
 
 export const dynamic = 'force-dynamic';
@@ -34,53 +26,30 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const db = await getDb();
+  await getDb();
   const body = await req.json();
-  const learner = isLearner(body.learner) ? body.learner : null;
-  const subject = isLearningExerciseSubject(body.subject) ? body.subject : null;
-  const topic = typeof body.topic === 'string' ? body.topic : '';
-  const category = typeof body.category === 'string' ? body.category : '';
-  const questions = Array.isArray(body.questions) ? body.questions : [];
+  // Route through the shared authoritative service. This is the online direct
+  // path (no clientAttemptId / catalogueVersion), so behaviour is unchanged:
+  // non-active exercises still 403 and nothing is inserted.
+  const result = insertAttempt({
+    createdAt: body.createdAt,
+    learner: body.learner,
+    subject: body.subject,
+    topic: body.topic,
+    category: body.category,
+    difficulty: body.difficulty,
+    questionCount: body.questionCount,
+    score: body.score,
+    elapsedSeconds: body.elapsedSeconds,
+    questions: body.questions,
+    exerciseId: body.exerciseId
+  });
 
-  const exercise = learner && subject ? findLearningExerciseForAttempt({ learner, subject, topic, category }) : null;
-
-  if (learner && subject && !isLearningExerciseActiveForAttempt({ learner, subject, topic, category })) {
-    return NextResponse.json({ message: 'Harjutus ei ole praegu aktiivne.' }, { status: 403 });
+  if (result.status === 'rejected') {
+    const status = result.reasonCode === 'not_active' ? 403 : 400;
+    return NextResponse.json({ message: result.message ?? 'Vigane vastus.' }, { status });
   }
-
-  const stmt = db.prepare('INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic, exerciseId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  const isLearningAttempt = body.subject !== 'inglise-keel';
-  const isTextProblems = body.subject === 'matemaatika' && (topic === 'tekstulesanded' || category === 'Tekstülesanded');
-  // Subjects whose session length is variable use the count sent by the client;
-  // the fixed 15-question maths sessions are normalised below.
-  const usesProvidedCount = body.subject === 'lugemine' || body.subject === 'loodusopetus' || isTextProblems;
-  const questionCount = usesProvidedCount ? Number(body.questionCount) || 0 : isLearningAttempt ? 15 : Number(body.questionCount) || 0;
-  const score = Math.max(0, Math.min(Math.floor(Number(body.score) || 0), questionCount));
-  const result = stmt.run(
-    body.createdAt,
-    body.category,
-    body.difficulty || 'Lihtne',
-    questionCount,
-    score,
-    body.elapsedSeconds,
-    JSON.stringify(questions),
-    learner,
-    subject ?? body.subject ?? null,
-    topic || null,
-    typeof body.exerciseId === 'string' && body.exerciseId ? body.exerciseId : exercise?.id ?? null
-  );
-  try {
-    captureMistakesForAttempt({ attemptId: Number(result.lastInsertRowid), learner, subject, topic, category, questions });
-  } catch (error) {
-    console.warn('Mistake capture failed', error);
-  }
-  const reward = awardStudyPointsForAttempt(Number(result.lastInsertRowid));
-  try {
-    recordDailyLeaderboard();
-  } catch (error) {
-    console.warn('Daily leaderboard snapshot failed', error);
-  }
-  return NextResponse.json({ id: result.lastInsertRowid, reward }, { status: 201 });
+  return NextResponse.json({ id: result.serverAttemptId, reward: result.reward, status: result.status }, { status: 201 });
 }
 
 export async function DELETE() {

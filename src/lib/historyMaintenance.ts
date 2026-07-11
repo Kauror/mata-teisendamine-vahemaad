@@ -1,4 +1,5 @@
 import db from '@/lib/db';
+import { bumpHistoryEpoch, writeTombstone } from '@/lib/offline/server/tombstones';
 
 // better-sqlite3 enables `PRAGMA foreign_keys = ON` by default, so an attempt
 // row cannot be removed while anything still references it. Several tables point
@@ -13,6 +14,11 @@ import db from '@/lib/db';
 // balance (matching the previous behaviour).
 
 const deleteAttemptTx = db.transaction((attemptId: number): number => {
+  // Record a tombstone (with the clientAttemptId, if any) before removing the row
+  // so offline devices can drop it from their cache on the next sync.
+  const row = db.prepare('SELECT clientAttemptId FROM attempts WHERE id = ?').get(attemptId) as { clientAttemptId: string | null } | undefined;
+  if (!row) return 0;
+  writeTombstone(attemptId, row.clientAttemptId ?? null);
   db.prepare('DELETE FROM reward_rule_awards WHERE attemptId = ?').run(attemptId);
   db.prepare('DELETE FROM streak_bonus_awards WHERE attemptId = ?').run(attemptId);
   db.prepare('DELETE FROM study_attempt_rewards WHERE attemptId = ?').run(attemptId);
@@ -39,6 +45,9 @@ const deleteAllHistoryTx = db.transaction(() => {
   db.prepare('DELETE FROM streak_bonus_awards').run();
   db.prepare('DELETE FROM study_attempt_rewards').run();
   db.prepare('DELETE FROM attempts').run();
+  // Bump the history epoch so offline devices clear their stale confirmed cache
+  // and cannot resurrect intentionally-deleted history.
+  bumpHistoryEpoch();
 });
 
 // Wipes the entire exercise history and all of its derived learning data.

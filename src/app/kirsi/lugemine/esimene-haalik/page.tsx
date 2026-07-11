@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { shuffle } from '@/lib/englishGame';
 import { formatStars } from '@/lib/formatStars';
 import { KIRSI_FIRST_SOUND_TASKS, KirsiFirstSoundTask } from '@/lib/kirsiFirstSoundTasks';
+import { completeAttempt, getCatalogueVersion, isExercisePermittedOffline } from '@/lib/offline/api';
 
 const QUESTION_COUNT = 10;
 
@@ -73,8 +74,9 @@ export default function KirsiFirstSoundPage() {
       .then((body: { exerciseIds?: string[] }) => {
         if (!cancelled) setExerciseActive(Boolean(body.exerciseIds?.includes('kirsi.reading.esimene-haalik')));
       })
-      .catch(() => {
-        if (!cancelled) setExerciseActive(false);
+      .catch(async () => {
+        const permitted = await isExercisePermittedOffline('kirsi', { exerciseId: 'kirsi.reading.esimene-haalik', subject: 'lugemine', topic: 'esimene-haalik', category: 'Lugemine - esimene häälik' }).catch(() => false);
+        if (!cancelled) setExerciseActive(permitted);
       });
     return () => {
       cancelled = true;
@@ -86,23 +88,23 @@ export default function KirsiFirstSoundPage() {
     setSaved(true);
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000));
 
-    void fetch('/api/history', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        createdAt: new Date().toISOString(),
+    void (async () => {
+      const catalogueVersion = await getCatalogueVersion('kirsi').catch(() => null);
+      const outcome = await completeAttempt({
         learner: 'kirsi',
         subject: 'lugemine',
         topic: 'esimene-haalik',
         category: 'Lugemine - esimene häälik',
+        exerciseId: 'kirsi.reading.esimene-haalik',
+        catalogueVersion,
+        startedAt: new Date(startedAtRef.current).toISOString(),
         questionCount: QUESTION_COUNT,
         score,
         elapsedSeconds,
         questions: reviewItems
-      })
-    }).then((response) => response.ok ? response.json() : null)
-      .then((body) => setReward(body?.reward ?? null))
-      .catch(() => setReward(null));
+      });
+      setReward((outcome.reward as Reward) ?? null);
+    })();
   }, [exerciseActive, index, reviewItems, saved, score]);
 
   const reset = () => {
