@@ -6,12 +6,13 @@ import type { LocalAttempt } from '@/lib/offline/records';
 import {
   APP_VERSION,
   OFFLINE_PROTOCOL_VERSION,
+  type AttemptResult,
   type OfflineAttemptPayload,
   type OfflineSyncRequest,
   type OfflineSyncResponse
 } from '@/lib/shared/types';
 
-export type SyncOutcome = { ok: boolean; reason?: string; pushed: number; pulled: number };
+export type SyncOutcome = { ok: boolean; reason?: string; pushed: number; pulled: number; attemptResults?: AttemptResult[] };
 
 function toPayload(a: LocalAttempt): OfflineAttemptPayload {
   return {
@@ -139,5 +140,5 @@ async function runSyncCycle(): Promise<SyncOutcome> {
     lastAttemptedSyncAt: response.serverTime
   });
 
-  return { ok: true, pushed: pending.length, pulled: response.pull.attempts.length };
+  return { ok: true, pushed: pending.length, pulled: response.pull.attempts.length, attemptResults: response.attemptResults };
 }

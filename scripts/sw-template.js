@@ -7,9 +7,16 @@ const PRECACHE = __PRECACHE__;
 const STATIC_CACHE = 'harjutaja-static-' + BUILD_ID;
 const SHELL_CACHE = 'harjutaja-shell-' + BUILD_ID;
 
-// Child-facing shells warmed at install so they open with no network.
+// Child-facing shells warmed at install so they open with no network. Every
+// enabled runner route is included so a direct load / hard-navigation fallback
+// resolves to the real runner rather than the offline page.
 const SHELL_ROUTES = [
   '/', '/kiur', '/kirsi', '/test', '/history', '/offline',
+  '/kiur/matemaatika', '/kirsi/matemaatika',
+  '/kiur/inglise-keel', '/kiur/inglise-keel/sprint',
+  '/kiur/lugemine', '/kirsi/lugemine', '/kirsi/lugemine/pilt-ja-sona', '/kirsi/lugemine/esimene-haalik',
+  '/kiur/loodusopetus', '/kiur/loodusopetus/test',
+  '/kiur/kordamine', '/kirsi/kordamine',
   '/manifest.webmanifest',
   '/web-app-manifest-192x192.png',
   '/web-app-manifest-512x512.png'

@@ -5,6 +5,7 @@ import EnglishMatchingBoard from '@/app/components/EnglishMatchingBoard';
 import { ENGLISH_PACKS, shuffle } from '@/lib/englishGame';
 import { fetchBestEnglishSprintScore } from '@/lib/englishHistory';
 import type { EnglishVocabularyWord } from '@/lib/englishVocabulary';
+import { completeAttempt, getCatalogueVersion, isExercisePermittedOffline } from '@/lib/offline/api';
 
 type FailedSprintPair = {
   word: EnglishVocabularyWord;
@@ -54,8 +55,10 @@ export default function SprintPage() {
       .then((body: { exerciseIds?: string[] }) => {
         if (!cancelled) setSprintActive(Boolean(body.exerciseIds?.includes('kiur.english.sprint')));
       })
-      .catch(() => {
-        if (!cancelled) setSprintActive(false);
+      .catch(async () => {
+        // Offline: fall back to the cached catalogue instead of blocking.
+        const permitted = await isExercisePermittedOffline('kiur', { exerciseId: 'kiur.english.sprint', subject: 'inglise-keel', topic: 'sprint', category: 'Inglise keel - sprint' }).catch(() => false);
+        if (!cancelled) setSprintActive(permitted);
       });
     return () => {
       cancelled = true;
@@ -118,24 +121,26 @@ export default function SprintPage() {
           kind: 'choice' as const
         }];
 
-    void fetch('/api/history', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        createdAt: new Date().toISOString(),
+    // Local-first: save the run to IndexedDB, then best-effort sync. The result
+    // shows immediately whether online or off.
+    void (async () => {
+      const catalogueVersion = await getCatalogueVersion('kiur').catch(() => null);
+      const outcome = await completeAttempt({
         learner: 'kiur',
         subject: 'inglise-keel',
         topic: 'sprint',
         category: 'Inglise keel - sprint',
         difficulty: 'Tavaline',
+        exerciseId: 'kiur.english.sprint',
+        catalogueVersion,
+        startedAt: new Date(startedAtRef.current).toISOString(),
         questionCount: finalQuestionCount,
         score: finalScore,
         elapsedSeconds,
         questions
-      })
-    }).then((response) => response.ok ? response.json() : null)
-      .then((body) => setReward(body?.reward ?? null))
-      .catch(() => setReward(null));
+      });
+      setReward((outcome.reward as SprintReward) ?? null);
+    })();
   }, [best, elapsedSeconds, ended, sprintActive]);
 
   if (sprintActive === null) {

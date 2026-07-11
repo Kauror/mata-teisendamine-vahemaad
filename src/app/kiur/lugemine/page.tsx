@@ -6,6 +6,7 @@ import { completedTodayFromHistory, ClientCompletionAttempt } from '@/lib/client
 import { shuffle } from '@/lib/englishGame';
 import { formatStars } from '@/lib/formatStars';
 import { getValidKiurReadingTasks, KiurReadingTask } from '@/lib/kiurReadingTasks';
+import { completeAttempt, getCatalogueVersion, isExercisePermittedOffline } from '@/lib/offline/api';
 
 const RUN_LENGTH = 5;
 
@@ -76,7 +77,10 @@ export default function KiurReadingPage() {
     void fetch('/api/learning-exercises/active?learner=kiur')
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((body) => setReadingActive(Array.isArray(body.exerciseIds) && body.exerciseIds.includes('kiur.reading.loe-ja-vasta')))
-      .catch(() => setReadingActive(false));
+      .catch(async () => {
+        const permitted = await isExercisePermittedOffline('kiur', { exerciseId: 'kiur.reading.loe-ja-vasta', subject: 'lugemine', topic: 'loe-ja-vasta', category: 'Lugemine - loe ja vasta' }).catch(() => false);
+        setReadingActive(permitted);
+      });
   }, []);
 
   useEffect(() => {
@@ -91,24 +95,24 @@ export default function KiurReadingPage() {
     setSaved(true);
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000));
 
-    void fetch('/api/history', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        createdAt: new Date().toISOString(),
+    void (async () => {
+      const catalogueVersion = await getCatalogueVersion('kiur').catch(() => null);
+      const outcome = await completeAttempt({
         learner: 'kiur',
         subject: 'lugemine',
         topic: 'loe-ja-vasta',
         category: 'Lugemine - loe ja vasta',
         difficulty: 'Loe ja vasta',
+        exerciseId: 'kiur.reading.loe-ja-vasta',
+        catalogueVersion,
+        startedAt: new Date(startedAtRef.current).toISOString(),
         questionCount: runCount,
         score,
         elapsedSeconds,
         questions: reviewItems
-      })
-    }).then((response) => response.ok ? response.json() : null)
-      .then((body) => setReward(body?.reward ?? null))
-      .catch(() => setReward(null));
+      });
+      setReward((outcome.reward as Reward) ?? null);
+    })();
   }, [phase, reviewItems, runCount, saved, score]);
 
   const startRun = () => {

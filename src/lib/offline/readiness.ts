@@ -15,6 +15,11 @@ export type OfflineReadinessReport = {
   pendingAttempts: number;
 };
 
+const REQUIRED_SHELL_ROUTES = ['/', '/kiur', '/kirsi', '/test', '/history'];
+
+// Every child-facing shell must be cached before we claim readiness; the SW also
+// precaches all hashed static chunks, so a cached shell implies its runner code
+// is available offline.
 async function shellCached(): Promise<boolean> {
   try {
     if (typeof caches === 'undefined') return false;
@@ -22,8 +27,8 @@ async function shellCached(): Promise<boolean> {
     const shell = keys.find((k) => k.startsWith('harjutaja-shell-'));
     if (!shell) return false;
     const cache = await caches.open(shell);
-    const matched = await cache.match('/kiur');
-    return Boolean(matched);
+    const matches = await Promise.all(REQUIRED_SHELL_ROUTES.map((route) => cache.match(route)));
+    return matches.every(Boolean);
   } catch {
     return false;
   }

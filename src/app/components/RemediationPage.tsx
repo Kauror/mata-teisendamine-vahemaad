@@ -116,7 +116,13 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
         setSessionId(body.sessionId);
         setQuestions(body.questions);
       })
-      .catch((body) => setError(body?.message || 'Kordamine ei ole praegu saadaval.'));
+      .catch((body) => {
+        // Remediation builds a live server session from the current mistake pool,
+        // so it needs internet. Offline, degrade with a friendly message rather
+        // than a broken screen.
+        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        setError(offline ? 'See harjutus vajab internetiühendust.' : (body?.message || 'Kordamine ei ole praegu saadaval.'));
+      });
   }, [learner]);
 
   const current = questions[index];

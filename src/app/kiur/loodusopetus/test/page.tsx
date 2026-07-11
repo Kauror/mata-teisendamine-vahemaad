@@ -6,6 +6,7 @@ import { formatElapsed } from '@/lib/validation';
 import { seededRng, shuffleWithRng } from '@/lib/random';
 import { isScienceSessionSize, pickScienceSession } from '@/lib/loodusopetus/tasks';
 import { isChoiceTask, type ScienceData, type ScienceTaskType } from '@/lib/loodusopetus/types';
+import { completeAttempt } from '@/lib/offline/api';
 
 const EYEBROW: Record<ScienceTaskType, string> = {
   visual_choice: 'Vaata skeemi ja vali õige vastus',
@@ -277,25 +278,24 @@ function ScienceTestContent() {
     const results = session.map((_, i) => serialize(i));
     const score = results.filter((result) => result.isCorrect).length;
     try {
-      const response = await fetch('/api/history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          createdAt: new Date().toISOString(),
-          category: 'Loodusõpetus',
-          difficulty: 'segaharjutus',
-          questionCount: session.length,
-          score,
-          elapsedSeconds: elapsed,
-          questions: results,
-          learner: 'kiur',
-          subject: 'loodusopetus',
-          topic: 'segaharjutus'
-        })
+      // Science is always available and not part of the rotating catalogue, so no
+      // catalogueVersion is attached. Local-first save, then best-effort sync.
+      const outcome = await completeAttempt({
+        learner: 'kiur',
+        subject: 'loodusopetus',
+        topic: 'segaharjutus',
+        category: 'Loodusõpetus',
+        difficulty: 'segaharjutus',
+        exerciseId: 'kiur.science.loodusopetus',
+        catalogueVersion: null,
+        startedAt: null,
+        questionCount: session.length,
+        score,
+        elapsedSeconds: elapsed,
+        questions: results
       });
-      if (!response.ok) throw new Error('save-failed');
-      const body = await response.json();
-      router.push(`/history/${body.id}`);
+      if (outcome.serverAttemptId) router.push(`/history/${outcome.serverAttemptId}`);
+      else router.push(`/tulemus/${outcome.clientAttemptId}`);
     } catch {
       setSaveError('Salvestamine ebaõnnestus. Proovi uuesti.');
       setIsSaving(false);

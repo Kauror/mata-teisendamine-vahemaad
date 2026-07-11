@@ -4,6 +4,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { todayDateString } from '@/lib/appDate';
 import { formatStars } from '@/lib/formatStars';
+import { OfflineReadiness } from '@/app/components/offline/OfflineReadiness';
 
 type AssignmentMode = 'kiur' | 'kirsi' | 'both_independent' | 'first_completer';
 type RecurrenceType = 'once' | 'daily' | 'weekdays' | 'weekends' | 'selected_weekdays';
@@ -96,7 +97,7 @@ type MonthlyPrize = { prizeStars: number; standing: MonthlyStanding };
 type WeeklyChildDigest = { exercises: number; accuracyPercent: number; starsEarned: number; trophies: number; streak: number };
 type WeeklyDigest = { from: string; to: string; learners: Record<Learner, WeeklyChildDigest> };
 
-type ParentSectionId = 'stars' | 'weekly' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards';
+type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards';
 
 function ParentAccordionSection({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
   return (
@@ -753,6 +754,10 @@ export default function ParentHub() {
           </>
         )}
       </section>
+      </ParentAccordionSection>
+
+      <ParentAccordionSection title='Võrguühenduseta kasutus' summary='Ettevalmistus ja sünkroonimine' open={openSections.has('offline')} onToggle={() => toggleSection('offline')}>
+        <OfflineReadiness />
       </ParentAccordionSection>
 
       <ParentAccordionSection title='Harjutuste kogu' summary={`${learningExercises.length} harjutust`} open={openSections.has('library')} onToggle={() => toggleSection('library')}>

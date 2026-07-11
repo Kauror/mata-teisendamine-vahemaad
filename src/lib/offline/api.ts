@@ -90,6 +90,7 @@ export type CompleteAttemptResult = {
   clientAttemptId: string;
   serverAttemptId?: number;
   synced: boolean;
+  reward?: unknown;
 };
 
 // Save the finished attempt to IndexedDB FIRST (so it survives a failed network),
@@ -129,8 +130,11 @@ export async function completeAttempt(input: CompleteAttemptInput): Promise<Comp
   if (input.sessionId) await sessionRepo.delete(input.sessionId);
 
   // Best-effort sync; failure just leaves it pending.
+  let reward: unknown;
   try {
-    await syncNow('attempt-complete');
+    const outcome = await syncNow('attempt-complete');
+    const result = outcome.attemptResults?.find((r) => r.clientAttemptId === clientAttemptId);
+    if (result && (result.status === 'created' || result.status === 'duplicate')) reward = result.reward;
   } catch {
     /* stays pending */
   }
@@ -138,13 +142,74 @@ export async function completeAttempt(input: CompleteAttemptInput): Promise<Comp
   const stillLocal = await attemptRepo.get(clientAttemptId);
   if (!stillLocal) {
     const confirmed = await historyRepo.findByClientId(clientAttemptId);
-    return { clientAttemptId, serverAttemptId: confirmed?.id, synced: true };
+    return { clientAttemptId, serverAttemptId: confirmed?.id, synced: true, reward };
   }
-  return { clientAttemptId, synced: false };
+  return { clientAttemptId, synced: false, reward };
 }
 
 export async function getLocalAttempt(clientAttemptId: string): Promise<LocalAttempt | undefined> {
   return attemptRepo.get(clientAttemptId);
+}
+
+export type OfflineHistoryItem = {
+  id: number;
+  clientAttemptId?: string;
+  createdAt: string;
+  category: string;
+  difficulty: string;
+  questionCount: number;
+  score: number;
+  elapsedSeconds: number | null;
+  learner?: string | null;
+  subject?: string | null;
+  topic?: string | null;
+  earnedStars?: number | null;
+  pending?: boolean;
+};
+
+// Merged exercise history for offline viewing: confirmed cached attempts plus any
+// still-pending local attempts (shown with a pending flag). Deduped by
+// clientAttemptId so a synced attempt never appears twice.
+export async function getMergedExerciseHistory(): Promise<OfflineHistoryItem[]> {
+  const confirmed = await historyRepo.recent(200);
+  const confirmedClientIds = new Set(confirmed.map((row) => row.clientAttemptId).filter(Boolean) as string[]);
+  const locals = (await attemptRepo.all()).filter((a) => a.status !== 'confirmed' && !confirmedClientIds.has(a.clientAttemptId));
+
+  const items: OfflineHistoryItem[] = confirmed.map((row) => ({
+    id: row.id,
+    clientAttemptId: row.clientAttemptId ?? undefined,
+    createdAt: row.createdAt,
+    category: row.category,
+    difficulty: row.difficulty,
+    questionCount: row.questionCount,
+    score: row.score,
+    elapsedSeconds: row.elapsedSeconds,
+    learner: row.learner,
+    subject: row.subject,
+    topic: row.topic,
+    earnedStars: row.earnedStars
+  }));
+
+  let synthetic = -1;
+  for (const local of locals) {
+    items.push({
+      id: synthetic--,
+      clientAttemptId: local.clientAttemptId,
+      createdAt: local.completedAt || local.createdLocallyAt,
+      category: local.category,
+      difficulty: local.difficulty,
+      questionCount: local.questionCount,
+      score: local.score,
+      elapsedSeconds: local.elapsedSeconds,
+      learner: local.learner,
+      subject: local.subject,
+      topic: local.topic,
+      earnedStars: null,
+      pending: true
+    });
+  }
+
+  return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getPendingCount(): Promise<number> {

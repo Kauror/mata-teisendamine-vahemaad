@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
 import { trophyWord } from '@/lib/history';
+import { getDashboardSnapshot } from '@/lib/offline/api';
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -63,7 +64,16 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
     fetch(`/api/child-dashboard?learner=${learner}`)
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then(setData)
-      .catch(() => setError('Päevategevusi ei saanud laadida.'));
+      .catch(async () => {
+        // Offline: show the last confirmed balance/streak/trophies from the cached
+        // snapshot. Daily tasks arrive in a later phase, so show none for now.
+        const snapshot = await getDashboardSnapshot(learner).catch(() => undefined);
+        if (snapshot) {
+          setData({ learner, balance: snapshot.balance, streak: snapshot.streak, trophies: snapshot.trophies, tasks: [], monthlyCelebration: null, achievements: [] });
+        } else {
+          setError('Päevategevusi ei saanud laadida.');
+        }
+      });
   }, [learner]);
 
   useEffect(() => {

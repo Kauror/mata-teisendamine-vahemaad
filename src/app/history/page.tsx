@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatElapsed } from '@/lib/validation';
 import { compactTopicLabel, dayLabel, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
+import { getMergedExerciseHistory } from '@/lib/offline/api';
 
 type ExerciseHistory = {
   kind: 'exercise';
@@ -19,6 +20,8 @@ type ExerciseHistory = {
   subject?: string | null;
   topic?: string | null;
   earnedStars?: number | null;
+  pending?: boolean;
+  clientAttemptId?: string;
 };
 
 type TaskHistory = {
@@ -110,7 +113,6 @@ export default function HistoryPage() {
   const [history, setHistory] = useState<ExerciseHistory[]>([]);
   const [taskHistory, setTaskHistory] = useState<TaskHistory[]>([]);
   const [storeHistory, setStoreHistory] = useState<PurchaseHistory[]>([]);
-  const [loadError, setLoadError] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
@@ -121,17 +123,24 @@ export default function HistoryPage() {
   const [openDays, setOpenDays] = useState<Set<string>>(() => new Set([todayKey]));
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/history').then((r) => (r.ok ? r.json() : Promise.reject())),
-      fetch('/api/task-history').then((r) => (r.ok ? r.json() : Promise.reject())),
-      fetch('/api/store/history').then((r) => (r.ok ? r.json() : Promise.reject()))
-    ])
-      .then(([attempts, tasks, purchases]) => {
-        setHistory((attempts as Omit<ExerciseHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'exercise' })));
-        setTaskHistory((tasks as Omit<TaskHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'task' })));
-        setStoreHistory((purchases as Omit<PurchaseHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'store' })));
-      })
-      .catch(() => setLoadError('Ajaloo laadimine ebaõnnestus.'));
+    // Exercises fall back to merged offline history (confirmed cache + pending);
+    // tasks and purchases are online-only and simply empty offline.
+    const loadExercises = fetch('/api/history')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((attempts) => setHistory((attempts as Omit<ExerciseHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'exercise' }))))
+      .catch(async () => {
+        const offline = await getMergedExerciseHistory().catch(() => []);
+        setHistory(offline.map((item) => ({ ...item, kind: 'exercise' as const })));
+      });
+    const loadTasks = fetch('/api/task-history')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((tasks) => setTaskHistory((tasks as Omit<TaskHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'task' }))))
+      .catch(() => setTaskHistory([]));
+    const loadStore = fetch('/api/store/history')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((purchases) => setStoreHistory((purchases as Omit<PurchaseHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'store' }))))
+      .catch(() => setStoreHistory([]));
+    void Promise.allSettled([loadExercises, loadTasks, loadStore]);
   }, []);
 
   const filtered = useMemo(() => {
@@ -211,7 +220,6 @@ export default function HistoryPage() {
           <button type='button' className={subjectFilter === 'pood' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('pood')}>🛒 Pood</button>
         </section>
 
-        {loadError && <p className='error'>{loadError}</p>}
         {deleteError && <p className='error'>{deleteError}</p>}
 
         {history.length === 0 && taskHistory.length === 0 && storeHistory.length === 0 ? (
@@ -242,7 +250,8 @@ export default function HistoryPage() {
                       const elapsed = isExercise && typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub';
                       const title = h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? h.titleSnapshot : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
                       const scoreText = h.kind === 'task' ? `${h.amount > 0 ? '+' : ''}${h.amount} ⭐` : h.kind === 'store' ? `-${h.priceSnapshot} ⭐` : `${h.score}/${h.questionCount} · ${percent}% · ${elapsed}`;
-                      const detailText = h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
+                      const isPending = isExercise && (h as ExerciseHistory).pending === true;
+                      const detailText = isPending ? 'Ootab sünkroonimist' : h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
 
                       return (
                         <div key={`${h.kind}-${h.id}`} className='history-row'>
@@ -255,8 +264,10 @@ export default function HistoryPage() {
                             <div className='meta-cell'>{scoreText}</div>
                           </div>
                           <div className='row-actions'>
-                            {isExercise && <Link className='view-button' href={`/history/${h.id}`}>Vaata</Link>}
-                            {isExercise && <button type='button' className='delete-text-button' onClick={() => setConfirmId(h.id)}>Kustuta</button>}
+                            {isExercise && (isPending
+                              ? <Link className='view-button' href={`/tulemus/${(h as ExerciseHistory).clientAttemptId}`}>Vaata</Link>
+                              : <Link className='view-button' href={`/history/${h.id}`}>Vaata</Link>)}
+                            {isExercise && !isPending && <button type='button' className='delete-text-button' onClick={() => setConfirmId(h.id)}>Kustuta</button>}
                           </div>
                           {isExercise && confirmId === h.id && (
                             <div className='confirm-panel'>
