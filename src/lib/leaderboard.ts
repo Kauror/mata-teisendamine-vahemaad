@@ -1,7 +1,7 @@
 import db from '@/lib/db';
 import { isKirsiAttempt } from '@/lib/history';
 import { sprintAttemptQualifies } from '@/lib/sprintReward';
-import { nowIso, todayDateString } from '@/lib/tasks';
+import { isoToAppDate, nowIso, todayDateString } from '@/lib/tasks';
 
 // 'tie' = both children did the same number of exercises that day.
 export type DailyWinner = 'kiur' | 'kirsi' | 'tie';
@@ -14,21 +14,6 @@ export type DailyLeaderboardRow = {
 };
 
 type AttemptCountRow = { id: number; category: string; learner: string | null; createdAt: string; subject: string | null; topic: string | null; score: number };
-
-// Local (Europe/Kiev) calendar date for an attempt timestamp, e.g. '2026-06-09'.
-// Matches todayDateString() so a snapshot lines up with the dashboard's "today".
-const kievDateFormat = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Kiev',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit'
-});
-
-function localDate(createdAt: string): string | null {
-  const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) return null;
-  return kievDateFormat.format(date);
-}
 
 function winnerOf(kiurCount: number, kirsiCount: number): DailyWinner {
   if (kiurCount === kirsiCount) return 'tie';
@@ -51,7 +36,7 @@ function countsForDate(date: string) {
   let kiurCount = 0;
   let kirsiCount = 0;
   for (const row of allAttempts()) {
-    if (localDate(row.createdAt) !== date) continue;
+    if (isoToAppDate(row.createdAt) !== date) continue;
     if (!countsTowardsLeaderboard(row)) continue;
     if (isKirsiAttempt(row.category, row.learner)) kirsiCount++;
     else kiurCount++;
@@ -79,7 +64,7 @@ function backfillFromAttempts() {
   if (existing.count === 0) {
     const byDate = new Map<string, { kiur: number; kirsi: number }>();
     for (const row of allAttempts()) {
-      const date = localDate(row.createdAt);
+      const date = isoToAppDate(row.createdAt);
       if (!date) continue;
       if (!countsTowardsLeaderboard(row)) continue;
       const entry = byDate.get(date) ?? { kiur: 0, kirsi: 0 };

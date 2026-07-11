@@ -2,6 +2,7 @@
 
 import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { formatStars } from '@/lib/formatStars';
 
 type AssignmentMode = 'kiur' | 'kirsi' | 'both_independent' | 'first_completer';
 type RecurrenceType = 'once' | 'daily' | 'weekdays' | 'weekends' | 'selected_weekdays';
@@ -159,10 +160,6 @@ function learnerLabel(learner: Learner) {
 
 function timeLabel(value: string) {
   return new Date(value).toLocaleString('et-EE', { dateStyle: 'short', timeStyle: 'short' });
-}
-
-function stars(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toLocaleString('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 function parseWeekdays(raw: string | null) {
@@ -698,7 +695,7 @@ export default function ParentHub() {
             {(['kiur', 'kirsi'] as Learner[]).map((child) => (
               <div key={child} className='parent-adjust-row'>
                 <span className='parent-adjust-name'>{learnerLabel(child)}</span>
-                <strong className='parent-adjust-value'>{stars(data?.balances[child] ?? 0)}</strong>
+                <strong className='parent-adjust-value'>{formatStars(data?.balances[child] ?? 0)}</strong>
                 <div className='parent-stepper'>
                   <button type='button' className='parent-step-minus' aria-label={`Eemalda ${learnerLabel(child)}lt tähti`} onClick={() => submitAdjustment('points', child, -1)}>−</button>
                   <button type='button' className='parent-step-plus' aria-label={`Lisa ${learnerLabel(child)}le tähti`} onClick={() => submitAdjustment('points', child, 1)}>+</button>
@@ -958,7 +955,7 @@ export default function ParentHub() {
           {rewardRules.map((rule) => (
             <div key={rule.id} className={editingRewardId === rule.id ? 'stock-row editing' : 'stock-row'}>
               <div className='stock-info'>
-                <strong>{rule.thresholdDays} päeva seeria · +{stars(rule.rewardStars)} ⭐</strong>
+                <strong>{rule.thresholdDays} päeva seeria · +{formatStars(rule.rewardStars)} ⭐</strong>
                 <span>{REWARD_SCOPE_LABELS[rule.learnerScope]}{rule.enabled ? '' : ' · ⏸ peatatud'}</span>
               </div>
               <div className='stock-actions'>

@@ -104,15 +104,6 @@ const KEY_BY_TOPIC: Record<string, string> = {
   'korrutamine': 'kiur.math.multiplication'
 };
 
-function roundTenths(value: number) {
-  return Math.round(value * 10) / 10;
-}
-
-export function formatStars(value: number) {
-  const rounded = roundTenths(value);
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toLocaleString('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
 export function getLearningPointSettings(): LearningPointSettings {
   const row = db.prepare('SELECT * FROM learning_point_settings WHERE id = 1').get() as LearningPointSettingsRow | undefined;
   if (!row) return DEFAULT_SETTINGS;

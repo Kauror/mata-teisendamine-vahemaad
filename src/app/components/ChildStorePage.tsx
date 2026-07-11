@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { formatStars } from '@/lib/formatStars';
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -44,10 +45,6 @@ function dashboardHref(learner: Learner) {
 function timeLabel(value: string) {
   const date = new Date(value);
   return date.toLocaleDateString('et-EE') + ' ' + date.toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
-}
-
-function stars(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toLocaleString('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 export default function ChildStorePage({ learner }: { learner: Learner }) {
@@ -133,7 +130,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
             <h1>Pood</h1>
             <p>{childName(learner)}</p>
           </div>
-          <div className='store-balance'>⭐ {stars(balance)} tähte</div>
+          <div className='store-balance'>⭐ {formatStars(balance)} tähte</div>
         </header>
 
         <Link className='history-link' href='/history'>📄 Ajalugu</Link>
@@ -196,8 +193,8 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
             <h2>Kas ostad selle?</h2>
             <p>{confirmItem.title}</p>
             <span>Hind: {confirmItem.price} ⭐</span>
-            <span>Sul on praegu: {stars(balance)} ⭐</span>
-            <strong>Pärast ostu jääb: {stars(balance - confirmItem.price)} ⭐</strong>
+            <span>Sul on praegu: {formatStars(balance)} ⭐</span>
+            <strong>Pärast ostu jääb: {formatStars(balance - confirmItem.price)} ⭐</strong>
             <div className='task-modal-actions'>
               <button type='button' className='filter-chip' onClick={() => setConfirmItem(null)}>Ei</button>
               <button type='button' disabled={busy} onClick={buy}>Jah, ostan</button>
@@ -212,7 +209,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
             <h2>Ost tehtud!</h2>
             <p>Ostsid: {success.title}</p>
             <span>Kulutasid: {success.price} ⭐</span>
-            <strong>Alles: {stars(success.balanceAfter)} ⭐</strong>
+            <strong>Alles: {formatStars(success.balanceAfter)} ⭐</strong>
             <button type='button' onClick={() => setSuccess(null)}>Selge</button>
           </div>
         </div>
@@ -223,8 +220,8 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
           <div className='task-modal'>
             <h2>Kas kingid {recipientName}le?</h2>
             <span>Kingitus: {giftValue} ⭐</span>
-            <span>Sul on praegu: {stars(balance)} ⭐</span>
-            <strong>Pärast kinkimist jääb: {stars(balance - giftValue)} ⭐</strong>
+            <span>Sul on praegu: {formatStars(balance)} ⭐</span>
+            <strong>Pärast kinkimist jääb: {formatStars(balance - giftValue)} ⭐</strong>
             <div className='task-modal-actions'>
               <button type='button' className='filter-chip' onClick={() => setConfirmGift(false)}>Ei</button>
               <button type='button' disabled={giftBusy} onClick={sendGift}>Jah, kingin</button>
@@ -238,7 +235,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
           <div className='task-modal'>
             <h2>Kingitud! 🎁</h2>
             <p>Kinkisid {recipientName}le {giftSuccess.amount} ⭐</p>
-            <strong>Sul on alles: {stars(giftSuccess.balanceAfter)} ⭐</strong>
+            <strong>Sul on alles: {formatStars(giftSuccess.balanceAfter)} ⭐</strong>
             <button type='button' onClick={() => setGiftSuccess(null)}>Selge</button>
           </div>
         </div>

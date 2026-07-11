@@ -1,5 +1,6 @@
 import db from '@/lib/db';
-import { getBalance, getBalances, Learner, nowIso, todayDateString } from '@/lib/tasks';
+import { formatStars } from '@/lib/formatStars';
+import { getBalance, getBalances, isoToAppDate, Learner, nowIso, todayDateString } from '@/lib/tasks';
 
 export type StoreVisibility = 'kiur' | 'kirsi' | 'both';
 export type StoreStockType = 'unlimited' | 'fixed_stock' | 'daily_stock' | 'one_time_global';
@@ -58,11 +59,6 @@ function formatDate(date: string) {
   return `${day}.${month}.${year}`;
 }
 
-function formatStars(value: number) {
-  const rounded = Math.round(value * 10) / 10;
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toLocaleString('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
 function parseWeekdays(raw: string | null) {
   if (!raw) return [];
   try {
@@ -108,17 +104,6 @@ function validateItemInput(input: {
   return { title, description, weekdays };
 }
 
-function appDateFromIso(value: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Kiev',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).formatToParts(new Date(value));
-  const get = (type: string) => parts.find((part) => part.type === type)?.value || '';
-  return `${get('year')}-${get('month')}-${get('day')}`;
-}
-
 function purchaseDate(row: { purchasedAt: string; metadataJson: string | null }) {
   if (row.metadataJson) {
     try {
@@ -128,7 +113,7 @@ function purchaseDate(row: { purchasedAt: string; metadataJson: string | null })
       // Fall back to the purchase timestamp below.
     }
   }
-  return appDateFromIso(row.purchasedAt);
+  return isoToAppDate(row.purchasedAt) ?? '';
 }
 
 function getDailyUsed(itemId: number, date: string) {
