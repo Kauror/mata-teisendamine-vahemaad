@@ -41,6 +41,7 @@ export function correctedNow(offsetMs: number): Date {
 
 export type SyncCursor = {
   lastServerAttemptId: number;
+  lastTombstoneId: number;
   historyEpoch: number;
   catalogueVersions: Partial<Record<Learner, string>>;
   lastSuccessfulSyncAt?: string;
@@ -49,7 +50,7 @@ export type SyncCursor = {
 
 const CURSOR_KEY = 'syncCursor';
 export async function getCursor(): Promise<SyncCursor> {
-  return getMeta<SyncCursor>(CURSOR_KEY, { lastServerAttemptId: 0, historyEpoch: 0, catalogueVersions: {} });
+  return getMeta<SyncCursor>(CURSOR_KEY, { lastServerAttemptId: 0, lastTombstoneId: 0, historyEpoch: 0, catalogueVersions: {} });
 }
 export async function setCursor(cursor: SyncCursor): Promise<void> {
   await setMeta(CURSOR_KEY, cursor);

@@ -94,6 +94,16 @@ export const historyRepo = {
     const all = await db.getAll('history');
     return all.find((row) => row.clientAttemptId === clientAttemptId);
   },
+  async delete(id: number) {
+    const db = await offlineDb();
+    await db.delete('history', id);
+  },
+  async deleteByClientId(clientAttemptId: string) {
+    const db = await offlineDb();
+    const all = await db.getAll('history');
+    const match = all.find((row) => row.clientAttemptId === clientAttemptId);
+    if (match) await db.delete('history', match.id);
+  },
   async clear() {
     const db = await offlineDb();
     await db.clear('history');

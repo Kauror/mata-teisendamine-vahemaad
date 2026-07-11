@@ -8,8 +8,9 @@ import {
 } from '@/lib/learningExercises';
 import { captureMistakesForAttempt } from '@/lib/remediation';
 import { recordDailyLeaderboard } from '@/lib/leaderboard';
-import { isoToAppDate, nowIso } from '@/lib/tasks';
+import { isoToAppDate, nowIso, todayDateString } from '@/lib/tasks';
 import { validateAgainstCatalogue } from '@/lib/offline/server/catalogVersions';
+import { reconcileStudyRewards } from '@/lib/offline/server/reconcile';
 
 // The one authoritative, idempotent attempt-insertion path. Both the online
 // /api/history POST and the offline /api/offline/sync endpoint call this, so
@@ -165,5 +166,20 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
     return { status: review ? 'needs_review' : 'created', serverAttemptId: attemptId, reward: reward ?? undefined, reasonCode };
   });
 
-  return run();
+  const result = run();
+
+  // A late arrival (completed on a past Tallinn day) can affect that day's derived
+  // rewards; record a shadow reconciliation audit. This never changes stars.
+  if (permitted && result.status === 'created' && learner) {
+    const completionDay = isoToAppDate(effectiveCompleted);
+    if (completionDay && completionDay < todayDateString()) {
+      try {
+        reconcileStudyRewards(learner, completionDay, 'late_attempt');
+      } catch (error) {
+        console.warn('Reconciliation audit failed', error);
+      }
+    }
+  }
+
+  return result;
 }

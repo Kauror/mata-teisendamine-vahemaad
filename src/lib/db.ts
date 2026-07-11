@@ -457,6 +457,32 @@ db.exec(`
     createdAt TEXT NOT NULL,
     processedAt TEXT
   );
+
+  -- Individual history deletions leave a tombstone so offline devices learn which
+  -- confirmed attempts to drop from their cache (without ever touching the ledger
+  -- or a still-pending local attempt).
+  CREATE TABLE IF NOT EXISTS attempt_tombstones (
+    tombstoneId INTEGER PRIMARY KEY AUTOINCREMENT,
+    serverAttemptId INTEGER,
+    clientAttemptId TEXT,
+    deletedAt TEXT NOT NULL
+  );
+
+  -- Shadow-mode reconciliation audit: proposed compensating deltas for late
+  -- arrivals. In shadow mode nothing is written to the ledger; this table records
+  -- what a live run WOULD adjust, for validation on a copied database first.
+  CREATE TABLE IF NOT EXISTS reconciliation_audits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    learner TEXT NOT NULL,
+    fromDate TEXT NOT NULL,
+    expectedStudyTotal REAL NOT NULL,
+    actualStudyTotal REAL NOT NULL,
+    delta REAL NOT NULL,
+    mode TEXT NOT NULL,
+    trigger TEXT,
+    detailJson TEXT,
+    createdAt TEXT NOT NULL
+  );
 `);
 db.prepare("INSERT OR IGNORE INTO offline_sync_state (id, historyEpoch, updatedAt) VALUES (1, 0, ?)").run(new Date().toISOString());
 

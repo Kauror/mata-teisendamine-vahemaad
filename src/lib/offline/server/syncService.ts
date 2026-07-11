@@ -5,6 +5,7 @@ import { getMonthlyTrophies } from '@/lib/monthlyCompetition';
 import { insertAttempt } from '@/lib/offline/server/insertAttempt';
 import { getCurrentCatalogue } from '@/lib/offline/server/catalogVersions';
 import { applyOfflineTaskAction, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
+import { getHistoryEpoch, getTombstonesAfter } from '@/lib/offline/server/tombstones';
 import {
   MAX_HISTORY_PULL_PER_SYNC,
   MAX_PENDING_ATTEMPTS_PER_SYNC,
@@ -16,11 +17,6 @@ import {
   type ServerAttempt,
   type TaskActionResult
 } from '@/lib/shared/types';
-
-function historyEpoch(): number {
-  const row = db.prepare('SELECT historyEpoch FROM offline_sync_state WHERE id = 1').get() as { historyEpoch: number } | undefined;
-  return row?.historyEpoch ?? 0;
-}
 
 function dashboardFor(learner: Learner): ChildDashboardSnapshot {
   return {
@@ -95,21 +91,28 @@ export function runSync(request: OfflineSyncRequest): OfflineSyncResponse {
   const pulledAttempts = attemptsAfter(cursorId);
   const maxId = pulledAttempts.reduce((max, row) => Math.max(max, row.id), cursorId);
 
+  const tombstoneCursor = Number(request.cursor?.lastTombstoneId ?? 0) || 0;
+  const tombstones = getTombstonesAfter(tombstoneCursor);
+  const maxTombstoneId = tombstones.reduce((max, row) => Math.max(max, row.tombstoneId), tombstoneCursor);
+  const epoch = getHistoryEpoch();
+
   return {
     protocolVersion: 1,
     serverTime,
-    historyEpoch: historyEpoch(),
+    historyEpoch: epoch,
     attemptResults,
     taskActionResults,
     pull: {
       attempts: pulledAttempts,
+      tombstones,
       catalogues,
       dashboards,
       taskTemplates
     },
     nextCursor: {
       lastServerAttemptId: maxId,
-      historyEpoch: historyEpoch(),
+      lastTombstoneId: maxTombstoneId,
+      historyEpoch: epoch,
       catalogueVersions: { kiur: catalogues.kiur.version, kirsi: catalogues.kirsi.version },
       syncedAt: serverTime
     }

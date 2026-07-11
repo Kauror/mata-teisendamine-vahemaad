@@ -138,6 +138,7 @@ export type OfflineSyncRequest = {
   };
   cursor: {
     lastServerAttemptId?: number;
+    lastTombstoneId?: number;
     historyEpoch?: number;
     catalogueVersions?: Partial<Record<Learner, string>>;
     lastSuccessfulSyncAt?: string;
@@ -156,6 +157,7 @@ export type OfflineSyncResponse = {
   taskActionResults: TaskActionResult[];
   pull: {
     attempts: ServerAttempt[];
+    tombstones: AttemptTombstone[];
     catalogues: Record<Learner, OfflineCatalogue>;
     dashboards: Record<Learner, ChildDashboardSnapshot>;
     taskTemplates: import('@/lib/shared/taskProjection').SyncTaskTemplate[];
@@ -163,6 +165,7 @@ export type OfflineSyncResponse = {
   };
   nextCursor: {
     lastServerAttemptId: number;
+    lastTombstoneId: number;
     historyEpoch: number;
     catalogueVersions: Partial<Record<Learner, string>>;
     syncedAt: string;
@@ -177,6 +180,15 @@ export type ChildDashboardSnapshot = {
   streak: number;
   trophies: number;
   updatedAt: string;
+};
+
+// A record that a confirmed attempt was deleted server-side, so devices drop it
+// from their cache. Never affects the ledger or a pending local attempt.
+export type AttemptTombstone = {
+  tombstoneId: number;
+  serverAttemptId: number | null;
+  clientAttemptId: string | null;
+  deletedAt: string;
 };
 
 export type PingResponse = {

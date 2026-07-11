@@ -96,6 +96,7 @@ async function runSyncCycle(): Promise<SyncOutcome> {
     },
     cursor: {
       lastServerAttemptId: cursor.lastServerAttemptId,
+      lastTombstoneId: cursor.lastTombstoneId,
       historyEpoch: cursor.historyEpoch,
       catalogueVersions: cursor.catalogueVersions,
       lastSuccessfulSyncAt: cursor.lastSuccessfulSyncAt
@@ -168,7 +169,14 @@ async function runSyncCycle(): Promise<SyncOutcome> {
     }
   }
 
-  // 3. Merge pulled server data (never clobbering remaining pending work).
+  // 3a. History epoch: a "delete all history" bumps it. On a newer epoch, drop the
+  // obsolete confirmed cache (so deleted history can't be resurrected) while
+  // keeping unsynced pending local attempts. The pull below repopulates it.
+  if (cursor.historyEpoch > 0 && response.historyEpoch > cursor.historyEpoch) {
+    await historyRepo.clear();
+  }
+
+  // 3b. Merge pulled server data (never clobbering remaining pending work).
   await catalogRepo.put(response.pull.catalogues.kiur);
   await catalogRepo.put(response.pull.catalogues.kirsi);
   await snapshotRepo.put(response.pull.dashboards.kiur);
@@ -176,9 +184,17 @@ async function runSyncCycle(): Promise<SyncOutcome> {
   await historyRepo.putMany(response.pull.attempts);
   if (response.pull.taskTemplates) await taskTemplateRepo.replaceAll(response.pull.taskTemplates);
 
+  // 3c. Apply tombstones: drop matching CONFIRMED cached attempts only. A tombstone
+  // never removes a still-pending local attempt and never touches a balance.
+  for (const tombstone of response.pull.tombstones ?? []) {
+    if (typeof tombstone.serverAttemptId === 'number') await historyRepo.delete(tombstone.serverAttemptId);
+    if (tombstone.clientAttemptId) await historyRepo.deleteByClientId(tombstone.clientAttemptId);
+  }
+
   // 4. Save the new cursor + last-sync time.
   await setCursor({
     lastServerAttemptId: response.nextCursor.lastServerAttemptId,
+    lastTombstoneId: response.nextCursor.lastTombstoneId,
     historyEpoch: response.nextCursor.historyEpoch,
     catalogueVersions: response.nextCursor.catalogueVersions,
     lastSuccessfulSyncAt: response.nextCursor.syncedAt,
