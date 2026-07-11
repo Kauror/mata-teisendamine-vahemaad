@@ -62,27 +62,10 @@ type TaskInstanceRow = {
 
 const LEARNERS: Learner[] = ['kiur', 'kirsi'];
 
-// Single Europe/Kiev calendar formatter shared by every "which local day is this
-// timestamp on" helper, so the dashboard, leaderboard, store and points ledger
-// all agree on where a day boundary falls. en-CA formats as 'YYYY-MM-DD'.
-const kievDateFormat = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Kiev',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit'
-});
-
-export function todayDateString() {
-  return kievDateFormat.format(new Date());
-}
-
-// Local (Europe/Kiev) calendar date 'YYYY-MM-DD' for an ISO timestamp, or null
-// when the timestamp cannot be parsed.
-export function isoToAppDate(iso: string): string | null {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return kievDateFormat.format(date);
-}
+// The app's day-boundary helpers live in the client-safe appDate module; re-export
+// them here so existing server-side imports from '@/lib/tasks' keep working.
+import { isoToAppDate, todayDateString } from '@/lib/appDate';
+export { isoToAppDate, todayDateString };
 
 export function nowIso() {
   return new Date().toISOString();
