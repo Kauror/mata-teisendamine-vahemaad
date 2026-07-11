@@ -60,7 +60,7 @@ function previousMonth(date: string) {
   return `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-type DayRow = { kiurCount: number; kirsiCount: number; winner: string };
+type DayRow = { date: string; kiurCount: number; kirsiCount: number; winner: string };
 
 // Manual trophy add/remove a parent made within the given month. Trophies are
 // otherwise derived from daily wins, so these adjustments are layered on top.
@@ -77,17 +77,24 @@ function trophyAdjustmentsForMonth(month: string): Record<Learner, number> {
   return totals;
 }
 
-function standingForMonth(month: string): MonthlyStanding {
+// `excludeDate` (usually today) is still an open day: its winner can change
+// until midnight, so we show the live standing in the leaderboard but do not
+// award its trophy yet. Passing no date settles every day of the month, which
+// is what the previous-month prize does.
+function standingForMonth(month: string, excludeDate?: string): MonthlyStanding {
   const rows = db
-    .prepare('SELECT kiurCount, kirsiCount, winner FROM daily_leaderboard WHERE substr(date, 1, 7) = ?')
+    .prepare('SELECT date, kiurCount, kirsiCount, winner FROM daily_leaderboard WHERE substr(date, 1, 7) = ?')
     .all(month) as DayRow[];
   let kiurTrophies = 0;
   let kirsiTrophies = 0;
   let kiurExercises = 0;
   let kirsiExercises = 0;
   for (const row of rows) {
-    if (row.winner === 'kiur') kiurTrophies += 1;
-    else if (row.winner === 'kirsi') kirsiTrophies += 1;
+    // A day's trophy is only final once the day is over.
+    if (row.date !== excludeDate) {
+      if (row.winner === 'kiur') kiurTrophies += 1;
+      else if (row.winner === 'kirsi') kirsiTrophies += 1;
+    }
     kiurExercises += row.kiurCount;
     kirsiExercises += row.kirsiCount;
   }
@@ -111,12 +118,13 @@ export function adjustTrophies(learner: Learner, amount: number, reason: string)
 }
 
 export function getMonthlyStanding(today = todayDateString()): MonthlyStanding {
-  return standingForMonth(monthOf(today));
+  return standingForMonth(monthOf(today), today);
 }
 
-// Trophies the child has earned so far in the current month.
+// Trophies the child has earned so far in the current month, counting only days
+// that are already over (today's win is still provisional until midnight).
 export function getMonthlyTrophies(learner: Learner, today = todayDateString()) {
-  const standing = standingForMonth(monthOf(today));
+  const standing = standingForMonth(monthOf(today), today);
   return learner === 'kiur' ? standing.kiurTrophies : standing.kirsiTrophies;
 }
 
