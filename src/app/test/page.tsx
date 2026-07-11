@@ -1,13 +1,14 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
+import { Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { compactTopicLabel } from '@/lib/history';
 import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
+import { completeAttempt, getCatalogueVersion, getSession, isExercisePermittedOffline, saveSessionProgress, startSession } from '@/lib/offline/api';
 
 type ActiveLearningExercise = {
   subject: string;
@@ -163,7 +164,6 @@ function TestPageContent() {
   const subject = params.get('subject') || '';
   const topic = params.get('topic') || '';
   const categoryParam = params.get('category') || 'Teisendamine';
-  const category = categoryParam as Category;
   const difficulty = 'Lihtne' as Difficulty;
   const count = topic === 'tekstulesanded' || categoryParam === 'Tekstülesanded' ? 5 : 15;
   const seed = Number(params.get('seed') || 1);
@@ -184,6 +184,14 @@ function TestPageContent() {
   const [exerciseAvailability, setExerciseAvailability] = useState<'loading' | 'allowed' | 'blocked'>('loading');
   const [countingFeedback, setCountingFeedback] = useState<{ answer: string; isCorrect: boolean } | null>(null);
   const [textFeedback, setTextFeedback] = useState<{ answer: string; isCorrect: boolean } | null>(null);
+  // Offline: the catalogue version this session started from (attached to the
+  // attempt so the server can validate it historically), plus a stable session id
+  // so an interrupted exercise resumes exactly, and a stale-data indicator.
+  const [catalogueVersion, setCatalogueVersion] = useState<string | null>(null);
+  const [isStale, setIsStale] = useState(false);
+  const startedAtRef = useRef<string>(new Date().toISOString());
+  const sessionId = useMemo(() => `${learner}|${subject}|${topic}|${categoryParam}|${seed}`, [learner, subject, topic, categoryParam, seed]);
+  const learnerId: 'kiur' | 'kirsi' | null = learner === 'kiur' || learner === 'kirsi' ? learner : null;
 
   useEffect(() => {
     if (learner !== 'kiur' && learner !== 'kirsi') {
@@ -197,9 +205,13 @@ function TestPageContent() {
 
     let cancelled = false;
     setExerciseAvailability('loading');
+    const learnerId = learner as 'kiur' | 'kirsi';
+    // Try the live server config; if the network is unavailable, fall back to the
+    // most recent cached catalogue so the exercise still opens offline. Only block
+    // if neither the server nor a usable local catalogue permits it.
     void fetch(`/api/learning-exercises/active?learner=${learner}`)
       .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((body: { exercises?: ActiveLearningExercise[] }) => {
+      .then(async (body: { exercises?: ActiveLearningExercise[] }) => {
         if (cancelled) return;
         const exercises = body.exercises ?? [];
         const isActive = exercises.some((exercise) => {
@@ -210,10 +222,18 @@ function TestPageContent() {
           }
           return exercise.topic === topic || exercise.category === categoryParam;
         });
+        if (cancelled) return;
+        setIsStale(false);
+        setCatalogueVersion(await getCatalogueVersion(learnerId).catch(() => null));
         setExerciseAvailability(isActive ? 'allowed' : 'blocked');
       })
-      .catch(() => {
-        if (!cancelled) setExerciseAvailability('blocked');
+      .catch(async () => {
+        if (cancelled) return;
+        const permitted = await isExercisePermittedOffline(learnerId, { subject, topic, category: categoryParam }).catch(() => false);
+        if (cancelled) return;
+        setIsStale(permitted);
+        setCatalogueVersion(await getCatalogueVersion(learnerId).catch(() => null));
+        setExerciseAvailability(permitted ? 'allowed' : 'blocked');
       });
 
     return () => {
@@ -223,20 +243,61 @@ function TestPageContent() {
 
   useEffect(() => {
     if (exerciseAvailability !== 'allowed') return;
-    const generated = isKirsiMath ? generateKirsiSession(categoryParam as never, count, seed) : generateKiurMathSession(topic, categoryParam, difficulty, count, seed);
-    setQuestions(generated);
-    setAnswers(Array(generated.length).fill(''));
-    setChoiceAnswers(Array(generated.length).fill(''));
-    setOrderingAnswers(Array.from({ length: generated.length }, () => []));
-    setIndex(0);
-    setElapsed(0);
-    setError('');
-    setIsSaving(false);
-    setSaveError('');
-    setShowStopConfirm(false);
-    setCountingFeedback(null);
-    setTextFeedback(null);
-  }, [category, categoryParam, difficulty, count, exerciseAvailability, seed, isKirsiMath, topic]);
+    let cancelled = false;
+    void (async () => {
+      // Resume an interrupted session with its EXACT stored questions (never
+      // regenerate — an app update could change what the seed produces).
+      const existing = await getSession(sessionId).catch(() => undefined);
+      if (cancelled) return;
+      if (existing && Array.isArray(existing.questionsPayload) && (existing.questionsPayload as GeneratedQuestion[]).length) {
+        const stored = existing.questionsPayload as GeneratedQuestion[];
+        startedAtRef.current = existing.startedAt;
+        setQuestions(stored);
+        setAnswers(existing.answers?.length === stored.length ? existing.answers : Array(stored.length).fill(''));
+        setChoiceAnswers(existing.choiceAnswers?.length === stored.length ? existing.choiceAnswers : Array(stored.length).fill(''));
+        setOrderingAnswers(existing.orderingAnswers?.length === stored.length ? existing.orderingAnswers : Array.from({ length: stored.length }, () => []));
+        setIndex(Math.min(existing.currentIndex ?? 0, stored.length - 1));
+        setElapsed(existing.elapsedSeconds ?? 0);
+      } else {
+        const generated = isKirsiMath ? generateKirsiSession(categoryParam as never, count, seed) : generateKiurMathSession(topic, categoryParam, difficulty, count, seed);
+        if (cancelled) return;
+        startedAtRef.current = new Date().toISOString();
+        setQuestions(generated);
+        setAnswers(Array(generated.length).fill(''));
+        setChoiceAnswers(Array(generated.length).fill(''));
+        setOrderingAnswers(Array.from({ length: generated.length }, () => []));
+        setIndex(0);
+        setElapsed(0);
+        // Persist the new session so a reload/restart resumes it.
+        void startSession({
+          sessionId, learner: learnerId, subject: subject || null, topic, category: categoryParam,
+          exerciseId: null, catalogueVersion, seed, startedAt: startedAtRef.current, currentIndex: 0, elapsedSeconds: 0,
+          questionsPayload: generated, answers: Array(generated.length).fill(''), orderingAnswers: Array.from({ length: generated.length }, () => []),
+          choiceAnswers: Array(generated.length).fill(''), appVersion: '', updatedAt: new Date().toISOString()
+        }).catch(() => {});
+      }
+      setError('');
+      setIsSaving(false);
+      setSaveError('');
+      setShowStopConfirm(false);
+      setCountingFeedback(null);
+      setTextFeedback(null);
+    })();
+    return () => { cancelled = true; };
+  }, [categoryParam, difficulty, count, exerciseAvailability, seed, isKirsiMath, topic, sessionId, learner, learnerId, subject, catalogueVersion]);
+
+  // Persist progress (debounced) so an interruption can be resumed exactly.
+  useEffect(() => {
+    if (exerciseAvailability !== 'allowed' || !questions.length) return;
+    const timer = setTimeout(() => {
+      void saveSessionProgress({
+        sessionId, learner: learnerId, subject: subject || null, topic, category: categoryParam,
+        exerciseId: null, catalogueVersion, seed, startedAt: startedAtRef.current, currentIndex: index, elapsedSeconds: elapsed,
+        questionsPayload: questions, answers, orderingAnswers, choiceAnswers, appVersion: '', updatedAt: new Date().toISOString()
+      }).catch(() => {});
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [answers, choiceAnswers, orderingAnswers, index, elapsed, questions, exerciseAvailability, sessionId, learner, learnerId, subject, topic, categoryParam, catalogueVersion, seed]);
 
   useEffect(() => {
     if (!questions.length) return;
@@ -356,16 +417,27 @@ function TestPageContent() {
     const score = results.filter((r) => r.isCorrect).length;
 
     try {
-      const res = await fetch('/api/history', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ createdAt: new Date().toISOString(), category: categoryParam, difficulty: 'Lihtne', questionCount: count, score, elapsedSeconds: elapsed, questions: results, learner: learner || null, subject: subject || null, topic: topic || null })
+      // Local-first: save to IndexedDB and clear the session BEFORE any network,
+      // then best-effort sync. The result shows immediately, online or off.
+      const outcome = await completeAttempt({
+        sessionId,
+        learner: learnerId,
+        subject: subject || null,
+        topic,
+        category: categoryParam,
+        difficulty: 'Lihtne',
+        exerciseId: null,
+        catalogueVersion,
+        startedAt: startedAtRef.current,
+        questionCount: results.length,
+        score,
+        elapsedSeconds: elapsed,
+        questions: results
       });
-      if (!res.ok) throw new Error('save-failed');
-      const body = await res.json();
-      router.push(`/history/${body.id}`);
+      if (outcome.serverAttemptId) router.push(`/history/${outcome.serverAttemptId}`);
+      else router.push(`/tulemus/${outcome.clientAttemptId}`);
     } catch {
       setSaveError('Salvestamine ebaõnnestus. Proovi uuesti.');
-    } finally {
       setIsSaving(false);
     }
   };
@@ -399,6 +471,7 @@ function TestPageContent() {
 
         <section className='question-card'>
           <p className='question-eyebrow'>Vasta küsimusele</p>
+          {isStale ? <p className='offline-stale-chip'>Näitan viimati sünkroonitud harjutust</p> : null}
           <h1 className='question-text'>{current.question}</h1>
           <CountingObjectGrid question={current} />
           {isClockQuestion && current.clockHour != null && current.clockMinutes != null && (

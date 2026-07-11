@@ -4,14 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/build-sw.mjs",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "next build && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "validate:science": "node scripts/validate-loodusopetus.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
+    "idb": "^8.0.3",
     "next": "15.5.18",
     "postcss": "8.5.10",
     "react": "19.0.0",
@@ -23,7 +26,8 @@
     "@types/react-dom": "^19.0.2",
     "eslint": "^9.17.0",
     "eslint-config-next": "15.5.18",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "postcss": "8.5.10"

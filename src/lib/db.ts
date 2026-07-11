@@ -48,6 +48,26 @@ addColumnIfMissing(hasSubject, 'ALTER TABLE attempts ADD COLUMN subject TEXT');
 addColumnIfMissing(hasTopic, 'ALTER TABLE attempts ADD COLUMN topic TEXT');
 addColumnIfMissing(hasExerciseId, 'ALTER TABLE attempts ADD COLUMN exerciseId TEXT');
 
+// Offline-sync columns on attempts (all nullable so legacy rows stay valid).
+// clientAttemptId is the device-minted UUID that makes uploads idempotent;
+// completedAt is the effective Tallinn-corrected completion time used for
+// day-based reward logic, distinct from syncedAt (when the server received it).
+const attemptOfflineCols = db.prepare('PRAGMA table_info(attempts)').all() as Array<{ name: string }>;
+const attemptHas = (name: string) => attemptOfflineCols.some((c) => c.name === name);
+addColumnIfMissing(attemptHas('clientAttemptId'), 'ALTER TABLE attempts ADD COLUMN clientAttemptId TEXT');
+addColumnIfMissing(attemptHas('deviceId'), 'ALTER TABLE attempts ADD COLUMN deviceId TEXT');
+addColumnIfMissing(attemptHas('startedAt'), 'ALTER TABLE attempts ADD COLUMN startedAt TEXT');
+addColumnIfMissing(attemptHas('completedAt'), 'ALTER TABLE attempts ADD COLUMN completedAt TEXT');
+addColumnIfMissing(attemptHas('rawDeviceCompletedAt'), 'ALTER TABLE attempts ADD COLUMN rawDeviceCompletedAt TEXT');
+addColumnIfMissing(attemptHas('syncedAt'), 'ALTER TABLE attempts ADD COLUMN syncedAt TEXT');
+addColumnIfMissing(attemptHas('catalogueVersion'), 'ALTER TABLE attempts ADD COLUMN catalogueVersion TEXT');
+addColumnIfMissing(attemptHas('clientTimeZone'), 'ALTER TABLE attempts ADD COLUMN clientTimeZone TEXT');
+addColumnIfMissing(attemptHas('clientUtcOffsetMinutes'), 'ALTER TABLE attempts ADD COLUMN clientUtcOffsetMinutes INTEGER');
+// Idempotency at the DB level: one row per non-null clientAttemptId. Legacy rows
+// (null) are unconstrained.
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_attempts_client_attempt_id ON attempts(clientAttemptId) WHERE clientAttemptId IS NOT NULL');
+db.exec('CREATE INDEX IF NOT EXISTS idx_attempts_learner_completed ON attempts(learner, completedAt)');
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS point_ledger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -391,5 +411,34 @@ addColumnIfMissing(trophyAdjustmentCols.some((c) => c.name === 'month'), "ALTER 
 // Index created after the migration above so it works whether the table is
 // brand new (month from CREATE TABLE) or pre-existing (month just added).
 db.exec('CREATE INDEX IF NOT EXISTS idx_trophy_adjustments_month_learner ON trophy_adjustments(month, learner)');
+
+// ---- Offline / sync support (additive; safe on existing databases) ----
+db.exec(`
+  CREATE TABLE IF NOT EXISTS offline_catalog_versions (
+    version TEXT NOT NULL,
+    learner TEXT NOT NULL,
+    issuedAt TEXT NOT NULL,
+    refreshAfter TEXT NOT NULL,
+    validUntil TEXT NOT NULL,
+    algorithmVersion INTEGER NOT NULL,
+    generatorVersion TEXT NOT NULL,
+    dailyLimit INTEGER NOT NULL,
+    catalogueJson TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    PRIMARY KEY (learner, version)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_offline_catalog_versions_learner_created
+    ON offline_catalog_versions(learner, createdAt);
+
+  -- Singleton sync-state row (id = 1). historyEpoch is bumped by "delete all
+  -- history" (Phase 4); stays 0 otherwise so the protocol always has a value.
+  CREATE TABLE IF NOT EXISTS offline_sync_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    historyEpoch INTEGER NOT NULL DEFAULT 0,
+    updatedAt TEXT NOT NULL
+  );
+`);
+db.prepare("INSERT OR IGNORE INTO offline_sync_state (id, historyEpoch, updatedAt) VALUES (1, 0, ?)").run(new Date().toISOString());
 
 export default db;

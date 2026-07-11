@@ -1,14 +1,13 @@
 import db from '@/lib/db';
 import { KIUR_MATH_TOPICS } from '@/lib/kiurMathTopics';
 import { nowIso, todayDateString, type Learner } from '@/lib/tasks';
-import { seededRng, shuffleWithRng } from '@/lib/random';
+import { DAILY_EXERCISE_LIMIT, selectTodaysLearningExercises as selectTodaysLearningExercisesPure } from '@/lib/shared/rotation';
+import type { LearningExerciseStatus, LearningExerciseSubject } from '@/lib/shared/types';
 
 // 'rotation' = in the daily rotation pool; 'permanent' = always shown; 'hidden'
 // = not shown. Legacy rows stored as 'active' are read as 'rotation'.
-export type LearningExerciseStatus = 'hidden' | 'rotation' | 'permanent';
-
-export const DAILY_EXERCISE_LIMIT = 4;
-export type LearningExerciseSubject = 'matemaatika' | 'inglise-keel' | 'lugemine';
+export type { LearningExerciseStatus, LearningExerciseSubject } from '@/lib/shared/types';
+export { DAILY_EXERCISE_LIMIT } from '@/lib/shared/rotation';
 
 export type LearningExerciseCatalogEntry = {
   id: string;
@@ -221,31 +220,16 @@ export function getActiveLearningExercises(learner: Learner) {
   });
 }
 
-// Picks the exercises shown to a child today: every permanent one, plus a
-// daily-random sample from the rotation pool, capped at DAILY_EXERCISE_LIMIT in
-// total. The random sample is seeded by (learner + date) so it is stable for the
-// whole day and reshuffles each new day.
+// Picks the exercises shown to a child today. Delegates to the shared,
+// client-safe rotation so the server and the offline client always agree; keeps
+// the todayDateString() default for existing server callers.
 export function selectTodaysLearningExercises<T extends { id: string; sortOrder: number; childStatus: Record<Learner, LearningExerciseStatus | null> }>(
   exercises: T[],
   learner: Learner,
   date = todayDateString(),
   limit = DAILY_EXERCISE_LIMIT
 ): T[] {
-  const available = exercises.filter((exercise) => {
-    const status = exercise.childStatus[learner];
-    return status === 'rotation' || status === 'permanent';
-  });
-  const permanents = available.filter((exercise) => exercise.childStatus[learner] === 'permanent');
-  const rotation = available.filter((exercise) => exercise.childStatus[learner] === 'rotation');
-
-  const remaining = Math.max(0, limit - permanents.length);
-  let seed = 0;
-  const seedSource = `${learner}:${date}`;
-  for (let i = 0; i < seedSource.length; i++) seed = (Math.imul(seed, 31) + seedSource.charCodeAt(i)) >>> 0;
-  const rotated = shuffleWithRng(seededRng(seed), rotation).slice(0, remaining);
-
-  const chosen = new Set([...permanents, ...rotated].map((exercise) => exercise.id));
-  return available.filter((exercise) => chosen.has(exercise.id)).sort((a, b) => a.sortOrder - b.sortOrder);
+  return selectTodaysLearningExercisesPure(exercises, learner, date, limit);
 }
 
 export function getActiveLearningExerciseIds(learner: Learner) {

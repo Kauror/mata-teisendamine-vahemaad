@@ -1,6 +1,5 @@
 import { KIUR_MATH_TOPICS } from '@/lib/kiurMathTopics';
-import { LearningExerciseRow } from '@/lib/learningExercises';
-import { Learner } from '@/lib/tasks';
+import type { CatalogueEntry as LearningExerciseRow, Learner } from '@/lib/shared/types';
 
 export type ChildExerciseAccent = 'blue' | 'pink' | 'green' | 'amber' | 'orange' | 'purple' | 'teal' | 'violet';
 

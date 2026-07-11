@@ -3,6 +3,10 @@ import { APP_ACCESS_COOKIE, hasValidAppAccessToken } from '@/lib/appAccess';
 
 function isPublicPath(pathname: string) {
   if (pathname === '/access' || pathname === '/api/access') return true;
+  // The service worker and web manifest must be fetchable without the app-access
+  // cookie so SW registration/updates work even if the cookie has lapsed. They
+  // contain no protected data.
+  if (pathname === '/sw.js' || pathname === '/manifest.webmanifest') return true;
   if (pathname.startsWith('/_next')) return true;
   return /\.(?:ico|png|jpg|jpeg|gif|svg|webp|txt|xml)$/i.test(pathname);
 }
