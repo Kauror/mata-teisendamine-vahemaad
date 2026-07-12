@@ -5,6 +5,7 @@ import {
   applyRewardProjectionV2,
   approveHeldRewardAttempt,
   getProjectedRewardV2,
+  listHeldRewardAttempts,
   projectCanonicalRewardsPure,
   type ProjectionAttempt
 } from '@/lib/server/rewards/projection';
@@ -151,5 +152,17 @@ describe('reward settlement eligibility', () => {
     const second = approveHeldRewardAttempt(1);
     expect(second).toBeNull();
     expect(getBalance('kiur')).toBeCloseTo(1);
+  });
+
+  it('lists held attempts and refreshes the leaderboard on approval (RTM2-H03)', () => {
+    db.exec('DELETE FROM daily_leaderboard');
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)), 'needs_review');
+    expect(listHeldRewardAttempts().map((h) => h.id)).toEqual([1]);
+
+    approveHeldRewardAttempt(1);
+
+    expect(listHeldRewardAttempts()).toEqual([]);
+    const board = db.prepare("SELECT kiurCount FROM daily_leaderboard WHERE date = '2026-07-01'").get() as { kiurCount: number } | undefined;
+    expect(board?.kiurCount).toBe(1);
   });
 });

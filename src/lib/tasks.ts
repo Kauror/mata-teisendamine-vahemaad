@@ -300,6 +300,7 @@ type AssignmentRow = {
   assignmentModeSnapshot: AssignmentMode;
   requiresApprovalSnapshot: number;
   instanceStatus: string;
+  instanceDate: string;
   completedAt: string | null;
 };
 
@@ -315,7 +316,8 @@ function loadAssignmentRow(assignmentId: number): AssignmentRow | undefined {
       i.pointsSnapshot,
       i.assignmentModeSnapshot,
       i.requiresApprovalSnapshot,
-      i.status as instanceStatus
+      i.status as instanceStatus,
+      i.date as instanceDate
     FROM task_instance_assignments a
     JOIN task_instances i ON i.id = a.taskInstanceId
     WHERE a.id = ?
@@ -436,9 +438,11 @@ export function approveTaskAssignment(assignmentId: number) {
       }
     }
 
+    // Settle against the task instance's own date (not today): a task completed
+    // offline yesterday and approved today must credit yesterday's joint daily
+    // bonus, not today's (RTM2-M01).
     const completedAt = row.completedAt || nowIso();
-    const date = todayDateString();
-    return settleAssignment(row, completedAt, date);
+    return settleAssignment(row, completedAt, row.instanceDate);
   });
   return approve();
 }

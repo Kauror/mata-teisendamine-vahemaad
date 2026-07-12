@@ -80,6 +80,13 @@ Next.js-i. Seadista keskkonnamuutujad enne `docker compose` käivitamist:
    ```bash
    npm run auth:hash -- 1234   # väljund läheb APP_ACCESS_PIN_HASH väärtuseks
    ```
+   > **NB!** Räsi sisaldab `$`-märke (`scrypt$v=1$N=...`). Docker Compose asendab
+   > jutumärgita ja topeltjutumärkides väärtustes muutujaid, seega **pane räsi
+   > alati ÜKSIKutesse jutumärkidesse**, mille Compose võtab sõna-sõnalt:
+   > ```
+   > APP_ACCESS_PIN_HASH='scrypt$v=1$N=16384,r=8,p=1$...$...'
+   > ```
+   > Kontrolli enne käivitamist `docker compose config` väljundist, et räsi jäi muutmata.
 3. Genereeri seansisaladus (vähemalt 32 märki):
    ```bash
    node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
@@ -152,15 +159,20 @@ andmebaasi.
 ## Testimine ja CI
 
 - `npm test` – ühiktestid (Vitest), sh. tasu-, migratsiooni- ja sünkroonitestid.
-- `npm run test:e2e` – brauseripõhised Playwright-testid (`e2e/`), mis käivitavad
-  rakenduse päris Chromiumis ja WebKitis. Enne esimest korda: `npm run test:e2e:install`.
-- `.github/workflows/ci.yml` käivitab lint + tüübikontroll + ühiktestid, Playwright
-  E2E ning **ehitab ja käivitab produktsiooni Docker-image'i** (release-gate), et
-  verifitseeritud käivitus (autentimine + andmebaasi kontroll) reaalselt õnnestuks.
+- `npm run test:e2e` – arendusrežiimi brauseri-smoke (`e2e/`, Chromium + WebKit):
+  käivitus, marsruutimine, PIN-värav. Enne esimest korda: `npm run test:e2e:install`.
+- `npm run test:e2e:prod` – **produktsiooni-buildi** teenindustöötaja testid
+  (`e2e-prod/`): ehitab rakenduse, käivitab `next start` ja kontrollib reaalses
+  Chromiumis teenindustöötaja registreerimise, paigalduse (kogu app-shell'i
+  eelvahemällu võtmine) ja võrguühenduseta taaslaadimise.
+- `.github/workflows/ci.yml` käivitab lint + tüübikontroll + ühiktestid, mõlemad
+  Playwright-komplektid ning **ehitab ja käivitab `docker compose` kaudu
+  produktsiooni-image'i** (release-gate) koos tervisekontrolliga.
 
-> Täielik võrguühenduseta / teenindustöötaja sertifitseerimine (offline-taaslaadimine,
-> kahe brauseri sünk, iPhone'i koduekraan) nõuab produktsiooni-buildi HTTPS-i taga
-> ja seadmepõhiseid kontrolle; E2E-smoke katab käivituse, marsruutimise ja PIN-värava.
+> Physical iPhone Add-to-Home-Screen ja pikaajaline mitmeseadme-sünk tuleb enne
+> lõplikku väljalaset siiski käsitsi üle kontrollida — automaattestid katavad
+> teenindustöötaja paigalduse ja võrguühenduseta taaslaadimise, mitte iOS
+> koduekraani käitumist.
 
 ## Struktuur
 

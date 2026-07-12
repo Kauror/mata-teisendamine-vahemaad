@@ -39,41 +39,68 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  docker-release-gate:
-    name: Build and boot the production image
+  e2e-prod:
+    name: Production-build service worker E2E
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build production image
-        run: docker build -t pikkuste-harjutaja:ci .
-      - name: Generate a production .env for the boot check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      # Builds the production app + generated service worker and exercises SW
+      # install / offline reload in a real Chromium (RTM2-H06).
+      - run: npm run test:e2e:prod
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report-prod
+          path: playwright-report/
+          retention-days: 7
+
+  docker-release-gate:
+    name: Build and boot via docker compose (production path)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production image via compose
+        run: docker compose build
+      - name: Generate a production .env exactly as an operator would
         run: |
           SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")
           # Hash a throwaway PIN with the app's own hasher so the format matches.
-          PIN_HASH=$(docker run --rm -e NODE_ENV=production pikkuste-harjutaja:ci npm run --silent auth:hash -- 1234)
+          PIN_HASH=$(docker compose run --rm --no-deps app npm run --silent auth:hash -- 1234 | tr -d '\r')
+          # The hash contains '$'; it MUST be single-quoted so compose does not
+          # interpolate it (this is the exact failure RTM2-C01 guards against).
           {
-            echo "APP_ACCESS_PIN_HASH=$PIN_HASH"
-            echo "APP_SESSION_SECRET_CURRENT=$SECRET"
+            echo "APP_ACCESS_PIN_HASH='$PIN_HASH'"
+            echo "APP_SESSION_SECRET_CURRENT='$SECRET'"
             echo "APP_ORIGIN=https://ci.example.com"
             echo "OFFLINE_PROTOCOL_V2_ENABLED=1"
-          } > ci.env
-      - name: Start the container (verified startup must pass)
+          } > .env
+      - name: docker compose config must keep the hash byte-for-byte intact
         run: |
-          docker run -d --name harjutaja --env-file ci.env \
-            -e MATHS_GAME_DB_FILE=/data/maths-game.sqlite -e MATHS_GAME_BACKUP_DIR=/data/backups \
-            -p 3000:3000 pikkuste-harjutaja:ci
-      - name: Wait for the app to become reachable
+          docker compose config
+          RESOLVED=$(docker compose config --format json | node -e "const fs=require('fs');let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const c=JSON.parse(s);process.stdout.write(c.services.app.environment.APP_ACCESS_PIN_HASH||'')})")
+          EXPECTED=$(grep -oP "(?<=APP_ACCESS_PIN_HASH=').*(?=')" .env)
+          echo "resolved: $RESOLVED"
+          test "$RESOLVED" = "$EXPECTED" || { echo "PIN hash was mangled by compose interpolation"; exit 1; }
+      - name: Start via compose (verified startup must pass)
+        run: docker compose up -d
+      - name: Wait for the container to report healthy
         run: |
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:3000/api/access -X OPTIONS >/dev/null 2>&1 || \
-               curl -fsS http://127.0.0.1:3000/access >/dev/null 2>&1; then
-              echo "App is serving after ${i}s"; exit 0
-            fi
-            sleep 1
+          for i in $(seq 1 40); do
+            STATUS=$(docker inspect --format '{{ .State.Health.Status }}' pikkuste-harjutaja 2>/dev/null || echo starting)
+            echo "health: $STATUS"
+            [ "$STATUS" = "healthy" ] && exit 0
+            [ "$STATUS" = "unhealthy" ] && break
+            sleep 3
           done
-          echo "App did not start in time"; docker logs harjutaja; exit 1
+          echo "Container did not become healthy"; docker compose logs; exit 1
       - name: Verified-startup log must confirm database verification
-        run: docker logs harjutaja 2>&1 | grep -q "Database startup verification passed"
+        run: docker compose logs 2>&1 | grep -q "Database startup verification passed"
       - name: Tear down
         if: always()
-        run: docker rm -f harjutaja || true
+        run: docker compose down -v || true

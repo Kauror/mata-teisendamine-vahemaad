@@ -13,6 +13,7 @@
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:prod": "playwright test --config=playwright.prod.config.ts",
     "test:e2e:install": "playwright install chromium webkit",
     "db:startup": "tsx scripts/database-startup.ts",
     "auth:hash": "tsx scripts/hash-secret.ts --",

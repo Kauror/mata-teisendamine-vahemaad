@@ -19,10 +19,11 @@ describe('versioned SQLite migrations', () => {
       expect(connection.prepare('SELECT id, name, length(checksum) AS length FROM schema_migrations ORDER BY id').all()).toEqual([
         { id: 1, name: 'legacy_schema_baseline', length: 64 },
         { id: 2, name: 'offline_protocol_v2_foundation', length: 64 },
-        { id: 3, name: 'reward_settlement_state', length: 64 }
+        { id: 3, name: 'reward_settlement_state', length: 64 },
+        { id: 4, name: 'neutralize_reward_settlement_heuristic', length: 64 }
       ]);
       runMigrations(connection);
-      expect((connection.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get() as { count: number }).count).toBe(3);
+      expect((connection.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get() as { count: number }).count).toBe(4);
       expect(verifyDatabase(connection).integrity).toBe('ok');
     } finally {
       connection.close();
@@ -90,7 +91,21 @@ describe('versioned SQLite migrations', () => {
     const result = await prepareDatabaseForStartup(file, path.join(directory, 'backups'));
     expect(result.backupFile).toBeTruthy();
     expect(fs.existsSync(result.backupFile!)).toBe(true);
-    expect(result.verification.migrationCount).toBe(3);
+    expect(result.verification.migrationCount).toBe(4);
+
+    // RTM2-H01: the backup must be the PRE-migration database, so it can restore
+    // the original if a migration corrupts data. Prove it lacks anything the
+    // migrations add.
+    const backup = new Database(result.backupFile!, { readonly: true });
+    try {
+      const hasMigrationsTable = backup.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_migrations'").all();
+      expect(hasMigrationsTable).toHaveLength(0);
+      const columns = backup.prepare('PRAGMA table_info(attempts)').all() as Array<{ name: string }>;
+      expect(columns.some((c) => c.name === 'protocolVersion')).toBe(false);
+      expect(columns.some((c) => c.name === 'rewardSettlementStatus')).toBe(false);
+    } finally {
+      backup.close();
+    }
 
     const migrated = openDatabase(file);
     try {
@@ -101,6 +116,25 @@ describe('versioned SQLite migrations', () => {
       expect(() => verifyDatabase(migrated)).toThrow(/invalid createdAt/);
     } finally {
       migrated.close();
+    }
+  });
+
+  it('migration 4 corrects migration 3 mis-withholding of a zero-reward attempt (RTM2-C02)', () => {
+    const connection = openDatabase(':memory:');
+    try {
+      // A legitimate protocol-v2 attempt whose canonical reward is zero has no
+      // attempt_reward_components row, so migration 3's heuristic would have
+      // marked it 'withheld'. Reproduce that bad state and re-apply migration 4.
+      connection.prepare(`
+        INSERT INTO attempts (id, createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, protocolVersion, rewardSettlementStatus)
+        VALUES (1, '2026-07-01T08:00:00.000Z', 'c', 'e', 10, 0, 1, '[]', 2, 'withheld')
+      `).run();
+      connection.prepare('DELETE FROM schema_migrations WHERE id = 4').run();
+      runMigrations(connection);
+      const row = connection.prepare('SELECT rewardSettlementStatus AS s FROM attempts WHERE id = 1').get() as { s: string };
+      expect(row.s).toBe('eligible');
+    } finally {
+      connection.close();
     }
   });
 });

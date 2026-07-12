@@ -1,4 +1,4 @@
-import { attemptRepo, catalogueGrantRepo, catalogRepo, historyRepo, remediationActionRepo, sessionRepo, snapshotRepo, taskActionRepo, taskTemplateRepo } from '@/lib/offline/repositories';
+import { attemptRepo, catalogueGrantRepo, catalogRepo, historyRepo, remediationActionRepo, sessionRepo, snapshotRepo, taskActionRepo, taskAssignmentRepo, taskTemplateRepo } from '@/lib/offline/repositories';
 import { createRunId } from '@/lib/offline/runnerSession';
 import { correctedNow, getDeviceId, getServerOffsetMs } from '@/lib/offline/meta';
 import { syncNow } from '@/lib/offline/syncEngine';
@@ -268,6 +268,9 @@ export type OfflineHistoryItem = {
   subject?: string | null;
   topic?: string | null;
   earnedStars?: number | null;
+  // Preserved so a reward-held attempt is not shown as an ordinary confirmed
+  // item once its outbox row is cleared (RTM2-H03).
+  rewardSettlementStatus?: 'eligible' | 'withheld' | 'needs_review' | null;
   pending?: boolean;
 };
 
@@ -291,7 +294,8 @@ export async function getMergedExerciseHistory(): Promise<OfflineHistoryItem[]> 
     learner: row.learner,
     subject: row.subject,
     topic: row.topic,
-    earnedStars: row.earnedStars
+    earnedStars: row.earnedStars,
+    rewardSettlementStatus: row.rewardSettlementStatus ?? 'eligible'
   }));
 
   let synthetic = -1;
@@ -338,24 +342,49 @@ export type OfflineDailyTask = {
   reasonCode?: string;
 };
 
-// Today's projected tasks from the cached templates, with any queued local
-// completion overlaid so a task the child finished offline shows as done.
+function mapCanonicalAssignmentState(state: unknown): OfflineDailyTask['status'] {
+  switch (state) {
+    case 'completed':
+      return 'completed';
+    case 'locked':
+      return 'locked';
+    case 'pending_approval':
+      return 'pending_approval';
+    // 'active', 'missed' and anything unknown are still actionable for the child.
+    default:
+      return 'active';
+  }
+}
+
+// Today's projected tasks, overlaying (1) the canonical server assignment status
+// synced from the server, then (2) the most recent queued local action. The
+// canonical layer is the base so a task completed online (by this or the other
+// child) does not reappear as active offline; the local layer adds optimistic
+// offline completions and surfaces failures (RTM-004/H04, RTM-005).
 export async function getDailyTasksOffline(learner: Learner, date = todayDateString()): Promise<OfflineDailyTask[]> {
-  const [templates, actions] = await Promise.all([taskTemplateRepo.all(), taskActionRepo.all()]);
+  const [templates, actions, assignments] = await Promise.all([
+    taskTemplateRepo.all(),
+    taskActionRepo.all(),
+    taskAssignmentRepo.forLearner(learner)
+  ]);
   if (templates.length === 0) return [];
   const projected = projectTasksForDate(templates, learner, date);
-  const actionFor = (templateId: number) => actions.find((a) => a.templateId === templateId && a.taskDate === date && a.learner === learner);
+  const assignmentFor = (templateId: number) => assignments.find((a) => a.templateId === templateId && a.taskDate === date);
+  // Most recent local action for this template/date wins (a re-queue after a
+  // rejection supersedes the earlier returned action).
+  const latestActionFor = (templateId: number) => actions
+    .filter((a) => a.templateId === templateId && a.taskDate === date && a.learner === learner)
+    .sort((a, b) => (b.createdLocallyAt ?? '').localeCompare(a.createdLocallyAt ?? ''))[0];
 
   return projected.map((task) => {
-    const action = actionFor(task.templateId);
-    // Map each local action status explicitly. Only genuinely-settled actions
-    // may render as done; rejected / needs_review / returned must NOT show as
-    // completed, or a child could see a failed task as successful (RTM-005).
-    let status: OfflineDailyTask['status'] = 'active';
+    // 1. Base status from the canonical server assignment.
+    let status: OfflineDailyTask['status'] = mapCanonicalAssignmentState(assignmentFor(task.templateId)?.state);
+
+    // 2. Overlay the latest local action. Only genuinely-settled or optimistic
+    // actions may render as done; rejected / needs_review / returned must NOT
+    // show as completed, or a child could see a failed task as successful.
+    const action = latestActionFor(task.templateId);
     switch (action?.status) {
-      case undefined:
-        status = 'active';
-        break;
       case 'applied':
       case 'duplicate':
         status = 'completed';
@@ -368,15 +397,13 @@ export async function getDailyTasksOffline(learner: Learner, date = todayDateStr
         break;
       case 'pending':
       case 'syncing':
-        // Queued locally and not yet settled by the server. Show it optimistically
-        // as done (offline-first), or awaiting approval when the task requires it.
+        // Queued locally and not yet settled — optimistic done / awaiting approval.
         status = task.requiresApproval ? 'pending_approval' : 'completed';
         break;
       case 'rejected':
       case 'needs_review':
       case 'returned':
-        // Not done. Return the task to an actionable state; reasonCode explains why.
-        status = 'active';
+        // Not done: keep the canonical base status (usually active again).
         break;
     }
     return {
@@ -396,9 +423,22 @@ export type CompleteTaskOfflineResult = { clientActionId: string; queued: boolea
 
 // Queue an offline task completion (idempotent per template/date/learner) and try
 // a best-effort sync. Never mints stars locally — the server settles on sync.
+// A task action whose latest state still occupies the slot (queued, done, under
+// approval, or lost to a conflict). A 'returned'/'rejected' action has freed the
+// slot, so the child may queue a fresh completion (RTM2-H05).
+function taskActionStillOccupiesSlot(status: LocalTaskAction['status']): boolean {
+  return status !== 'returned' && status !== 'rejected';
+}
+
 export async function completeTaskOffline(input: { learner: Learner; templateId: number; templateVersion: string; taskDate: string; snapshot: { title: string; points: number; assignmentMode: string; requiresApproval: boolean } }): Promise<CompleteTaskOfflineResult> {
-  const existing = (await taskActionRepo.all()).find((a) => a.templateId === input.templateId && a.taskDate === input.taskDate && a.learner === input.learner);
-  if (existing) return { clientActionId: existing.clientActionId, queued: false };
+  const latest = (await taskActionRepo.all())
+    .filter((a) => a.templateId === input.templateId && a.taskDate === input.taskDate && a.learner === input.learner)
+    .sort((a, b) => (b.createdLocallyAt ?? '').localeCompare(a.createdLocallyAt ?? ''))[0];
+  // Reuse the existing action unless it terminally failed; a returned/rejected
+  // task must be re-queueable with a fresh id, keeping the old one as history.
+  if (latest && taskActionStillOccupiesSlot(latest.status)) {
+    return { clientActionId: latest.clientActionId, queued: false };
+  }
 
   const deviceId = await getDeviceId();
   const offsetMs = await getServerOffsetMs();

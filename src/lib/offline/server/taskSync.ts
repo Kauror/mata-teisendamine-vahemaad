@@ -8,6 +8,7 @@ import {
   getAssignmentStatusById,
   getTaskTemplateById,
   nowIso,
+  todayDateString,
   type Learner,
   type TaskTemplateRow
 } from '@/lib/tasks';
@@ -29,6 +30,32 @@ export function taskTemplateVersion(template: TaskTemplateRow): string {
     requiresApproval: template.requiresApproval
   });
   return createHash('sha256').update(canonical).digest('hex').slice(0, 16);
+}
+
+export type SyncTaskAssignment = {
+  assignmentId: number;
+  learner: Learner;
+  taskDate: string;
+  templateId: number;
+  state: string;
+  updatedAt: string;
+};
+
+// Canonical dated task assignments for the given date, so an offline device can
+// overlay authoritative status (completed/locked/pending_approval/missed) over
+// its template projection and never re-show an already-settled task as active
+// (RTM2-H04). Materialises the day's instances first, exactly like the parent
+// and child read paths.
+export function getSyncTaskAssignments(date = todayDateString()): SyncTaskAssignment[] {
+  ensureTaskInstancesForDate(date);
+  return db.prepare(`
+    SELECT a.id AS assignmentId, a.learner AS learner, i.date AS taskDate,
+           i.templateId AS templateId, a.status AS state,
+           COALESCE(a.completedAt, i.createdAt) AS updatedAt
+    FROM task_instance_assignments a
+    JOIN task_instances i ON i.id = a.taskInstanceId
+    WHERE i.date = ?
+  `).all(date) as SyncTaskAssignment[];
 }
 
 export function getSyncTaskTemplates(): SyncTaskTemplate[] {

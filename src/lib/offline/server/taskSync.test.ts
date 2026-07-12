@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import db from '@/lib/db';
 import { approveTaskAssignment, createTaskTemplate, findAssignmentId, getBalance, rejectTaskAssignment, todayDateString, updateTaskTemplate } from '@/lib/tasks';
-import { applyOfflineTaskAction, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
+import { applyOfflineTaskAction, getSyncTaskAssignments, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
 import { getTaskChangesAfter } from '@/lib/offline/server/taskChanges';
 import { projectTasksForDate, type SyncTaskTemplate, type TaskAssignmentMode } from '@/lib/shared/taskProjection';
 import type { OfflineTaskActionPayload } from '@/lib/shared/types';
@@ -134,5 +134,22 @@ describe('task-change stream', () => {
     approveTaskAssignment(assignmentId);
     const [change] = getTaskChangesAfter(0);
     expect(getTaskChangesAfter(change.changeId)).toEqual([]);
+  });
+});
+
+// RTM2-H04: the pull must expose canonical dated assignment status so an offline
+// device does not re-show an already-settled task as active.
+describe('getSyncTaskAssignments', () => {
+  it('returns the canonical status of today\'s assignments', () => {
+    const template = makeTemplate('both_independent');
+    // Complete kiur's assignment online; kirsi's stays active.
+    const result = applyOfflineTaskAction(action({ templateId: template.id, templateVersion: template.version, learner: 'kiur', clientActionId: 'assign-1' }));
+    expect(result.status).toBe('applied');
+
+    const assignments = getSyncTaskAssignments(todayDateString());
+    const kiur = assignments.find((a) => a.learner === 'kiur' && a.templateId === template.id);
+    const kirsi = assignments.find((a) => a.learner === 'kirsi' && a.templateId === template.id);
+    expect(kiur?.state).toBe('completed');
+    expect(kirsi?.state).toBe('active');
   });
 });

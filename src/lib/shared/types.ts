@@ -146,7 +146,16 @@ export type ServerAttempt = {
   topic: string | null;
   exerciseId: string | null;
   earnedStars: number | null;
+  // Reward settlement so a held (withheld / needs_review) attempt is not shown as
+  // an ordinary confirmed history item once the outbox row is cleared (RTM2-H03).
+  // Absent/'eligible' for legacy v1 rows and normal v2 rows.
+  rewardSettlementStatus?: 'eligible' | 'withheld' | 'needs_review' | null;
+  reviewReasonCode?: string | null;
 };
+
+export function isHeldRewardStatus(status: ServerAttempt['rewardSettlementStatus']): boolean {
+  return status === 'withheld' || status === 'needs_review';
+}
 
 // ---- Task actions (offline daily-task completion) ----
 

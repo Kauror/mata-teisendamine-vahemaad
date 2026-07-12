@@ -4,6 +4,7 @@ import { hasExactOrigin, verifySession } from '@/lib/auth/session';
 
 function isPublicPath(pathname: string) {
   if (pathname === '/access' || pathname === '/api/access') return true;
+  if (pathname === '/api/healthz') return true;
   if (pathname === '/sw.js' || pathname === '/manifest.webmanifest') return true;
   if (pathname.startsWith('/_next')) return true;
   return /\.(?:ico|png|jpg|jpeg|gif|svg|webp|txt|xml)$/i.test(pathname);

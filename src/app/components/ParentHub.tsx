@@ -24,6 +24,7 @@ type StoreStockType = 'unlimited' | 'fixed_stock' | 'daily_stock' | 'one_time_gl
 
 type Template = { id: number; title: string; points: number; assignmentMode: AssignmentMode; recurrenceType: RecurrenceType; selectedWeekdaysJson: string | null; startDate: string | null; onceDate: string | null; requiresApproval: number };
 type PendingApproval = { assignmentId: number; learner: Learner; title: string; points: number; assignmentMode: AssignmentMode; completedAt: string | null };
+type HeldReward = { id: number; learner: Learner; completionDate: string | null; score: number; questionCount: number; exerciseId: string | null; status: 'withheld' | 'needs_review'; reviewReasonCode: string | null };
 type Dashboard = {
   balances: Record<Learner, number>;
   templates: Template[];
@@ -247,6 +248,7 @@ export default function ParentHub() {
   const [editingRewardId, setEditingRewardId] = useState<number | null>(null);
   const [monthlyPrize, setMonthlyPrize] = useState<MonthlyPrize | null>(null);
   const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigest | null>(null);
+  const [heldRewards, setHeldRewards] = useState<HeldReward[]>([]);
   const [monthlyPrizeInput, setMonthlyPrizeInput] = useState(10);
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
@@ -276,9 +278,10 @@ export default function ParentHub() {
       fetch('/api/parent/reward-rules').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/notice').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/monthly-prize').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/parent/weekly-digest').then((res) => (res.ok ? res.json() : Promise.reject()))
+      fetch('/api/parent/weekly-digest').then((res) => (res.ok ? res.json() : Promise.reject())),
+      fetch('/api/parent/held-rewards').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData, monthlyPrizeData, weeklyDigestData]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData, monthlyPrizeData, weeklyDigestData, heldRewardData]) => {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
@@ -288,6 +291,7 @@ export default function ParentHub() {
         setMonthlyPrize(monthlyPrizeData as MonthlyPrize);
         setMonthlyPrizeInput((monthlyPrizeData as MonthlyPrize)?.prizeStars ?? 10);
         setWeeklyDigest(weeklyDigestData as WeeklyDigest);
+        setHeldRewards(Array.isArray(heldRewardData?.held) ? heldRewardData.held : []);
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
   };
@@ -435,6 +439,24 @@ export default function ParentHub() {
       return;
     }
     setNotice(action === 'approve' ? 'Tähed kinnitatud.' : 'Tegevus saadeti uuesti tegemiseks.');
+    load();
+  };
+
+  const approveHeldReward = async (attemptId: number) => {
+    setError('');
+    setNotice('');
+    const res = await fetch('/api/parent/held-rewards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attemptId, action: 'approve' })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.message || 'Toimingut ei saanud teha.');
+      load();
+      return;
+    }
+    setNotice('Harjutuse tähed kinnitatud.');
     load();
   };
 
@@ -699,6 +721,31 @@ export default function ParentHub() {
                 <div className='parent-approval-actions'>
                   <button type='button' className='view-button' onClick={() => resolveApproval(item.assignmentId, 'approve')}>Kinnita</button>
                   <button type='button' className='filter-chip' onClick={() => resolveApproval(item.assignmentId, 'reject')}>Lükka tagasi</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {heldRewards.length > 0 && (
+        <section className='parent-approvals' aria-label='Ülevaatust ootavad tähed'>
+          <h2>🔎 Ülevaatust ootavad tähed ({heldRewards.length})</h2>
+          <p>Need harjutused tehti valmis, kuid tähed on kinni peetud (nt kella nihe või katalooginõue). Kinnita, et laps tähed saab.</p>
+          <div className='parent-approval-list'>
+            {heldRewards.map((item) => (
+              <div key={item.id} className='parent-approval-row'>
+                <div className='parent-approval-info'>
+                  <strong>{learnerLabel(item.learner)} · {item.exerciseId ?? 'harjutus'}</strong>
+                  <span>
+                    {item.score}/{item.questionCount}
+                    {item.completionDate ? ` · ${item.completionDate}` : ''}
+                    {item.status === 'needs_review' ? ' · ülevaatus' : ' · kinni peetud'}
+                    {item.reviewReasonCode ? ` (${item.reviewReasonCode})` : ''}
+                  </span>
+                </div>
+                <div className='parent-approval-actions'>
+                  <button type='button' className='view-button' onClick={() => approveHeldReward(item.id)}>Kinnita tähed</button>
                 </div>
               </div>
             ))}

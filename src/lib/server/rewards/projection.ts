@@ -1,6 +1,7 @@
 import db from '@/lib/db';
 import { addAppDays } from '@/lib/appDate';
 import { getBalance, type Learner } from '@/lib/tasks';
+import { recordDailyLeaderboard } from '@/lib/leaderboard';
 import { REWARD_ENGINE_VERSION, rewardPolicyByVersion, type RewardPolicyV2 } from '@/lib/server/rewards/policy';
 
 export type ProjectionAttempt = {
@@ -167,8 +168,8 @@ export type AppliedProjection = {
 // eligible, and the projection itself is revision/idempotency-keyed (RTM-003).
 export function approveHeldRewardAttempt(attemptId: number): AppliedProjection | null {
   const row = db.prepare(
-    'SELECT learner, rewardSettlementStatus, rewardPolicyVersion FROM attempts WHERE id = ? AND protocolVersion = 2'
-  ).get(attemptId) as { learner: Learner; rewardSettlementStatus: string; rewardPolicyVersion: string | null } | undefined;
+    'SELECT learner, rewardSettlementStatus, rewardPolicyVersion, completionDate FROM attempts WHERE id = ? AND protocolVersion = 2'
+  ).get(attemptId) as { learner: Learner; rewardSettlementStatus: string; rewardPolicyVersion: string | null; completionDate: string | null } | undefined;
   if (!row) return null;
   if (row.rewardSettlementStatus === 'eligible') return null;
   if (!row.rewardPolicyVersion || !rewardPolicyByVersion(row.rewardPolicyVersion)) {
@@ -176,8 +177,35 @@ export function approveHeldRewardAttempt(attemptId: number): AppliedProjection |
   }
   return db.transaction(() => {
     db.prepare("UPDATE attempts SET rewardSettlementStatus = 'eligible' WHERE id = ? AND rewardSettlementStatus <> 'eligible'").run(attemptId);
-    return applyRewardProjectionV2(row.learner, attemptId);
+    const applied = applyRewardProjectionV2(row.learner, attemptId);
+    // The attempt now counts: refresh every derived aggregate it feeds, including
+    // the daily leaderboard for its completion day (RTM2-H03).
+    if (row.completionDate) recordDailyLeaderboard(row.completionDate);
+    return applied;
   })();
+}
+
+export type HeldRewardAttempt = {
+  id: number;
+  learner: Learner;
+  completionDate: string | null;
+  score: number;
+  questionCount: number;
+  exerciseId: string | null;
+  status: 'withheld' | 'needs_review';
+  reviewReasonCode: string | null;
+};
+
+// Attempts held out of reward settlement, for a parent review surface (RTM2-H03).
+export function listHeldRewardAttempts(): HeldRewardAttempt[] {
+  return db.prepare(`
+    SELECT id, learner, completionDate, score, questionCount, exerciseId,
+           rewardSettlementStatus AS status,
+           CASE WHEN clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END AS reviewReasonCode
+    FROM attempts
+    WHERE protocolVersion = 2 AND rewardSettlementStatus IN ('withheld', 'needs_review')
+    ORDER BY completionDate DESC, id DESC
+  `).all() as HeldRewardAttempt[];
 }
 
 export function getProjectedRewardV2(attemptId: number) {

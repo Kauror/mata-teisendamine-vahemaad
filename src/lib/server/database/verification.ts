@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { openDatabase, type DatabaseConnection } from '@/lib/db';
+import { openDatabase, openRawConnection, type DatabaseConnection } from '@/lib/db';
 
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -145,31 +145,35 @@ export async function prepareDatabaseForStartup(databaseFile: string, backupDire
   // because opening creates the file (and its WAL) when it is absent.
   const preexisting = fs.existsSync(absoluteDatabase);
 
-  const connection = openDatabase(absoluteDatabase);
+  // Take the backup BEFORE any migration runs, from a raw (non-migrating)
+  // connection. openDatabase() runs pending migrations, so backing up after it
+  // would capture the already-migrated state — useless for recovering from a
+  // bad migration (RTM2-H01). The online backup API is still WAL-safe.
   let backupFile: string | null = null;
-  try {
-    if (preexisting) {
-      const targetDirectory = path.resolve(backupDirectory ?? path.join(path.dirname(absoluteDatabase), 'backups'));
-      fs.mkdirSync(targetDirectory, { recursive: true });
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      backupFile = path.join(targetDirectory, `${path.basename(absoluteDatabase)}.${stamp}.bak`);
-      if (path.resolve(backupFile) === absoluteDatabase) throw new Error('Backup path must differ from the live database path.');
-      // WAL-safe backup: better-sqlite3's online backup copies a transactionally
-      // consistent view of the database, folding in any committed pages still
-      // living in the WAL. A plain copyFileSync of the main file before
-      // checkpointing would miss those pages and could yield an incomplete
-      // backup after an unclean shutdown (RTM-007). We hold the only connection,
-      // so there is no concurrent writer.
-      await connection.backup(backupFile);
+  if (preexisting) {
+    const targetDirectory = path.resolve(backupDirectory ?? path.join(path.dirname(absoluteDatabase), 'backups'));
+    fs.mkdirSync(targetDirectory, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    backupFile = path.join(targetDirectory, `${path.basename(absoluteDatabase)}.${stamp}.bak`);
+    if (path.resolve(backupFile) === absoluteDatabase) throw new Error('Backup path must differ from the live database path.');
+    const rawConnection = openRawConnection(absoluteDatabase);
+    try {
+      await rawConnection.backup(backupFile);
       fsyncFile(backupFile);
+    } finally {
+      rawConnection.close();
     }
+  }
 
+  // Now run the migrating open + verification against the live database.
+  const connection = openDatabase(absoluteDatabase);
+  try {
     const verification = verifyDatabase(connection);
     connection.pragma('wal_checkpoint(TRUNCATE)');
     return { databaseFile: absoluteDatabase, backupFile, verification };
   } catch (error) {
     throw new Error(
-      `Startup verification failed${backupFile ? `; untouched backup is ${backupFile}` : ''}: ${error instanceof Error ? error.message : String(error)}`
+      `Startup verification failed${backupFile ? `; pre-migration backup is ${backupFile}` : ''}: ${error instanceof Error ? error.message : String(error)}`
     );
   } finally {
     connection.close();

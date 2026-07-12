@@ -4,7 +4,7 @@ import { getActiveLearningStreak } from '@/lib/learningPoints';
 import { getMonthlyTrophies } from '@/lib/monthlyCompetition';
 import { insertAttempt } from '@/lib/offline/server/insertAttempt';
 import { getCurrentCatalogue } from '@/lib/offline/server/catalogVersions';
-import { applyOfflineTaskAction, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
+import { applyOfflineTaskAction, getSyncTaskAssignments, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
 import { getHistoryEpoch, getTombstonesAfter } from '@/lib/offline/server/tombstones';
 import { getTaskChangesAfter, MAX_TASK_CHANGES_PER_SYNC } from '@/lib/offline/server/taskChanges';
 import { grantCatalogueContract } from '@/lib/server/rewards/policy';
@@ -46,7 +46,9 @@ function attemptsAfter(cursorId: number): ServerAttempt[] {
   return db.prepare(`
     SELECT a.id, a.clientAttemptId, a.createdAt, a.completedAt, a.category, a.difficulty,
            a.questionCount, a.score, a.elapsedSeconds, a.learner, a.subject, a.topic, a.exerciseId,
-           r.awardedAmount AS earnedStars
+           r.awardedAmount AS earnedStars,
+           a.rewardSettlementStatus AS rewardSettlementStatus,
+           CASE WHEN a.clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END AS reviewReasonCode
     FROM attempts a
     LEFT JOIN study_attempt_rewards r ON r.attemptId = a.id
     WHERE a.id > ?
@@ -232,7 +234,7 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
       catalogueGrants: grants,
       dashboards: { kiur: dashboardFor('kiur'), kirsi: dashboardFor('kirsi') },
       taskTemplates: getSyncTaskTemplates(),
-      taskAssignments: [],
+      taskAssignments: getSyncTaskAssignments(),
       remediationBundles: []
     },
     hasMore: {

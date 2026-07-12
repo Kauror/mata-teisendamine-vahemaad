@@ -718,6 +718,31 @@ function applyRewardSettlementState(connection: DatabaseConnection) {
   `);
 }
 
+function neutralizeRewardSettlementHeuristic(connection: DatabaseConnection) {
+  // RTM2-C02: migration 3 inferred eligibility from the mere presence of reward
+  // components, which is unsafe. A legitimate attempt can have no component when
+  // its canonical reward is zero (below threshold, daily cap already reached,
+  // decayed to zero), so migration 3 could wrongly mark it 'withheld' and drop it
+  // from future decay/streak projections.
+  //
+  // We do not (and cannot) reconstruct true eligibility from components, so we
+  // undo migration 3's inference and fall back to the safe default: eligibility
+  // is authoritative only when set by insertAttempt at write time. At the moment
+  // migrations run, every 'withheld' row was produced by migration 3's heuristic
+  // (authoritative withholding is only ever written by the post-migration
+  // insert path), so reverting them to 'eligible' is safe here.
+  //
+  // Note: any attempt "poisoned" by the original RTM-003 defect (unpermitted but
+  // already carrying a component) was left 'eligible' by migration 3 and is not
+  // touched here; reconciling those requires an audited production-copy report,
+  // not a blind migration. This deployment enabled offline protocol v2 for the
+  // first time, so in practice there are no such pre-existing v2 attempts.
+  connection.exec(`
+    UPDATE attempts SET rewardSettlementStatus = 'eligible'
+    WHERE protocolVersion = 2 AND rewardSettlementStatus = 'withheld';
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -736,6 +761,12 @@ const migrations: Migration[] = [
     name: 'reward_settlement_state',
     checksumSource: 'reward_settlement_state:v1:2026-07-12',
     up: applyRewardSettlementState
+  },
+  {
+    id: 4,
+    name: 'neutralize_reward_settlement_heuristic',
+    checksumSource: 'neutralize_reward_settlement_heuristic:v1:2026-07-12',
+    up: neutralizeRewardSettlementHeuristic
   }
 ];
 
@@ -787,7 +818,10 @@ export function runMigrations(connection: DatabaseConnection) {
   }
 }
 
-export function openDatabase(filename: string): DatabaseConnection {
+// Open the SQLite file with the standard pragmas but WITHOUT running application
+// migrations. Used to take a pre-migration backup (RTM2-H01) before the normal
+// migrating open touches the schema or data.
+export function openRawConnection(filename: string): DatabaseConnection {
   if (filename !== ':memory:') {
     const parentDir = path.dirname(filename);
     if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir, { recursive: true });
@@ -796,6 +830,11 @@ export function openDatabase(filename: string): DatabaseConnection {
   connection.pragma('busy_timeout = 30000');
   connection.pragma('foreign_keys = ON');
   if (filename !== ':memory:') connection.pragma('journal_mode = WAL');
+  return connection;
+}
+
+export function openDatabase(filename: string): DatabaseConnection {
+  const connection = openRawConnection(filename);
   runMigrations(connection);
   return connection;
 }
