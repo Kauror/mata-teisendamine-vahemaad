@@ -108,6 +108,16 @@ const STATIC_LEARNING_EXERCISES: LearningExerciseCatalogEntry[] = [
     sortOrder: 600
   },
   {
+    id: 'kiur.science.loodusopetus',
+    title: 'Loodusõpetus',
+    learnerScope: ['kiur'],
+    subject: 'loodusopetus',
+    topic: 'segaharjutus',
+    category: 'Loodusõpetus',
+    routePath: '/kiur/loodusopetus',
+    sortOrder: 610
+  },
+  {
     id: 'kirsi.reading.pilt-ja-sona',
     title: 'Pilt ja sõna',
     learnerScope: ['kirsi'],
@@ -185,9 +195,9 @@ export function syncLearningExerciseCatalog() {
       for (const learner of exercise.learnerScope) {
         db.prepare(`
           INSERT INTO child_learning_exercise_settings (exerciseId, learner, status, updatedAt)
-          VALUES (?, ?, 'rotation', ?)
+          VALUES (?, ?, ?, ?)
           ON CONFLICT(exerciseId, learner) DO NOTHING
-        `).run(exercise.id, learner, updatedAt);
+        `).run(exercise.id, learner, exercise.id === 'kiur.science.loodusopetus' ? 'permanent' : 'rotation', updatedAt);
       }
     }
   });
@@ -245,7 +255,7 @@ export function subjectHasActiveLearningExercises(learner: Learner, subject: Lea
 }
 
 export function isLearningExerciseSubject(value: unknown): value is LearningExerciseSubject {
-  return value === 'matemaatika' || value === 'inglise-keel' || value === 'lugemine';
+  return value === 'matemaatika' || value === 'inglise-keel' || value === 'lugemine' || value === 'loodusopetus';
 }
 
 export function findLearningExerciseForAttempt(input: {

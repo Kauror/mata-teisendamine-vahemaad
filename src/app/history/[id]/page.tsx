@@ -103,7 +103,7 @@ function ClockHistoryVisual({ question }: { question: SavedQuestion }) {
 export default async function HistoryDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const db = await getDb();
-  const row = db.prepare('SELECT * FROM attempts WHERE id = ?').get(id) as AttemptRow | undefined;
+  const row = db.prepare('SELECT * FROM attempts WHERE id = ? AND deletedAt IS NULL').get(id) as AttemptRow | undefined;
 
   if (!row) {
     return <main className='container'><div className='card'><p>Testi ei leitud.</p><Link href='/'>Tagasi</Link></div></main>;

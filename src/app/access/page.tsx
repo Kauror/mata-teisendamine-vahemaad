@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { clearAuthBlockedSyncState, syncNow } from '@/lib/offline/syncEngine';
 
 export default function AccessPage() {
   const router = useRouter();
@@ -22,6 +23,8 @@ export default function AccessPage() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.message || 'PIN ei sobi.');
+      await clearAuthBlockedSyncState();
+      void syncNow('manual:family-login');
       router.replace('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'PIN ei sobi.');

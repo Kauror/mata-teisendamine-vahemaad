@@ -7,13 +7,14 @@ import {
   isLearningExerciseSubject
 } from '@/lib/learningExercises';
 import { captureMistakesForAttempt } from '@/lib/remediation';
-import { recordDailyLeaderboard } from '@/lib/leaderboard';
+import { rebuildDailyLeaderboard, recordDailyLeaderboard } from '@/lib/leaderboard';
 import { isoToAppDate, nowIso, todayDateString } from '@/lib/tasks';
 import { validateAgainstCatalogue } from '@/lib/offline/server/catalogVersions';
 import { reconcileStudyRewards } from '@/lib/offline/server/reconcile';
 import { recomputeScore, AttemptContractError } from '@/lib/server/attempts/scoreVerifier';
 import { catalogueGrantForAttempt, rewardPolicyByVersion, runnerContractForGrant } from '@/lib/server/rewards/policy';
 import { applyRewardProjectionV2, getProjectedRewardV2 } from '@/lib/server/rewards/projection';
+import { recomputeSprintQualifications } from '@/lib/sprintQualification';
 import { metadataMatchesContract, validateAttemptRecordV2 } from '@/lib/server/http/requestValidation';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import { isOfflineProtocolV2Enabled } from '@/lib/offline/protocol';
@@ -312,6 +313,10 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       persistedReviewReasonCode
     );
     const attemptId = Number(result.lastInsertRowid);
+    const isKiurSprint = learner === 'kiur' && (subject ?? rawSubject) === 'inglise-keel' && topic === 'sprint';
+    if (isKiurSprint) {
+      recomputeSprintQualifications();
+    }
     if (protocolVersion === 2) settlementFaultInjector?.('after_attempt');
 
     // In v2, every side effect is authoritative and must roll back with the
@@ -346,6 +351,9 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
           console.warn('Daily leaderboard snapshot failed', error);
         }
       }
+      // An older offline sprint can revise qualification on a later day, so a
+      // one-day refresh is insufficient. Rebuild all derived daily/monthly state.
+      if (isKiurSprint) rebuildDailyLeaderboard();
     }
     if (protocolVersion === 2) settlementFaultInjector?.('after_leaderboard');
 

@@ -25,16 +25,15 @@ import type { DatabaseConnection } from '../src/lib/db';
 //     closed on ANY pre-existing protocol-v2 attempt (including the documented
 //     eligible+components state migration 4 cannot repair) and reports each one,
 //     plus the daily_leaderboard / monthly_competition_awards rows that would
-//     need rebuilding, so an operator can reconcile explicitly and only then
-//     re-run with --approve-existing.
+//     need rebuilding. This rollout has no generic bypass: the live copy must
+//     contain zero pre-existing protocol-v2 attempts.
 //
 // Usage:
 //   MATHS_GAME_DB_FILE=/data/maths-game.sqlite npm run audit:v2
 //   npm run audit:v2 -- /data/maths-game.sqlite
 //   npm run audit:v2 -- /data/maths-game.sqlite --no-copy        (audit a copy you already made)
-//   npm run audit:v2 -- /data/maths-game.sqlite --approve-existing (after manual reconciliation)
 
-type Args = { source: string; noCopy: boolean; approveExisting: boolean };
+type Args = { source: string; noCopy: boolean };
 
 function parseArgs(): Args | null {
   const rest = process.argv.slice(2).filter((arg) => arg !== '--');
@@ -42,7 +41,7 @@ function parseArgs(): Args | null {
   const positional = rest.filter((arg) => !arg.startsWith('--'));
   const source = positional[0] ?? process.env.MATHS_GAME_DB_FILE;
   if (!source || source === ':memory:') return null;
-  return { source, noCopy: flags.has('--no-copy'), approveExisting: flags.has('--approve-existing') };
+  return { source, noCopy: flags.has('--no-copy') };
 }
 
 function tableExists(db: DatabaseConnection, name: string): boolean {
@@ -79,7 +78,7 @@ type AttemptRow = {
   componentCount: number;
 };
 
-function auditMigratedCopy(db: DatabaseConnection, approveExisting: boolean): number {
+function auditMigratedCopy(db: DatabaseConnection): number {
   // After migrations the offline schema always exists, so these queries are safe.
   const settlement = db.prepare(`
     SELECT protocolVersion, rewardSettlementStatus, COUNT(*) AS attemptCount
@@ -134,23 +133,18 @@ function auditMigratedCopy(db: DatabaseConnection, approveExisting: boolean): nu
     console.log(`  #${row.id} · ${row.rewardSettlementStatus.padEnd(12)} · comps=${row.componentCount} · ${row.catalogueVersion ?? '—'} · ${row.rewardPolicyVersion ?? '—'} · ${flags.length ? flags.join(',') : 'ok'}`);
   }
 
-  if (approveExisting) {
-    console.log('\n--approve-existing set: the operator has reconciled the attempts above. Audit passes.');
-    return 0;
-  }
-
   console.error(`\nAUDIT FAILED: ${v2Attempts.length} pre-existing protocol-v2 attempt(s) found.`);
   console.error('Migration 4 cannot prove any of these are clean (an originally-unpermitted attempt can');
   console.error("remain 'eligible' with components). Reconcile each attempt and the daily_leaderboard /");
-  console.error('monthly_competition_awards rows above (npm run leaderboard:rebuild), then re-run with');
-  console.error('--approve-existing.');
+  console.error('monthly_competition_awards rows above (npm run leaderboard:rebuild). Production rollout is blocked');
+  console.error('until a new audit copy reports zero pre-existing protocol-v2 attempts.');
   return 1;
 }
 
 async function main() {
   const args = parseArgs();
   if (!args) {
-    console.error('Usage: npm run audit:v2 -- <path-to-live-or-copied.sqlite> [--no-copy] [--approve-existing]');
+    console.error('Usage: npm run audit:v2 -- <path-to-live-or-copied.sqlite> [--no-copy]');
     process.exit(2);
     return;
   }
@@ -179,7 +173,7 @@ async function main() {
   const db = openDatabase(disposableForMigration);
   let exitCode = 0;
   try {
-    exitCode = auditMigratedCopy(db, args.approveExisting);
+    exitCode = auditMigratedCopy(db);
   } finally {
     db.close();
     if (!args.noCopy) fs.rmSync(path.dirname(workingCopy), { recursive: true, force: true });

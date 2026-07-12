@@ -9,6 +9,7 @@ import { nowIso, todayDateString, type Learner } from '@/lib/tasks';
 const PRIZE_KEY = 'monthly_trophy_prize_stars';
 const DEFAULT_PRIZE_STARS = 10;
 const MAX_PRIZE_STARS = 1000;
+const MONTHLY_PRIZE_POLICY_VERSION = 'monthly-prize-v1';
 
 export type MonthlyStanding = {
   month: string; // 'YYYY-MM'
@@ -190,9 +191,9 @@ export function ensureMonthlyPrizeAwarded(today = todayDateString()) {
     }
 
     db.prepare(`
-      INSERT INTO monthly_competition_awards (month, winner, kiurTrophies, kirsiTrophies, kiurExercises, kirsiExercises, prizeStars, ledgerEntryId, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(month, standing.leader, standing.kiurTrophies, standing.kirsiTrophies, standing.kiurExercises, standing.kirsiExercises, awardedStars, ledgerEntryId, createdAt);
+      INSERT INTO monthly_competition_awards (month, winner, kiurTrophies, kirsiTrophies, kiurExercises, kirsiExercises, prizeStars, ledgerEntryId, createdAt, configuredPrizeStars, prizePolicyVersion, settledAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(month, standing.leader, standing.kiurTrophies, standing.kirsiTrophies, standing.kiurExercises, standing.kirsiExercises, awardedStars, ledgerEntryId, createdAt, prizeStars, MONTHLY_PRIZE_POLICY_VERSION, createdAt);
   });
   settle();
 }
@@ -237,13 +238,13 @@ export type MonthlyReconciliation = {
 // and grants the new one. No-op until the month has actually been settled
 // (ensureMonthlyPrizeAwarded owns the first settlement).
 export function reconcileMonthlyPrize(month: string): MonthlyReconciliation | null {
-  const existing = db.prepare('SELECT winner, prizeStars FROM monthly_competition_awards WHERE month = ?').get(month) as
-    | { winner: string; prizeStars: number }
+  const existing = db.prepare('SELECT winner, prizeStars, configuredPrizeStars FROM monthly_competition_awards WHERE month = ?').get(month) as
+    | { winner: string; prizeStars: number; configuredPrizeStars: number | null }
     | undefined;
   if (!existing) return null;
 
   const standing = standingForMonth(month);
-  const prizeStars = getMonthlyPrizeStars();
+  const prizeStars = existing.configuredPrizeStars ?? existing.prizeStars;
   const eligibleWinner: Learner | null =
     standing.leader !== 'tie' && prizeStars > 0 && metPrizeAttendance(month, standing.leader) ? standing.leader : null;
   const target: Record<Learner, number> = { kiur: 0, kirsi: 0 };

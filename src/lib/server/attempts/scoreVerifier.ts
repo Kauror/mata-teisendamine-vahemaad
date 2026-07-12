@@ -141,18 +141,21 @@ function verifyScience(input: VerifiableAttempt) {
 function verifyPictureWords(input: VerifiableAttempt) {
   const contracts = new Map(KIRSI_READING_PAIRS.map((pair) => [pair.id, pair]));
   return input.questions.map((question, index) => {
-    const expected = contracts.get(input.questionIds[index]);
+    const actual = row(question);
+    const vocabularyId = typeof actual.vocabularyId === 'string' ? actual.vocabularyId : input.questionIds[index].split(':').at(-1);
+    const expected = vocabularyId ? contracts.get(vocabularyId) : undefined;
     if (!expected) throw new AttemptContractError(`Unknown picture-word task ${input.questionIds[index]}.`);
-    return normalize(row(question).selectedWord ?? answerOf(row(question))) === normalize(expected.word);
+    return normalize(actual.selectedWord ?? answerOf(actual)) === normalize(expected.word);
   });
 }
 
 function verifyEnglish(input: VerifiableAttempt) {
   const contracts = new Map(ENGLISH_VOCABULARY.map((word) => [word.id, word]));
   return input.questions.map((question, index) => {
-    const expected = contracts.get(input.questionIds[index]);
-    if (!expected) throw new AttemptContractError(`Unknown English vocabulary item ${input.questionIds[index]}.`);
     const actual = row(question);
+    const vocabularyId = typeof actual.vocabularyId === 'string' ? actual.vocabularyId : input.questionIds[index].split(':').at(-1);
+    const expected = vocabularyId ? contracts.get(vocabularyId) : undefined;
+    if (!expected) throw new AttemptContractError(`Unknown English vocabulary item ${input.questionIds[index]}.`);
     const direction = actual.direction === 'et-en' ? 'et-en' : 'en-et';
     const expectedAnswer = direction === 'et-en' ? expected.english : expected.estonian;
     return normalize(answerOf(actual)) === normalize(expectedAnswer);

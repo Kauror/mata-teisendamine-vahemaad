@@ -35,6 +35,7 @@ type ReviewItem = {
   image: string;
   selectedWord: string;
   correctWord: string;
+  vocabularyId: string;
 };
 
 type WrongMatch = {
@@ -306,8 +307,8 @@ export default function KirsiPictureWordSprintPage() {
     if (endedRef.current || storageError) return;
 
     const item: ReviewItem = {
-      taskId: picture.id,
-      id: `${runId ?? 'run'}-${reviewItems.length}`,
+        taskId: `${runId ?? 'run'}:${boardIndex}:${reviewItems.length}:${picture.id}`,
+        id: `${runId ?? 'run'}:${boardIndex}:${reviewItems.length}:${picture.id}`,
       question: `${picture.image} — ${picture.word}`,
       userAnswer: selected.word,
       correctAnswer: 0,
@@ -315,7 +316,8 @@ export default function KirsiPictureWordSprintPage() {
       kind: 'choice',
       image: picture.image,
       selectedWord: selected.word,
-      correctWord: picture.word
+        correctWord: picture.word,
+        vocabularyId: picture.id
     };
     setReviewItems((prev) => [...prev, item]);
 

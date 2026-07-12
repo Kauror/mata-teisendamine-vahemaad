@@ -152,6 +152,12 @@ export async function applySyncEnvelope(input: SyncApplyInput): Promise<SyncAppl
     }
 
     const putCanonical = async (canonical: ServerAttempt) => {
+      // SQLite returns JSON columns as text; IndexedDB keeps the parsed compact
+      // review payload so confirmed details remain available offline.
+      if (typeof canonical.questions === 'string') {
+        try { canonical = { ...canonical, questions: JSON.parse(canonical.questions) }; }
+        catch { canonical = { ...canonical, questions: [] }; }
+      }
       if (canonical.clientAttemptId) {
         const index = history.index('byClientAttemptId');
         let cursor = await index.openCursor(IDBKeyRange.only(canonical.clientAttemptId));

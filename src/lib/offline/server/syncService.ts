@@ -45,7 +45,7 @@ function dashboardFor(learner: Learner): ChildDashboardSnapshot {
 
 function attemptsAfter(cursorId: number): ServerAttempt[] {
   return db.prepare(`
-    SELECT a.id, a.clientAttemptId, a.createdAt, a.completedAt, a.category, a.difficulty,
+    SELECT a.id, a.clientAttemptId, a.createdAt, a.completedAt, a.category, a.difficulty, a.questions,
            a.questionCount, a.score, a.elapsedSeconds, a.learner, a.subject, a.topic, a.exerciseId,
            -- RTM3-M03: canonical total of every current reward component, so the
            -- device history shows the same stars the ledger actually granted.
@@ -81,7 +81,7 @@ function canonicalAttemptsByIds(ids: number[]): ServerAttempt[] {
   if (ids.length === 0) return [];
   const placeholders = ids.map(() => '?').join(', ');
   return db.prepare(`
-    SELECT a.id, a.clientAttemptId, a.createdAt, a.completedAt, a.category, a.difficulty,
+    SELECT a.id, a.clientAttemptId, a.createdAt, a.completedAt, a.category, a.difficulty, a.questions,
            a.questionCount, a.score, a.elapsedSeconds, a.learner, a.subject, a.topic, a.exerciseId,
            COALESCE((
              SELECT SUM(latest.canonicalAmount)

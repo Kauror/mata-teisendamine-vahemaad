@@ -5,7 +5,7 @@
 export type Learner = 'kiur' | 'kirsi';
 
 export type LearningExerciseStatus = 'hidden' | 'rotation' | 'permanent';
-export type LearningExerciseSubject = 'matemaatika' | 'inglise-keel' | 'lugemine';
+export type LearningExerciseSubject = 'matemaatika' | 'inglise-keel' | 'lugemine' | 'loodusopetus';
 
 // The parent-configured catalogue entry for one exercise, plus each child's
 // visibility status. Mirrors the server's LearningExerciseRow but lives in a
@@ -151,6 +151,9 @@ export type ServerAttempt = {
   // Absent/'eligible' for legacy v1 rows and normal v2 rows.
   rewardSettlementStatus?: 'eligible' | 'withheld' | 'needs_review' | null;
   reviewReasonCode?: string | null;
+  // Compact but complete review payload, retained by IndexedDB after sync so a
+  // confirmed result remains reviewable without a network route.
+  questions?: unknown[];
 };
 
 export function isHeldRewardStatus(status: ServerAttempt['rewardSettlementStatus']): boolean {

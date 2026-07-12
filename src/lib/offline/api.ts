@@ -274,6 +274,8 @@ export type OfflineHistoryItem = {
   rewardSettlementStatus?: 'eligible' | 'withheld' | 'needs_review' | null;
   reviewReasonCode?: string | null;
   pending?: boolean;
+  localStatus?: 'pending' | 'syncing' | 'rejected' | 'needs_review';
+  reasonCode?: string;
 };
 
 // Merged exercise history for offline viewing: confirmed cached attempts plus any
@@ -316,7 +318,9 @@ export async function getMergedExerciseHistory(): Promise<OfflineHistoryItem[]> 
       subject: local.subject,
       topic: local.topic,
       earnedStars: null,
-      pending: true
+      pending: local.status === 'pending' || local.status === 'syncing',
+      localStatus: local.status === 'confirmed' ? undefined : local.status,
+      reasonCode: local.reasonCode
     });
   }
 

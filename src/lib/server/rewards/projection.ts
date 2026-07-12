@@ -4,6 +4,7 @@ import { getBalance, type Learner } from '@/lib/tasks';
 import { recordDailyLeaderboard } from '@/lib/leaderboard';
 import { REWARD_ENGINE_VERSION, rewardPolicyByVersion, type RewardPolicyV2 } from '@/lib/server/rewards/policy';
 import { emitAttemptChange } from '@/lib/offline/server/attemptChanges';
+import { sprintAttemptQualifies } from '@/lib/sprintReward';
 
 export type ProjectionAttempt = {
   id: number;
@@ -16,6 +17,8 @@ export type ProjectionAttempt = {
   completionDate: string;
   effectiveCompletedAt: string;
   rewardPolicyVersion: string;
+  subject?: string | null;
+  topic?: string | null;
 };
 
 export type CanonicalComponent = {
@@ -65,7 +68,8 @@ export function projectCanonicalRewardsPure(
       const attemptNumber = (exerciseCounts.get(exerciseKey) ?? 0) + 1;
       exerciseCounts.set(exerciseKey, attemptNumber);
       const scorePercent = attempt.questionCount > 0 ? attempt.score / attempt.questionCount : 0;
-      const qualifies = policy.learning.learningPointsEnabled && scorePercent >= policy.learning.minimumScorePercent;
+      const qualifies = policy.learning.learningPointsEnabled && scorePercent >= policy.learning.minimumScorePercent &&
+        sprintAttemptQualifies(attempt);
       const base = Math.max(policy.learning.minimumValue, policy.learning.baseValue - policy.learning.decayStep * (attemptNumber - 1));
       const remaining = Math.max(0, policy.learning.dailyCap - dailyAwarded);
       const study = qualifies ? rounded(Math.min(base, remaining)) : 0;
@@ -135,10 +139,11 @@ function projectionAttempts(learner: Learner): ProjectionAttempt[] {
   // decay, contribute to a streak, or throw an unknown-policy error here (RTM-003).
   return db.prepare(`
     SELECT id, clientAttemptId, learner, exerciseId, runnerId, score, questionCount,
-           completionDate, effectiveCompletedAt, rewardPolicyVersion
+           completionDate, effectiveCompletedAt, rewardPolicyVersion, subject, topic
     FROM attempts
     WHERE learner = ? AND protocolVersion = 2 AND rewardPolicyVersion IS NOT NULL
       AND rewardSettlementStatus = 'eligible'
+      AND deletedAt IS NULL
       AND completionDate IS NOT NULL AND effectiveCompletedAt IS NOT NULL
       AND exerciseId IS NOT NULL AND runnerId IS NOT NULL
   `).all(learner) as ProjectionAttempt[];

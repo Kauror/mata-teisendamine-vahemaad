@@ -39,6 +39,7 @@ export async function GET() {
         CASE WHEN a.clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END) as reviewReasonCode
     FROM attempts a
     LEFT JOIN study_attempt_rewards r ON r.attemptId = a.id
+    WHERE a.deletedAt IS NULL
     ORDER BY a.createdAt DESC
   `).all();
   return NextResponse.json(rows);

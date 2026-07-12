@@ -10,13 +10,16 @@ import {
   createRunnerSession,
   ensureRunIdInCurrentUrl,
   finalizeRunnerSession,
+  getCatalogueContract,
   getLocalAttempt,
   loadRunnerSession,
   patchRunnerSession,
   runnerStorageFailure
 } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
-import { GENERATOR_VERSION, LEGACY_REWARD_POLICY_VERSION, ROTATION_ALGORITHM_VERSION } from '@/lib/shared/types';
+import type { CatalogueContract } from '@/lib/offline/api';
+import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
+import { ROTATION_ALGORITHM_VERSION } from '@/lib/shared/types';
 
 const EYEBROW: Record<ScienceTaskType, string> = {
   visual_choice: 'Vaata skeemi ja vali õige vastus',
@@ -167,6 +170,7 @@ function ScienceTestContent() {
   const [startedAt, setStartedAt] = useState(new Date().toISOString());
   const seedRef = useRef<number | string>(seed);
   const snapshotRef = useRef<Partial<ScienceSession>>({});
+  const contractRef = useRef<CatalogueContract | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -177,6 +181,15 @@ function ScienceTestContent() {
       if (cancelled) return;
       if (existing) {
         if (existing.runnerId !== 'kiur-science') throw new Error('See salvestatud jooks kuulub teisele harjutusele.');
+        contractRef.current = {
+          catalogueVersion: existing.catalogueVersion ?? '',
+          rewardPolicyVersion: existing.rewardPolicyVersion ?? '',
+          generatorVersion: existing.generatorVersion,
+          runnerVersion: existing.runnerVersion,
+          rotationVersion: existing.rotationVersion ?? ROTATION_ALGORITHM_VERSION,
+          algorithmVersion: existing.rotationVersion ?? ROTATION_ALGORITHM_VERSION,
+          dailyLimit: 0
+        };
         const state = existing.runnerState;
         seedRef.current = existing.seed ?? seed;
         setStartedAt(existing.startedAt);
@@ -206,6 +219,9 @@ function ScienceTestContent() {
           groups: task.type === 'sort' ? shuffleStable(task.groups, `${task.id}:${seed}:groups`) : undefined
         };
       }
+      const contract = await getCatalogueContract('kiur');
+      const capability = getOfflineRunnerCapability('kiur-science');
+      if (!contract || !capability) throw new Error('Ühenda seade internetiga, et loodusõpetus enne võrguühenduseta kasutamist ette valmistada.');
       const beganAt = new Date().toISOString();
       await createRunnerSession<ReturnType<typeof pickScienceSession>[number], SavedScienceQuestion, ScienceRunnerState, null>({
         runId: id,
@@ -221,15 +237,16 @@ function ScienceTestContent() {
         answers: [],
         currentPhase: 'question',
         runnerState: { choiceSel: {}, sortSel: {}, matchSel: {}, checked: {}, showStopConfirm: false },
-        catalogueVersion: null,
-        rewardPolicyVersion: LEGACY_REWARD_POLICY_VERSION,
-        generatorVersion: GENERATOR_VERSION,
-        runnerVersion: 'science-v1',
-        rotationVersion: ROTATION_ALGORITHM_VERSION,
+        catalogueVersion: contract.catalogueVersion,
+        rewardPolicyVersion: contract.rewardPolicyVersion,
+        generatorVersion: capability.generatorVersion,
+        runnerVersion: capability.runnerVersion,
+        rotationVersion: capability.rotationVersion,
         startedAt: beganAt
       });
       if (cancelled) return;
       seedRef.current = seed;
+      contractRef.current = contract;
       setStartedAt(beganAt);
       setSession(questions);
       setDisplayOrder(order);
@@ -420,24 +437,27 @@ function ScienceTestContent() {
     const results = session.map((_, i) => serialize(i));
     const score = results.filter((result) => result.isCorrect).length;
     try {
-      // Science is always available and not part of the rotating catalogue, so no
-      // catalogueVersion is attached. Local-first save, then best-effort sync.
+      // Local-first save, then best-effort sync under the immutable catalogue
+      // grant captured when this permanent runner started.
+      const contract = contractRef.current;
+      const capability = getOfflineRunnerCapability('kiur-science');
+      if (!contract || !capability) throw new Error('Harjutuse kataloogileping puudub.');
       const outcome = await finalizeRunnerSession({
         runId,
         seed: seedRef.current,
-        runnerId: 'kiur-science',
+        runnerId: capability.runnerId,
         questionIds: session.map((task) => task.id),
-        rewardPolicyVersion: LEGACY_REWARD_POLICY_VERSION,
-        generatorVersion: GENERATOR_VERSION,
-        runnerVersion: 'science-v1',
-        rotationVersion: ROTATION_ALGORITHM_VERSION,
+        rewardPolicyVersion: contract.rewardPolicyVersion,
+        generatorVersion: capability.generatorVersion,
+        runnerVersion: capability.runnerVersion,
+        rotationVersion: capability.rotationVersion,
         learner: 'kiur',
         subject: 'loodusopetus',
         topic: 'segaharjutus',
         category: 'Loodusõpetus',
         difficulty: 'segaharjutus',
         exerciseId: 'kiur.science.loodusopetus',
-        catalogueVersion: null,
+        catalogueVersion: contract.catalogueVersion,
         startedAt,
         questionCount: session.length,
         score,

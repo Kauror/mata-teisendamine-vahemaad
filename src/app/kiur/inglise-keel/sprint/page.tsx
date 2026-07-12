@@ -42,6 +42,7 @@ type SprintReviewItem = {
   kind: 'choice';
   choiceOptions: string[];
   explanation?: string;
+  vocabularyId: string;
 };
 
 type EnglishSprintRunnerState = {
@@ -254,13 +255,20 @@ export default function SprintPage() {
     const finalScore = scoreRef.current;
     const finalPairs = pairsRef.current;
     const finalMistakes = mistakesRef.current;
-    const finalQuestionCount = Math.max(1, finalPairs + finalMistakes);
+    const finalQuestionCount = finalPairs + finalMistakes;
 
     if (finalScore > best) {
       setBest(finalScore);
     }
 
     const questions = reviewItems;
+
+    // A timed-out run with no interaction is not an attempt. Persisting a fake
+    // questionCount would create an unrecoverable v2 validation failure.
+    if (questions.length === 0 || finalQuestionCount !== questions.length) {
+      window.location.replace('/kiur/inglise-keel');
+      return;
+    }
 
     // Local-first: save the run to IndexedDB, then best-effort sync. The result
     // shows immediately whether online or off.
@@ -379,8 +387,8 @@ export default function SprintPage() {
     <EnglishMatchingBoard words={boardWords} layoutSeed={boardLayoutSeed} state={boardState} onStateChange={setBoardState} onPair={(ok, word, chosenOption) => {
       if (endedRef.current || storageError) return;
       const item: SprintReviewItem = {
-        id: `${runId ?? 'run'}-${reviewItems.length}`,
-        taskId: word.id,
+        id: `${runId ?? 'run'}:${boardSeed}:${reviewItems.length}:${word.id}`,
+        taskId: `${runId ?? 'run'}:${boardSeed}:${reviewItems.length}:${word.id}`,
         question: word.english,
         userAnswer: chosenOption.estonian,
         correctAnswer: 0,
@@ -388,7 +396,8 @@ export default function SprintPage() {
         isCorrect: ok,
         kind: 'choice',
         choiceOptions: [word.estonian],
-        explanation: ok ? undefined : `Valisid: ${chosenOption.estonian}. Õige vastus: ${word.estonian}.`
+        explanation: ok ? undefined : `Valisid: ${chosenOption.estonian}. Õige vastus: ${word.estonian}.`,
+        vocabularyId: word.id
       };
       setReviewItems((items) => [...items, item]);
       if (ok) {

@@ -702,6 +702,13 @@ function applyRewardSettlementState(connection: DatabaseConnection) {
   // 'needs_review' attempts never award, affect caps/decay/streaks, nor can they
   // throw an unknown-policy error inside a later valid learner's projection.
   addColumn(connection, 'attempts', 'rewardSettlementStatus', "TEXT NOT NULL DEFAULT 'eligible'");
+  addColumn(connection, 'attempts', 'recordBeforeRun', 'INTEGER');
+  addColumn(connection, 'attempts', 'requiredScore', 'INTEGER');
+  addColumn(connection, 'attempts', 'sprintQualified', 'INTEGER');
+  addColumn(connection, 'attempts', 'qualificationRuleVersion', 'TEXT');
+  // Hiding history must not remove the accounting source row.
+  addColumn(connection, 'attempts', 'deletedAt', 'TEXT');
+  addColumn(connection, 'attempts', 'deletedReason', 'TEXT');
 
   // Cure any already-poisoned data: a protocol-v2 attempt that was never
   // projected has no reward components. Those are exactly the unpermitted /
@@ -715,6 +722,21 @@ function applyRewardSettlementState(connection: DatabaseConnection) {
   connection.exec(`
     CREATE INDEX IF NOT EXISTS idx_attempts_reward_settlement
       ON attempts(learner, rewardSettlementStatus, protocolVersion);
+    CREATE INDEX IF NOT EXISTS idx_attempts_sprint_qualification
+      ON attempts(learner, subject, topic, effectiveCompletedAt, clientAttemptId, id);
+  `);
+
+  addColumn(connection, 'monthly_competition_awards', 'configuredPrizeStars', 'REAL');
+  addColumn(connection, 'monthly_competition_awards', 'prizePolicyVersion', 'TEXT');
+  addColumn(connection, 'monthly_competition_awards', 'settledAt', 'TEXT');
+  // Existing awards predate policy snapshots; their actually awarded amount is
+  // the only safe historical policy value we can infer.
+  connection.exec(`
+    UPDATE monthly_competition_awards
+    SET configuredPrizeStars = prizeStars,
+        prizePolicyVersion = COALESCE(prizePolicyVersion, 'legacy-unsnapshotted'),
+        settledAt = COALESCE(settledAt, createdAt)
+    WHERE configuredPrizeStars IS NULL OR prizePolicyVersion IS NULL OR settledAt IS NULL
   `);
 }
 

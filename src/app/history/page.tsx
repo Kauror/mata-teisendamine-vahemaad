@@ -23,6 +23,8 @@ type ExerciseHistory = {
   topic?: string | null;
   earnedStars?: number | null;
   pending?: boolean;
+  localStatus?: 'pending' | 'syncing' | 'rejected' | 'needs_review';
+  reasonCode?: string;
   clientAttemptId?: string;
   rewardSettlementStatus?: 'eligible' | 'withheld' | 'needs_review' | null;
   reviewReasonCode?: string | null;
@@ -293,7 +295,8 @@ export default function HistoryPage() {
                       const scoreText = h.kind === 'task' ? `${h.amount > 0 ? '+' : ''}${h.amount} ⭐` : h.kind === 'store' ? `-${h.priceSnapshot} ⭐` : `${h.score}/${h.questionCount} · ${percent}% · ${elapsed}`;
                       const isPending = isExercise && (h as ExerciseHistory).pending === true;
                       const isHeld = isExercise && isHeldReward((h as ExerciseHistory).rewardSettlementStatus);
-                      const detailText = isPending ? 'Ootab sünkroonimist' : isHeld ? HELD_REWARD_MESSAGE : h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
+                      const localStatus = isExercise ? (h as ExerciseHistory).localStatus : undefined;
+                      const detailText = localStatus === 'rejected' ? 'Sünkroonimine lükati tagasi — vajab parandust või uuendust.' : localStatus === 'needs_review' ? 'Tulemus ootab vanema ülevaatust.' : isPending ? 'Ootab sünkroonimist' : isHeld ? HELD_REWARD_MESSAGE : h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
 
                       return (
                         <div key={`${h.kind}-${h.id}`} className='history-row'>

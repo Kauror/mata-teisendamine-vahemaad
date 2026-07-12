@@ -204,6 +204,13 @@ async function writeRetryState(state: Omit<SyncRetryState, 'updatedAt'>): Promis
   await metaRepo.put(RETRY_STATE_KEY, { ...state, updatedAt: new Date().toISOString() });
 }
 
+// A successful family PIN login establishes fresh credentials. Do not leave a
+// persisted 401 block preventing normal reconnect/startup sync afterwards.
+export async function clearAuthBlockedSyncState(): Promise<void> {
+  const state = await retryState();
+  if (state.status === 'auth_blocked') await writeRetryState({ status: 'idle', retryCount: 0 });
+}
+
 async function scheduleRetry(message: string): Promise<string> {
   const current = await retryState();
   const retryCount = current.retryCount + 1;
