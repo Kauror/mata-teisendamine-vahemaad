@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
-import { compactTopicLabel, isKirsiAttempt } from '@/lib/history';
+import { compactTopicLabel, HELD_REWARD_MESSAGE, isHeldReward, isKirsiAttempt } from '@/lib/history';
 import { KIUR_LENGTH_TOPIC_ID } from '@/lib/kiurMathTopics';
 import { formatStars } from '@/lib/formatStars';
 import { getStudyReward } from '@/lib/learningPoints';
@@ -58,6 +58,7 @@ type AttemptRow = {
   learner?: string | null;
   subject?: string | null;
   topic?: string | null;
+  rewardSettlementStatus?: string | null;
 };
 
 function safeParseQuestions(raw: string): SavedQuestion[] {
@@ -153,6 +154,9 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
       <section className='result-shell'>
         <section className='result-summary-card'>
           <h1>Tulemus</h1>
+          {isHeldReward(row.rewardSettlementStatus) && (
+            <p className='result-held-notice' role='status'>{HELD_REWARD_MESSAGE}</p>
+          )}
           <p className='result-score'>{row.score} / {row.questionCount} õige</p>
           <div className='result-meta-grid'>
             <span>Teema: {attemptLabel}</span>

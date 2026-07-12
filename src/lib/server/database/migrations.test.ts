@@ -20,10 +20,11 @@ describe('versioned SQLite migrations', () => {
         { id: 1, name: 'legacy_schema_baseline', length: 64 },
         { id: 2, name: 'offline_protocol_v2_foundation', length: 64 },
         { id: 3, name: 'reward_settlement_state', length: 64 },
-        { id: 4, name: 'neutralize_reward_settlement_heuristic', length: 64 }
+        { id: 4, name: 'neutralize_reward_settlement_heuristic', length: 64 },
+        { id: 5, name: 'persist_review_reason_code', length: 64 }
       ]);
       runMigrations(connection);
-      expect((connection.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get() as { count: number }).count).toBe(4);
+      expect((connection.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get() as { count: number }).count).toBe(5);
       expect(verifyDatabase(connection).integrity).toBe('ok');
     } finally {
       connection.close();
@@ -91,7 +92,7 @@ describe('versioned SQLite migrations', () => {
     const result = await prepareDatabaseForStartup(file, path.join(directory, 'backups'));
     expect(result.backupFile).toBeTruthy();
     expect(fs.existsSync(result.backupFile!)).toBe(true);
-    expect(result.verification.migrationCount).toBe(4);
+    expect(result.verification.migrationCount).toBe(5);
 
     // RTM2-H01: the backup must be the PRE-migration database, so it can restore
     // the original if a migration corrupts data. Prove it lacks anything the

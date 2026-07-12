@@ -284,6 +284,9 @@ export type OfflineSyncCursorV2 = {
   lastTombstoneId: number;
   lastTaskChangeId: number;
   lastRemediationChangeId: number;
+  // RTM3-H01: cursor over the attempt-update stream, so existing cached attempts
+  // whose settlement/reward changed after they were first pulled are re-delivered.
+  lastAttemptChangeId?: number;
   historyEpoch: number;
   catalogueVersions: Partial<Record<Learner, string>>;
   historyBackfillCursor?: number | null;

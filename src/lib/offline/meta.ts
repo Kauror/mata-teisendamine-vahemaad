@@ -48,6 +48,7 @@ export type SyncCursor = {
   lastTombstoneId: number;
   lastTaskChangeId: number;
   lastRemediationChangeId: number;
+  lastAttemptChangeId: number;
   historyEpoch: number;
   catalogueVersions: Partial<Record<Learner, string>>;
   historyBackfillCursor?: number | null;
@@ -63,6 +64,7 @@ export async function getCursor(): Promise<SyncCursor> {
     lastTombstoneId: cursor.lastTombstoneId ?? 0,
     lastTaskChangeId: cursor.lastTaskChangeId ?? 0,
     lastRemediationChangeId: cursor.lastRemediationChangeId ?? 0,
+    lastAttemptChangeId: cursor.lastAttemptChangeId ?? 0,
     historyEpoch: cursor.historyEpoch ?? 0,
     catalogueVersions: cursor.catalogueVersions ?? {},
     historyBackfillCursor: cursor.historyBackfillCursor,

@@ -152,6 +152,7 @@ function cursorV2(cursor: SyncCursor): OfflineSyncCursorV2 {
     lastTombstoneId: cursor.lastTombstoneId,
     lastTaskChangeId: cursor.lastTaskChangeId,
     lastRemediationChangeId: cursor.lastRemediationChangeId,
+    lastAttemptChangeId: cursor.lastAttemptChangeId,
     historyEpoch: cursor.historyEpoch,
     catalogueVersions: cursor.catalogueVersions,
     historyBackfillCursor: cursor.historyBackfillCursor,

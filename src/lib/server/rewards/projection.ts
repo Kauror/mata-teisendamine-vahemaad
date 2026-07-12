@@ -3,6 +3,7 @@ import { addAppDays } from '@/lib/appDate';
 import { getBalance, type Learner } from '@/lib/tasks';
 import { recordDailyLeaderboard } from '@/lib/leaderboard';
 import { REWARD_ENGINE_VERSION, rewardPolicyByVersion, type RewardPolicyV2 } from '@/lib/server/rewards/policy';
+import { emitAttemptChange } from '@/lib/offline/server/attemptChanges';
 
 export type ProjectionAttempt = {
   id: number;
@@ -178,6 +179,10 @@ export function approveHeldRewardAttempt(attemptId: number): AppliedProjection |
   return db.transaction(() => {
     db.prepare("UPDATE attempts SET rewardSettlementStatus = 'eligible' WHERE id = ? AND rewardSettlementStatus <> 'eligible'").run(attemptId);
     const applied = applyRewardProjectionV2(row.learner, attemptId);
+    // The approved attempt itself changed (settlement flipped to eligible, stars
+    // now awarded). It is the projection trigger, so the projection loop skips it;
+    // emit an update notice so devices that cached it as held refresh it (RTM3-H01).
+    emitAttemptChange(attemptId, 'approved');
     // The attempt now counts: refresh every derived aggregate it feeds, including
     // the daily leaderboard for its completion day (RTM2-H03).
     if (row.completionDate) recordDailyLeaderboard(row.completionDate);
@@ -201,7 +206,8 @@ export function listHeldRewardAttempts(): HeldRewardAttempt[] {
   return db.prepare(`
     SELECT id, learner, completionDate, score, questionCount, exerciseId,
            rewardSettlementStatus AS status,
-           CASE WHEN clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END AS reviewReasonCode
+           COALESCE(reviewReasonCode,
+             CASE WHEN clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END) AS reviewReasonCode
     FROM attempts
     WHERE protocolVersion = 2 AND rewardSettlementStatus IN ('withheld', 'needs_review')
     ORDER BY completionDate DESC, id DESC
@@ -256,6 +262,7 @@ export function applyRewardProjectionV2(
     const previous = new Map(previousRows.map((component) => [component.componentKey, component]));
     const keys = new Set([...desired.keys(), ...previous.keys()]);
     let maximumRevision = 0;
+    let attemptChanged = false;
     for (const key of [...keys].sort()) {
       const before = previous.get(key);
       const target = desired.get(key);
@@ -307,9 +314,16 @@ export function applyRewardProjectionV2(
       );
       maximumRevision = Math.max(maximumRevision, revision);
       changedComponents += 1;
+      attemptChanged = true;
       options.faultInjector?.('after_component');
     }
     db.prepare('UPDATE attempts SET rewardRevision = ? WHERE id = ?').run(maximumRevision, attempt.id);
+    // RTM3-H01: a reprojection triggered by a *later* attempt can revise this
+    // earlier attempt's reward. It keeps its id, so the ID-cursor pull would miss
+    // it — notify devices to refresh their cached copy. The trigger attempt is
+    // delivered by the normal id-cursor pull (or, for approval, emitted by the
+    // caller), so it does not need a change-log row here.
+    if (attemptChanged && attempt.id !== triggerAttemptId) emitAttemptChange(attempt.id);
 
     const study = desired.get('study');
     const policy = rewardPolicyByVersion(attempt.rewardPolicyVersion);

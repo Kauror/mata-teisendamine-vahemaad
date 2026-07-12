@@ -13,7 +13,17 @@ export type DailyLeaderboardRow = {
   winner: DailyWinner;
 };
 
-type AttemptCountRow = { id: number; category: string; learner: string | null; createdAt: string; subject: string | null; topic: string | null; score: number };
+type AttemptCountRow = {
+  id: number;
+  category: string;
+  learner: string | null;
+  createdAt: string;
+  subject: string | null;
+  topic: string | null;
+  score: number;
+  protocolVersion: number;
+  rewardSettlementStatus: string;
+};
 
 function winnerOf(kiurCount: number, kirsiCount: number): DailyWinner {
   if (kiurCount === kirsiCount) return 'tie';
@@ -21,13 +31,30 @@ function winnerOf(kiurCount: number, kirsiCount: number): DailyWinner {
 }
 
 function allAttempts(): AttemptCountRow[] {
-  return db.prepare('SELECT id, category, learner, createdAt, subject, topic, score FROM attempts').all() as AttemptCountRow[];
+  return db
+    .prepare('SELECT id, category, learner, createdAt, subject, topic, score, protocolVersion, rewardSettlementStatus FROM attempts')
+    .all() as AttemptCountRow[];
+}
+
+// An attempt only counts towards the daily competition when it is authoritative.
+//
+// RTM3-C01: a protocol-v2 attempt that was held for review or withheld (an
+// unpermitted grant, clock drift, a failed catalogue check) must never affect
+// the daily winner, trophy count, monthly attendance or the monthly star prize.
+// The reward engine already filters these out (rewardSettlementStatus =
+// 'eligible'); the leaderboard has to apply the exact same gate, otherwise a held
+// attempt that is still sitting in `attempts` gets counted the moment a later
+// valid attempt — or the backfill — recalculates that date. Legacy v1 attempts
+// have no settlement lifecycle and continue to count under the legacy rules.
+function isAuthoritativeAttempt(row: AttemptCountRow) {
+  if (row.protocolVersion === 2) return row.rewardSettlementStatus === 'eligible';
+  return true;
 }
 
 // A sprint run that does not clear Kiur's half-of-record threshold earns no
 // trophy, so it must not be counted towards the daily competition either.
 function countsTowardsLeaderboard(row: AttemptCountRow) {
-  return sprintAttemptQualifies(row);
+  return isAuthoritativeAttempt(row) && sprintAttemptQualifies(row);
 }
 
 // Counts the exercises each child completed on the given local date, using the

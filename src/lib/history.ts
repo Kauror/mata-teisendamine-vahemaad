@@ -25,6 +25,17 @@ export function trophyWord(count: number) {
   return count === 1 ? 'karikas' : 'karikat';
 }
 
+// A protocol-v2 attempt whose stars are held pending parent review (RTM3-H02).
+// The child sees a completed result with no stars; without this the row is
+// indistinguishable from an ordinary confirmed attempt that simply earned zero.
+export function isHeldReward(status?: string | null): boolean {
+  return status === 'withheld' || status === 'needs_review';
+}
+
+// Shown to the child in the history list, the local result and the server result
+// detail whenever an attempt is held for parent approval (RTM3-H02).
+export const HELD_REWARD_MESSAGE = 'Tulemus on salvestatud. Tähed ootavad vanema kinnitust.';
+
 
 export function scorePercent(score: number, questionCount: number) {
   if (!Number.isFinite(score) || !Number.isFinite(questionCount) || questionCount <= 0) return 0;

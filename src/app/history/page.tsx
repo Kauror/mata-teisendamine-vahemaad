@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatElapsed } from '@/lib/validation';
-import { compactTopicLabel, dayLabel, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, dayLabel, HELD_REWARD_MESSAGE, isHeldReward, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import { getMergedExerciseHistory } from '@/lib/offline/api';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
@@ -24,6 +24,8 @@ type ExerciseHistory = {
   earnedStars?: number | null;
   pending?: boolean;
   clientAttemptId?: string;
+  rewardSettlementStatus?: 'eligible' | 'withheld' | 'needs_review' | null;
+  reviewReasonCode?: string | null;
 };
 
 type TaskHistory = {
@@ -290,7 +292,8 @@ export default function HistoryPage() {
                       const title = h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? h.titleSnapshot : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
                       const scoreText = h.kind === 'task' ? `${h.amount > 0 ? '+' : ''}${h.amount} ⭐` : h.kind === 'store' ? `-${h.priceSnapshot} ⭐` : `${h.score}/${h.questionCount} · ${percent}% · ${elapsed}`;
                       const isPending = isExercise && (h as ExerciseHistory).pending === true;
-                      const detailText = isPending ? 'Ootab sünkroonimist' : h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
+                      const isHeld = isExercise && isHeldReward((h as ExerciseHistory).rewardSettlementStatus);
+                      const detailText = isPending ? 'Ootab sünkroonimist' : isHeld ? HELD_REWARD_MESSAGE : h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
 
                       return (
                         <div key={`${h.kind}-${h.id}`} className='history-row'>

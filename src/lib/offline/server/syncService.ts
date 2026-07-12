@@ -7,6 +7,7 @@ import { getCurrentCatalogue } from '@/lib/offline/server/catalogVersions';
 import { applyOfflineTaskAction, getSyncTaskAssignments, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
 import { getHistoryEpoch, getTombstonesAfter } from '@/lib/offline/server/tombstones';
 import { getTaskChangesAfter, MAX_TASK_CHANGES_PER_SYNC } from '@/lib/offline/server/taskChanges';
+import { getChangedAttemptIdsAfter, MAX_ATTEMPT_CHANGES_PER_SYNC } from '@/lib/offline/server/attemptChanges';
 import { grantCatalogueContract } from '@/lib/server/rewards/policy';
 import {
   validateAttemptRecordV2,
@@ -46,9 +47,22 @@ function attemptsAfter(cursorId: number): ServerAttempt[] {
   return db.prepare(`
     SELECT a.id, a.clientAttemptId, a.createdAt, a.completedAt, a.category, a.difficulty,
            a.questionCount, a.score, a.elapsedSeconds, a.learner, a.subject, a.topic, a.exerciseId,
-           r.awardedAmount AS earnedStars,
+           -- RTM3-M03: canonical total of every current reward component, so the
+           -- device history shows the same stars the ledger actually granted.
+           COALESCE((
+             SELECT SUM(latest.canonicalAmount)
+             FROM attempt_reward_components latest
+             JOIN (
+               SELECT componentKey, MAX(revision) AS revision
+               FROM attempt_reward_components
+               WHERE attemptId = a.id
+               GROUP BY componentKey
+             ) mx ON mx.componentKey = latest.componentKey AND mx.revision = latest.revision
+             WHERE latest.attemptId = a.id
+           ), r.awardedAmount) AS earnedStars,
            a.rewardSettlementStatus AS rewardSettlementStatus,
-           CASE WHEN a.clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END AS reviewReasonCode
+           COALESCE(a.reviewReasonCode,
+             CASE WHEN a.clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END) AS reviewReasonCode
     FROM attempts a
     LEFT JOIN study_attempt_rewards r ON r.attemptId = a.id
     WHERE a.id > ?
@@ -59,6 +73,35 @@ function attemptsAfter(cursorId: number): ServerAttempt[] {
 
 function canonicalAttempt(id: number): ServerAttempt | undefined {
   return attemptsAfter(Math.max(0, id - 1)).find((row) => row.id === id);
+}
+
+// Canonical rows for a specific set of attempt ids, used to re-deliver attempts
+// whose settlement/reward changed after they were first pulled (RTM3-H01).
+function canonicalAttemptsByIds(ids: number[]): ServerAttempt[] {
+  if (ids.length === 0) return [];
+  const placeholders = ids.map(() => '?').join(', ');
+  return db.prepare(`
+    SELECT a.id, a.clientAttemptId, a.createdAt, a.completedAt, a.category, a.difficulty,
+           a.questionCount, a.score, a.elapsedSeconds, a.learner, a.subject, a.topic, a.exerciseId,
+           COALESCE((
+             SELECT SUM(latest.canonicalAmount)
+             FROM attempt_reward_components latest
+             JOIN (
+               SELECT componentKey, MAX(revision) AS revision
+               FROM attempt_reward_components
+               WHERE attemptId = a.id
+               GROUP BY componentKey
+             ) mx ON mx.componentKey = latest.componentKey AND mx.revision = latest.revision
+             WHERE latest.attemptId = a.id
+           ), r.awardedAmount) AS earnedStars,
+           a.rewardSettlementStatus AS rewardSettlementStatus,
+           COALESCE(a.reviewReasonCode,
+             CASE WHEN a.clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END) AS reviewReasonCode
+    FROM attempts a
+    LEFT JOIN study_attempt_rewards r ON r.attemptId = a.id
+    WHERE a.id IN (${placeholders})
+    ORDER BY a.id ASC
+  `).all(...ids) as ServerAttempt[];
 }
 
 // The push-before-pull sync cycle: process uploaded attempts idempotently (in
@@ -213,9 +256,20 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
     })
   };
   const pulledAttempts = attemptsAfter(request.cursor.lastServerAttemptId);
+  const lastServerAttemptId = pulledAttempts.reduce((max, row) => Math.max(max, row.id), request.cursor.lastServerAttemptId);
+
+  // RTM3-H01: re-deliver attempts whose settlement/reward changed after they were
+  // first pulled (parent approval, or a late attempt revising an earlier reward).
+  // Only those the device could already have cached (id <= new attempt cursor) need
+  // resending; anything newer is already in pulledAttempts above.
+  const attemptChangeCursor = getChangedAttemptIdsAfter(request.cursor.lastAttemptChangeId ?? 0, MAX_ATTEMPT_CHANGES_PER_SYNC);
+  const alreadyPulled = new Set(pulledAttempts.map((row) => row.id));
+  const changedIds = attemptChangeCursor.attemptIds.filter((id) => id <= lastServerAttemptId && !alreadyPulled.has(id));
+  const changedAttempts = canonicalAttemptsByIds(changedIds);
+  const attempts = [...pulledAttempts, ...changedAttempts];
+
   const tombstones = getTombstonesAfter(request.cursor.lastTombstoneId);
   const taskChanges = getTaskChangesAfter(request.cursor.lastTaskChangeId, MAX_TASK_CHANGES_PER_SYNC);
-  const lastServerAttemptId = pulledAttempts.reduce((max, row) => Math.max(max, row.id), request.cursor.lastServerAttemptId);
   const lastTombstoneId = tombstones.reduce((max, row) => Math.max(max, row.tombstoneId), request.cursor.lastTombstoneId);
   const lastTaskChangeId = taskChanges.reduce((max, row) => Math.max(max, row.changeId), request.cursor.lastTaskChangeId);
   const epoch = getHistoryEpoch();
@@ -226,7 +280,7 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
     serverTime,
     historyEpoch: epoch,
     pull: {
-      attempts: pulledAttempts,
+      attempts,
       tombstones,
       taskChanges,
       remediationChanges: [],
@@ -238,7 +292,8 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
       remediationBundles: []
     },
     hasMore: {
-      attempts: pulledAttempts.length >= MAX_HISTORY_PULL_PER_SYNC,
+      // Keep paging while either fresh attempts or attempt-update notices remain.
+      attempts: pulledAttempts.length >= MAX_HISTORY_PULL_PER_SYNC || attemptChangeCursor.attemptIds.length >= MAX_ATTEMPT_CHANGES_PER_SYNC,
       tombstones: false,
       taskChanges: taskChanges.length >= MAX_TASK_CHANGES_PER_SYNC,
       remediationChanges: false,
@@ -249,6 +304,7 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
       lastServerAttemptId,
       lastTombstoneId,
       lastTaskChangeId,
+      lastAttemptChangeId: attemptChangeCursor.lastChangeId,
       historyEpoch: epoch,
       catalogueVersions: { kiur: catalogues.kiur.version, kirsi: catalogues.kirsi.version },
       syncedAt: serverTime

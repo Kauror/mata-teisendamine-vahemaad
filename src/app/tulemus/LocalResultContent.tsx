@@ -6,6 +6,7 @@ import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { getConfirmedAttemptByClientId, getLocalAttempt } from '@/lib/offline/api';
 import type { LocalAttempt } from '@/lib/offline/records';
 import type { ServerAttempt } from '@/lib/shared/types';
+import { HELD_REWARD_MESSAGE, isHeldReward } from '@/lib/history';
 
 type ResultRecord =
   | { kind: 'local'; row: LocalAttempt }
@@ -54,6 +55,11 @@ export default function LocalResultContent({ clientId }: { clientId: string | nu
         : local?.status === 'rejected'
           ? 'Tagasi lükatud'
           : 'Salvestatud';
+  // The stars are held pending parent approval when the confirmed server row is
+  // withheld/needs_review, or the local attempt was flagged for review (RTM3-H02).
+  const isHeld = result.kind === 'confirmed'
+    ? isHeldReward(result.row.rewardSettlementStatus)
+    : local?.status === 'needs_review';
 
   return (
     <main className='container' style={{ display: 'grid', gap: 16 }}>
@@ -62,7 +68,8 @@ export default function LocalResultContent({ clientId }: { clientId: string | nu
         <h1>Harjutus tehtud!</h1>
         <p style={{ fontSize: 22, fontWeight: 900 }}>{attempt.score} / {attempt.questionCount} õiget</p>
         <div className='offline-stale-chip' style={{ justifySelf: 'center' }}>{status}</div>
-        {result.kind === 'local' && !online && <p style={{ color: '#64748b', fontSize: 13 }}>Tähed liidetakse kontole, kui internet naaseb.</p>}
+        {isHeld && <p className='result-held-notice' role='status'>{HELD_REWARD_MESSAGE}</p>}
+        {result.kind === 'local' && !online && !isHeld && <p style={{ color: '#64748b', fontSize: 13 }}>Tähed liidetakse kontole, kui internet naaseb.</p>}
       </section>
       <div className='dashboard-footer-links'>
         <Link href={backHref} className='dashboard-history-link'>Tagasi</Link>

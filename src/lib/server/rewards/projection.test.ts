@@ -10,6 +10,7 @@ import {
   type ProjectionAttempt
 } from '@/lib/server/rewards/projection';
 import { getBalance } from '@/lib/tasks';
+import { getChangedAttemptIdsAfter } from '@/lib/offline/server/attemptChanges';
 
 const policy: RewardPolicyV2 = {
   schemaVersion: 2,
@@ -48,6 +49,7 @@ beforeEach(() => {
     DELETE FROM study_attempt_rewards;
     DELETE FROM point_ledger;
     DELETE FROM attempts;
+    DELETE FROM server_change_log;
     DELETE FROM reward_policy_current;
     DELETE FROM reward_policy_versions;
   `);
@@ -164,5 +166,60 @@ describe('reward settlement eligibility', () => {
     expect(listHeldRewardAttempts()).toEqual([]);
     const board = db.prepare("SELECT kiurCount FROM daily_leaderboard WHERE date = '2026-07-01'").get() as { kiurCount: number } | undefined;
     expect(board?.kiurCount).toBe(1);
+  });
+
+  // RTM3-H01: changes to an already-synced attempt (approval, or a reprojection
+  // triggered by a later attempt) must be advertised on the attempt-update stream
+  // so other devices refresh their cached copy.
+  it('emits an attempt-update change when a held attempt is approved', () => {
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)), 'needs_review');
+    // The held attempt earned nothing yet, so nothing was projected — no change.
+    expect(getChangedAttemptIdsAfter(0).attemptIds).toEqual([]);
+
+    approveHeldRewardAttempt(1);
+    expect(getChangedAttemptIdsAfter(0).attemptIds).toContain(1);
+  });
+
+  it('emits attempt-update changes for earlier attempts a late attempt reprojects', () => {
+    // Two consecutive qualifying days: with streakIntervalDays=2 the streak bonus
+    // + rule attach to the owner of the second day (attempt 2).
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)));
+    insertAttempt(projected(2, '2026-07-02T08:00:00.000Z', u(2)));
+    applyRewardProjectionV2('kiur', 2);
+    expect(getProjectedRewardV2(2)?.awardedAmount).toBeGreaterThan(1); // carries the bonus
+
+    const cursor = getChangedAttemptIdsAfter(0).lastChangeId;
+    // A late earlier-date attempt shifts the streak: the bonus moves from day 2
+    // (attempt 2) to day 1 (attempt 1). Both earlier attempts are revised.
+    insertAttempt(projected(3, '2026-06-30T08:00:00.000Z', u(3)));
+    applyRewardProjectionV2('kiur', 3);
+    const changed = getChangedAttemptIdsAfter(cursor).attemptIds;
+    expect(changed).toEqual(expect.arrayContaining([1, 2]));
+    // The trigger (attempt 3) is delivered by the normal id-cursor pull, not the
+    // update stream.
+    expect(changed).not.toContain(3);
+  });
+
+  // RTM3-M03: the history "stars earned" must be the canonical total of every
+  // reward component (study + streak + rule), not only study_attempt_rewards.
+  it('history star total sums all canonical components, not just the study reward', () => {
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)));
+    insertAttempt(projected(2, '2026-07-02T08:00:00.000Z', u(2)));
+    applyRewardProjectionV2('kiur', 2);
+
+    // Attempt 2 carries study + streak:standard(2) + rule:7(3): more than study.
+    const studyOnly = (db.prepare('SELECT awardedAmount FROM study_attempt_rewards WHERE attemptId = 2').get() as { awardedAmount: number }).awardedAmount;
+    const canonicalTotal = db.prepare(`
+      SELECT COALESCE(SUM(latest.canonicalAmount), 0) AS total
+      FROM attempt_reward_components latest
+      JOIN (
+        SELECT componentKey, MAX(revision) AS revision
+        FROM attempt_reward_components WHERE attemptId = 2 GROUP BY componentKey
+      ) mx ON mx.componentKey = latest.componentKey AND mx.revision = latest.revision
+      WHERE latest.attemptId = 2
+    `).get() as { total: number };
+    expect(canonicalTotal.total).toBeGreaterThan(studyOnly);
+    // The canonical total is exactly what getProjectedRewardV2 reports for the row.
+    expect(canonicalTotal.total).toBeCloseTo(getProjectedRewardV2(2)!.awardedAmount);
   });
 });

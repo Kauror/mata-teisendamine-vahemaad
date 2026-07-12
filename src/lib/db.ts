@@ -743,6 +743,16 @@ function neutralizeRewardSettlementHeuristic(connection: DatabaseConnection) {
   `);
 }
 
+function persistReviewReasonCode(connection: DatabaseConnection) {
+  // RTM3-M02: hold reasons other than clock drift (unknown_catalogue_grant,
+  // not_permitted, unknown_topic, …) were computed at insert time but never
+  // stored, so the parent review surface could only reconstruct the clock-drift
+  // case. Persist the authoritative reason on the row so every held attempt can
+  // explain itself before a parent approves it. Legacy rows stay NULL and fall
+  // back to the derived clock-drift reason for backward compatibility.
+  addColumn(connection, 'attempts', 'reviewReasonCode', 'TEXT');
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -767,6 +777,12 @@ const migrations: Migration[] = [
     name: 'neutralize_reward_settlement_heuristic',
     checksumSource: 'neutralize_reward_settlement_heuristic:v1:2026-07-12',
     up: neutralizeRewardSettlementHeuristic
+  },
+  {
+    id: 5,
+    name: 'persist_review_reason_code',
+    checksumSource: 'persist_review_reason_code:v1:2026-07-12',
+    up: persistReviewReasonCode
   }
 ];
 

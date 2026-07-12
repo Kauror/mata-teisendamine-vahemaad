@@ -269,8 +269,10 @@ export type OfflineHistoryItem = {
   topic?: string | null;
   earnedStars?: number | null;
   // Preserved so a reward-held attempt is not shown as an ordinary confirmed
-  // item once its outbox row is cleared (RTM2-H03).
+  // item once its outbox row is cleared (RTM2-H03), and so cached offline history
+  // can explain why the stars are held (RTM3-H02).
   rewardSettlementStatus?: 'eligible' | 'withheld' | 'needs_review' | null;
+  reviewReasonCode?: string | null;
   pending?: boolean;
 };
 
@@ -295,7 +297,8 @@ export async function getMergedExerciseHistory(): Promise<OfflineHistoryItem[]> 
     subject: row.subject,
     topic: row.topic,
     earnedStars: row.earnedStars,
-    rewardSettlementStatus: row.rewardSettlementStatus ?? 'eligible'
+    rewardSettlementStatus: row.rewardSettlementStatus ?? 'eligible',
+    reviewReasonCode: row.reviewReasonCode ?? null
   }));
 
   let synthetic = -1;
@@ -423,11 +426,18 @@ export type CompleteTaskOfflineResult = { clientActionId: string; queued: boolea
 
 // Queue an offline task completion (idempotent per template/date/learner) and try
 // a best-effort sync. Never mints stars locally — the server settles on sync.
-// A task action whose latest state still occupies the slot (queued, done, under
-// approval, or lost to a conflict). A 'returned'/'rejected' action has freed the
-// slot, so the child may queue a fresh completion (RTM2-H05).
+// A task action whose latest state still occupies the slot (queued, done, or
+// under approval). A 'returned'/'rejected' action has freed the slot, so the
+// child may queue a fresh completion (RTM2-H05).
+//
+// RTM3-H04: 'needs_review' is also a terminal, non-occupying state. A task goes
+// needs_review on a template/version inconsistency; the read path already shows
+// the task as active again, so the child must be able to re-complete it against
+// the current template rather than tapping a task that queues nothing. Without
+// this the needs_review action wedged the slot: the task looked active but no new
+// action was ever created.
 function taskActionStillOccupiesSlot(status: LocalTaskAction['status']): boolean {
-  return status !== 'returned' && status !== 'rejected';
+  return status !== 'returned' && status !== 'rejected' && status !== 'needs_review';
 }
 
 export async function completeTaskOffline(input: { learner: Learner; templateId: number; templateVersion: string; taskDate: string; snapshot: { title: string; points: number; assignmentMode: string; requiresApproval: boolean } }): Promise<CompleteTaskOfflineResult> {

@@ -248,6 +248,12 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
   const settlementStatus = protocolVersion === 2
     ? (eligible ? 'eligible' : review ? 'needs_review' : 'withheld')
     : 'eligible';
+  // RTM3-M02: persist the actual hold reason so the parent review surface can
+  // explain a held attempt regardless of whether the hold came from clock drift,
+  // an unknown catalogue grant, a not-permitted exercise or any other check. Only
+  // stored for genuinely held v2 attempts; an eligible attempt carrying a soft
+  // 'stale' note is not a review case and keeps a NULL reason.
+  const persistedReviewReasonCode = protocolVersion === 2 && !eligible ? reasonCode ?? null : null;
 
   const insertRow = db.prepare(`
     INSERT INTO attempts (
@@ -257,8 +263,8 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       catalogueVersion, clientTimeZone, clientUtcOffsetMinutes,
       clientCorrectedCompletedAt, effectiveCompletedAt, completionDate, clockStatus, clockSkewMs,
       rewardPolicyVersion, rewardEngineVersion, generatorVersion, runnerId, runnerVersion,
-      rotationVersion, runnerSeed, questionIdsJson, protocolVersion, rewardSettlementStatus
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      rotationVersion, runnerSeed, questionIdsJson, protocolVersion, rewardSettlementStatus, reviewReasonCode
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const run = db.transaction((): InsertAttemptResult => {
@@ -302,7 +308,8 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       input.seed == null ? null : String(input.seed),
       input.questionIds ? JSON.stringify(input.questionIds) : null,
       protocolVersion,
-      settlementStatus
+      settlementStatus,
+      persistedReviewReasonCode
     );
     const attemptId = Number(result.lastInsertRowid);
     if (protocolVersion === 2) settlementFaultInjector?.('after_attempt');

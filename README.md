@@ -141,6 +141,25 @@ andmebaasi.
   `data/backups/`) ja verifitseerib andmebaasi terviklikkuse.
 - Käsitsi varundus: peata container ja kopeeri `data/maths-game.sqlite`.
 
+### Migratsiooni turvakontroll enne juurutust (RTM3-C02)
+
+Migratsioon 3 märkis kõik olemasolevad protokoll-v2 katsed ilma tasukomponentideta
+`withheld`-iks ja migratsioon 4 pööras need tagasi `eligible`-iks. See edasi-tagasi
+teisendus on ohutu **ainult siis**, kui andmebaasis pole varasematest offline-buildidest
+pärit ehtsaid v2 katseid. Kontrolli seda enne juurutust **andmebaasi koopia** peal:
+
+```bash
+# Tee koopia elavast failist ja auditeeri seda (avab kirjutuskaitstult).
+cp data/maths-game.sqlite /tmp/audit-copy.sqlite
+npm run audit:v2 -- /tmp/audit-copy.sqlite
+```
+
+Skript trükib katsete jaotuse `protocolVersion` / `rewardSettlementStatus` järgi ja iga
+v2 katse komponentide arvu. See **kukub läbi** (väljumiskood 1), kui mõni kinni hoitud
+(`withheld`/`needs_review`) katse kannab siiski tasukomponente — see on ainus seisund,
+mida migratsioonid ise parandada ei suuda ja mis tuleb enne väljalaset käsitsi lahendada.
+Juurutus on ohutu alles siis, kui audit on läbitud ja loendid üle vaadatud.
+
 ## Skriptid
 
 - `npm run dev` – arendusserver
@@ -150,6 +169,7 @@ andmebaasi.
 - `npm run start:next` – Next.js server ilma verifitseerimiskihita (ainult arendus)
 - `npm run auth:hash -- <pin>` – genereerib `APP_ACCESS_PIN_HASH` väärtuse
 - `npm run db:startup` – ainult andmebaasi varundus + verifitseerimine
+- `npm run audit:v2 -- <db-koopia>` – protokoll-v2 populatsiooni audit enne juurutust (RTM3-C02)
 - `npm run lint` – ESLint
 - `npm run typecheck` – tüübikontroll (`tsc --noEmit`)
 - `npm test` – ühiktestid (Vitest)

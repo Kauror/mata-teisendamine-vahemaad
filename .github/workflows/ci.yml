@@ -65,13 +65,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build the production image via compose
-        run: docker compose build
-      - name: Generate a production .env exactly as an operator would
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # RTM3-H03: the compose service declares `.env` as a required env_file, so
+      # `.env` MUST exist before the FIRST compose command (build included) or
+      # compose aborts on a clean checkout. Generate it here with the app's own
+      # hasher on the runner — not inside the image via `docker compose run`, which
+      # would itself need `.env` first (the chicken-and-egg the gate used to hit).
+      - name: Generate a production .env before any compose command
         run: |
           SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")
-          # Hash a throwaway PIN with the app's own hasher so the format matches.
-          PIN_HASH=$(docker compose run --rm --no-deps app npm run --silent auth:hash -- 1234 | tr -d '\r')
+          # Same hasher the container ships. Invoke the script directly so the PIN
+          # is argv[2]; the `npm run auth:hash --` alias swallows the argument.
+          PIN_HASH=$(npx tsx scripts/hash-secret.ts 1234 | tr -d '\r')
           # The hash contains '$'; it MUST be single-quoted so compose does not
           # interpolate it (this is the exact failure RTM2-C01 guards against).
           {
@@ -80,6 +89,8 @@ jobs:
             echo "APP_ORIGIN=https://ci.example.com"
             echo "OFFLINE_PROTOCOL_V2_ENABLED=1"
           } > .env
+      - name: Build the production image via compose
+        run: docker compose build
       - name: docker compose config must keep the hash byte-for-byte intact
         run: |
           docker compose config

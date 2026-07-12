@@ -132,7 +132,15 @@ export function configuredAppOrigin() {
   }
   const url = new URL(configured);
   if (url.origin !== configured.replace(/\/$/, '')) throw new Error('APP_ORIGIN must be an exact origin without a path.');
-  if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') throw new Error('APP_ORIGIN must use HTTPS in production.');
+  // HTTPS is mandatory in production to keep the origin off the plaintext network,
+  // EXCEPT for loopback: browsers already treat http://localhost and
+  // http://127.0.0.1 as secure contexts (service workers included), so the
+  // production-build E2E can run against a consistent http-loopback origin without
+  // weakening any real deployment (RTM3-M01).
+  const isLoopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
+  if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:' && !isLoopback) {
+    throw new Error('APP_ORIGIN must use HTTPS in production.');
+  }
   return url.origin;
 }
 

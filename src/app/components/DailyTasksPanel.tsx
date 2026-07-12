@@ -120,14 +120,21 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
     try {
       // Offline-projected task → queue an offline action (server settles on sync).
       if (confirmTask.offline && confirmTask.templateId != null && confirmTask.templateVersion) {
-        await completeTaskOffline({
+        const result = await completeTaskOffline({
           learner,
           templateId: confirmTask.templateId,
           templateVersion: confirmTask.templateVersion,
           taskDate: todayDateString(),
           snapshot: { title: confirmTask.title, points: confirmTask.points, assignmentMode: confirmTask.assignmentMode, requiresApproval: Boolean(confirmTask.requiresApproval) }
         });
-        setNotice(confirmTask.requiresApproval ? 'Saadetud vanemale kinnitamiseks.' : 'Salvestatud. Sünkroonitakse, kui internet naaseb.');
+        // RTM3-H04: only confirm a save when something was actually queued. If an
+        // action already occupies this task's slot, nothing new was created, so the
+        // "saved" confirmation would be misleading.
+        if (result.queued) {
+          setNotice(confirmTask.requiresApproval ? 'Saadetud vanemale kinnitamiseks.' : 'Salvestatud. Sünkroonitakse, kui internet naaseb.');
+        } else {
+          setNotice('See tegevus on juba salvestatud.');
+        }
         setConfirmTask(null);
         load();
         return;

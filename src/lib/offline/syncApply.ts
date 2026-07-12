@@ -102,6 +102,7 @@ export async function applySyncEnvelope(input: SyncApplyInput): Promise<SyncAppl
     lastTombstoneId: 0,
     lastTaskChangeId: 0,
     lastRemediationChangeId: 0,
+    lastAttemptChangeId: 0,
     historyEpoch: 0,
     catalogueVersions: {}
   }) as SyncCursorValue;
@@ -270,9 +271,28 @@ export async function applySyncEnvelope(input: SyncApplyInput): Promise<SyncAppl
       for (const template of input.pull.taskTemplates as SyncTaskTemplate[]) await templates.put(template);
     }
 
-    for (const raw of input.pull?.taskAssignments ?? []) {
-      const assignment = asTaskAssignment(raw);
-      if (assignment) await tx.objectStore('taskAssignments').put(assignment);
+    // RTM3-H05: the dated assignment collection is an authoritative snapshot, not
+    // an append-only feed. Editing a current-day template deletes its old task
+    // instance + assignments and materialises new ones with new ids; if we only
+    // upserted, the stale assignment would linger in IndexedDB and — because the
+    // offline read picks the first assignment matching template+date — could
+    // shadow the freshly created canonical one. So for every date present in the
+    // response we clear the local assignments first, then insert the authoritative
+    // rows. Dates not in the response are left untouched.
+    if (input.pull?.taskAssignments !== undefined) {
+      const assignmentStore = tx.objectStore('taskAssignments');
+      const incoming = input.pull.taskAssignments
+        .map(asTaskAssignment)
+        .filter((row): row is TaskAssignmentRecord => row !== null);
+      const snapshotDates = new Set(incoming.map((row) => row.taskDate));
+      for (const date of snapshotDates) {
+        let assignmentCursor = await assignmentStore.index('byTaskDate').openCursor(IDBKeyRange.only(date));
+        while (assignmentCursor) {
+          await assignmentCursor.delete();
+          assignmentCursor = await assignmentCursor.continue();
+        }
+      }
+      for (const assignment of incoming) await assignmentStore.put(assignment);
     }
     for (const change of input.pull?.taskChanges ?? []) {
       if (!change.clientActionId) continue;

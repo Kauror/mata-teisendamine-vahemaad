@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import db from '@/lib/db';
 import { hashSecret, verifySecretHash } from '@/lib/auth/password';
-import { issueSession, verifySession } from '@/lib/auth/session';
+import { configuredAppOrigin, hasExactOrigin, issueSession, verifySession } from '@/lib/auth/session';
 import { assertLoginAllowed, clearLoginFailures, recordLoginFailure } from '@/lib/auth/rateLimit';
 
 const previous = { ...process.env };
@@ -37,6 +37,26 @@ describe('authentication primitives', () => {
     process.env.APP_SESSION_SECRET_CURRENT = 'rotated-secret-that-is-also-at-least-thirty-two-characters';
     expect(await verifySession(issued.token, 'family', { nowMs: 1_010_000 })).not.toBeNull();
     expect(await verifySession(issued.token, 'family', { nowMs: 2_000_000 })).toBeNull();
+  });
+
+  // RTM3-M01: production must reject a plaintext network origin but accept
+  // http-loopback (a browser secure context), so the prod-build E2E can use a
+  // single consistent origin the test browser actually sends.
+  it('accepts http-loopback but rejects plaintext network origins in production', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    // NODE_ENV is readonly in the ambient types; assign through the record.
+    (process.env as Record<string, string>).NODE_ENV = 'production';
+    try {
+      process.env.APP_ORIGIN = 'http://localhost:3000';
+      expect(configuredAppOrigin()).toBe('http://localhost:3000');
+      expect(hasExactOrigin('http://localhost:3000')).toBe(true);
+      expect(hasExactOrigin('http://evil.example')).toBe(false);
+
+      process.env.APP_ORIGIN = 'http://example.test';
+      expect(() => configuredAppOrigin()).toThrow(/HTTPS/);
+    } finally {
+      (process.env as Record<string, string>).NODE_ENV = originalNodeEnv ?? 'test';
+    }
   });
 
   it('blocks repeated login failures in SQLite and clears on success', () => {
