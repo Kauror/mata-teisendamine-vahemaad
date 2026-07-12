@@ -25,6 +25,7 @@ type StoreStockType = 'unlimited' | 'fixed_stock' | 'daily_stock' | 'one_time_gl
 type Template = { id: number; title: string; points: number; assignmentMode: AssignmentMode; recurrenceType: RecurrenceType; selectedWeekdaysJson: string | null; startDate: string | null; onceDate: string | null; requiresApproval: number };
 type PendingApproval = { assignmentId: number; learner: Learner; title: string; points: number; assignmentMode: AssignmentMode; completedAt: string | null };
 type HeldReward = { id: number; learner: Learner; completionDate: string | null; score: number; questionCount: number; exerciseId: string | null; status: 'withheld' | 'needs_review'; reviewReasonCode: string | null };
+type OfflineTaskReview = { clientActionId: string; learner: Learner; taskDate: string; title: string; points: number; completedAt: string | null; reasonCode: string | null };
 type Dashboard = {
   balances: Record<Learner, number>;
   templates: Template[];
@@ -249,6 +250,7 @@ export default function ParentHub() {
   const [monthlyPrize, setMonthlyPrize] = useState<MonthlyPrize | null>(null);
   const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigest | null>(null);
   const [heldRewards, setHeldRewards] = useState<HeldReward[]>([]);
+  const [offlineTaskReviews, setOfflineTaskReviews] = useState<OfflineTaskReview[]>([]);
   const [monthlyPrizeInput, setMonthlyPrizeInput] = useState(10);
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
@@ -279,9 +281,10 @@ export default function ParentHub() {
       fetch('/api/notice').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/monthly-prize').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/weekly-digest').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/parent/held-rewards').then((res) => (res.ok ? res.json() : Promise.reject()))
+      fetch('/api/parent/held-rewards').then((res) => (res.ok ? res.json() : Promise.reject())),
+      fetch('/api/parent/task-reviews').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData, monthlyPrizeData, weeklyDigestData, heldRewardData]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData, monthlyPrizeData, weeklyDigestData, heldRewardData, taskReviewData]) => {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
@@ -292,6 +295,7 @@ export default function ParentHub() {
         setMonthlyPrizeInput((monthlyPrizeData as MonthlyPrize)?.prizeStars ?? 10);
         setWeeklyDigest(weeklyDigestData as WeeklyDigest);
         setHeldRewards(Array.isArray(heldRewardData?.held) ? heldRewardData.held : []);
+        setOfflineTaskReviews(Array.isArray(taskReviewData?.reviews) ? taskReviewData.reviews : []);
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
   };
@@ -457,6 +461,13 @@ export default function ParentHub() {
       return;
     }
     setNotice('Harjutuse tähed kinnitatud.');
+    load();
+  };
+
+  const resolveOfflineTaskReview = async (clientActionId: string, action: 'approve' | 'reject') => {
+    const res = await fetch('/api/parent/task-reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientActionId, action }) });
+    if (!res.ok) { const body = await res.json().catch(() => ({})); setError(body.message || 'Toimingut ei saanud teha.'); return; }
+    setNotice(action === 'approve' ? 'Offline tegevus kinnitatud ja tähed lisatud.' : 'Offline tegevus lükati tagasi.');
     load();
   };
 
@@ -724,6 +735,19 @@ export default function ParentHub() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {offlineTaskReviews.length > 0 && (
+        <section className='parent-approvals' aria-label='Offline tegevuste ülevaatus'>
+          <h2>📥 Offline tegevuste ülevaatus ({offlineTaskReviews.length})</h2>
+          <p>Need tegevused tehti vanema muudetud või kustutatud ülesande alusel. Otsusta, kas algne punktisumma kehtib.</p>
+          <div className='parent-approval-list'>
+            {offlineTaskReviews.map((item) => <div key={item.clientActionId} className='parent-approval-row'>
+              <div className='parent-approval-info'><strong>{learnerLabel(item.learner)} · {item.title}</strong><span>+{item.points} ⭐ · {item.taskDate}{item.reasonCode ? ` · ${item.reasonCode}` : ''}</span></div>
+              <div className='parent-approval-actions'><button type='button' className='view-button' onClick={() => resolveOfflineTaskReview(item.clientActionId, 'approve')}>Kinnita</button><button type='button' className='filter-chip' onClick={() => resolveOfflineTaskReview(item.clientActionId, 'reject')}>Lükka tagasi</button></div>
+            </div>)}
           </div>
         </section>
       )}
