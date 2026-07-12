@@ -44,15 +44,17 @@ function countsForDate(date: string) {
   return { kiurCount, kirsiCount };
 }
 
-const upsertStmt = db.prepare(`
-  INSERT INTO daily_leaderboard (date, kiurCount, kirsiCount, winner, updatedAt)
-  VALUES (?, ?, ?, ?, ?)
-  ON CONFLICT(date) DO UPDATE SET
-    kiurCount = excluded.kiurCount,
-    kirsiCount = excluded.kirsiCount,
-    winner = excluded.winner,
-    updatedAt = excluded.updatedAt
-`);
+function upsertLeaderboard(date: string, kiurCount: number, kirsiCount: number, winner: DailyWinner, updatedAt: string) {
+  db.prepare(`
+    INSERT INTO daily_leaderboard (date, kiurCount, kirsiCount, winner, updatedAt)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(date) DO UPDATE SET
+      kiurCount = excluded.kiurCount,
+      kirsiCount = excluded.kirsiCount,
+      winner = excluded.winner,
+      updatedAt = excluded.updatedAt
+  `).run(date, kiurCount, kirsiCount, winner, updatedAt);
+}
 
 let backfilled = false;
 
@@ -76,7 +78,7 @@ function backfillFromAttempts() {
     const now = nowIso();
     const fill = db.transaction(() => {
       for (const [date, entry] of byDate) {
-        upsertStmt.run(date, entry.kiur, entry.kirsi, winnerOf(entry.kiur, entry.kirsi), now);
+        upsertLeaderboard(date, entry.kiur, entry.kirsi, winnerOf(entry.kiur, entry.kirsi), now);
       }
     });
     fill();
@@ -93,7 +95,7 @@ export function recordDailyLeaderboard(date = todayDateString()) {
   backfillFromAttempts();
   const { kiurCount, kirsiCount } = countsForDate(date);
   const winner = winnerOf(kiurCount, kirsiCount);
-  upsertStmt.run(date, kiurCount, kirsiCount, winner, nowIso());
+  upsertLeaderboard(date, kiurCount, kirsiCount, winner, nowIso());
   return { date, kiurCount, kirsiCount, winner };
 }
 

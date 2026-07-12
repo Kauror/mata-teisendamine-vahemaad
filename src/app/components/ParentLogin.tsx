@@ -2,6 +2,7 @@
 
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import { csrfHeaders } from '@/lib/auth/client';
 
 export default function ParentLogin({ passwordMissing }: { passwordMissing: boolean }) {
   const [password, setPassword] = useState('');
@@ -15,7 +16,7 @@ export default function ParentLogin({ passwordMissing }: { passwordMissing: bool
     try {
       const res = await fetch('/api/parent/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ password })
       });
       if (!res.ok) {
@@ -34,7 +35,7 @@ export default function ParentLogin({ passwordMissing }: { passwordMissing: bool
     <section className='parent-card parent-login-card'>
       <h1>Lapsevanema ala</h1>
       {passwordMissing ? (
-        <p className='error'>Arendajale: PARENT_PASSWORD puudub. Lisa see keskkonnamuutujana, et lapsevanema ala sisse lülitada.</p>
+        <p className='error'>Arendajale: lapsevanema parooli räsi puudub. Seadista PARENT_PASSWORD_HASH käsuga npm run auth:hash.</p>
       ) : (
         <form className='parent-form' onSubmit={login}>
           <label>

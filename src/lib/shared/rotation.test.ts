@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { selectTodaysLearningExercises, DAILY_EXERCISE_LIMIT } from '@/lib/shared/rotation';
+import {
+  selectTodaysLearningExercises,
+  selectTodaysLearningExercisesVersioned,
+  DAILY_EXERCISE_LIMIT,
+  UnsupportedRotationAlgorithmError
+} from '@/lib/shared/rotation';
 import type { CatalogueEntry, Learner } from '@/lib/shared/types';
 
 function entry(id: string, sortOrder: number, learner: Learner, status: 'rotation' | 'permanent'): CatalogueEntry {
@@ -49,5 +54,28 @@ describe('selectTodaysLearningExercises', () => {
       expect(chosen).toContain('kiur.perm');
       expect(chosen.length).toBeLessThanOrEqual(DAILY_EXERCISE_LIMIT);
     }
+  });
+
+  it('honours the daily limit carried by a catalogue grant', () => {
+    const chosen = selectTodaysLearningExercisesVersioned({
+      exercises: pool,
+      learner: 'kiur',
+      date: '2026-07-11',
+      limit: 2,
+      algorithmVersion: 1,
+      catalogueVersion: 'catalogue-a'
+    });
+    expect(chosen).toHaveLength(2);
+  });
+
+  it('fails closed for an unsupported catalogue algorithm', () => {
+    expect(() => selectTodaysLearningExercisesVersioned({
+      exercises: pool,
+      learner: 'kiur',
+      date: '2026-07-11',
+      limit: 4,
+      algorithmVersion: 99,
+      catalogueVersion: 'future'
+    })).toThrow(UnsupportedRotationAlgorithmError);
   });
 });

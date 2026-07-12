@@ -1,12 +1,30 @@
-import { attemptRepo, catalogRepo, historyRepo, sessionRepo, snapshotRepo, taskActionRepo, taskTemplateRepo } from '@/lib/offline/repositories';
+import { attemptRepo, catalogueGrantRepo, catalogRepo, historyRepo, remediationActionRepo, sessionRepo, snapshotRepo, taskActionRepo, taskTemplateRepo } from '@/lib/offline/repositories';
 import { correctedNow, getDeviceId, getServerOffsetMs } from '@/lib/offline/meta';
 import { syncNow } from '@/lib/offline/syncEngine';
 import type { LocalAttempt, LocalSession, LocalTaskAction } from '@/lib/offline/records';
+export {
+  createRunId,
+  ensureRunIdInCurrentUrl,
+  hasActiveRunnerSessions,
+  isRunId,
+  createRunnerSession,
+  beginRunnerFinalization,
+  checkpointRunnerSession,
+  loadRunnerSession,
+  makeRunnerSession,
+  patchRunnerSession,
+  pauseRunnerSession,
+  runnerStorageFailure,
+  resumeRunnerSession,
+  saveRunnerSession
+} from '@/lib/offline/runnerSession';
+export type { CreateRunnerSessionInput, RunnerStorageFailure } from '@/lib/offline/runnerSession';
 import { childExerciseCards, type ChildExerciseCard } from '@/lib/childExerciseCards';
-import { selectTodaysLearningExercises } from '@/lib/shared/rotation';
+import { selectTodaysLearningExercisesVersioned } from '@/lib/shared/rotation';
 import { projectTasksForDate } from '@/lib/shared/taskProjection';
 import { todayDateString } from '@/lib/appDate';
 import type { ChildDashboardSnapshot, Learner } from '@/lib/shared/types';
+import { LEGACY_REWARD_POLICY_VERSION, LEGACY_RUNNER_VERSION } from '@/lib/shared/types';
 
 // The service layer the child UI calls instead of fetch(): local-first reads,
 // best-effort refresh, status metadata. Client-only (touches IndexedDB).
@@ -23,7 +41,14 @@ export type TodaysExercises = {
 export async function getTodaysExercisesOffline(learner: Learner, date = todayDateString()): Promise<TodaysExercises> {
   const catalogue = await catalogRepo.get(learner);
   if (!catalogue) return null;
-  const chosen = selectTodaysLearningExercises(catalogue.entries, learner, date);
+  const chosen = selectTodaysLearningExercisesVersioned({
+    exercises: catalogue.entries,
+    learner,
+    date,
+    limit: catalogue.dailyLimit,
+    algorithmVersion: catalogue.algorithmVersion,
+    catalogueVersion: catalogue.version
+  });
   const cards = childExerciseCards(learner, chosen);
   return {
     cards,
@@ -35,6 +60,30 @@ export async function getTodaysExercisesOffline(learner: Learner, date = todayDa
 
 export async function getCatalogueVersion(learner: Learner): Promise<string | null> {
   return (await catalogRepo.get(learner))?.version ?? null;
+}
+
+export type CatalogueContract = {
+  catalogueVersion: string;
+  rewardPolicyVersion: string;
+  generatorVersion: string;
+  runnerVersion: string;
+  algorithmVersion: number;
+  rotationVersion: number;
+  dailyLimit: number;
+};
+
+export async function getCatalogueContract(learner: Learner): Promise<CatalogueContract | null> {
+  const [catalogue, grant] = await Promise.all([catalogRepo.get(learner), catalogueGrantRepo.get(learner)]);
+  if (!catalogue) return null;
+  return {
+    catalogueVersion: catalogue.version,
+    rewardPolicyVersion: grant?.rewardPolicyVersion ?? catalogue.rewardPolicyVersion ?? LEGACY_REWARD_POLICY_VERSION,
+    generatorVersion: grant?.generatorVersion ?? catalogue.generatorVersion,
+    runnerVersion: grant?.runnerVersion ?? catalogue.runnerVersion ?? LEGACY_RUNNER_VERSION,
+    algorithmVersion: catalogue.algorithmVersion,
+    rotationVersion: grant?.rotationVersion ?? catalogue.algorithmVersion,
+    dailyLimit: catalogue.dailyLimit
+  };
 }
 
 // Is `exerciseId` permitted for `learner` by the newest cached catalogue? Used to
@@ -52,6 +101,21 @@ export async function isExercisePermittedOffline(learner: Learner, match: { exer
   return status === 'rotation' || status === 'permanent';
 }
 
+export async function getCatalogueExercise(learner: Learner, match: { exerciseId?: string | null; subject: string; topic: string; category: string }) {
+  const catalogue = await catalogRepo.get(learner);
+  if (!catalogue) return null;
+  return catalogue.entries.find((entry) => {
+    if (match.exerciseId) return entry.id === match.exerciseId;
+    if (entry.subject !== match.subject) return false;
+    if (match.subject === 'matemaatika') {
+      return learner === 'kirsi'
+        ? entry.topic === match.topic && entry.category === match.category
+        : entry.topic === match.topic;
+    }
+    return entry.topic === match.topic || entry.category === match.category;
+  }) ?? null;
+}
+
 export async function getDashboardSnapshot(learner: Learner): Promise<ChildDashboardSnapshot | undefined> {
   return snapshotRepo.get(learner);
 }
@@ -64,7 +128,8 @@ export async function saveSessionProgress(session: LocalSession): Promise<void> 
   await sessionRepo.put({ ...session, updatedAt: new Date().toISOString() });
 }
 export async function getSession(sessionId: string): Promise<LocalSession | undefined> {
-  return sessionRepo.get(sessionId);
+  const row = await sessionRepo.get(sessionId);
+  return row && !('schemaVersion' in row) ? row : undefined;
 }
 export async function clearSession(sessionId: string): Promise<void> {
   await sessionRepo.delete(sessionId);
@@ -73,6 +138,10 @@ export async function clearSession(sessionId: string): Promise<void> {
 // ---- Local-first completion ----
 export type CompleteAttemptInput = {
   sessionId?: string;
+  // A v3 runner mints this before its first question. It is immutable and is
+  // also the eventual clientAttemptId, making repeated finalisation a no-op.
+  runId?: string;
+  clientAttemptId?: string;
   learner: Learner | null;
   subject: string | null;
   topic: string;
@@ -85,6 +154,13 @@ export type CompleteAttemptInput = {
   score: number;
   elapsedSeconds: number;
   questions: unknown[];
+  seed?: number | string;
+  runnerId?: string;
+  questionIds?: string[];
+  rewardPolicyVersion?: string;
+  generatorVersion?: string;
+  runnerVersion?: string;
+  rotationVersion?: number;
 };
 
 export type CompleteAttemptResult = {
@@ -101,7 +177,10 @@ export async function completeAttempt(input: CompleteAttemptInput): Promise<Comp
   const offsetMs = await getServerOffsetMs();
   const rawNow = new Date();
   const effective = correctedNow(offsetMs);
-  const clientAttemptId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `att-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const { createRunId, isRunId } = await import('@/lib/offline/runnerSession');
+  const proposedId = input.clientAttemptId ?? input.runId;
+  if (proposedId && !isRunId(proposedId)) throw new Error('clientAttemptId must be an RFC 4122 version 4 UUID.');
+  const clientAttemptId = proposedId ?? createRunId();
 
   const attempt: LocalAttempt = {
     clientAttemptId,
@@ -122,34 +201,57 @@ export async function completeAttempt(input: CompleteAttemptInput): Promise<Comp
     score: input.score,
     elapsedSeconds: input.elapsedSeconds,
     questions: input.questions,
+    seed: input.seed,
+    runnerId: input.runnerId,
+    questionIds: input.questionIds,
+    rewardPolicyVersion: input.rewardPolicyVersion,
+    generatorVersion: input.generatorVersion,
+    runnerVersion: input.runnerVersion,
+    rotationVersion: input.rotationVersion,
+    clientCorrectedCompletedAt: effective.toISOString(),
     status: 'pending',
     retryCount: 0,
     createdLocallyAt: rawNow.toISOString()
   };
 
-  await attemptRepo.put(attempt);
-  if (input.sessionId) await sessionRepo.delete(input.sessionId);
+  const finalized = await attemptRepo.finalize(input.sessionId ?? input.runId, attempt);
 
-  // Best-effort sync; failure just leaves it pending.
-  let reward: unknown;
-  try {
-    const outcome = await syncNow('attempt-complete');
-    const result = outcome.attemptResults?.find((r) => r.clientAttemptId === clientAttemptId);
-    if (result && (result.status === 'created' || result.status === 'duplicate')) reward = result.reward;
-  } catch {
-    /* stays pending */
+  if (finalized.confirmed) {
+    return { clientAttemptId, serverAttemptId: finalized.confirmed.id, synced: true, reward: finalized.confirmed.earnedStars };
   }
 
-  const stillLocal = await attemptRepo.get(clientAttemptId);
-  if (!stillLocal) {
-    const confirmed = await historyRepo.findByClientId(clientAttemptId);
-    return { clientAttemptId, serverAttemptId: confirmed?.id, synced: true, reward };
-  }
-  return { clientAttemptId, synced: false, reward };
+  // Local completion is the user-visible commit point. Sync is deliberately
+  // detached so a reachability timeout can never hold the result screen.
+  void syncNow('attempt-complete').catch(() => {});
+  return {
+    clientAttemptId,
+    serverAttemptId: finalized.attempt?.serverAttemptId,
+    synced: finalized.attempt?.status === 'confirmed',
+    reward: finalized.attempt?.reward
+  };
+}
+
+export type FinalizeRunnerSessionInput = Omit<CompleteAttemptInput, 'sessionId' | 'clientAttemptId' | 'seed' | 'runnerId' | 'questionIds' | 'rewardPolicyVersion' | 'generatorVersion' | 'runnerVersion' | 'rotationVersion'> & {
+  runId: string;
+  seed: number | string;
+  runnerId: string;
+  questionIds: string[];
+  rewardPolicyVersion: string;
+  generatorVersion: string;
+  runnerVersion: string;
+  rotationVersion: number;
+};
+
+export async function finalizeRunnerSession(input: FinalizeRunnerSessionInput): Promise<CompleteAttemptResult> {
+  return completeAttempt({ ...input, sessionId: input.runId, clientAttemptId: input.runId });
 }
 
 export async function getLocalAttempt(clientAttemptId: string): Promise<LocalAttempt | undefined> {
   return attemptRepo.get(clientAttemptId);
+}
+
+export async function getConfirmedAttemptByClientId(clientAttemptId: string) {
+  return historyRepo.findByClientId(clientAttemptId);
 }
 
 export type OfflineHistoryItem = {
@@ -214,10 +316,12 @@ export async function getMergedExerciseHistory(): Promise<OfflineHistoryItem[]> 
 }
 
 export async function getPendingCount(): Promise<number> {
-  const [attempts, actions] = await Promise.all([attemptRepo.all(), taskActionRepo.all()]);
-  const pendingAttempts = attempts.filter((a) => a.status === 'pending' || a.status === 'syncing').length;
-  const pendingActions = actions.filter((a) => a.status === 'pending' || a.status === 'syncing').length;
-  return pendingAttempts + pendingActions;
+  const [attempts, actions, remediationActions] = await Promise.all([
+    attemptRepo.pendingCount(),
+    taskActionRepo.pendingCount(),
+    remediationActionRepo.pendingCount()
+  ]);
+  return attempts + actions + remediationActions;
 }
 
 // ---- Offline daily tasks ----

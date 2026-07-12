@@ -5,7 +5,20 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { shuffle } from '@/lib/englishGame';
 import { formatStars } from '@/lib/formatStars';
 import { KIRSI_FIRST_SOUND_TASKS, KirsiFirstSoundTask } from '@/lib/kirsiFirstSoundTasks';
-import { completeAttempt, getCatalogueVersion, isExercisePermittedOffline } from '@/lib/offline/api';
+import {
+  createRunnerSession,
+  ensureRunIdInCurrentUrl,
+  finalizeRunnerSession,
+  getCatalogueContract,
+  getLocalAttempt,
+  isExercisePermittedOffline,
+  loadRunnerSession,
+  patchRunnerSession,
+  runnerStorageFailure
+} from '@/lib/offline/api';
+import type { CatalogueContract } from '@/lib/offline/api';
+import type { RunnerSessionV3 } from '@/lib/offline/records';
+import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 
 const QUESTION_COUNT = 10;
 
@@ -30,6 +43,17 @@ type ReviewItem = {
   hintUsed: boolean;
 };
 
+type FirstSoundRunnerState = {
+  score: number;
+  hintCount: number;
+  hintVisible: boolean;
+  selectedLetter: string | null;
+  reviewItems: ReviewItem[];
+  showStopConfirm: boolean;
+};
+
+type FirstSoundSession = RunnerSessionV3<KirsiFirstSoundTask, ReviewItem, FirstSoundRunnerState, null>;
+
 function buildSession(seed: number) {
   return shuffle(KIRSI_FIRST_SOUND_TASKS, seed).slice(0, QUESTION_COUNT);
 }
@@ -43,7 +67,10 @@ function getChoiceOptions(task: KirsiFirstSoundTask, seed: number) {
 }
 
 export default function KirsiFirstSoundPage() {
+  const [runId, setRunId] = useState<string | null>(null);
   const [seed, setSeed] = useState<number | null>(null);
+  const [session, setSession] = useState<KirsiFirstSoundTask[]>([]);
+  const [optionOrder, setOptionOrder] = useState<Record<string, string[]>>({});
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [hintCount, setHintCount] = useState(0);
@@ -54,18 +81,16 @@ export default function KirsiFirstSoundPage() {
   const [saved, setSaved] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [exerciseActive, setExerciseActive] = useState<boolean | null>(null);
-  const startedAtRef = useRef(Date.now());
-  const session = useMemo(() => seed === null ? [] : buildSession(seed), [seed]);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [storageError, setStorageError] = useState('');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const startedAtRef = useRef(new Date().toISOString());
+  const snapshotRef = useRef<Partial<FirstSoundSession>>({});
+  const contractRef = useRef<CatalogueContract | null>(null);
   const current: KirsiFirstSoundTask | undefined = session[index];
   const answered = selectedLetter !== null;
   const isCorrect = Boolean(current && selectedLetter === current.correctLetter);
-  const optionSeed = (seed ?? 0) + index * 1777;
-  const options = useMemo(() => current ? getChoiceOptions(current, optionSeed) : [], [current, optionSeed]);
-
-  useEffect(() => {
-    startedAtRef.current = Date.now();
-    setSeed(startedAtRef.current);
-  }, []);
+  const options = useMemo(() => current ? (optionOrder[current.id] ?? current.options) : [], [current, optionOrder]);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,45 +109,168 @@ export default function KirsiFirstSoundPage() {
   }, []);
 
   useEffect(() => {
-    if (index < QUESTION_COUNT || saved || exerciseActive !== true) return;
+    if (exerciseActive !== true || sessionReady) return;
+    let cancelled = false;
+    void (async () => {
+      const id = ensureRunIdInCurrentUrl();
+      setRunId(id);
+      const existing = await loadRunnerSession<KirsiFirstSoundTask, ReviewItem, FirstSoundRunnerState, null>(id);
+      if (cancelled) return;
+      if (existing) {
+        if (existing.runnerId !== 'kirsi-first-sound') throw new Error('See salvestatud jooks kuulub teisele harjutusele.');
+        const state = existing.runnerState;
+        startedAtRef.current = existing.startedAt;
+        contractRef.current = {
+          catalogueVersion: existing.catalogueVersion ?? '',
+          rewardPolicyVersion: existing.rewardPolicyVersion ?? 'legacy-v1',
+          generatorVersion: existing.generatorVersion,
+          runnerVersion: existing.runnerVersion,
+          algorithmVersion: existing.rotationVersion ?? 1,
+          rotationVersion: existing.rotationVersion ?? 1,
+          dailyLimit: 0
+        };
+        setSeed(Number(existing.seed));
+        setSession(existing.questions);
+        setOptionOrder((existing.optionOrder ?? {}) as Record<string, string[]>);
+        setIndex(existing.currentIndex);
+        setScore(state.score);
+        setHintCount(state.hintCount);
+        setHintVisible(state.hintVisible);
+        setSelectedLetter(state.selectedLetter);
+        setReviewItems(state.reviewItems);
+        setShowStopConfirm(state.showStopConfirm);
+        setElapsedSeconds(Math.floor(existing.activeElapsedMs / 1000));
+        setSessionReady(true);
+        return;
+      }
+      if (await getLocalAttempt(id)) {
+        window.location.replace(`/tulemus?clientId=${encodeURIComponent(id)}`);
+        return;
+      }
+      const nextSeed = Date.now();
+      const questions = buildSession(nextSeed);
+      const orderedOptions = Object.fromEntries(questions.map((task, taskIndex) => [task.id, getChoiceOptions(task, nextSeed + taskIndex * 1777)]));
+      const contract = await getCatalogueContract('kirsi');
+      const capability = getOfflineRunnerCapability('kirsi-first-sound');
+      if (!contract || !capability) throw new Error('Ühenda seade internetiga, et harjutus ette valmistada.');
+      const startedAt = new Date().toISOString();
+      await createRunnerSession<KirsiFirstSoundTask, ReviewItem, FirstSoundRunnerState, null>({
+        runId: id,
+        learner: 'kirsi',
+        runnerId: 'kirsi-first-sound',
+        exerciseId: 'kirsi.reading.esimene-haalik',
+        subject: 'lugemine',
+        topic: 'esimene-haalik',
+        category: 'Lugemine - esimene häälik',
+        seed: nextSeed,
+        questions,
+        optionOrder: orderedOptions,
+        answers: [],
+        currentIndex: 0,
+        currentPhase: 'question',
+        runnerState: { score: 0, hintCount: 0, hintVisible: false, selectedLetter: null, reviewItems: [], showStopConfirm: false },
+        catalogueVersion: contract.catalogueVersion,
+        rewardPolicyVersion: contract.rewardPolicyVersion,
+        generatorVersion: capability.generatorVersion,
+        runnerVersion: capability.runnerVersion,
+        rotationVersion: capability.rotationVersion,
+        startedAt
+      });
+      if (cancelled) return;
+      startedAtRef.current = startedAt;
+      contractRef.current = contract;
+      setSeed(nextSeed);
+      setSession(questions);
+      setOptionOrder(orderedOptions);
+      setSessionReady(true);
+    })().catch((error) => {
+      if (!cancelled) setStorageError(runnerStorageFailure(error).message);
+    });
+    return () => { cancelled = true; };
+  }, [exerciseActive, sessionReady]);
+
+  snapshotRef.current = {
+    currentIndex: index,
+    currentPhase: index >= session.length && session.length ? 'result' : selectedLetter ? 'feedback' : 'question',
+    answers: reviewItems,
+    activeElapsedMs: elapsedSeconds * 1000,
+    runnerState: { score, hintCount, hintVisible, selectedLetter, reviewItems, showStopConfirm },
+    status: storageError ? 'paused' : 'active'
+  };
+
+  useEffect(() => {
+    if (!sessionReady || !runId || saved || storageError || (session.length > 0 && index >= session.length)) return;
+    void patchRunnerSession<FirstSoundSession>(runId, snapshotRef.current).catch((error) => {
+      setStorageError(runnerStorageFailure(error).message);
+    });
+  }, [hintCount, hintVisible, index, reviewItems, runId, saved, score, selectedLetter, session.length, sessionReady, showStopConfirm, storageError]);
+
+  useEffect(() => {
+    if (!sessionReady || saved || storageError || index >= session.length) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') setElapsedSeconds((value) => value + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [index, saved, session.length, sessionReady, storageError]);
+
+  useEffect(() => {
+    if (!sessionReady || !runId || saved) return;
+    const checkpoint = () => {
+      void patchRunnerSession<FirstSoundSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
+    };
+    const timer = window.setInterval(checkpoint, 5000);
+    const onVisibility = () => { if (document.visibilityState === 'hidden') checkpoint(); };
+    window.addEventListener('pagehide', checkpoint);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('pagehide', checkpoint);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [runId, saved, sessionReady]);
+
+  useEffect(() => {
+    if (!sessionReady || !runId || index < session.length || saved || exerciseActive !== true || !session.length) return;
     setSaved(true);
-    const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000));
 
     void (async () => {
-      const catalogueVersion = await getCatalogueVersion('kirsi').catch(() => null);
-      const outcome = await completeAttempt({
+      const contract = contractRef.current;
+      const capability = getOfflineRunnerCapability('kirsi-first-sound');
+      if (!contract || !capability) throw new Error('Harjutuse võrguühenduseta leping puudub.');
+      const outcome = await finalizeRunnerSession({
+        runId,
+        seed: seed ?? 0,
+        runnerId: capability.runnerId,
+        questionIds: session.map((task) => task.id),
+        rewardPolicyVersion: contract.rewardPolicyVersion,
+        generatorVersion: capability.generatorVersion,
+        runnerVersion: capability.runnerVersion,
+        rotationVersion: capability.rotationVersion,
         learner: 'kirsi',
         subject: 'lugemine',
         topic: 'esimene-haalik',
         category: 'Lugemine - esimene häälik',
         exerciseId: 'kirsi.reading.esimene-haalik',
-        catalogueVersion,
-        startedAt: new Date(startedAtRef.current).toISOString(),
-        questionCount: QUESTION_COUNT,
+        catalogueVersion: contract.catalogueVersion,
+        startedAt: startedAtRef.current,
+        questionCount: session.length,
         score,
-        elapsedSeconds,
+        elapsedSeconds: Math.max(1, elapsedSeconds),
         questions: reviewItems
       });
       setReward((outcome.reward as Reward) ?? null);
-    })();
-  }, [exerciseActive, index, reviewItems, saved, score]);
+    })().catch((error) => {
+      setSaved(false);
+      setStorageError(runnerStorageFailure(error).message);
+    });
+  }, [elapsedSeconds, exerciseActive, index, reviewItems, runId, saved, score, seed, session, sessionReady]);
 
   const reset = () => {
-    startedAtRef.current = Date.now();
-    setSeed(Date.now());
-    setIndex(0);
-    setScore(0);
-    setHintCount(0);
-    setHintVisible(false);
-    setSelectedLetter(null);
-    setReviewItems([]);
-    setReward(null);
-    setSaved(false);
-    setShowStopConfirm(false);
+    window.location.assign('/kirsi/lugemine/esimene-haalik');
   };
 
   const chooseLetter = (letter: string) => {
-    if (exerciseActive !== true || !current || answered) return;
+    if (exerciseActive !== true || !current || answered || storageError) return;
     const correct = letter === current.correctLetter;
     const orderedOptions = options.length ? options : current.options;
     setSelectedLetter(letter);
@@ -144,18 +292,32 @@ export default function KirsiFirstSoundPage() {
   };
 
   const showHint = () => {
-    if (exerciseActive !== true || hintVisible || answered) return;
+    if (exerciseActive !== true || hintVisible || answered || storageError) return;
     setHintVisible(true);
     setHintCount((value) => value + 1);
   };
 
   const next = () => {
+    if (storageError) return;
     setIndex((value) => value + 1);
     setHintVisible(false);
     setSelectedLetter(null);
   };
 
-  if (exerciseActive === null || seed === null) {
+  if (storageError) {
+    return (
+      <main className='container english-page reading-page'>
+        <section className='practice-shell english-shell first-sound-shell' role='alert'>
+          <h1>Harjutus on peatatud</h1>
+          <p>{storageError}</p>
+          <button type='button' className='start-button' onClick={() => window.location.reload()}>Proovi salvestust uuesti</button>
+          <Link className='practice-back-button' href='/kirsi'>Tagasi harjutuste juurde</Link>
+        </section>
+      </main>
+    );
+  }
+
+  if (exerciseActive === null || seed === null || !sessionReady) {
     return <main className='container english-page reading-page'><section className='practice-shell english-shell first-sound-shell'>Laadin harjutust...</section></main>;
   }
 
@@ -173,7 +335,7 @@ export default function KirsiFirstSoundPage() {
     );
   }
 
-  if (index >= QUESTION_COUNT) {
+  if (session.length > 0 && index >= session.length) {
     return (
       <main className='english-page sprint-result-page reading-page'>
         <section className='sprint-result-panel'>

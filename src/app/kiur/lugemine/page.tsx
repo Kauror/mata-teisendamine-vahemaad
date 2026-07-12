@@ -6,7 +6,22 @@ import { completedTodayFromHistory, ClientCompletionAttempt } from '@/lib/client
 import { shuffle } from '@/lib/englishGame';
 import { formatStars } from '@/lib/formatStars';
 import { getValidKiurReadingTasks, KiurReadingTask } from '@/lib/kiurReadingTasks';
-import { completeAttempt, getCatalogueVersion, isExercisePermittedOffline } from '@/lib/offline/api';
+import {
+  createRunnerSession,
+  ensureRunIdInCurrentUrl,
+  finalizeRunnerSession,
+  getCatalogueContract,
+  getLocalAttempt,
+  getMergedExerciseHistory,
+  isExercisePermittedOffline,
+  isRunId,
+  loadRunnerSession,
+  patchRunnerSession,
+  runnerStorageFailure
+} from '@/lib/offline/api';
+import type { CatalogueContract } from '@/lib/offline/api';
+import type { RunnerSessionV3 } from '@/lib/offline/records';
+import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 
 const RUN_LENGTH = 5;
 
@@ -33,6 +48,15 @@ type ReviewItem = {
   evidenceText: string;
 };
 
+type ReadingRunnerState = {
+  score: number;
+  selectedAnswer: string;
+  reviewItems: ReviewItem[];
+  showStopConfirm: boolean;
+};
+
+type ReadingSession = RunnerSessionV3<SessionTask, ReviewItem, ReadingRunnerState, null>;
+
 type Reward = {
   awardedAmount: number;
   balanceAfter: number;
@@ -55,6 +79,7 @@ function sourceLabel(task: Pick<KiurReadingTask, 'sourceAuthor' | 'sourceTitle' 
 }
 
 export default function KiurReadingPage() {
+  const [runId, setRunId] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('start');
   const [session, setSession] = useState<SessionTask[]>([]);
   const [index, setIndex] = useState(0);
@@ -66,7 +91,13 @@ export default function KiurReadingPage() {
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [readingActive, setReadingActive] = useState(false);
   const [doneToday, setDoneToday] = useState(false);
-  const startedAtRef = useRef(Date.now());
+  const [sessionReady, setSessionReady] = useState(false);
+  const [storageError, setStorageError] = useState('');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const startedAtRef = useRef(new Date().toISOString());
+  const seedRef = useRef<number | string>(0);
+  const snapshotRef = useRef<Partial<ReadingSession>>({});
+  const contractRef = useRef<CatalogueContract | null>(null);
   const answerLockedRef = useRef(false);
 
   const current = session[index];
@@ -84,55 +115,189 @@ export default function KiurReadingPage() {
   }, []);
 
   useEffect(() => {
-    void fetch('/api/history')
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((attempts: ClientCompletionAttempt[]) => setDoneToday(completedTodayFromHistory(attempts, 'kiur', 'kiur.reading.loe-ja-vasta', { subject: 'lugemine', topic: 'loe-ja-vasta', category: 'Lugemine - loe ja vasta' })))
+    void getMergedExerciseHistory()
+      .then((attempts) => setDoneToday(completedTodayFromHistory(attempts as ClientCompletionAttempt[], 'kiur', 'kiur.reading.loe-ja-vasta', { subject: 'lugemine', topic: 'loe-ja-vasta', category: 'Lugemine - loe ja vasta' })))
       .catch(() => setDoneToday(false));
   }, []);
 
   useEffect(() => {
-    if (phase !== 'result' || saved || runCount === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const candidate = new URL(window.location.href).searchParams.get('run');
+      if (!isRunId(candidate)) {
+        setSessionReady(true);
+        return;
+      }
+      setRunId(candidate);
+      const existing = await loadRunnerSession<SessionTask, ReviewItem, ReadingRunnerState, null>(candidate);
+      if (cancelled) return;
+      if (!existing) {
+        if (await getLocalAttempt(candidate)) window.location.replace(`/tulemus?clientId=${encodeURIComponent(candidate)}`);
+        else setSessionReady(true);
+        return;
+      }
+      if (existing.runnerId !== 'kiur-reading') throw new Error('See salvestatud jooks kuulub teisele harjutusele.');
+      const state = existing.runnerState;
+      startedAtRef.current = existing.startedAt;
+      seedRef.current = existing.seed ?? 0;
+      contractRef.current = {
+        catalogueVersion: existing.catalogueVersion ?? '',
+        rewardPolicyVersion: existing.rewardPolicyVersion ?? 'legacy-v1',
+        generatorVersion: existing.generatorVersion,
+        runnerVersion: existing.runnerVersion,
+        algorithmVersion: existing.rotationVersion ?? 1,
+        rotationVersion: existing.rotationVersion ?? 1,
+        dailyLimit: 0
+      };
+      setSession(existing.questions);
+      setIndex(existing.currentIndex);
+      setPhase(existing.currentPhase as Phase);
+      setScore(state.score);
+      setSelectedAnswer(state.selectedAnswer);
+      setReviewItems(state.reviewItems);
+      setShowStopConfirm(state.showStopConfirm);
+      setElapsedSeconds(Math.floor(existing.activeElapsedMs / 1000));
+      answerLockedRef.current = existing.currentPhase === 'feedback';
+      setSessionReady(true);
+    })().catch((error) => {
+      if (!cancelled) setStorageError(runnerStorageFailure(error).message);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  snapshotRef.current = {
+    currentIndex: index,
+    currentPhase: phase,
+    answers: reviewItems,
+    activeElapsedMs: elapsedSeconds * 1000,
+    runnerState: { score, selectedAnswer, reviewItems, showStopConfirm },
+    status: storageError ? 'paused' : 'active'
+  };
+
+  useEffect(() => {
+    if (!sessionReady || !runId || phase === 'start' || phase === 'result' || saved || storageError) return;
+    void patchRunnerSession<ReadingSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
+  }, [index, phase, reviewItems, runId, saved, score, selectedAnswer, sessionReady, showStopConfirm, storageError]);
+
+  useEffect(() => {
+    if (!sessionReady || saved || storageError || phase === 'start' || phase === 'result') return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') setElapsedSeconds((value) => value + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [phase, saved, sessionReady, storageError]);
+
+  useEffect(() => {
+    if (!runId || !sessionReady || phase === 'start' || saved) return;
+    const checkpoint = () => void patchRunnerSession<ReadingSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
+    const timer = window.setInterval(checkpoint, 5000);
+    const onVisibility = () => { if (document.visibilityState === 'hidden') checkpoint(); };
+    window.addEventListener('pagehide', checkpoint);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('pagehide', checkpoint);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [phase, runId, saved, sessionReady]);
+
+  useEffect(() => {
+    if (phase !== 'result' || saved || runCount === 0 || !runId) return;
     setSaved(true);
-    const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000));
 
     void (async () => {
-      const catalogueVersion = await getCatalogueVersion('kiur').catch(() => null);
-      const outcome = await completeAttempt({
+      const contract = contractRef.current;
+      const capability = getOfflineRunnerCapability('kiur-reading');
+      if (!contract || !capability) throw new Error('Harjutuse võrguühenduseta leping puudub.');
+      const outcome = await finalizeRunnerSession({
+        runId,
+        seed: seedRef.current,
+        runnerId: capability.runnerId,
+        questionIds: session.map((task) => task.id),
+        rewardPolicyVersion: contract.rewardPolicyVersion,
+        generatorVersion: capability.generatorVersion,
+        runnerVersion: capability.runnerVersion,
+        rotationVersion: capability.rotationVersion,
         learner: 'kiur',
         subject: 'lugemine',
         topic: 'loe-ja-vasta',
         category: 'Lugemine - loe ja vasta',
         difficulty: 'Loe ja vasta',
         exerciseId: 'kiur.reading.loe-ja-vasta',
-        catalogueVersion,
-        startedAt: new Date(startedAtRef.current).toISOString(),
+        catalogueVersion: contract.catalogueVersion,
+        startedAt: startedAtRef.current,
         questionCount: runCount,
         score,
-        elapsedSeconds,
+        elapsedSeconds: Math.max(1, elapsedSeconds),
         questions: reviewItems
       });
       setReward((outcome.reward as Reward) ?? null);
-    })();
-  }, [phase, reviewItems, runCount, saved, score]);
+    })().catch((error) => {
+      setSaved(false);
+      setStorageError(runnerStorageFailure(error).message);
+    });
+  }, [elapsedSeconds, phase, reviewItems, runCount, runId, saved, score, session]);
 
-  const startRun = () => {
-    if (!readingActive) return;
+  const startRun = async () => {
+    if (!readingActive || storageError) return;
+    if (phase === 'result') {
+      window.location.assign('/kiur/lugemine');
+      return;
+    }
     const nextSession = buildSession();
-    startedAtRef.current = Date.now();
-    setSession(nextSession);
-    setIndex(0);
-    setScore(0);
-    setSelectedAnswer('');
-    setReviewItems([]);
-    setReward(null);
-    setSaved(false);
-    setShowStopConfirm(false);
-    answerLockedRef.current = false;
-    setPhase(nextSession.length ? 'reading' : 'start');
+    if (!nextSession.length) return;
+    const id = ensureRunIdInCurrentUrl();
+    const contract = await getCatalogueContract('kiur');
+    const capability = getOfflineRunnerCapability('kiur-reading');
+    if (!contract || !capability) {
+      setStorageError('Ühenda seade internetiga, et harjutus ette valmistada.');
+      return;
+    }
+    const startedAt = new Date().toISOString();
+    const nextSeed = Date.now();
+    try {
+      await createRunnerSession<SessionTask, ReviewItem, ReadingRunnerState, null>({
+        runId: id,
+        learner: 'kiur',
+        runnerId: 'kiur-reading',
+        exerciseId: 'kiur.reading.loe-ja-vasta',
+        subject: 'lugemine',
+        topic: 'loe-ja-vasta',
+        category: 'Lugemine - loe ja vasta',
+        seed: nextSeed,
+        questions: nextSession,
+        answers: [],
+        currentPhase: 'reading',
+        runnerState: { score: 0, selectedAnswer: '', reviewItems: [], showStopConfirm: false },
+        catalogueVersion: contract.catalogueVersion,
+        rewardPolicyVersion: contract.rewardPolicyVersion,
+        generatorVersion: capability.generatorVersion,
+        runnerVersion: capability.runnerVersion,
+        rotationVersion: capability.rotationVersion,
+        startedAt
+      });
+      startedAtRef.current = startedAt;
+      seedRef.current = nextSeed;
+      contractRef.current = contract;
+      setRunId(id);
+      setSession(nextSession);
+      setIndex(0);
+      setScore(0);
+      setSelectedAnswer('');
+      setReviewItems([]);
+      setReward(null);
+      setSaved(false);
+      setShowStopConfirm(false);
+      setElapsedSeconds(0);
+      answerLockedRef.current = false;
+      setPhase('reading');
+    } catch (error) {
+      setStorageError(runnerStorageFailure(error).message);
+    }
   };
 
   const chooseAnswer = (answer: string) => {
-    if (!current || phase !== 'question' || answerLockedRef.current) return;
+    if (!current || phase !== 'question' || answerLockedRef.current || storageError) return;
     answerLockedRef.current = true;
     const correct = answer === current.correctAnswer;
     setSelectedAnswer(answer);
@@ -157,6 +322,7 @@ export default function KiurReadingPage() {
   };
 
   const next = () => {
+    if (storageError) return;
     if (index + 1 >= runCount) {
       setPhase('result');
       return;
@@ -166,6 +332,23 @@ export default function KiurReadingPage() {
     answerLockedRef.current = false;
     setPhase('reading');
   };
+
+  if (storageError) {
+    return (
+      <main className='container english-page kiur-reading-page'>
+        <section className='practice-shell english-shell kiur-reading-shell' role='alert'>
+          <h1>Harjutus on peatatud</h1>
+          <p>{storageError}</p>
+          <button type='button' className='start-button' onClick={() => window.location.reload()}>Proovi salvestust uuesti</button>
+          <Link className='practice-back-button' href='/kiur'>Tagasi harjutuste juurde</Link>
+        </section>
+      </main>
+    );
+  }
+
+  if (!sessionReady) {
+    return <main className='container english-page kiur-reading-page'><section className='practice-shell english-shell kiur-reading-shell'>Taastan harjutust...</section></main>;
+  }
 
   if (phase === 'start') {
     const hasTasks = readingActive && getValidKiurReadingTasks().length > 0;

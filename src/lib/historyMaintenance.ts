@@ -13,7 +13,8 @@ import { bumpHistoryEpoch, writeTombstone } from '@/lib/offline/server/tombstone
 // place, so deleting a history row does not retroactively change a child's star
 // balance (matching the previous behaviour).
 
-const deleteAttemptTx = db.transaction((attemptId: number): number => {
+function deleteAttemptTransaction() {
+  return db.transaction((attemptId: number): number => {
   // Record a tombstone (with the clientAttemptId, if any) before removing the row
   // so offline devices can drop it from their cache on the next sync.
   const row = db.prepare('SELECT clientAttemptId FROM attempts WHERE id = ?').get(attemptId) as { clientAttemptId: string | null } | undefined;
@@ -27,15 +28,17 @@ const deleteAttemptTx = db.transaction((attemptId: number): number => {
   db.prepare('UPDATE mistake_pool SET resolvedByAttemptId = NULL WHERE resolvedByAttemptId = ?').run(attemptId);
   db.prepare('UPDATE remediation_sessions SET historyAttemptId = NULL WHERE historyAttemptId = ?').run(attemptId);
   return db.prepare('DELETE FROM attempts WHERE id = ?').run(attemptId).changes;
-});
+  });
+}
 
 // Removes a single attempt and everything that references it. Returns the number
 // of attempt rows deleted (0 if the id did not exist).
 export function deleteAttempt(attemptId: number): number {
-  return deleteAttemptTx(attemptId);
+  return deleteAttemptTransaction()(attemptId);
 }
 
-const deleteAllHistoryTx = db.transaction(() => {
+function deleteAllHistoryTransaction() {
+  return db.transaction(() => {
   // Children first (remediation items reference sessions and mistakes), then the
   // tables that reference attempts, then attempts themselves.
   db.prepare('DELETE FROM remediation_session_items').run();
@@ -48,9 +51,10 @@ const deleteAllHistoryTx = db.transaction(() => {
   // Bump the history epoch so offline devices clear their stale confirmed cache
   // and cannot resurrect intentionally-deleted history.
   bumpHistoryEpoch();
-});
+  });
+}
 
 // Wipes the entire exercise history and all of its derived learning data.
 export function deleteAllHistory() {
-  deleteAllHistoryTx();
+  deleteAllHistoryTransaction()();
 }

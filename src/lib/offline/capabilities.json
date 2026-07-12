@@ -1,0 +1,38 @@
+{
+  "manifestVersion": 2,
+  "shellRoutes": [
+    "/",
+    "/kiur",
+    "/kirsi",
+    "/test",
+    "/history",
+    "/offline",
+    "/tulemus",
+    "/kiur/matemaatika",
+    "/kirsi/matemaatika",
+    "/kiur/inglise-keel",
+    "/kiur/inglise-keel/sprint",
+    "/kiur/lugemine",
+    "/kirsi/lugemine",
+    "/kirsi/lugemine/pilt-ja-sona",
+    "/kirsi/lugemine/esimene-haalik",
+    "/kiur/loodusopetus",
+    "/kiur/loodusopetus/test",
+    "/kiur/kordamine",
+    "/kirsi/kordamine"
+  ],
+  "publicAssets": [
+    "/manifest.webmanifest",
+    "/web-app-manifest-192x192.png",
+    "/web-app-manifest-512x512.png"
+  ],
+  "runners": [
+    { "id": "shared.math", "runnerId": "math", "runnerVersion": "math-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kiur", "kirsi"], "route": "/test", "offlineStart": true },
+    { "id": "kiur.english.sprint", "runnerId": "kiur-english-sprint", "runnerVersion": "english-sprint-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kiur"], "route": "/kiur/inglise-keel/sprint", "offlineStart": true },
+    { "id": "kiur.reading.loe-ja-vasta", "runnerId": "kiur-reading", "runnerVersion": "kiur-reading-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kiur"], "route": "/kiur/lugemine", "offlineStart": true },
+    { "id": "kirsi.reading.pilt-ja-sona", "runnerId": "kirsi-picture-word", "runnerVersion": "picture-word-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kirsi"], "route": "/kirsi/lugemine/pilt-ja-sona", "offlineStart": true },
+    { "id": "kirsi.reading.esimene-haalik", "runnerId": "kirsi-first-sound", "runnerVersion": "first-sound-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kirsi"], "route": "/kirsi/lugemine/esimene-haalik", "offlineStart": true },
+    { "id": "kiur.science.loodusopetus", "runnerId": "kiur-science", "runnerVersion": "science-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kiur"], "route": "/kiur/loodusopetus/test", "offlineStart": true },
+    { "id": "remediation", "runnerId": "remediation", "runnerVersion": "remediation-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kiur", "kirsi"], "route": "/kiur/kordamine", "alternateRoutes": ["/kirsi/kordamine"], "offlineStart": true, "requiresPreparedData": true }
+  ]
+}

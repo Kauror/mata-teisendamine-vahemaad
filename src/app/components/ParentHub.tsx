@@ -5,6 +5,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { todayDateString } from '@/lib/appDate';
 import { formatStars } from '@/lib/formatStars';
 import { OfflineReadiness } from '@/app/components/offline/OfflineReadiness';
+import { useOffline } from '@/app/components/offline/OfflineProvider';
+import { csrfHeaders } from '@/lib/auth/client';
+
+// Parent APIs require the family-session double-submit token. Keeping the
+// wrapper local makes every existing and future request in this screen use the
+// same protection, including DELETE/PATCH calls that have no JSON body.
+function fetch(input: RequestInfo | URL, init: RequestInit = {}) {
+  return globalThis.fetch(input, { ...init, headers: csrfHeaders(init.headers) });
+}
 
 type AssignmentMode = 'kiur' | 'kirsi' | 'both_independent' | 'first_completer';
 type RecurrenceType = 'once' | 'daily' | 'weekdays' | 'weekends' | 'selected_weekdays';
@@ -212,6 +221,7 @@ const defaultLearningSettings: LearningSettings = {
 };
 
 export default function ParentHub() {
+  const { online } = useOffline();
   const [data, setData] = useState<Dashboard | null>(null);
   const [store, setStore] = useState<StoreDashboard | null>(null);
   const [learningExercises, setLearningExercises] = useState<LearningExercise[]>([]);
@@ -660,7 +670,7 @@ export default function ParentHub() {
           <h1>Lapsevanema ala</h1>
           <p>Tegevused, pood ja tähed</p>
         </div>
-        <button type='button' className='filter-chip' onClick={logout}>Välju</button>
+        <button type='button' className='filter-chip' disabled={!online} onClick={logout}>Välju</button>
       </header>
 
       {(error || notice) && (
@@ -669,6 +679,10 @@ export default function ParentHub() {
           {notice && <div className='parent-toast' role='status' aria-live='polite' key={`n-${notice}`}>{notice}</div>}
         </div>
       )}
+
+      {!online && <p className='offline-warning' role='alert'>Lapsevanema muudatused vajavad internetiühendust. Sellel lehel ei salvestata võrguühenduseta tehtud muudatusi.</p>}
+
+      <fieldset disabled={!online} aria-disabled={!online} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
 
       {(data?.pendingApprovals?.length ?? 0) > 0 && (
         <section className='parent-approvals' aria-label='Vanema kinnitus'>
@@ -1009,6 +1023,7 @@ export default function ParentHub() {
         </div>
       </section>
       </ParentAccordionSection>
+      </fieldset>
     </section>
   );
 }

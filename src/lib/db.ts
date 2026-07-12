@@ -1,18 +1,18 @@
 import Database from 'better-sqlite3';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { hashSecret } from '@/lib/auth/password';
 
-const dataDir = '/data';
-const dbFile = process.env.MATHS_GAME_DB_FILE || `${dataDir}/maths-game.sqlite`;
+/**
+ * The application has historically imported a singleton `db` object directly.
+ * Keep that API, but defer opening SQLite (and therefore migrations) until the
+ * first actual database operation. Merely importing a route during `next build`
+ * is now side-effect free.
+ */
+export type DatabaseConnection = InstanceType<typeof Database>;
 
-if (dbFile !== ':memory:') {
-  const parentDir = path.dirname(dbFile);
-  if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir, { recursive: true });
-}
-
-const db = new Database(dbFile, { timeout: 30000 });
-db.pragma('busy_timeout = 30000');
-if (dbFile !== ':memory:') db.pragma('journal_mode = WAL');
+function applyLegacySchema(db: DatabaseConnection) {
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS attempts (
@@ -65,6 +65,7 @@ addColumnIfMissing(attemptHas('clientTimeZone'), 'ALTER TABLE attempts ADD COLUM
 addColumnIfMissing(attemptHas('clientUtcOffsetMinutes'), 'ALTER TABLE attempts ADD COLUMN clientUtcOffsetMinutes INTEGER');
 // Idempotency at the DB level: one row per non-null clientAttemptId. Legacy rows
 // (null) are unconstrained.
+assertNoDuplicateClientAttemptIds(db);
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_attempts_client_attempt_id ON attempts(clientAttemptId) WHERE clientAttemptId IS NOT NULL');
 db.exec('CREATE INDEX IF NOT EXISTS idx_attempts_learner_completed ON attempts(learner, completedAt)');
 
@@ -485,5 +486,327 @@ db.exec(`
   );
 `);
 db.prepare("INSERT OR IGNORE INTO offline_sync_state (id, historyEpoch, updatedAt) VALUES (1, 0, ?)").run(new Date().toISOString());
+
+}
+
+type Migration = {
+  id: number;
+  name: string;
+  checksumSource: string;
+  up: (connection: DatabaseConnection) => void;
+};
+
+function hasColumn(connection: DatabaseConnection, table: string, column: string) {
+  const rows = connection.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  return rows.some((row) => row.name === column);
+}
+
+function addColumn(connection: DatabaseConnection, table: string, column: string, definition: string) {
+  if (!hasColumn(connection, table, column)) {
+    connection.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+function assertNoDuplicateClientAttemptIds(connection: DatabaseConnection) {
+  const duplicate = connection.prepare(`
+    SELECT clientAttemptId, COUNT(*) AS count
+    FROM attempts
+    WHERE clientAttemptId IS NOT NULL
+    GROUP BY clientAttemptId
+    HAVING COUNT(*) > 1
+    LIMIT 1
+  `).get() as { clientAttemptId: string; count: number } | undefined;
+  if (duplicate) {
+    throw new Error(`Migration blocked: duplicate clientAttemptId ${duplicate.clientAttemptId} (${duplicate.count} rows).`);
+  }
+}
+
+function applyProtocolV2Schema(connection: DatabaseConnection) {
+  assertNoDuplicateClientAttemptIds(connection);
+
+  addColumn(connection, 'attempts', 'clientCorrectedCompletedAt', 'TEXT');
+  addColumn(connection, 'attempts', 'effectiveCompletedAt', 'TEXT');
+  addColumn(connection, 'attempts', 'completionDate', 'TEXT');
+  addColumn(connection, 'attempts', 'clockStatus', "TEXT NOT NULL DEFAULT 'legacy'");
+  addColumn(connection, 'attempts', 'clockSkewMs', 'INTEGER');
+  addColumn(connection, 'attempts', 'rewardPolicyVersion', 'TEXT');
+  addColumn(connection, 'attempts', 'rewardEngineVersion', 'INTEGER');
+  addColumn(connection, 'attempts', 'rewardRevision', 'INTEGER NOT NULL DEFAULT 0');
+  addColumn(connection, 'attempts', 'generatorVersion', 'TEXT');
+  addColumn(connection, 'attempts', 'runnerId', 'TEXT');
+  addColumn(connection, 'attempts', 'runnerVersion', 'TEXT');
+  addColumn(connection, 'attempts', 'rotationVersion', 'INTEGER');
+  addColumn(connection, 'attempts', 'runnerSeed', 'TEXT');
+  addColumn(connection, 'attempts', 'questionIdsJson', 'TEXT');
+  addColumn(connection, 'attempts', 'protocolVersion', 'INTEGER NOT NULL DEFAULT 1');
+
+  addColumn(connection, 'point_ledger', 'effectiveDate', 'TEXT');
+  addColumn(connection, 'point_ledger', 'idempotencyKey', 'TEXT');
+  addColumn(connection, 'point_ledger', 'rewardRevision', 'INTEGER');
+
+  connection.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_attempts_client_attempt_id
+      ON attempts(clientAttemptId) WHERE clientAttemptId IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_attempts_completion_order
+      ON attempts(learner, completionDate, effectiveCompletedAt, clientAttemptId, id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_point_ledger_idempotency_key
+      ON point_ledger(idempotencyKey) WHERE idempotencyKey IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_point_ledger_effective_date
+      ON point_ledger(learner, effectiveDate);
+
+    CREATE TABLE IF NOT EXISTS reward_policy_versions (
+      version TEXT PRIMARY KEY,
+      contentHash TEXT NOT NULL UNIQUE,
+      policyJson TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      supersedesVersion TEXT,
+      FOREIGN KEY (supersedesVersion) REFERENCES reward_policy_versions(version)
+    );
+
+    CREATE TABLE IF NOT EXISTS reward_policy_current (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      version TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (version) REFERENCES reward_policy_versions(version)
+    );
+
+    CREATE TABLE IF NOT EXISTS catalogue_grants (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      learner TEXT NOT NULL,
+      catalogueVersion TEXT NOT NULL,
+      deviceId TEXT,
+      rewardPolicyVersion TEXT NOT NULL,
+      generatorVersion TEXT NOT NULL,
+      runnerVersion TEXT NOT NULL,
+      runnerContractsJson TEXT NOT NULL DEFAULT '{}',
+      rotationVersion INTEGER NOT NULL,
+      issuedAt TEXT NOT NULL,
+      validUntil TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      UNIQUE(learner, catalogueVersion, deviceId),
+      FOREIGN KEY (rewardPolicyVersion) REFERENCES reward_policy_versions(version)
+    );
+
+    CREATE TABLE IF NOT EXISTS reward_projection_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      learner TEXT NOT NULL,
+      fromDate TEXT NOT NULL,
+      throughDate TEXT NOT NULL,
+      engineVersion INTEGER NOT NULL,
+      triggerAttemptId INTEGER,
+      status TEXT NOT NULL,
+      detailJson TEXT,
+      createdAt TEXT NOT NULL,
+      completedAt TEXT,
+      FOREIGN KEY (triggerAttemptId) REFERENCES attempts(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS attempt_reward_components (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      attemptId INTEGER NOT NULL,
+      componentKey TEXT NOT NULL,
+      revision INTEGER NOT NULL,
+      canonicalAmount REAL NOT NULL,
+      previousCanonicalAmount REAL NOT NULL,
+      deltaAmount REAL NOT NULL,
+      policyVersion TEXT NOT NULL,
+      effectiveDate TEXT NOT NULL,
+      ledgerEntryId INTEGER,
+      projectionRunId INTEGER,
+      createdAt TEXT NOT NULL,
+      UNIQUE(attemptId, componentKey, revision),
+      FOREIGN KEY (attemptId) REFERENCES attempts(id),
+      FOREIGN KEY (policyVersion) REFERENCES reward_policy_versions(version),
+      FOREIGN KEY (ledgerEntryId) REFERENCES point_ledger(id),
+      FOREIGN KEY (projectionRunId) REFERENCES reward_projection_runs(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_reward_components_attempt_component
+      ON attempt_reward_components(attemptId, componentKey, revision DESC);
+    CREATE INDEX IF NOT EXISTS idx_reward_components_effective_date
+      ON attempt_reward_components(effectiveDate, attemptId);
+
+    CREATE TABLE IF NOT EXISTS reward_cutover_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      cutoverAt TEXT,
+      baselineLedgerId INTEGER,
+      baselineBalancesJson TEXT,
+      status TEXT NOT NULL,
+      driftReportJson TEXT,
+      updatedAt TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_login_limits (
+      scope TEXT NOT NULL,
+      identityHash TEXT NOT NULL,
+      windowStartedAt TEXT NOT NULL,
+      failureCount INTEGER NOT NULL,
+      blockedUntil TEXT,
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (scope, identityHash)
+    );
+
+    CREATE TABLE IF NOT EXISTS device_change_cursors (
+      deviceId TEXT PRIMARY KEY,
+      protocolVersion INTEGER NOT NULL,
+      lastAttemptId INTEGER NOT NULL DEFAULT 0,
+      lastTombstoneId INTEGER NOT NULL DEFAULT 0,
+      lastTaskChangeId INTEGER NOT NULL DEFAULT 0,
+      lastRemediationChangeId INTEGER NOT NULL DEFAULT 0,
+      lastSeenAt TEXT NOT NULL,
+      resetRequired INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS server_change_log (
+      changeId INTEGER PRIMARY KEY AUTOINCREMENT,
+      stream TEXT NOT NULL,
+      entityType TEXT NOT NULL,
+      entityId TEXT NOT NULL,
+      operation TEXT NOT NULL,
+      payloadJson TEXT,
+      createdAt TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_server_change_log_stream_id
+      ON server_change_log(stream, changeId);
+  `);
+
+  connection.prepare(`
+    INSERT OR IGNORE INTO reward_cutover_state (id, status, updatedAt)
+    VALUES (1, 'not_started', ?)
+  `).run(new Date().toISOString());
+
+  // Migrate the only legacy credential while the schema migration lock is
+  // held. Plaintext is deleted in the same transaction and the auth version is
+  // bumped so deterministic legacy parent cookies stop working immediately.
+  const legacyPassword = connection.prepare(`
+    SELECT value FROM parent_settings WHERE key = 'parent_password'
+  `).get() as { value: string } | undefined;
+  if (legacyPassword?.value) {
+    const now = new Date().toISOString();
+    connection.prepare(`
+      INSERT INTO parent_settings (key, value, updatedAt) VALUES ('parent_password_hash', ?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updatedAt = excluded.updatedAt
+    `).run(hashSecret(legacyPassword.value), now);
+    connection.prepare(`
+      INSERT INTO parent_settings (key, value, updatedAt) VALUES ('parent_auth_version', '2', ?)
+      ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(parent_settings.value AS INTEGER) + 1 AS TEXT), updatedAt = excluded.updatedAt
+    `).run(now);
+    connection.prepare("DELETE FROM parent_settings WHERE key = 'parent_password'").run();
+  }
+}
+
+const migrations: Migration[] = [
+  {
+    id: 1,
+    name: 'legacy_schema_baseline',
+    checksumSource: 'legacy_schema_baseline:v1:2026-07-11',
+    up: applyLegacySchema
+  },
+  {
+    id: 2,
+    name: 'offline_protocol_v2_foundation',
+    checksumSource: 'offline_protocol_v2_foundation:v1:2026-07-12',
+    up: applyProtocolV2Schema
+  }
+];
+
+function migrationChecksum(migration: Migration) {
+  return createHash('sha256')
+    .update(`${migration.id}:${migration.name}:${migration.checksumSource}`)
+    .digest('hex');
+}
+
+export function runMigrations(connection: DatabaseConnection) {
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      checksum TEXT NOT NULL,
+      appliedAt TEXT NOT NULL
+    )
+  `);
+
+  const applied = connection.prepare('SELECT id, name, checksum FROM schema_migrations ORDER BY id').all() as Array<{
+    id: number;
+    name: string;
+    checksum: string;
+  }>;
+  const byId = new Map(applied.map((row) => [row.id, row]));
+
+  for (const migration of migrations) {
+    const checksum = migrationChecksum(migration);
+    const previous = byId.get(migration.id);
+    if (previous) {
+      if (previous.name !== migration.name || previous.checksum !== checksum) {
+        throw new Error(`Migration checksum mismatch for ${migration.id}:${migration.name}.`);
+      }
+      continue;
+    }
+
+    connection.exec('BEGIN IMMEDIATE');
+    try {
+      migration.up(connection);
+      connection.prepare(`
+        INSERT INTO schema_migrations (id, name, checksum, appliedAt)
+        VALUES (?, ?, ?, ?)
+      `).run(migration.id, migration.name, checksum, new Date().toISOString());
+      connection.exec('COMMIT');
+    } catch (error) {
+      connection.exec('ROLLBACK');
+      throw error;
+    }
+  }
+}
+
+export function openDatabase(filename: string): DatabaseConnection {
+  if (filename !== ':memory:') {
+    const parentDir = path.dirname(filename);
+    if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir, { recursive: true });
+  }
+  const connection = new Database(filename, { timeout: 30000 }) as DatabaseConnection;
+  connection.pragma('busy_timeout = 30000');
+  connection.pragma('foreign_keys = ON');
+  if (filename !== ':memory:') connection.pragma('journal_mode = WAL');
+  runMigrations(connection);
+  return connection;
+}
+
+export function configuredDatabaseFile() {
+  return process.env.MATHS_GAME_DB_FILE || '/data/maths-game.sqlite';
+}
+
+let singleton: DatabaseConnection | null = null;
+
+export function getDatabase(): DatabaseConnection {
+  if (!singleton) {
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+      throw new Error('Database access is disabled during next build. Make the route dynamic and access SQLite at request time.');
+    }
+    if (
+      process.env.NODE_ENV === 'production' &&
+      configuredDatabaseFile() !== ':memory:' &&
+      process.env.DATABASE_STARTUP_VERIFIED !== '1'
+    ) {
+      throw new Error('Refusing unverified production database startup. Use the verified startup workflow.');
+    }
+    singleton = openDatabase(configuredDatabaseFile());
+  }
+  return singleton;
+}
+
+export function closeDatabaseForTests() {
+  if (!singleton) return;
+  singleton.close();
+  singleton = null;
+}
+
+const db = new Proxy({} as DatabaseConnection, {
+  get(_target, property) {
+    const connection = getDatabase() as unknown as Record<PropertyKey, unknown>;
+    const value = connection[property];
+    return typeof value === 'function' ? value.bind(connection) : value;
+  }
+});
 
 export default db;

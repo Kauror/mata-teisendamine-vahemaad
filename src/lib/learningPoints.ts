@@ -4,6 +4,7 @@ import { isKirsiAttempt } from '@/lib/history';
 import { awardLearningStreakRewards, AwardedStreakReward, getStreakRewardsForAttempt } from '@/lib/rewardRules';
 import { sprintAttemptQualifies } from '@/lib/sprintReward';
 import { getBalance, Learner, nowIso, todayDateString } from '@/lib/tasks';
+import { ensureCurrentRewardPolicy } from '@/lib/server/rewards/policy';
 
 export type LearningPointSettings = {
   baseValue: number;
@@ -152,6 +153,9 @@ export function updateLearningPointSettings(input: LearningPointSettings) {
       streakBonusEnabled = excluded.streakBonusEnabled,
       updatedAt = excluded.updatedAt
   `).run(settings.baseValue, settings.decayStep, settings.minimumValue, settings.dailyCap, settings.streakIntervalDays, settings.streakBonusAmount, settings.learningPointsEnabled ? 1 : 0, settings.streakBonusEnabled ? 1 : 0, nowIso());
+  // Policy snapshots are immutable: changing settings mints a new content-hash
+  // instead of changing the policy attached to an in-flight/offline session.
+  ensureCurrentRewardPolicy();
 }
 
 export function exerciseKeyForAttempt(learner: Learner, category: string, topic?: string | null) {

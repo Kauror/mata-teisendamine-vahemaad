@@ -33,8 +33,26 @@ export type OfflineCatalogue = {
   validUntil: string; // ISO — attempts referencing this stay acceptable until here
   algorithmVersion: number; // rotation algorithm version
   generatorVersion: string; // question-generator/app compatibility version
+  // v1 catalogue rows predate immutable policy grants. The client maps a
+  // missing value to LEGACY_REWARD_POLICY_VERSION during the compatibility
+  // window; every newly-issued v2 grant supplies an explicit content hash.
+  rewardPolicyVersion?: string;
+  runnerVersion?: string;
   dailyLimit: number;
   entries: CatalogueEntry[];
+};
+
+export type OfflineCatalogueV2 = OfflineCatalogue & Required<Pick<OfflineCatalogue, 'rewardPolicyVersion' | 'runnerVersion'>>;
+
+export type CatalogueGrant = {
+  learner: Learner;
+  catalogueVersion: string;
+  rewardPolicyVersion: string;
+  generatorVersion: string;
+  runnerVersion: string;
+  rotationVersion: number;
+  issuedAt: string;
+  validUntil: string;
 };
 
 export const ROTATION_ALGORITHM_VERSION = 1;
@@ -43,6 +61,8 @@ export const ROTATION_ALGORITHM_VERSION = 1;
 // generated questions for a given seed. Recorded on each catalogue version so the
 // server can tell whether an offline device's generator is compatible.
 export const GENERATOR_VERSION = '2026-07-1';
+export const LEGACY_REWARD_POLICY_VERSION = 'legacy-v1';
+export const LEGACY_RUNNER_VERSION = 'legacy-v1';
 
 // Offline validity windows (days).
 export const CATALOGUE_REFRESH_AFTER_DAYS = 21;
@@ -70,7 +90,30 @@ export type OfflineAttemptPayload = {
   score: number;
   elapsedSeconds: number;
   questions: unknown[]; // full per-question result payload
+  // Protocol-v2 runner contract. Optional on the base type solely so an
+  // additive IndexedDB upgrade can still read and surface legacy v1 outbox
+  // rows; every newly-created v2 attempt supplies all five fields.
+  rewardPolicyVersion?: string;
+  generatorVersion?: string;
+  runnerVersion?: string;
+  rotationVersion?: number;
+  clientCorrectedCompletedAt?: string;
+  seed?: number | string;
+  runnerId?: string;
+  questionIds?: string[];
 };
+
+export type OfflineAttemptPayloadV2 = OfflineAttemptPayload & Required<Pick<
+  OfflineAttemptPayload,
+  | 'rewardPolicyVersion'
+  | 'generatorVersion'
+  | 'runnerVersion'
+  | 'rotationVersion'
+  | 'clientCorrectedCompletedAt'
+  | 'seed'
+  | 'runnerId'
+  | 'questionIds'
+>>;
 
 export type AttemptSyncStatus = 'created' | 'duplicate' | 'rejected' | 'needs_review';
 
@@ -78,6 +121,10 @@ export type AttemptResult = {
   clientAttemptId: string;
   status: AttemptSyncStatus;
   serverAttemptId?: number;
+  // v2 always returns the canonical row for created and duplicate uploads. The
+  // client can therefore put confirmed history before deleting its outbox row
+  // in one IndexedDB transaction, even if the pull cursor has advanced.
+  canonicalAttempt?: ServerAttempt;
   reward?: unknown;
   reasonCode?: string;
   message?: string;
@@ -103,7 +150,7 @@ export type ServerAttempt = {
 
 // ---- Task actions (offline daily-task completion) ----
 
-export type TaskActionStatus = 'applied' | 'duplicate' | 'pending_approval' | 'conflict' | 'rejected' | 'needs_review';
+export type TaskActionStatus = 'applied' | 'duplicate' | 'pending_approval' | 'returned' | 'conflict' | 'rejected' | 'needs_review';
 
 export type OfflineTaskActionPayload = {
   clientActionId: string;
@@ -125,17 +172,68 @@ export type TaskActionResult = {
   serverState?: unknown;
 };
 
+export type CanonicalTaskState = 'pending_approval' | 'applied' | 'returned' | 'conflict' | 'needs_review' | 'rejected';
+
+// Append-only server change record. Changes are pulled on every device, so a
+// parent approval/rejection or first-completer conflict cannot remain stuck in
+// the state originally returned to the submitting device.
+export type TaskActionChange = {
+  changeId: number;
+  clientActionId: string | null;
+  assignmentId: number | null;
+  learner: Learner | null;
+  state: CanonicalTaskState;
+  reasonCode?: string;
+  serverState?: unknown;
+  changedAt: string;
+};
+
+export type OfflineRemediationActionPayload = {
+  clientActionId: string;
+  deviceId: string;
+  bundleId: string;
+  sessionId: string;
+  learner: Learner;
+  completedAt: string;
+  answers: unknown[];
+};
+
+export type RemediationActionResult = {
+  clientActionId: string;
+  status: AttemptSyncStatus;
+  serverAttemptId?: number;
+  canonicalAttempt?: ServerAttempt;
+  reasonCode?: string;
+  message?: string;
+};
+
+export type RemediationChange = {
+  changeId: number;
+  bundleId: string;
+  learner: Learner;
+  state: 'prepared' | 'completed' | 'expired' | 'needs_review';
+  payload?: unknown;
+  changedAt: string;
+};
+
 // ---- Sync protocol (POST /api/offline/sync) ----
 
-export type OfflineSyncRequest = {
+export const LEGACY_OFFLINE_PROTOCOL_VERSION = 1 as const;
+export const OFFLINE_PROTOCOL_VERSION = 2 as const;
+export const SUPPORTED_OFFLINE_PROTOCOL_VERSIONS = [OFFLINE_PROTOCOL_VERSION, LEGACY_OFFLINE_PROTOCOL_VERSION] as const;
+
+export type OfflineSyncDevice = {
+  deviceId: string;
+  appVersion: string;
+  buildId?: string;
+  timeZone: string;
+  clientNow: string;
+  lastKnownServerOffsetMs?: number;
+};
+
+export type OfflineSyncRequestV1 = {
   protocolVersion: 1;
-  device: {
-    deviceId: string;
-    appVersion: string;
-    timeZone: string;
-    clientNow: string; // ISO
-    lastKnownServerOffsetMs?: number;
-  };
+  device: OfflineSyncDevice;
   cursor: {
     lastServerAttemptId?: number;
     lastTombstoneId?: number;
@@ -149,7 +247,7 @@ export type OfflineSyncRequest = {
   };
 };
 
-export type OfflineSyncResponse = {
+export type OfflineSyncResponseV1 = {
   protocolVersion: 1;
   serverTime: string;
   historyEpoch: number;
@@ -171,6 +269,96 @@ export type OfflineSyncResponse = {
     syncedAt: string;
   };
 };
+
+export type OfflineSyncCursorV2 = {
+  lastServerAttemptId: number;
+  lastTombstoneId: number;
+  lastTaskChangeId: number;
+  lastRemediationChangeId: number;
+  historyEpoch: number;
+  catalogueVersions: Partial<Record<Learner, string>>;
+  historyBackfillCursor?: number | null;
+  lastSuccessfulSyncAt?: string;
+};
+
+type OfflineSyncRequestV2Base = {
+  protocolVersion: 2;
+  device: OfflineSyncDevice;
+  cursor: OfflineSyncCursorV2;
+};
+
+export type OfflineSyncPushRequestV2 = OfflineSyncRequestV2Base & {
+  phase: 'push';
+  pushKind: 'attempts' | 'actions';
+  pending: {
+    attempts?: OfflineAttemptPayloadV2[];
+    taskActions?: OfflineTaskActionPayload[];
+    remediationActions?: OfflineRemediationActionPayload[];
+  };
+};
+
+export type OfflineSyncPullRequestV2 = OfflineSyncRequestV2Base & {
+  phase: 'pull';
+  pageSize?: {
+    attempts?: number;
+    tombstones?: number;
+    taskChanges?: number;
+    remediationChanges?: number;
+    historyBackfill?: number;
+  };
+};
+
+export type OfflineSyncRequestV2 = OfflineSyncPushRequestV2 | OfflineSyncPullRequestV2;
+
+export type OfflineSyncPushResponseV2 = {
+  protocolVersion: 2;
+  phase: 'push';
+  serverTime: string;
+  attemptResults: AttemptResult[];
+  taskActionResults: TaskActionResult[];
+  remediationActionResults: RemediationActionResult[];
+};
+
+export type OfflineSyncPullDataV2 = {
+  attempts: ServerAttempt[];
+  tombstones: AttemptTombstone[];
+  taskChanges: TaskActionChange[];
+  remediationChanges: RemediationChange[];
+  catalogues?: Partial<Record<Learner, OfflineCatalogue>>;
+  catalogueGrants?: Partial<Record<Learner, CatalogueGrant>>;
+  dashboards?: Partial<Record<Learner, ChildDashboardSnapshot>>;
+  taskTemplates?: import('@/lib/shared/taskProjection').SyncTaskTemplate[];
+  taskAssignments?: unknown[];
+  remediationBundles?: unknown[];
+  notices?: unknown;
+};
+
+export type OfflineSyncPullResponseV2 = {
+  protocolVersion: 2;
+  phase: 'pull';
+  serverTime: string;
+  historyEpoch: number;
+  pull: OfflineSyncPullDataV2;
+  hasMore: {
+    attempts: boolean;
+    tombstones: boolean;
+    taskChanges: boolean;
+    remediationChanges: boolean;
+    historyBackfill: boolean;
+  };
+  nextCursor: OfflineSyncCursorV2 & { syncedAt: string };
+  resetRequired?: {
+    reason: 'cursor_expired' | 'history_epoch' | 'device_unknown';
+  };
+};
+
+export type OfflineSyncResponseV2 = OfflineSyncPushResponseV2 | OfflineSyncPullResponseV2;
+
+// The API route accepts both during the 60-day transition period. New clients
+// negotiate v2 from /api/offline/ping and downgrade only when the server
+// explicitly advertises protocol v1.
+export type OfflineSyncRequest = OfflineSyncRequestV1 | OfflineSyncRequestV2;
+export type OfflineSyncResponse = OfflineSyncResponseV1 | OfflineSyncResponseV2;
 
 // A compact, server-authoritative snapshot the device caches to render the
 // dashboard offline. Confirmed values only; the device never mints these.
@@ -194,16 +382,19 @@ export type AttemptTombstone = {
 export type PingResponse = {
   ok: true;
   serverTime: string;
-  protocolVersion: 1;
+  protocolVersion: 1 | 2;
+  supportedProtocolVersions?: Array<1 | 2>;
   appVersion: string;
+  buildId?: string;
 };
-
-export const OFFLINE_PROTOCOL_VERSION = 1 as const;
 
 // Human-readable app version reported by the ping/sync endpoints. Independent of
 // the service-worker cache id (which is the build hash).
-export const APP_VERSION = '1.0.0-offline';
+export const APP_VERSION = '2.0.0-offline';
 
 // Server-side batch limits for the sync endpoint (untrusted client input).
-export const MAX_PENDING_ATTEMPTS_PER_SYNC = 500;
+export const CLIENT_PENDING_ATTEMPTS_PER_SYNC = 20;
+export const CLIENT_PENDING_ACTIONS_PER_SYNC = 50;
+export const MAX_PENDING_ATTEMPTS_PER_SYNC = 50;
+export const MAX_PENDING_ACTIONS_PER_SYNC = 100;
 export const MAX_HISTORY_PULL_PER_SYNC = 300;

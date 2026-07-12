@@ -18,6 +18,38 @@ export type ChildExerciseCard = {
   completionKeys: string[];
 };
 
+// Fixed runners live beside the catalogue-backed registry so server rendering,
+// offline hydration and readiness all see the same inventory.
+export const FIXED_CHILD_EXERCISES: Readonly<Record<Learner, readonly ChildExerciseCard[]>> = {
+  kiur: [
+    {
+      id: 'kiur.science.loodusopetus',
+      childId: 'kiur',
+      title: 'Loodusõpetus',
+      description: 'Segaharjutus: pildid, lugemine, sobitamine, järjestamine ja andmed.',
+      emoji: '🔬',
+      accent: 'teal',
+      route: '/kiur/loodusopetus',
+      enabled: true,
+      legacySubject: 'loodusopetus',
+      legacyTopic: 'segaharjutus',
+      legacyCategory: 'Loodusõpetus',
+      completionKeys: [
+        'kiur.science.loodusopetus',
+        'kiur:loodusopetus:segaharjutus:Loodusõpetus',
+        'kiur:loodusopetus:segaharjutus'
+      ]
+    }
+  ],
+  kirsi: []
+};
+
+export function mergeFixedChildExerciseCards(learner: Learner, cards: ChildExerciseCard[]): ChildExerciseCard[] {
+  const merged = new Map(cards.map((card) => [card.id, card]));
+  for (const fixed of FIXED_CHILD_EXERCISES[learner]) merged.set(fixed.id, fixed);
+  return [...merged.values()];
+}
+
 const KIRSI_EXERCISE_META: Record<string, Pick<ChildExerciseCard, 'emoji' | 'accent' | 'description'>> = {
   Loendamine: { emoji: '🔢', accent: 'teal', description: 'Loenda pilte ja vali õige arv.' },
   'Arvutamine 10 piires': { emoji: '🍎', accent: 'pink', description: 'Liida ja lahuta kümne piires.' },
@@ -36,7 +68,7 @@ const STATIC_EXERCISE_META: Record<string, Pick<ChildExerciseCard, 'emoji' | 'ac
 
 function testRoute(exercise: LearningExerciseRow, learner: Learner) {
   const count = learner === 'kiur' && exercise.topic === 'tekstulesanded' ? 5 : 15;
-  return `/test?learner=${learner}&subject=${exercise.subject}&topic=${encodeURIComponent(exercise.topic)}&category=${encodeURIComponent(exercise.category)}&count=${count}&seed=${Date.now()}`;
+  return `/test?learner=${learner}&subject=${exercise.subject}&topic=${encodeURIComponent(exercise.topic)}&category=${encodeURIComponent(exercise.category)}&exerciseId=${encodeURIComponent(exercise.id)}&count=${count}&seed=${Date.now()}`;
 }
 
 function metadataFor(exercise: LearningExerciseRow) {
@@ -64,7 +96,7 @@ function routeFor(exercise: LearningExerciseRow, learner: Learner) {
 }
 
 export function childExerciseCards(learner: Learner, exercises: LearningExerciseRow[]): ChildExerciseCard[] {
-  return exercises
+  const catalogueCards = exercises
     .filter((exercise) => exercise.childStatus[learner] !== 'hidden')
     .map((exercise) => {
       const meta = metadataFor(exercise);
@@ -87,4 +119,5 @@ export function childExerciseCards(learner: Learner, exercises: LearningExercise
         ]
       };
     });
+  return mergeFixedChildExerciseCards(learner, catalogueCards);
 }

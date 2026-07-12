@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatElapsed } from '@/lib/validation';
 import { compactTopicLabel, dayLabel, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import { getMergedExerciseHistory } from '@/lib/offline/api';
+import { useOffline } from '@/app/components/offline/OfflineProvider';
 
 type ExerciseHistory = {
   kind: 'exercise';
@@ -109,6 +110,7 @@ function groupHistoryByDay(items: HistoryItem[]) {
 }
 
 export default function HistoryPage() {
+  const { online } = useOffline();
   const todayKey = dayLabel(new Date().toISOString());
   const [history, setHistory] = useState<ExerciseHistory[]>([]);
   const [taskHistory, setTaskHistory] = useState<TaskHistory[]>([]);
@@ -122,16 +124,31 @@ export default function HistoryPage() {
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
   const [openDays, setOpenDays] = useState<Set<string>>(() => new Set([todayKey]));
 
+  const loadLocalExercises = useCallback(async () => {
+    const offline = await getMergedExerciseHistory().catch(() => []);
+    const rows = offline.map((item) => ({ ...item, kind: 'exercise' as const }));
+    // Never blank a populated view merely because IndexedDB temporarily failed.
+    if (rows.length > 0) setHistory(rows);
+    return rows;
+  }, []);
+
   useEffect(() => {
-    // Exercises fall back to merged offline history (confirmed cache + pending);
-    // tasks and purchases are online-only and simply empty offline.
-    const loadExercises = fetch('/api/history')
+    let active = true;
+    // IndexedDB is the immediate source. Network refresh is merged afterwards,
+    // preserving pending work and avoiding an empty-history flash on reconnect.
+    void loadLocalExercises();
+    const loadExercises = fetch('/api/history', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((attempts) => setHistory((attempts as Omit<ExerciseHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'exercise' }))))
-      .catch(async () => {
-        const offline = await getMergedExerciseHistory().catch(() => []);
-        setHistory(offline.map((item) => ({ ...item, kind: 'exercise' as const })));
-      });
+      .then(async (attempts) => {
+        if (!active) return;
+        const serverRows = (attempts as Omit<ExerciseHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'exercise' as const }));
+        const localRows = await loadLocalExercises();
+        if (!active) return;
+        const serverClientIds = new Set(serverRows.map((row) => row.clientAttemptId).filter(Boolean));
+        const pending = localRows.filter((row) => row.pending && (!row.clientAttemptId || !serverClientIds.has(row.clientAttemptId)));
+        if (serverRows.length > 0) setHistory([...serverRows, ...pending]);
+      })
+      .catch(() => loadLocalExercises());
     const loadTasks = fetch('/api/task-history')
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((tasks) => setTaskHistory((tasks as Omit<TaskHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'task' }))))
@@ -141,7 +158,16 @@ export default function HistoryPage() {
       .then((purchases) => setStoreHistory((purchases as Omit<PurchaseHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'store' }))))
       .catch(() => setStoreHistory([]));
     void Promise.allSettled([loadExercises, loadTasks, loadStore]);
-  }, []);
+    const onRevision = () => void loadLocalExercises();
+    window.addEventListener('offline-data-revision', onRevision);
+    const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('harjutaja-offline-data');
+    if (channel) channel.onmessage = onRevision;
+    return () => {
+      active = false;
+      window.removeEventListener('offline-data-revision', onRevision);
+      channel?.close();
+    };
+  }, [loadLocalExercises]);
 
   const filtered = useMemo(() => {
     const allItems: HistoryItem[] = [...history, ...taskHistory, ...storeHistory].sort((a, b) => new Date(itemDate(b)).getTime() - new Date(itemDate(a)).getTime());
@@ -167,6 +193,10 @@ export default function HistoryPage() {
 
   const onDelete = async (id: number) => {
     setDeleteError('');
+    if (!online) {
+      setDeleteError('Ajaloo kustutamiseks taasta internetiühendus. Võrguühenduseta ajalugu on ainult lugemiseks.');
+      return;
+    }
     try {
       const res = await fetch(`/api/history/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('delete-failed');
@@ -179,6 +209,10 @@ export default function HistoryPage() {
 
   const onDeleteAll = async () => {
     setDeleteError('');
+    if (!online) {
+      setDeleteError('Kogu ajaloo kustutamiseks taasta internetiühendus.');
+      return;
+    }
     setIsDeletingAll(true);
     try {
       const res = await fetch('/api/history', { method: 'DELETE' });
@@ -203,6 +237,8 @@ export default function HistoryPage() {
             <p>Kõik harjutused, päevategevused ja poe ostud</p>
           </div>
         </header>
+
+        {!online && <p className='offline-warning' role='status'>Võrguühenduseta kuvatakse seadmesse salvestatud ajalugu. Kustutamine on saadaval pärast ühenduse taastamist.</p>}
 
         <section className='filter-bar'>
           <button type='button' className={childFilter === 'all' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('all')}>Kõik</button>
@@ -265,9 +301,9 @@ export default function HistoryPage() {
                           </div>
                           <div className='row-actions'>
                             {isExercise && (isPending
-                              ? <Link className='view-button' href={`/tulemus/${(h as ExerciseHistory).clientAttemptId}`}>Vaata</Link>
+                              ? <Link className='view-button' href={`/tulemus?clientId=${encodeURIComponent((h as ExerciseHistory).clientAttemptId ?? '')}`}>Vaata</Link>
                               : <Link className='view-button' href={`/history/${h.id}`}>Vaata</Link>)}
-                            {isExercise && !isPending && <button type='button' className='delete-text-button' onClick={() => setConfirmId(h.id)}>Kustuta</button>}
+                            {isExercise && !isPending && <button type='button' className='delete-text-button' disabled={!online} onClick={() => setConfirmId(h.id)}>Kustuta</button>}
                           </div>
                           {isExercise && confirmId === h.id && (
                             <div className='confirm-panel'>
@@ -292,7 +328,7 @@ export default function HistoryPage() {
         {history.length > 0 && (
           <section className='history-danger-zone'>
             <button type='button' className='history-tools-toggle' onClick={() => setShowHistoryTools((open) => !open)}>Halda ajalugu</button>
-            {showHistoryTools && <button type='button' className='history-delete-all-link' onClick={() => setConfirmDeleteAll(true)}>Kustuta kogu ajalugu</button>}
+            {showHistoryTools && <button type='button' className='history-delete-all-link' disabled={!online} onClick={() => setConfirmDeleteAll(true)}>Kustuta kogu ajalugu</button>}
             {showHistoryTools && confirmDeleteAll && (
               <div className='confirm-panel confirm-panel-wide'>
                 <strong>Kas oled kindel, et soovid terve ajaloo kustutada?</strong>

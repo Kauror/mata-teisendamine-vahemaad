@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
+import { useOffline } from '@/app/components/offline/OfflineProvider';
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -48,6 +49,7 @@ function timeLabel(value: string) {
 }
 
 export default function ChildStorePage({ learner }: { learner: Learner }) {
+  const { online } = useOffline();
   const [data, setData] = useState<StoreData | null>(null);
   const [error, setError] = useState('');
   const [confirmItem, setConfirmItem] = useState<StoreItem | null>(null);
@@ -64,7 +66,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
     fetch(`/api/store/child?learner=${learner}`)
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then(setData)
-      .catch(() => setError('Poodi ei saanud laadida.'));
+      .catch(() => setError('Pood on võrguühenduseta ainult vaatamiseks. Ostu või kingituse tegemiseks taasta internetiühendus.'));
   }, [learner]);
 
   useEffect(() => {
@@ -73,6 +75,11 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
 
   const buy = async () => {
     if (!confirmItem) return;
+    if (!online) {
+      setConfirmItem(null);
+      setError('Ostu ei saadetud. Ostu tegemiseks taasta internetiühendus.');
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -94,6 +101,11 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
   };
 
   const sendGift = async () => {
+    if (!online) {
+      setConfirmGift(false);
+      setError('Kingitust ei saadetud. Kinkimiseks taasta internetiühendus.');
+      return;
+    }
     setGiftBusy(true);
     setError('');
     try {
@@ -134,6 +146,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
         </header>
 
         <Link className='history-link' href='/history'>📄 Ajalugu</Link>
+        {!online && <p className='offline-warning' role='status'>Poe andmed võivad olla viimase sünkroonimise seisuga. Ostmine ja kinkimine on võrguühenduseta keelatud.</p>}
         {error && <p className='error'>{error}</p>}
 
         <section className='store-grid'>
@@ -146,8 +159,8 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
                 {item.stockType === 'fixed_stock' && <span>Alles: {item.fixedStockRemaining ?? 0}</span>}
                 {item.stockType === 'daily_stock' && <span>Täna alles: {item.dailyRemaining ?? 0}</span>}
               </div>
-              <button type='button' disabled={!item.canBuy} onClick={() => item.canBuy && setConfirmItem(item)}>
-                {item.canBuy ? 'Osta' : item.stateLabel}
+              <button type='button' disabled={!online || !item.canBuy} onClick={() => online && item.canBuy && setConfirmItem(item)}>
+                {!online ? 'Vajab internetiühendust' : item.canBuy ? 'Osta' : item.stateLabel}
               </button>
             </article>
           ))}
@@ -172,7 +185,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
                 onBlur={() => setGiftAmount(String(Math.max(1, giftValue)))}
                 aria-label='Kingitavate tähtede arv'
               />
-              <button type='button' disabled={!canGift} onClick={() => setConfirmGift(true)}>Kingi {recipientName}le</button>
+              <button type='button' disabled={!online || !canGift} onClick={() => setConfirmGift(true)}>Kingi {recipientName}le</button>
             </div>
             {giftValue > balance && <small className='store-gift-warning'>Sul ei ole nii palju tähti.</small>}
           </div>
@@ -197,7 +210,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
             <strong>Pärast ostu jääb: {formatStars(balance - confirmItem.price)} ⭐</strong>
             <div className='task-modal-actions'>
               <button type='button' className='filter-chip' onClick={() => setConfirmItem(null)}>Ei</button>
-              <button type='button' disabled={busy} onClick={buy}>Jah, ostan</button>
+              <button type='button' disabled={!online || busy} onClick={buy}>Jah, ostan</button>
             </div>
           </div>
         </div>
@@ -224,7 +237,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
             <strong>Pärast kinkimist jääb: {formatStars(balance - giftValue)} ⭐</strong>
             <div className='task-modal-actions'>
               <button type='button' className='filter-chip' onClick={() => setConfirmGift(false)}>Ei</button>
-              <button type='button' disabled={giftBusy} onClick={sendGift}>Jah, kingin</button>
+              <button type='button' disabled={!online || giftBusy} onClick={sendGift}>Jah, kingin</button>
             </div>
           </div>
         </div>

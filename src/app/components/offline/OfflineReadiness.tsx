@@ -8,7 +8,7 @@ import { useOffline } from '@/app/components/offline/OfflineProvider';
 // Parent-facing offline diagnostics. Kept out of the child dashboard; surfaces the
 // readiness state and a manual sync so a parent can confirm the device is prepared.
 export function OfflineReadiness() {
-  const { sync, syncing, pendingCount, lastSyncAt } = useOffline();
+  const { sync, syncing, pendingCount, lastSyncAt, serviceWorkerError } = useOffline();
   const [report, setReport] = useState<OfflineReadinessReport | null>(null);
   const [versions, setVersions] = useState<{ kiur: string | null; kirsi: string | null }>({ kiur: null, kirsi: null });
 
@@ -36,12 +36,20 @@ export function OfflineReadiness() {
       {report && (
         <div className='offline-diag-grid'>
           {row('Rakendus salvestatud', report.appShellCached)}
+          {row('Rakenduse versioon', report.serviceWorkerBuildMatches)}
+          {row('Kõik harjutused salvestatud', report.runnerMappingsComplete && report.missingAssets.length === 0, report.missingAssets.length ? `${report.missingAssets.length} puudu` : undefined)}
           {row('Harjutuste nimekiri', report.cataloguesPresent)}
+          {row('Kataloogid ühilduvad', report.cataloguesCompatible)}
+          {row('Mõlema lapse töölaud', report.dashboardsPresent)}
+          {row('Päevaülesanded valmistatud', report.taskBootstrapComplete)}
+          {row('Seadme ettevalmistus', report.deviceBootstrapComplete)}
+          {row('Kordamine valmistatud', report.remediationPrepared)}
           {row('Kohalik andmebaas', report.indexedDbWritable)}
-          {row('Püsiv salvestus', report.storagePersisted)}
+          {row('Püsiv salvestus (soovituslik)', report.storagePersisted)}
           {row('Ootel tulemusi', report.pendingAttempts === 0, String(report.pendingAttempts))}
         </div>
       )}
+      {serviceWorkerError ? <p className='error'>{serviceWorkerError}</p> : null}
       <div className='offline-diag-meta'>
         <span>Viimane sünkroonimine: {lastSyncAt ? new Date(lastSyncAt).toLocaleString('et-EE') : 'pole veel'}</span>
         <span>Kataloogi versioonid: Kiur {versions.kiur?.slice(0, 8) ?? '—'} · Kirsi {versions.kirsi?.slice(0, 8) ?? '—'}</span>

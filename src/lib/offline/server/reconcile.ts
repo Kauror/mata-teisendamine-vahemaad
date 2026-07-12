@@ -15,11 +15,13 @@ import { sprintAttemptQualifies } from '@/lib/sprintReward';
 // Live mode (compensating adjustments) is a SEPARATE, explicitly-enabled release
 // that must first be validated against a copied production database.
 
-export type ReconciliationMode = 'shadow' | 'live';
+export type ReconciliationMode = 'shadow';
 
-// Default is shadow. A live rollout flips this via env only after copied-DB tests.
+// Legacy reconciliation is permanently read-only. Protocol v2 applies
+// component deltas through its transactional projection engine; an environment
+// variable can no longer turn this audit helper into a ledger writer.
 export function reconciliationMode(): ReconciliationMode {
-  return process.env.OFFLINE_RECONCILIATION_MODE === 'live' ? 'live' : 'shadow';
+  return 'shadow';
 }
 
 const MIN_REWARD_SCORE_PERCENT = 0.5;
@@ -115,9 +117,7 @@ export type ReconciliationAudit = {
   mode: ReconciliationMode;
 };
 
-// Records a proposed reconciliation. Shadow mode changes no stars. Live mode
-// (only after copied-DB validation) would additionally write a
-// `reconciliation_adjustment` ledger entry for the delta.
+// Records a proposed reconciliation and never changes stars.
 export function reconcileStudyRewards(learner: Learner, fromDate: string, trigger = 'manual'): ReconciliationAudit {
   const { expectedTotal, actualTotal, perDay } = computeExpectedStudyTotal(learner, fromDate);
   const delta = Math.round((expectedTotal - actualTotal) * 100) / 100;
@@ -127,15 +127,6 @@ export function reconcileStudyRewards(learner: Learner, fromDate: string, trigge
     INSERT INTO reconciliation_audits (learner, fromDate, expectedStudyTotal, actualStudyTotal, delta, mode, trigger, detailJson, createdAt)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(learner, fromDate, expectedTotal, actualTotal, delta, mode, trigger, JSON.stringify(perDay), nowIso());
-
-  if (mode === 'live' && delta !== 0) {
-    // Compensating adjustment: keep every existing ledger row immutable and add a
-    // single delta entry. Guarded so it stays disabled until explicitly enabled.
-    db.prepare(`
-      INSERT INTO point_ledger (learner, amount, source, description, createdAt, metadataJson)
-      VALUES (?, ?, 'reconciliation_adjustment', ?, ?, ?)
-    `).run(learner, delta, `Reconciliation ${fromDate}`, nowIso(), JSON.stringify({ fromDate, trigger, expectedTotal, actualTotal }));
-  }
 
   return { learner, fromDate, expectedStudyTotal: expectedTotal, actualStudyTotal: actualTotal, delta, mode };
 }

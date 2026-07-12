@@ -1,12 +1,22 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatElapsed } from '@/lib/validation';
 import { seededRng, shuffleWithRng } from '@/lib/random';
 import { isScienceSessionSize, pickScienceSession } from '@/lib/loodusopetus/tasks';
 import { isChoiceTask, type ScienceData, type ScienceTaskType } from '@/lib/loodusopetus/types';
-import { completeAttempt } from '@/lib/offline/api';
+import {
+  createRunnerSession,
+  ensureRunIdInCurrentUrl,
+  finalizeRunnerSession,
+  getLocalAttempt,
+  loadRunnerSession,
+  patchRunnerSession,
+  runnerStorageFailure
+} from '@/lib/offline/api';
+import type { RunnerSessionV3 } from '@/lib/offline/records';
+import { GENERATOR_VERSION, LEGACY_REWARD_POLICY_VERSION, ROTATION_ALGORITHM_VERSION } from '@/lib/shared/types';
 
 const EYEBROW: Record<ScienceTaskType, string> = {
   visual_choice: 'Vaata skeemi ja vali õige vastus',
@@ -43,6 +53,23 @@ type SavedScienceQuestion = {
   selectedMatches?: Record<string, string>;
   tags?: string[];
 };
+
+type ScienceRunnerState = {
+  choiceSel: Record<number, string>;
+  sortSel: Record<number, Record<string, string>>;
+  matchSel: Record<number, Record<string, string>>;
+  checked: Record<number, boolean>;
+  showStopConfirm: boolean;
+};
+
+type ScienceDisplayOrder = Record<string, {
+  choices?: Array<{ id: string; text: string }>;
+  definitions?: string[];
+  items?: string[];
+  groups?: string[];
+}>;
+
+type ScienceSession = RunnerSessionV3<ReturnType<typeof pickScienceSession>[number], SavedScienceQuestion, ScienceRunnerState, null>;
 
 function hashString(value: string) {
   let hash = 0;
@@ -121,7 +148,9 @@ function ScienceTestContent() {
   const count = isScienceSessionSize(countParam) ? countParam : 10;
   const seed = Number(params.get('seed')) || 1;
 
-  const session = useMemo(() => pickScienceSession(count, seed), [count, seed]);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [session, setSession] = useState<ReturnType<typeof pickScienceSession>>([]);
+  const [displayOrder, setDisplayOrder] = useState<ScienceDisplayOrder>({});
 
   const [index, setIndex] = useState(0);
   const [choiceSel, setChoiceSel] = useState<Record<number, string>>({});
@@ -133,25 +162,118 @@ function ScienceTestContent() {
   const [saveError, setSaveError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [storageError, setStorageError] = useState('');
+  const [startedAt, setStartedAt] = useState(new Date().toISOString());
+  const seedRef = useRef<number | string>(seed);
+  const snapshotRef = useRef<Partial<ScienceSession>>({});
 
   useEffect(() => {
-    setIndex(0);
-    setChoiceSel({});
-    setSortSel({});
-    setMatchSel({});
-    setChecked({});
-    setElapsed(0);
-    setError('');
-    setSaveError('');
-    setIsSaving(false);
-    setShowStopConfirm(false);
+    let cancelled = false;
+    void (async () => {
+      const id = ensureRunIdInCurrentUrl();
+      setRunId(id);
+      const existing = await loadRunnerSession<ReturnType<typeof pickScienceSession>[number], SavedScienceQuestion, ScienceRunnerState, null>(id);
+      if (cancelled) return;
+      if (existing) {
+        if (existing.runnerId !== 'kiur-science') throw new Error('See salvestatud jooks kuulub teisele harjutusele.');
+        const state = existing.runnerState;
+        seedRef.current = existing.seed ?? seed;
+        setStartedAt(existing.startedAt);
+        setSession(existing.questions as ReturnType<typeof pickScienceSession>);
+        setDisplayOrder((existing.optionOrder ?? {}) as ScienceDisplayOrder);
+        setIndex(existing.currentIndex);
+        setChoiceSel(state.choiceSel);
+        setSortSel(state.sortSel);
+        setMatchSel(state.matchSel);
+        setChecked(state.checked);
+        setShowStopConfirm(state.showStopConfirm);
+        setElapsed(Math.floor(existing.activeElapsedMs / 1000));
+        setSessionReady(true);
+        return;
+      }
+      if (await getLocalAttempt(id)) {
+        window.location.replace(`/tulemus?clientId=${encodeURIComponent(id)}`);
+        return;
+      }
+      const questions = pickScienceSession(count, seed);
+      const order: ScienceDisplayOrder = {};
+      for (const task of questions) {
+        order[task.id] = {
+          choices: isChoiceTask(task) ? shuffleStable(task.choices, `${task.id}:${seed}:choices`) : undefined,
+          definitions: task.type === 'match' ? shuffleStable(task.definitions, `${task.id}:${seed}:defs`) : undefined,
+          items: task.type === 'sort' ? shuffleStable(task.items, `${task.id}:${seed}:items`) : undefined,
+          groups: task.type === 'sort' ? shuffleStable(task.groups, `${task.id}:${seed}:groups`) : undefined
+        };
+      }
+      const beganAt = new Date().toISOString();
+      await createRunnerSession<ReturnType<typeof pickScienceSession>[number], SavedScienceQuestion, ScienceRunnerState, null>({
+        runId: id,
+        learner: 'kiur',
+        runnerId: 'kiur-science',
+        exerciseId: 'kiur.science.loodusopetus',
+        subject: 'loodusopetus',
+        topic: 'segaharjutus',
+        category: 'Loodusõpetus',
+        seed,
+        questions,
+        optionOrder: order,
+        answers: [],
+        currentPhase: 'question',
+        runnerState: { choiceSel: {}, sortSel: {}, matchSel: {}, checked: {}, showStopConfirm: false },
+        catalogueVersion: null,
+        rewardPolicyVersion: LEGACY_REWARD_POLICY_VERSION,
+        generatorVersion: GENERATOR_VERSION,
+        runnerVersion: 'science-v1',
+        rotationVersion: ROTATION_ALGORITHM_VERSION,
+        startedAt: beganAt
+      });
+      if (cancelled) return;
+      seedRef.current = seed;
+      setStartedAt(beganAt);
+      setSession(questions);
+      setDisplayOrder(order);
+      setSessionReady(true);
+    })().catch((cause) => {
+      if (!cancelled) setStorageError(runnerStorageFailure(cause).message);
+    });
+    return () => { cancelled = true; };
   }, [count, seed]);
 
+  snapshotRef.current = {
+    currentIndex: index,
+    currentPhase: checked[index] ? 'feedback' : 'question',
+    activeElapsedMs: elapsed * 1000,
+    runnerState: { choiceSel, sortSel, matchSel, checked, showStopConfirm },
+    status: storageError ? 'paused' : 'active'
+  };
+
   useEffect(() => {
-    if (!session.length) return;
-    const timer = setInterval(() => setElapsed((value) => value + 1), 1000);
-    return () => clearInterval(timer);
-  }, [session.length]);
+    if (!sessionReady || !runId || isSaving || storageError) return;
+    void patchRunnerSession<ScienceSession>(runId, snapshotRef.current).catch((cause) => setStorageError(runnerStorageFailure(cause).message));
+  }, [checked, choiceSel, index, isSaving, matchSel, runId, sessionReady, showStopConfirm, sortSel, storageError]);
+
+  useEffect(() => {
+    if (!session.length || !sessionReady || isSaving || storageError) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') setElapsed((value) => value + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isSaving, session.length, sessionReady, storageError]);
+
+  useEffect(() => {
+    if (!sessionReady || !runId || isSaving) return;
+    const checkpoint = () => void patchRunnerSession<ScienceSession>(runId, snapshotRef.current).catch((cause) => setStorageError(runnerStorageFailure(cause).message));
+    const timer = window.setInterval(checkpoint, 5000);
+    const onVisibility = () => { if (document.visibilityState === 'hidden') checkpoint(); };
+    window.addEventListener('pagehide', checkpoint);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('pagehide', checkpoint);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [isSaving, runId, sessionReady]);
 
   useEffect(() => setError(''), [index]);
 
@@ -160,10 +282,29 @@ function ScienceTestContent() {
   // The data often lists choices/items/groups in an order where the correct
   // answer sits on a predictable diagonal. Shuffle the display order (mixing in
   // the session seed) so answer positions vary and reveal no pattern.
-  const displayChoices = useMemo(() => (current && isChoiceTask(current) ? shuffleStable(current.choices, `${current.id}:${seed}:choices`) : []), [current, seed]);
-  const displayDefinitions = useMemo(() => (current && current.type === 'match' ? shuffleStable(current.definitions, `${current.id}:${seed}:defs`) : []), [current, seed]);
-  const displaySortItems = useMemo(() => (current && current.type === 'sort' ? shuffleStable(current.items, `${current.id}:${seed}:items`) : []), [current, seed]);
-  const displaySortGroups = useMemo(() => (current && current.type === 'sort' ? shuffleStable(current.groups, `${current.id}:${seed}:groups`) : []), [current, seed]);
+  const displayChoices = useMemo(() => (current && isChoiceTask(current) ? (displayOrder[current.id]?.choices ?? current.choices) as typeof current.choices : []), [current, displayOrder]);
+  const displayDefinitions = useMemo(() => (current?.type === 'match' ? displayOrder[current.id]?.definitions ?? current.definitions : []), [current, displayOrder]);
+  const displaySortItems = useMemo(() => (current?.type === 'sort' ? displayOrder[current.id]?.items ?? current.items : []), [current, displayOrder]);
+  const displaySortGroups = useMemo(() => (current?.type === 'sort' ? displayOrder[current.id]?.groups ?? current.groups : []), [current, displayOrder]);
+
+  if (storageError) {
+    return (
+      <main className='test-page'>
+        <section className='test-shell'>
+          <section className='question-card' role='alert'>
+            <h2>Harjutus on peatatud</h2>
+            <p>{storageError}</p>
+            <button type='button' className='next-button' onClick={() => window.location.reload()}>Proovi salvestust uuesti</button>
+            <button type='button' className='stop-button' onClick={() => router.push('/kiur')}>Tagasi</button>
+          </section>
+        </section>
+      </main>
+    );
+  }
+
+  if (!sessionReady) {
+    return <main className='test-page'><section className='test-shell'><section className='question-card'>Taastan harjutust...</section></section></main>;
+  }
 
   if (!current) {
     return (
@@ -263,6 +404,7 @@ function ScienceTestContent() {
   };
 
   const handleCheck = () => {
+    if (storageError) return;
     if (!isAnswered(index)) {
       setError('Vali vastus enne jätkamist.');
       return;
@@ -272,7 +414,7 @@ function ScienceTestContent() {
   };
 
   const finish = async () => {
-    if (isSaving) return;
+    if (isSaving || !runId || storageError) return;
     setIsSaving(true);
     setSaveError('');
     const results = session.map((_, i) => serialize(i));
@@ -280,7 +422,15 @@ function ScienceTestContent() {
     try {
       // Science is always available and not part of the rotating catalogue, so no
       // catalogueVersion is attached. Local-first save, then best-effort sync.
-      const outcome = await completeAttempt({
+      const outcome = await finalizeRunnerSession({
+        runId,
+        seed: seedRef.current,
+        runnerId: 'kiur-science',
+        questionIds: session.map((task) => task.id),
+        rewardPolicyVersion: LEGACY_REWARD_POLICY_VERSION,
+        generatorVersion: GENERATOR_VERSION,
+        runnerVersion: 'science-v1',
+        rotationVersion: ROTATION_ALGORITHM_VERSION,
         learner: 'kiur',
         subject: 'loodusopetus',
         topic: 'segaharjutus',
@@ -288,21 +438,23 @@ function ScienceTestContent() {
         difficulty: 'segaharjutus',
         exerciseId: 'kiur.science.loodusopetus',
         catalogueVersion: null,
-        startedAt: null,
+        startedAt,
         questionCount: session.length,
         score,
         elapsedSeconds: elapsed,
         questions: results
       });
       if (outcome.serverAttemptId) router.push(`/history/${outcome.serverAttemptId}`);
-      else router.push(`/tulemus/${outcome.clientAttemptId}`);
-    } catch {
+      else router.push(`/tulemus?clientId=${encodeURIComponent(outcome.clientAttemptId)}`);
+    } catch (cause) {
+      setStorageError(runnerStorageFailure(cause).message);
       setSaveError('Salvestamine ebaõnnestus. Proovi uuesti.');
       setIsSaving(false);
     }
   };
 
   const handleNext = () => {
+    if (storageError) return;
     if (index < session.length - 1) {
       setIndex((value) => value + 1);
       return;
@@ -311,12 +463,12 @@ function ScienceTestContent() {
   };
 
   const setSortGroup = (item: string, group: string) => {
-    if (isChecked) return;
+    if (isChecked || storageError) return;
     setSortSel((prev) => ({ ...prev, [index]: { ...(prev[index] ?? {}), [item]: group } }));
   };
 
   const setMatchDefinition = (term: string, definition: string) => {
-    if (isChecked) return;
+    if (isChecked || storageError) return;
     setMatchSel((prev) => ({ ...prev, [index]: { ...(prev[index] ?? {}), [term]: definition } }));
   };
 

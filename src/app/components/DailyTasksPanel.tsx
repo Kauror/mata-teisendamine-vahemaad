@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
 import { trophyWord } from '@/lib/history';
 import { completeTaskOffline, getDailyTasksOffline, getDashboardSnapshot } from '@/lib/offline/api';
+import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { todayDateString } from '@/lib/appDate';
 
 type Learner = 'kiur' | 'kirsi';
@@ -58,6 +59,7 @@ function learnerName(learner: Learner) {
 }
 
 export default function DailyTasksPanel({ learner }: { learner: Learner }) {
+  const { online } = useOffline();
   const [data, setData] = useState<ChildDashboard | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -104,10 +106,15 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, online]);
 
   const completeTask = async () => {
     if (!confirmTask) return;
+    if (!online && !confirmTask.offline) {
+      setError('See tegevus ei ole veel võrguühenduseta lõpetamiseks ette valmistatud. Taasta internetiühendus või ava töölaud uuesti, et kasutada salvestatud päevategevusi.');
+      setConfirmTask(null);
+      return;
+    }
     setBusyId(confirmTask.assignmentId);
     setError('');
     try {

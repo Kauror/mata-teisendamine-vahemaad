@@ -42,15 +42,29 @@ export function correctedNow(offsetMs: number): Date {
 export type SyncCursor = {
   lastServerAttemptId: number;
   lastTombstoneId: number;
+  lastTaskChangeId: number;
+  lastRemediationChangeId: number;
   historyEpoch: number;
   catalogueVersions: Partial<Record<Learner, string>>;
+  historyBackfillCursor?: number | null;
   lastSuccessfulSyncAt?: string;
   lastAttemptedSyncAt?: string;
 };
 
 const CURSOR_KEY = 'syncCursor';
 export async function getCursor(): Promise<SyncCursor> {
-  return getMeta<SyncCursor>(CURSOR_KEY, { lastServerAttemptId: 0, lastTombstoneId: 0, historyEpoch: 0, catalogueVersions: {} });
+  const cursor = await getMeta<Partial<SyncCursor>>(CURSOR_KEY, {});
+  return {
+    lastServerAttemptId: cursor.lastServerAttemptId ?? 0,
+    lastTombstoneId: cursor.lastTombstoneId ?? 0,
+    lastTaskChangeId: cursor.lastTaskChangeId ?? 0,
+    lastRemediationChangeId: cursor.lastRemediationChangeId ?? 0,
+    historyEpoch: cursor.historyEpoch ?? 0,
+    catalogueVersions: cursor.catalogueVersions ?? {},
+    historyBackfillCursor: cursor.historyBackfillCursor,
+    lastSuccessfulSyncAt: cursor.lastSuccessfulSyncAt,
+    lastAttemptedSyncAt: cursor.lastAttemptedSyncAt
+  };
 }
 export async function setCursor(cursor: SyncCursor): Promise<void> {
   await setMeta(CURSOR_KEY, cursor);

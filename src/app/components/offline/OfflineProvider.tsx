@@ -1,11 +1,13 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { pingServer, isOnlineHint } from '@/lib/offline/connection';
 import { syncNow } from '@/lib/offline/syncEngine';
 import { getPendingCount } from '@/lib/offline/api';
 import { getCursor } from '@/lib/offline/meta';
 import { prepareOffline } from '@/lib/offline/readiness';
+import { hasActiveRunnerSessions } from '@/lib/offline/runnerSession';
 
 type OfflineContextValue = {
   online: boolean; // server actually reachable (ping), not just navigator.onLine
@@ -13,8 +15,10 @@ type OfflineContextValue = {
   pendingCount: number;
   lastSyncAt: string | null;
   updateAvailable: boolean;
+  updateBlocked: boolean;
+  serviceWorkerError: string | null;
   sync: (reason: string) => Promise<void>;
-  applyUpdate: () => void;
+  applyUpdate: () => Promise<void>;
   refreshPending: () => Promise<void>;
 };
 
@@ -23,13 +27,18 @@ const OfflineContext = createContext<OfflineContextValue | null>(null);
 const PERIODIC_SYNC_MS = 5 * 60 * 1000;
 
 export function OfflineProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [online, setOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [updateBlocked, setUpdateBlocked] = useState(false);
+  const [serviceWorkerError, setServiceWorkerError] = useState<string | null>(null);
   const waitingWorker = useRef<ServiceWorker | null>(null);
   const syncingRef = useRef(false);
+  const bootstrapStartedRef = useRef(false);
+  const registrationStartedRef = useRef(false);
 
   const refreshPending = useCallback(async () => {
     try {
@@ -62,8 +71,14 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     void refreshPending();
 
-    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => {
+    // Before family authentication, required child routes redirect to /access;
+    // a strict all-or-nothing worker must therefore wait until login succeeds.
+    if (pathname === '/access') return () => { cancelled = true; };
+
+    if (!registrationStartedRef.current && typeof navigator !== 'undefined' && 'serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+      registrationStartedRef.current = true;
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none', scope: '/' }).then((registration) => {
+        setServiceWorkerError(null);
         if (registration.waiting) {
           waitingWorker.current = registration.waiting;
           setUpdateAvailable(true);
@@ -75,13 +90,21 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
             if (installing.state === 'installed' && navigator.serviceWorker.controller) {
               waitingWorker.current = registration.waiting;
               setUpdateAvailable(true);
+            } else if (installing.state === 'redundant') {
+              registrationStartedRef.current = false;
+              setServiceWorkerError('Võrguühenduseta versiooni ei õnnestunud terviklikult salvestada.');
             }
           });
         });
-      }).catch(() => {});
+        void registration.update().catch(() => {});
+      }).catch((error: unknown) => {
+        registrationStartedRef.current = false;
+        setServiceWorkerError(error instanceof Error ? error.message : 'Service worker registration failed.');
+      });
     }
 
-    void (async () => {
+    if (!bootstrapStartedRef.current) void (async () => {
+      bootstrapStartedRef.current = true;
       const ping = await pingServer();
       if (cancelled) return;
       setOnline(Boolean(ping));
@@ -92,36 +115,46 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     })();
 
     return () => { cancelled = true; };
-  }, [refreshPending, sync]);
+  }, [pathname, refreshPending, sync]);
 
   // Catch-up triggers: back online, tab becomes visible, and a gentle interval.
   useEffect(() => {
     const onOnline = () => void sync('online-event');
+    const onOffline = () => setOnline(false);
     const onVisible = () => { if (document.visibilityState === 'visible') void sync('visibility'); };
     window.addEventListener('online', onOnline);
-    window.addEventListener('offline', () => setOnline(false));
+    window.addEventListener('offline', onOffline);
     document.addEventListener('visibilitychange', onVisible);
     const interval = window.setInterval(() => {
       if (document.visibilityState === 'visible' && isOnlineHint()) void sync('interval');
     }, PERIODIC_SYNC_MS);
     return () => {
       window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
       document.removeEventListener('visibilitychange', onVisible);
       window.clearInterval(interval);
     };
   }, [sync]);
 
-  const applyUpdate = useCallback(() => {
+  const applyUpdate = useCallback(async () => {
     const worker = waitingWorker.current;
     if (!worker) return;
-    worker.postMessage('SKIP_WAITING');
-    worker.addEventListener('statechange', () => {
-      if (worker.state === 'activated') window.location.reload();
-    });
+    if (await hasActiveRunnerSessions().catch(() => true)) {
+      setUpdateBlocked(true);
+      return;
+    }
+    setUpdateBlocked(false);
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      void hasActiveRunnerSessions().then((active) => {
+        if (!active) window.location.reload();
+        else setUpdateBlocked(true);
+      }).catch(() => setUpdateBlocked(true));
+    }, { once: true });
+    worker.postMessage({ type: 'SKIP_WAITING' });
   }, []);
 
   return (
-    <OfflineContext.Provider value={{ online, syncing, pendingCount, lastSyncAt, updateAvailable, sync, applyUpdate, refreshPending }}>
+    <OfflineContext.Provider value={{ online, syncing, pendingCount, lastSyncAt, updateAvailable, updateBlocked, serviceWorkerError, sync, applyUpdate, refreshPending }}>
       {children}
     </OfflineContext.Provider>
   );
@@ -137,8 +170,10 @@ export function useOffline(): OfflineContextValue {
       pendingCount: 0,
       lastSyncAt: null,
       updateAvailable: false,
+      updateBlocked: false,
+      serviceWorkerError: null,
       sync: async () => {},
-      applyUpdate: () => {},
+      applyUpdate: async () => {},
       refreshPending: async () => {}
     };
   }

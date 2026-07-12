@@ -9,9 +9,19 @@ type EnglishMatchingBoardProps = {
   onBoardComplete: () => void;
   layoutSeed?: number;
   showFeedback?: boolean;
+  state?: EnglishMatchingBoardState;
+  onStateChange?: (state: EnglishMatchingBoardState) => void;
 };
 
-export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, layoutSeed = 1, showFeedback = true }: EnglishMatchingBoardProps) {
+export type EnglishMatchingBoardState = {
+  boardKey: string;
+  selectedEnglishId: string | null;
+  selectedEstonianId: string | null;
+  completedIds: string[];
+  feedback: string;
+};
+
+export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, layoutSeed = 1, showFeedback = true, state, onStateChange }: EnglishMatchingBoardProps) {
   const [selectedEn, setSelectedEn] = useState<string | null>(null);
   const [selectedEt, setSelectedEt] = useState<string | null>(null);
   const [done, setDone] = useState<Set<string>>(new Set());
@@ -20,6 +30,23 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, l
   const completedBoardKeyRef = useRef<string | null>(null);
   const onBoardCompleteRef = useRef(onBoardComplete);
   const boardKey = useMemo(() => `${layoutSeed}:${words.map((word) => word.id).join('|')}`, [layoutSeed, words]);
+  const controlled = state !== undefined;
+  const selectedEnglishId = controlled ? state.selectedEnglishId : selectedEn;
+  const selectedEstonianId = controlled ? state.selectedEstonianId : selectedEt;
+  const completedIds = controlled ? state.completedIds : [...done];
+  const completed = new Set(completedIds);
+  const boardComplete = words.length > 0 && words.every((word) => completed.has(word.id));
+  const visibleFeedback = controlled ? state.feedback : feedback;
+
+  const updateState = (next: Omit<EnglishMatchingBoardState, 'boardKey'>) => {
+    if (controlled) onStateChange?.({ boardKey, ...next });
+    else {
+      setSelectedEn(next.selectedEnglishId);
+      setSelectedEt(next.selectedEstonianId);
+      setDone(new Set(next.completedIds));
+      setFeedback(next.feedback);
+    }
+  };
 
   useEffect(() => {
     onBoardCompleteRef.current = onBoardComplete;
@@ -28,11 +55,15 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, l
   useEffect(() => {
     if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
     completedBoardKeyRef.current = null;
-    setSelectedEn(null);
-    setSelectedEt(null);
-    setDone(new Set());
-    setFeedback('');
-  }, [boardKey]);
+    if (!controlled) {
+      setSelectedEn(null);
+      setSelectedEt(null);
+      setDone(new Set());
+      setFeedback('');
+    } else if (state.boardKey !== boardKey) {
+      onStateChange?.({ boardKey, selectedEnglishId: null, selectedEstonianId: null, completedIds: [], feedback: '' });
+    }
+  }, [boardKey, controlled, onStateChange, state?.boardKey]);
 
   useEffect(() => () => {
     if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
@@ -42,10 +73,10 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, l
   const right = useMemo(() => shuffle(words, layoutSeed * 1597 + words.length * 31), [layoutSeed, words]);
 
   useEffect(() => {
-    if (words.length === 0 || done.size < words.length || completedBoardKeyRef.current === boardKey) return;
+    if (!boardComplete || completedBoardKeyRef.current === boardKey) return;
     completedBoardKeyRef.current = boardKey;
     completionTimerRef.current = setTimeout(() => onBoardCompleteRef.current(), 250);
-  }, [boardKey, done.size, words.length]);
+  }, [boardComplete, boardKey]);
 
   const tryMatch = (enId: string | null, etId: string | null) => {
     if (!enId || !etId) return;
@@ -54,25 +85,21 @@ export default function EnglishMatchingBoard({ words, onPair, onBoardComplete, l
     if (!en || !et) return;
     const ok = en.id === et.id;
     onPair(ok, en, et);
-    if (ok) {
-      setDone((prev) => {
-        return new Set([...prev, en.id]);
-      });
-      setFeedback('Õige!');
-    } else {
-      setFeedback('Proovi uuesti');
-    }
-    setSelectedEn(null);
-    setSelectedEt(null);
+    updateState({
+      selectedEnglishId: null,
+      selectedEstonianId: null,
+      completedIds: ok ? [...new Set([...completedIds, en.id])] : completedIds,
+      feedback: ok ? 'Õige!' : 'Proovi uuesti'
+    });
   };
 
   return <div className='matching-board'>
     <div className='word-column'>
-      {left.map((w) => <button key={w.id} type='button' disabled={done.has(w.id)} className={`word-card ${selectedEn===w.id?'word-card-selected':''} ${done.has(w.id)?'word-card-correct':''}`} onClick={() => { const id = w.id; setSelectedEn(id); tryMatch(id, selectedEt); }}>{w.english}</button>)}
+      {left.map((w) => <button key={w.id} type='button' disabled={completed.has(w.id)} className={`word-card ${selectedEnglishId===w.id?'word-card-selected':''} ${completed.has(w.id)?'word-card-correct':''}`} onClick={() => { const id = w.id; if (selectedEstonianId) tryMatch(id, selectedEstonianId); else updateState({ selectedEnglishId: id, selectedEstonianId, completedIds, feedback: visibleFeedback }); }}>{w.english}</button>)}
     </div>
     <div className='word-column'>
-      {right.map((w) => <button key={w.id} type='button' disabled={done.has(w.id)} className={`word-card ${selectedEt===w.id?'word-card-selected':''} ${done.has(w.id)?'word-card-correct':''}`} onClick={() => { const id = w.id; setSelectedEt(id); tryMatch(selectedEn, id); }}>{w.estonian}</button>)}
+      {right.map((w) => <button key={w.id} type='button' disabled={completed.has(w.id)} className={`word-card ${selectedEstonianId===w.id?'word-card-selected':''} ${completed.has(w.id)?'word-card-correct':''}`} onClick={() => { const id = w.id; if (selectedEnglishId) tryMatch(selectedEnglishId, id); else updateState({ selectedEnglishId, selectedEstonianId: id, completedIds, feedback: visibleFeedback }); }}>{w.estonian}</button>)}
     </div>
-    {showFeedback ? <p className='matching-feedback'>{feedback}</p> : null}
+    {showFeedback ? <p className='matching-feedback'>{visibleFeedback}</p> : null}
   </div>;
 }

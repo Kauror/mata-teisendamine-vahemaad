@@ -10,6 +10,26 @@ export const DAILY_EXERCISE_LIMIT = 4;
 
 type Rotatable = { id: string; sortOrder: number; childStatus: Record<Learner, LearningExerciseStatus | null> };
 
+export type RotationRequest<T extends Rotatable> = {
+  exercises: T[];
+  learner: Learner;
+  date: string;
+  limit: number;
+  algorithmVersion: number;
+  catalogueVersion: string;
+};
+
+export class UnsupportedRotationAlgorithmError extends Error {
+  constructor(readonly algorithmVersion: number) {
+    super(`Unsupported exercise rotation algorithm: ${algorithmVersion}`);
+    this.name = 'UnsupportedRotationAlgorithmError';
+  }
+}
+
+export function isSupportedRotationAlgorithm(version: number): version is 1 {
+  return version === 1;
+}
+
 function seedFor(learner: Learner, date: string) {
   let seed = 0;
   const source = `${learner}:${date}`;
@@ -19,7 +39,7 @@ function seedFor(learner: Learner, date: string) {
 
 // Every permanent exercise for the child, plus a daily-stable sample of the
 // rotation pool, capped at `limit` total, ordered by sortOrder.
-export function selectTodaysLearningExercises<T extends Rotatable>(
+function selectVersion1<T extends Rotatable>(
   exercises: T[],
   learner: Learner,
   date: string,
@@ -37,4 +57,33 @@ export function selectTodaysLearningExercises<T extends Rotatable>(
 
   const chosen = new Set([...permanents, ...rotated].map((exercise) => exercise.id));
   return available.filter((exercise) => chosen.has(exercise.id)).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+// Version-dispatched entry point used by downloaded catalogues. Older devices
+// keep the exact v1 ordering while an unsupported future catalogue fails closed
+// instead of silently selecting a different set of exercises.
+export function selectTodaysLearningExercisesVersioned<T extends Rotatable>(request: RotationRequest<T>): T[] {
+  if (!isSupportedRotationAlgorithm(request.algorithmVersion)) {
+    throw new UnsupportedRotationAlgorithmError(request.algorithmVersion);
+  }
+  // catalogueVersion is intentionally part of the compatibility envelope even
+  // though v1's historical seed is learner/date only. A later algorithm may use
+  // it without changing the meaning of already-issued v1 catalogues.
+  return selectVersion1(request.exercises, request.learner, request.date, request.limit);
+}
+
+export function selectTodaysLearningExercises<T extends Rotatable>(
+  exercises: T[],
+  learner: Learner,
+  date: string,
+  limit = DAILY_EXERCISE_LIMIT
+): T[] {
+  return selectTodaysLearningExercisesVersioned({
+    exercises,
+    learner,
+    date,
+    limit,
+    algorithmVersion: 1,
+    catalogueVersion: 'legacy'
+  });
 }

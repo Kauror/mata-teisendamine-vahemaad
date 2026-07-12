@@ -8,13 +8,41 @@ import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { compactTopicLabel } from '@/lib/history';
 import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
-import { completeAttempt, getCatalogueVersion, getSession, isExercisePermittedOffline, saveSessionProgress, startSession } from '@/lib/offline/api';
+import {
+  clearSession,
+  createRunnerSession,
+  ensureRunIdInCurrentUrl,
+  finalizeRunnerSession,
+  getCatalogueContract,
+  getCatalogueExercise,
+  getLocalAttempt,
+  getSession,
+  isExercisePermittedOffline,
+  loadRunnerSession,
+  patchRunnerSession,
+  runnerStorageFailure
+} from '@/lib/offline/api';
+import type { CatalogueContract } from '@/lib/offline/api';
+import type { RunnerSessionV3 } from '@/lib/offline/records';
+import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 
 type ActiveLearningExercise = {
+  id?: string;
   subject: string;
   topic: string;
   category: string;
 };
+
+type MathRunnerState = {
+  answers: string[];
+  orderingAnswers: string[][];
+  choiceAnswers: string[];
+  countingFeedback: { answer: string; isCorrect: boolean } | null;
+  textFeedback: { answer: string; isCorrect: boolean } | null;
+  showStopConfirm: boolean;
+};
+
+type MathSession = RunnerSessionV3<GeneratedQuestion, string, MathRunnerState, null>;
 
 const sectorPoint = (degrees: number, radius = 50) => {
   const radians = ((degrees - 90) * Math.PI) / 180;
@@ -164,6 +192,7 @@ function TestPageContent() {
   const subject = params.get('subject') || '';
   const topic = params.get('topic') || '';
   const categoryParam = params.get('category') || 'Teisendamine';
+  const exerciseIdParam = params.get('exerciseId');
   const difficulty = 'Lihtne' as Difficulty;
   const count = topic === 'tekstulesanded' || categoryParam === 'Tekstülesanded' ? 5 : 15;
   const seed = Number(params.get('seed') || 1);
@@ -172,6 +201,7 @@ function TestPageContent() {
   const baseSelectionUrl = learner === 'kirsi' ? '/kirsi' : learner === 'kiur' ? '/kiur' : '/';
 
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
+  const [runId, setRunId] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [orderingAnswers, setOrderingAnswers] = useState<string[][]>([]);
@@ -187,10 +217,14 @@ function TestPageContent() {
   // Offline: the catalogue version this session started from (attached to the
   // attempt so the server can validate it historically), plus a stable session id
   // so an interrupted exercise resumes exactly, and a stale-data indicator.
-  const [catalogueVersion, setCatalogueVersion] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [storageError, setStorageError] = useState('');
   const startedAtRef = useRef<string>(new Date().toISOString());
-  const sessionId = useMemo(() => `${learner}|${subject}|${topic}|${categoryParam}|${seed}`, [learner, subject, topic, categoryParam, seed]);
+  const legacySessionId = useMemo(() => `${learner}|${subject}|${topic}|${categoryParam}|${seed}`, [learner, subject, topic, categoryParam, seed]);
+  const snapshotRef = useRef<Partial<MathSession>>({});
+  const contractRef = useRef<CatalogueContract | null>(null);
+  const exerciseIdRef = useRef<string | null>(exerciseIdParam);
   const learnerId: 'kiur' | 'kirsi' | null = learner === 'kiur' || learner === 'kirsi' ? learner : null;
 
   useEffect(() => {
@@ -215,6 +249,7 @@ function TestPageContent() {
         if (cancelled) return;
         const exercises = body.exercises ?? [];
         const isActive = exercises.some((exercise) => {
+          if (exerciseIdParam && exercise.id) return exercise.id === exerciseIdParam;
           if (exercise.subject !== subject) return false;
           if (subject === 'matemaatika') {
             if (learner === 'kirsi') return exercise.topic === topic && exercise.category === categoryParam;
@@ -224,86 +259,173 @@ function TestPageContent() {
         });
         if (cancelled) return;
         setIsStale(false);
-        setCatalogueVersion(await getCatalogueVersion(learnerId).catch(() => null));
         setExerciseAvailability(isActive ? 'allowed' : 'blocked');
       })
       .catch(async () => {
         if (cancelled) return;
-        const permitted = await isExercisePermittedOffline(learnerId, { subject, topic, category: categoryParam }).catch(() => false);
+        const permitted = await isExercisePermittedOffline(learnerId, { exerciseId: exerciseIdParam, subject, topic, category: categoryParam }).catch(() => false);
         if (cancelled) return;
         setIsStale(permitted);
-        setCatalogueVersion(await getCatalogueVersion(learnerId).catch(() => null));
         setExerciseAvailability(permitted ? 'allowed' : 'blocked');
       });
 
     return () => {
       cancelled = true;
     };
-  }, [categoryParam, learner, subject, topic]);
+  }, [categoryParam, exerciseIdParam, learner, subject, topic]);
 
   useEffect(() => {
-    if (exerciseAvailability !== 'allowed') return;
+    if (exerciseAvailability === 'loading' || sessionReady) return;
     let cancelled = false;
     void (async () => {
-      // Resume an interrupted session with its EXACT stored questions (never
-      // regenerate — an app update could change what the seed produces).
-      const existing = await getSession(sessionId).catch(() => undefined);
+      const id = ensureRunIdInCurrentUrl();
+      setRunId(id);
+      const existing = await loadRunnerSession<GeneratedQuestion, string, MathRunnerState, null>(id);
       if (cancelled) return;
-      if (existing && Array.isArray(existing.questionsPayload) && (existing.questionsPayload as GeneratedQuestion[]).length) {
-        const stored = existing.questionsPayload as GeneratedQuestion[];
+      if (existing) {
+        if (existing.runnerId !== 'math') throw new Error('See salvestatud jooks kuulub teisele harjutusele.');
+        const stored = existing.questions;
+        const state = existing.runnerState;
         startedAtRef.current = existing.startedAt;
+        exerciseIdRef.current = existing.exerciseId;
+        contractRef.current = {
+          catalogueVersion: existing.catalogueVersion ?? '',
+          rewardPolicyVersion: existing.rewardPolicyVersion ?? 'legacy-v1',
+          generatorVersion: existing.generatorVersion,
+          runnerVersion: existing.runnerVersion,
+          algorithmVersion: existing.rotationVersion ?? 1,
+          rotationVersion: existing.rotationVersion ?? 1,
+          dailyLimit: 0
+        };
         setQuestions(stored);
-        setAnswers(existing.answers?.length === stored.length ? existing.answers : Array(stored.length).fill(''));
-        setChoiceAnswers(existing.choiceAnswers?.length === stored.length ? existing.choiceAnswers : Array(stored.length).fill(''));
-        setOrderingAnswers(existing.orderingAnswers?.length === stored.length ? existing.orderingAnswers : Array.from({ length: stored.length }, () => []));
+        setAnswers(state.answers?.length === stored.length ? state.answers : Array(stored.length).fill(''));
+        setChoiceAnswers(state.choiceAnswers?.length === stored.length ? state.choiceAnswers : Array(stored.length).fill(''));
+        setOrderingAnswers(state.orderingAnswers?.length === stored.length ? state.orderingAnswers : Array.from({ length: stored.length }, () => []));
         setIndex(Math.min(existing.currentIndex ?? 0, stored.length - 1));
-        setElapsed(existing.elapsedSeconds ?? 0);
-      } else {
-        const generated = isKirsiMath ? generateKirsiSession(categoryParam as never, count, seed) : generateKiurMathSession(topic, categoryParam, difficulty, count, seed);
-        if (cancelled) return;
-        startedAtRef.current = new Date().toISOString();
-        setQuestions(generated);
-        setAnswers(Array(generated.length).fill(''));
-        setChoiceAnswers(Array(generated.length).fill(''));
-        setOrderingAnswers(Array.from({ length: generated.length }, () => []));
-        setIndex(0);
-        setElapsed(0);
-        // Persist the new session so a reload/restart resumes it.
-        void startSession({
-          sessionId, learner: learnerId, subject: subject || null, topic, category: categoryParam,
-          exerciseId: null, catalogueVersion, seed, startedAt: startedAtRef.current, currentIndex: 0, elapsedSeconds: 0,
-          questionsPayload: generated, answers: Array(generated.length).fill(''), orderingAnswers: Array.from({ length: generated.length }, () => []),
-          choiceAnswers: Array(generated.length).fill(''), appVersion: '', updatedAt: new Date().toISOString()
-        }).catch(() => {});
+        setElapsed(Math.floor(existing.activeElapsedMs / 1000));
+        setCountingFeedback(state.countingFeedback);
+        setTextFeedback(state.textFeedback);
+        setShowStopConfirm(state.showStopConfirm);
+        setSessionReady(true);
+        return;
       }
+      if (await getLocalAttempt(id)) {
+        window.location.replace(`/tulemus?clientId=${encodeURIComponent(id)}`);
+        return;
+      }
+      if (exerciseAvailability !== 'allowed') {
+        setSessionReady(true);
+        return;
+      }
+      const contract = learnerId ? await getCatalogueContract(learnerId) : null;
+      if (learnerId && !contract) throw new Error('Ühenda seade internetiga, et matemaatikaharjutused ette valmistada.');
+      const catalogueExercise = learnerId
+        ? await getCatalogueExercise(learnerId, { exerciseId: exerciseIdParam, subject, topic, category: categoryParam })
+        : null;
+      const resolvedExerciseId = exerciseIdParam ?? catalogueExercise?.id ?? null;
+      if (learnerId && !resolvedExerciseId) throw new Error('Harjutuse kataloogikirjet ei leitud.');
+      const generated = isKirsiMath ? generateKirsiSession(categoryParam as never, count, seed) : generateKiurMathSession(topic, categoryParam, difficulty, count, seed);
+      const emptyAnswers = Array(generated.length).fill('');
+      const emptyOrdering = Array.from({ length: generated.length }, () => [] as string[]);
+      const beganAt = new Date().toISOString();
+      const capability = getOfflineRunnerCapability('math');
+      if (!capability) throw new Error('Matemaatikaharjutuse võrguühenduseta leping puudub.');
+
+      // One-release migration for the legacy v2 math session. Its exact question
+      // payload is preserved under the newly minted UUID before the old key is
+      // removed.
+      const legacy = await getSession(legacySessionId).catch(() => undefined);
+      const restoredQuestions = legacy?.questionsPayload && Array.isArray(legacy.questionsPayload)
+        ? legacy.questionsPayload as GeneratedQuestion[]
+        : generated;
+      const initialState: MathRunnerState = {
+        answers: legacy?.answers?.length === restoredQuestions.length ? legacy.answers : emptyAnswers,
+        orderingAnswers: legacy?.orderingAnswers?.length === restoredQuestions.length ? legacy.orderingAnswers : emptyOrdering,
+        choiceAnswers: legacy?.choiceAnswers?.length === restoredQuestions.length ? legacy.choiceAnswers : emptyAnswers,
+        countingFeedback: null,
+        textFeedback: null,
+        showStopConfirm: false
+      };
+      const created = await createRunnerSession<GeneratedQuestion, string, MathRunnerState, null>({
+        runId: id,
+        learner: learnerId,
+        runnerId: capability.runnerId,
+        exerciseId: resolvedExerciseId,
+        subject: subject || null,
+        topic,
+        category: categoryParam,
+        seed,
+        questions: restoredQuestions,
+        answers: initialState.answers,
+        currentIndex: legacy?.currentIndex ?? 0,
+        currentPhase: 'question',
+        runnerState: initialState,
+        catalogueVersion: contract?.catalogueVersion ?? null,
+        rewardPolicyVersion: contract?.rewardPolicyVersion ?? 'legacy-v1',
+        generatorVersion: capability.generatorVersion,
+        runnerVersion: capability.runnerVersion,
+        rotationVersion: capability.rotationVersion,
+        startedAt: legacy?.startedAt ?? beganAt
+      });
+      if (legacy) await clearSession(legacySessionId);
+      if (cancelled) return;
+      contractRef.current = contract;
+      exerciseIdRef.current = resolvedExerciseId;
+      startedAtRef.current = created.startedAt;
+      setQuestions(restoredQuestions);
+      setAnswers(initialState.answers);
+      setChoiceAnswers(initialState.choiceAnswers);
+      setOrderingAnswers(initialState.orderingAnswers);
+      setIndex(created.currentIndex);
+      setElapsed(legacy?.elapsedSeconds ?? 0);
       setError('');
       setIsSaving(false);
       setSaveError('');
       setShowStopConfirm(false);
       setCountingFeedback(null);
       setTextFeedback(null);
-    })();
+      setSessionReady(true);
+    })().catch((cause) => {
+      if (!cancelled) setStorageError(runnerStorageFailure(cause).message);
+    });
     return () => { cancelled = true; };
-  }, [categoryParam, difficulty, count, exerciseAvailability, seed, isKirsiMath, topic, sessionId, learner, learnerId, subject, catalogueVersion]);
+  }, [categoryParam, count, difficulty, exerciseAvailability, exerciseIdParam, isKirsiMath, learnerId, legacySessionId, seed, sessionReady, subject, topic]);
 
-  // Persist progress (debounced) so an interruption can be resumed exactly.
-  useEffect(() => {
-    if (exerciseAvailability !== 'allowed' || !questions.length) return;
-    const timer = setTimeout(() => {
-      void saveSessionProgress({
-        sessionId, learner: learnerId, subject: subject || null, topic, category: categoryParam,
-        exerciseId: null, catalogueVersion, seed, startedAt: startedAtRef.current, currentIndex: index, elapsedSeconds: elapsed,
-        questionsPayload: questions, answers, orderingAnswers, choiceAnswers, appVersion: '', updatedAt: new Date().toISOString()
-      }).catch(() => {});
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [answers, choiceAnswers, orderingAnswers, index, elapsed, questions, exerciseAvailability, sessionId, learner, learnerId, subject, topic, categoryParam, catalogueVersion, seed]);
+  snapshotRef.current = {
+    currentIndex: index,
+    currentPhase: countingFeedback || textFeedback ? 'feedback' : 'question',
+    answers,
+    activeElapsedMs: elapsed * 1000,
+    runnerState: { answers, orderingAnswers, choiceAnswers, countingFeedback, textFeedback, showStopConfirm },
+    status: storageError ? 'paused' : isSaving ? 'finalizing' : 'active'
+  };
 
   useEffect(() => {
-    if (!questions.length) return;
-    const timer = setInterval(() => setElapsed((v) => v + 1), 1000);
-    return () => clearInterval(timer);
-  }, [questions.length]);
+    if (!sessionReady || !runId || !questions.length || isSaving || storageError) return;
+    void patchRunnerSession<MathSession>(runId, snapshotRef.current).catch((cause) => setStorageError(runnerStorageFailure(cause).message));
+  }, [answers, choiceAnswers, countingFeedback, index, isSaving, orderingAnswers, questions.length, runId, sessionReady, showStopConfirm, storageError, textFeedback]);
+
+  useEffect(() => {
+    if (!questions.length || !sessionReady || isSaving || storageError) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') setElapsed((value) => value + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isSaving, questions.length, sessionReady, storageError]);
+
+  useEffect(() => {
+    if (!sessionReady || !runId || isSaving) return;
+    const checkpoint = () => void patchRunnerSession<MathSession>(runId, snapshotRef.current).catch((cause) => setStorageError(runnerStorageFailure(cause).message));
+    const timer = window.setInterval(checkpoint, 5000);
+    const onVisibility = () => { if (document.visibilityState === 'hidden') checkpoint(); };
+    window.addEventListener('pagehide', checkpoint);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('pagehide', checkpoint);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [isSaving, runId, sessionReady]);
 
   useEffect(() => setError(''), [index]);
 
@@ -327,6 +449,7 @@ function TestPageContent() {
   // Flip the sign of the numeric answer. `inputMode='decimal'` never exposes a
   // minus key on mobile, so this button is the way to enter negative answers.
   const toggleSign = () => {
+    if (storageError) return;
     const copy = [...answers];
     const cur = copy[index] ?? '';
     copy[index] = cur.startsWith('-') ? cur.slice(1) : `-${cur}`;
@@ -335,7 +458,7 @@ function TestPageContent() {
   };
 
   const chooseCountingAnswer = (answer: string) => {
-    if (!current || !isCountingQuestion || countingFeedback) return;
+    if (!current || !isCountingQuestion || countingFeedback || storageError) return;
     const correct = choiceLabels(current).includes(answer);
     const next = [...choiceAnswers];
     next[index] = answer;
@@ -344,8 +467,9 @@ function TestPageContent() {
     setError('');
   };
 
-  if (exerciseAvailability === 'loading') return <main className='test-page'><section className='test-shell'><section className='question-card'>Laadin harjutust...</section></section></main>;
-  if (exerciseAvailability === 'blocked') return <main className='test-page'><section className='test-shell'><section className='question-card'><h2>Harjutus ei ole saadaval</h2><p>See harjutus ei ole praegu aktiivne.</p><button type='button' className='btn' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
+  if (storageError) return <main className='test-page'><section className='test-shell'><section className='question-card' role='alert'><h2>Harjutus on peatatud</h2><p>{storageError}</p><button type='button' className='next-button' onClick={() => window.location.reload()}>Proovi salvestust uuesti</button><button type='button' className='stop-button' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
+  if (exerciseAvailability === 'loading' || !sessionReady) return <main className='test-page'><section className='test-shell'><section className='question-card'>Taastan harjutust...</section></section></main>;
+  if (exerciseAvailability === 'blocked' && !questions.length) return <main className='test-page'><section className='test-shell'><section className='question-card'><h2>Harjutus ei ole saadaval</h2><p>See harjutus ei ole praegu aktiivne.</p><button type='button' className='btn' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
   if (!current) return <main className='test-page'><section className='test-shell'><section className='question-card'><h2>Harjutus ei ole saadaval</h2><p>Valitud teemat ei leitud.</p><button type='button' className='btn' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
 
   const finalizeResults = () => {
@@ -419,15 +543,26 @@ function TestPageContent() {
     try {
       // Local-first: save to IndexedDB and clear the session BEFORE any network,
       // then best-effort sync. The result shows immediately, online or off.
-      const outcome = await completeAttempt({
-        sessionId,
+      if (!runId) throw new Error('Harjutuse jooksu ID puudub.');
+      const contract = contractRef.current;
+      const capability = getOfflineRunnerCapability('math');
+      if (!contract || !capability) throw new Error('Harjutuse võrguühenduseta leping puudub.');
+      const outcome = await finalizeRunnerSession({
+        runId,
+        seed,
+        runnerId: capability.runnerId,
+        questionIds: questions.map((question) => question.id),
+        rewardPolicyVersion: contract.rewardPolicyVersion,
+        generatorVersion: capability.generatorVersion,
+        runnerVersion: capability.runnerVersion,
+        rotationVersion: capability.rotationVersion,
         learner: learnerId,
         subject: subject || null,
         topic,
         category: categoryParam,
         difficulty: 'Lihtne',
-        exerciseId: null,
-        catalogueVersion,
+        exerciseId: exerciseIdRef.current,
+        catalogueVersion: contract.catalogueVersion,
         startedAt: startedAtRef.current,
         questionCount: results.length,
         score,
@@ -435,8 +570,9 @@ function TestPageContent() {
         questions: results
       });
       if (outcome.serverAttemptId) router.push(`/history/${outcome.serverAttemptId}`);
-      else router.push(`/tulemus/${outcome.clientAttemptId}`);
-    } catch {
+      else router.push(`/tulemus?clientId=${encodeURIComponent(outcome.clientAttemptId)}`);
+    } catch (cause) {
+      setStorageError(runnerStorageFailure(cause).message);
       setSaveError('Salvestamine ebaõnnestus. Proovi uuesti.');
       setIsSaving(false);
     }

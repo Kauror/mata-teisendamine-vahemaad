@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  generateBuildId: async () => process.env.OFFLINE_BUILD_ID || null,
   async headers() {
     return [
       {

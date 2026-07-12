@@ -1,5 +1,6 @@
 import db from '@/lib/db';
 import { Learner, nowIso } from '@/lib/tasks';
+import { ensureCurrentRewardPolicy } from '@/lib/server/rewards/policy';
 
 // The reward configuration area in the parent hub stores a list of reward
 // "rules". Today the only type is `learning_streak` (give stars when a child
@@ -89,6 +90,7 @@ export function createRewardRule(input: RewardRuleInput) {
     INSERT INTO reward_rules (type, thresholdDays, rewardStars, learnerScope, enabled, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(clean.type, clean.thresholdDays, clean.rewardStars, clean.learnerScope, clean.enabled ? 1 : 0, now, now);
+  ensureCurrentRewardPolicy();
   return Number(result.lastInsertRowid);
 }
 
@@ -100,10 +102,12 @@ export function updateRewardRule(id: number, input: RewardRuleInput) {
     WHERE id = ? AND deletedAt IS NULL
   `).run(clean.type, clean.thresholdDays, clean.rewardStars, clean.learnerScope, clean.enabled ? 1 : 0, nowIso(), id);
   if (result.changes === 0) throw new Error('Auhinda ei leitud.');
+  ensureCurrentRewardPolicy();
 }
 
 export function deleteRewardRule(id: number) {
-  db.prepare('UPDATE reward_rules SET deletedAt = ?, updatedAt = ? WHERE id = ? AND deletedAt IS NULL').run(nowIso(), nowIso(), id);
+  const result = db.prepare('UPDATE reward_rules SET deletedAt = ?, updatedAt = ? WHERE id = ? AND deletedAt IS NULL').run(nowIso(), nowIso(), id);
+  if (result.changes > 0) ensureCurrentRewardPolicy();
 }
 
 function ruleAppliesToLearner(scope: RewardLearnerScope, learner: Learner) {

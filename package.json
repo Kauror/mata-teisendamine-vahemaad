@@ -4,12 +4,18 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/build-sw.mjs",
-    "start": "next start",
+    "build": "node scripts/build-app.mjs",
+    "start": "tsx scripts/verified-start.ts",
+    "start:next": "next start",
     "lint": "next lint",
-    "typecheck": "next build && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium webkit",
+    "db:startup": "tsx scripts/database-startup.ts",
+    "auth:hash": "tsx scripts/hash-secret.ts --",
     "validate:science": "node scripts/validate-loodusopetus.mjs"
   },
   "dependencies": {
@@ -21,11 +27,14 @@
     "react-dom": "19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "eslint": "^9.17.0",
     "eslint-config-next": "15.5.18",
+    "fake-indexeddb": "^6.0.1",
+    "tsx": "^4.20.3",
     "typescript": "^5.7.2",
     "vitest": "^4.1.10"
   },
