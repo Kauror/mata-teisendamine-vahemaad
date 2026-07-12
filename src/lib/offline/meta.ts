@@ -1,4 +1,5 @@
 import { offlineDb } from '@/lib/offline/db';
+import { createRunId } from '@/lib/offline/runnerSession';
 import type { Learner } from '@/lib/shared/types';
 
 // Typed access to the `meta` key/value store: device identity, clock offset and
@@ -21,7 +22,10 @@ const DEVICE_ID_KEY = 'deviceId';
 export async function getDeviceId(): Promise<string> {
   const existing = await getMeta<string | null>(DEVICE_ID_KEY, null);
   if (existing) return existing;
-  const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // Must be an RFC 4122 v4 UUID: the server's v2 sync validates deviceId with
+  // isRfcUuid, so the old timestamp fallback made every sync fail on browsers
+  // without crypto.randomUUID. createRunId falls back to getRandomValues.
+  const id = createRunId();
   await setMeta(DEVICE_ID_KEY, id);
   return id;
 }

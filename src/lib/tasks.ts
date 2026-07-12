@@ -1,5 +1,6 @@
 import db from '@/lib/db';
 import { learnersForMode as sharedLearnersForMode, taskAppliesOnDate as sharedTaskAppliesOnDate } from '@/lib/shared/taskProjection';
+import { emitTaskChangeForAssignment } from '@/lib/offline/server/taskChanges';
 
 export type Learner = 'kiur' | 'kirsi';
 export type AssignmentMode = 'kiur' | 'kirsi' | 'both_independent' | 'first_completer';
@@ -344,9 +345,17 @@ function settleAssignment(row: AssignmentRow, completedAt: string, date: string)
     WHERE id = ? AND status IN ('active', 'pending_approval')
   `).run(completedAt, row.pointsSnapshot, ledger.lastInsertRowid, row.assignmentId);
 
+  // Propagate this settlement to any offline device that queued a completion for
+  // this assignment (e.g. it was pending parent approval). No-op when no offline
+  // action exists — the very action being processed live is not persisted yet.
+  emitTaskChangeForAssignment(row.assignmentId, 'applied');
+
   if (row.assignmentModeSnapshot === 'first_completer') {
+    const lockedSiblings = db.prepare("SELECT id FROM task_instance_assignments WHERE taskInstanceId = ? AND id <> ? AND status IN ('active', 'pending_approval')").all(row.taskInstanceId, row.assignmentId) as Array<{ id: number }>;
     db.prepare("UPDATE task_instance_assignments SET status = 'locked' WHERE taskInstanceId = ? AND id <> ? AND status IN ('active', 'pending_approval')").run(row.taskInstanceId, row.assignmentId);
     db.prepare("UPDATE task_instances SET status = 'completed', completedBy = ?, completedAt = ? WHERE id = ?").run(learner, completedAt, row.taskInstanceId);
+    // A sibling who completed the same first-completer task offline lost the race.
+    for (const sibling of lockedSiblings) emitTaskChangeForAssignment(sibling.id, 'conflict', { reasonCode: 'first_completer_taken' });
   } else {
     const open = db.prepare("SELECT id FROM task_instance_assignments WHERE taskInstanceId = ? AND status IN ('active', 'pending_approval')").get(row.taskInstanceId);
     if (!open) db.prepare("UPDATE task_instances SET status = 'completed', completedBy = ?, completedAt = ? WHERE id = ?").run(learner, completedAt, row.taskInstanceId);
@@ -435,9 +444,15 @@ export function approveTaskAssignment(assignmentId: number) {
 }
 
 export function rejectTaskAssignment(assignmentId: number) {
-  const result = db.prepare("UPDATE task_instance_assignments SET status = 'active', completedAt = NULL WHERE id = ? AND status = 'pending_approval'").run(assignmentId);
-  if (result.changes === 0) throw new Error('Kinnitamist ootavat tegevust ei leitud.');
-  return { ok: true };
+  const reject = db.transaction(() => {
+    const result = db.prepare("UPDATE task_instance_assignments SET status = 'active', completedAt = NULL WHERE id = ? AND status = 'pending_approval'").run(assignmentId);
+    if (result.changes === 0) throw new Error('Kinnitamist ootavat tegevust ei leitud.');
+    // Tell any offline device that queued this completion that it was returned,
+    // so the child no longer sees a rejected task as done (RTM-005).
+    emitTaskChangeForAssignment(assignmentId, 'returned', { reasonCode: 'parent_rejected' });
+    return { ok: true };
+  });
+  return reject();
 }
 
 export function getPendingApprovals(date = todayDateString()): PendingApproval[] {

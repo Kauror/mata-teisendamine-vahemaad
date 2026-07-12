@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    name: Lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  e2e:
+    name: Browser E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:e2e:install
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  docker-release-gate:
+    name: Build and boot the production image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image
+        run: docker build -t pikkuste-harjutaja:ci .
+      - name: Generate a production .env for the boot check
+        run: |
+          SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")
+          # Hash a throwaway PIN with the app's own hasher so the format matches.
+          PIN_HASH=$(docker run --rm -e NODE_ENV=production pikkuste-harjutaja:ci npm run --silent auth:hash -- 1234)
+          {
+            echo "APP_ACCESS_PIN_HASH=$PIN_HASH"
+            echo "APP_SESSION_SECRET_CURRENT=$SECRET"
+            echo "APP_ORIGIN=https://ci.example.com"
+            echo "OFFLINE_PROTOCOL_V2_ENABLED=1"
+          } > ci.env
+      - name: Start the container (verified startup must pass)
+        run: |
+          docker run -d --name harjutaja --env-file ci.env \
+            -e MATHS_GAME_DB_FILE=/data/maths-game.sqlite -e MATHS_GAME_BACKUP_DIR=/data/backups \
+            -p 3000:3000 pikkuste-harjutaja:ci
+      - name: Wait for the app to become reachable
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/access -X OPTIONS >/dev/null 2>&1 || \
+               curl -fsS http://127.0.0.1:3000/access >/dev/null 2>&1; then
+              echo "App is serving after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "App did not start in time"; docker logs harjutaja; exit 1
+      - name: Verified-startup log must confirm database verification
+        run: docker logs harjutaja 2>&1 | grep -q "Database startup verification passed"
+      - name: Tear down
+        if: always()
+        run: docker rm -f harjutaja || true

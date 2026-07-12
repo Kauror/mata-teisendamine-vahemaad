@@ -100,7 +100,12 @@ export async function checkOfflineReadiness(): Promise<OfflineReadinessReport> {
   const pendingAttempts = (await attemptRepo.pending()).length;
   const cacheComplete = Boolean(worker?.cacheComplete);
   const dashboardsPresent = Boolean(kiurSnapshot && kirsiSnapshot);
-  const runnerMappingsComplete = runnerErrors.length === 0 && OFFLINE_CAPABILITY_MANIFEST.runners.every((runner) => runner.offlineStart);
+  // Only runners that promise offline start are part of the offline-ready
+  // guarantee. Runners marked offlineStart:false (e.g. remediation, which needs
+  // a live server session) are intentionally excluded so the readiness report
+  // never claims an online-only exercise is prepared for offline use (RTM-004).
+  const offlineCapableRunners = OFFLINE_CAPABILITY_MANIFEST.runners.filter((runner) => runner.offlineStart);
+  const runnerMappingsComplete = runnerErrors.length === 0 && offlineCapableRunners.length > 0 && offlineCapableRunners.every((runner) => runner.learners.length > 0);
 
   return {
     ready: serviceWorkerActive && serviceWorkerBuildMatches && cacheComplete && runnerMappingsComplete && cataloguesPresent && cataloguesCompatible && dashboardsPresent && Boolean(taskBootstrapComplete) && Boolean(deviceBootstrapComplete) && remediationPrepared && writable,

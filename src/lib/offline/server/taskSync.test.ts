@@ -1,13 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import db from '@/lib/db';
-import { createTaskTemplate, getBalance, todayDateString, updateTaskTemplate } from '@/lib/tasks';
+import { approveTaskAssignment, createTaskTemplate, findAssignmentId, getBalance, rejectTaskAssignment, todayDateString, updateTaskTemplate } from '@/lib/tasks';
 import { applyOfflineTaskAction, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
+import { getTaskChangesAfter } from '@/lib/offline/server/taskChanges';
 import { projectTasksForDate, type SyncTaskTemplate, type TaskAssignmentMode } from '@/lib/shared/taskProjection';
 import type { OfflineTaskActionPayload } from '@/lib/shared/types';
 
 function reset() {
   db.pragma('foreign_keys = OFF');
-  db.exec('DELETE FROM point_ledger; DELETE FROM task_instance_assignments; DELETE FROM task_instances; DELETE FROM task_templates; DELETE FROM offline_task_actions; DELETE FROM daily_task_bonuses;');
+  db.exec('DELETE FROM point_ledger; DELETE FROM task_instance_assignments; DELETE FROM task_instances; DELETE FROM task_templates; DELETE FROM offline_task_actions; DELETE FROM daily_task_bonuses; DELETE FROM server_change_log;');
   db.pragma('foreign_keys = ON');
 }
 beforeEach(reset);
@@ -90,5 +91,48 @@ describe('applyOfflineTaskAction', () => {
     const result = applyOfflineTaskAction(action({ templateId: template.id, templateVersion: template.version, learner: 'kiur', clientActionId: 'appr-1' }));
     expect(result.status).toBe('pending_approval');
     expect(getBalance('kiur')).toBe(0);
+  });
+});
+
+// RTM-005: server-side task changes must propagate parent decisions back to the
+// device's queued action via the canonical change stream (keyed by clientActionId).
+describe('task-change stream', () => {
+  function queuePendingApproval(clientActionId: string) {
+    const template = makeTemplate('kiur', true);
+    const result = applyOfflineTaskAction(action({ templateId: template.id, templateVersion: template.version, learner: 'kiur', clientActionId }));
+    expect(result.status).toBe('pending_approval');
+    const assignmentId = findAssignmentId(template.id, todayDateString(), 'kiur');
+    expect(assignmentId).not.toBeNull();
+    return assignmentId as number;
+  }
+
+  it('emits an "applied" change when a parent approves an offline completion', () => {
+    const assignmentId = queuePendingApproval('appr-stream');
+    approveTaskAssignment(assignmentId);
+
+    const changes = getTaskChangesAfter(0);
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toMatchObject({ clientActionId: 'appr-stream', state: 'applied' });
+    expect(getBalance('kiur')).toBe(5);
+  });
+
+  it('emits a "returned" change when a parent rejects an offline completion', () => {
+    const assignmentId = queuePendingApproval('reject-stream');
+    rejectTaskAssignment(assignmentId);
+
+    const changes = getTaskChangesAfter(0);
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toMatchObject({ clientActionId: 'reject-stream', state: 'returned', reasonCode: 'parent_rejected' });
+    expect(getBalance('kiur')).toBe(0);
+    // The stored action status is corrected too, so it no longer reads as done.
+    const stored = db.prepare("SELECT status FROM offline_task_actions WHERE clientActionId = 'reject-stream'").get() as { status: string };
+    expect(stored.status).toBe('returned');
+  });
+
+  it('paginates by change id so a device only sees new changes', () => {
+    const assignmentId = queuePendingApproval('cursor-stream');
+    approveTaskAssignment(assignmentId);
+    const [change] = getTaskChangesAfter(0);
+    expect(getTaskChangesAfter(change.changeId)).toEqual([]);
   });
 });

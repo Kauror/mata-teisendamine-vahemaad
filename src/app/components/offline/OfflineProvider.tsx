@@ -37,7 +37,11 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [serviceWorkerError, setServiceWorkerError] = useState<string | null>(null);
   const waitingWorker = useRef<ServiceWorker | null>(null);
   const syncingRef = useRef(false);
-  const bootstrapStartedRef = useRef(false);
+  // Bootstrap tracks completion, not merely "started": a first attempt that
+  // fails (e.g. the initial ping times out) must be retriggerable so full
+  // offline preparation is not permanently skipped (RTM-008).
+  const bootstrapDoneRef = useRef(false);
+  const bootstrapInFlightRef = useRef(false);
   const registrationStartedRef = useRef(false);
 
   const refreshPending = useCallback(async () => {
@@ -65,6 +69,28 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       await refreshPending();
     }
   }, [refreshPending]);
+
+  // Full offline preparation: local persistence + device id (safe offline) and,
+  // when the server is reachable, an initial sync. Marked "done" only after a
+  // complete online preparation, so a transient startup outage retries later via
+  // the online/visibility/interval triggers instead of being skipped forever.
+  const runBootstrap = useCallback(async () => {
+    if (bootstrapDoneRef.current || bootstrapInFlightRef.current) return;
+    bootstrapInFlightRef.current = true;
+    try {
+      const ping = await pingServer();
+      setOnline(Boolean(ping));
+      await prepareOffline();
+      if (ping) {
+        await sync('startup');
+        bootstrapDoneRef.current = true;
+      }
+    } catch {
+      /* leave bootstrapDoneRef false so a later trigger retries preparation */
+    } finally {
+      bootstrapInFlightRef.current = false;
+    }
+  }, [sync]);
 
   // Register the service worker + prepare offline, then run an initial sync.
   useEffect(() => {
@@ -103,30 +129,23 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    if (!bootstrapStartedRef.current) void (async () => {
-      bootstrapStartedRef.current = true;
-      const ping = await pingServer();
-      if (cancelled) return;
-      setOnline(Boolean(ping));
-      if (ping) {
-        await prepareOffline();
-        await sync('startup');
-      }
-    })();
+    if (!cancelled) void runBootstrap();
 
     return () => { cancelled = true; };
-  }, [pathname, refreshPending, sync]);
+  }, [pathname, refreshPending, runBootstrap]);
 
   // Catch-up triggers: back online, tab becomes visible, and a gentle interval.
   useEffect(() => {
-    const onOnline = () => void sync('online-event');
+    // If startup preparation never completed (e.g. the first ping failed), retry
+    // the full bootstrap here before syncing; runBootstrap no-ops once done.
+    const onOnline = () => { void runBootstrap(); void sync('online-event'); };
     const onOffline = () => setOnline(false);
-    const onVisible = () => { if (document.visibilityState === 'visible') void sync('visibility'); };
+    const onVisible = () => { if (document.visibilityState === 'visible') { void runBootstrap(); void sync('visibility'); } };
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     document.addEventListener('visibilitychange', onVisible);
     const interval = window.setInterval(() => {
-      if (document.visibilityState === 'visible' && isOnlineHint()) void sync('interval');
+      if (document.visibilityState === 'visible' && isOnlineHint()) { void runBootstrap(); void sync('interval'); }
     }, PERIODIC_SYNC_MS);
     return () => {
       window.removeEventListener('online', onOnline);
@@ -134,7 +153,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       document.removeEventListener('visibilitychange', onVisible);
       window.clearInterval(interval);
     };
-  }, [sync]);
+  }, [sync, runBootstrap]);
 
   const applyUpdate = useCallback(async () => {
     const worker = waitingWorker.current;

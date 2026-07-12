@@ -65,38 +65,102 @@ ja parooli vahetus.
    ```
 3. Ava brauseris `http://localhost:3000`.
 
+## Produktsiooni seaded (kohustuslik enne käivitamist)
+
+Produktsioonis keeldub rakendus käivitumast, kui turvakonfiguratsioon puudub.
+Käivitusskript (`npm start` → `scripts/verified-start.ts`) kontrollib
+autentimist, varundab ja verifitseerib andmebaasi ning alles siis käivitab
+Next.js-i. Seadista keskkonnamuutujad enne `docker compose` käivitamist:
+
+1. Kopeeri näidisfail ja täida väärtused:
+   ```bash
+   cp .env.example .env
+   ```
+2. Genereeri PIN-koodi räsi (ära kunagi salvesta PIN-i avatekstina):
+   ```bash
+   npm run auth:hash -- 1234   # väljund läheb APP_ACCESS_PIN_HASH väärtuseks
+   ```
+3. Genereeri seansisaladus (vähemalt 32 märki):
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+   ```
+
+Kohustuslikud muutujad `.env` failis:
+
+| Muutuja | Kirjeldus |
+| --- | --- |
+| `APP_ACCESS_PIN_HASH` | Pere PIN-koodi scrypt-räsi (`npm run auth:hash`). |
+| `APP_SESSION_SECRET_CURRENT` | Seansiküpsiste allkirjastamise saladus (≥ 32 märki). |
+| `APP_ORIGIN` | Täpne avalik päritolu, **peab olema HTTPS**, ilma lõpukaldkriipsu/teeta (nt `https://harjutaja.example.com`). |
+| `OFFLINE_PROTOCOL_V2_ENABLED` | `1` lülitab sisse offline-protokolli v2 (ping reklaamib ja server aktsepteerib v2). Väärtus `0`/puudu jätab kasutusele v1. |
+
+Valikulised: `APP_SESSION_SECRET_PREVIOUS` (saladuse rotatsioon),
+`MATHS_GAME_DB_FILE`, `MATHS_GAME_BACKUP_DIR`. Kõik on kirjeldatud failis
+`.env.example`.
+
+> HTTPS on kohustuslik. Rakendus kuulab `127.0.0.1:3000` ja eeldab, et ees on
+> TLS-i lõpetav pöördproksü (nt Nginx/Caddy/Traefik), mis serveerib
+> `APP_ORIGIN`-is nimetatud aadressi. Rakendust ei tohi avada otse üle HTTP.
+
 ## Dockeris käivitamine
+
+Kui `.env` on täidetud:
 
 ```bash
 docker compose up -d --build
 ```
 
-Rakendus on aadressil `http://localhost:3000`.
+Rakendus on kättesaadav pöördproksü kaudu `APP_ORIGIN`-is (konteiner ise kuulab
+`127.0.0.1:3000`). Konteineri tervisekontroll (`healthcheck`) pärib
+`/api/offline/ping`, seega „healthy" tähendab ka edukalt verifitseeritud
+andmebaasi.
 
 ## Unraid (Docker Compose)
 
 1. Loo Unraidis projektile kaust (näiteks `/mnt/user/appdata/pikkuste-harjutaja`).
-2. Kopeeri sinna kõik projektifailid.
+2. Kopeeri sinna kõik projektifailid ja loo `.env` (vt ülalt).
 3. Käivita samas kaustas:
    ```bash
    docker compose up -d --build
    ```
-4. Ava rakendus port 3000 kaudu.
+4. Suuna pöördproksü HTTPS-liiklus konteineri porti 3000.
 
 ## Andmebaasi asukoht ja varundus
 
 - Andmebaasifail: `/data/maths-game.sqlite` (containeris).
 - Compose mount: `./data:/data`, seega hostis on fail `data/maths-game.sqlite`.
-- Varundus: peata container ja kopeeri `data/maths-game.sqlite` turvalisse kohta.
+- Automaatne varundus: iga käivituse ajal teeb `verified-start` WAL-turvalise
+  koopia (SQLite backup API) kausta `MATHS_GAME_BACKUP_DIR` (vaikimisi
+  `data/backups/`) ja verifitseerib andmebaasi terviklikkuse.
+- Käsitsi varundus: peata container ja kopeeri `data/maths-game.sqlite`.
 
 ## Skriptid
 
 - `npm run dev` – arendusserver
-- `npm run build` – Next.js produktsiooni build (loob ka route/types failid)
-- `npm run start` – produktsiooniserver
+- `npm run build` – produktsiooni build (Next.js + teenindustöötaja)
+- `npm run start` – verifitseeritud produktsiooniserver (autentimise ja
+  andmebaasi kontroll, seejärel `next start`)
+- `npm run start:next` – Next.js server ilma verifitseerimiskihita (ainult arendus)
+- `npm run auth:hash -- <pin>` – genereerib `APP_ACCESS_PIN_HASH` väärtuse
+- `npm run db:startup` – ainult andmebaasi varundus + verifitseerimine
 - `npm run lint` – ESLint
-- `npm run typecheck` – täielik tüübikontroll (`next build && tsc --noEmit`)
+- `npm run typecheck` – tüübikontroll (`tsc --noEmit`)
+- `npm test` – ühiktestid (Vitest)
+- `npm run test:e2e` – brauseripõhised Playwright-testid
 - `npm run validate:science` – kontrollib loodusõpetuse ülesannete terviklikkust
+
+## Testimine ja CI
+
+- `npm test` – ühiktestid (Vitest), sh. tasu-, migratsiooni- ja sünkroonitestid.
+- `npm run test:e2e` – brauseripõhised Playwright-testid (`e2e/`), mis käivitavad
+  rakenduse päris Chromiumis ja WebKitis. Enne esimest korda: `npm run test:e2e:install`.
+- `.github/workflows/ci.yml` käivitab lint + tüübikontroll + ühiktestid, Playwright
+  E2E ning **ehitab ja käivitab produktsiooni Docker-image'i** (release-gate), et
+  verifitseeritud käivitus (autentimine + andmebaasi kontroll) reaalselt õnnestuks.
+
+> Täielik võrguühenduseta / teenindustöötaja sertifitseerimine (offline-taaslaadimine,
+> kahe brauseri sünk, iPhone'i koduekraan) nõuab produktsiooni-buildi HTTPS-i taga
+> ja seadmepõhiseid kontrolle; E2E-smoke katab käivituse, marsruutimise ja PIN-värava.
 
 ## Struktuur
 

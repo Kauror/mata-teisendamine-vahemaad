@@ -1,4 +1,5 @@
 import { attemptRepo, catalogueGrantRepo, catalogRepo, historyRepo, remediationActionRepo, sessionRepo, snapshotRepo, taskActionRepo, taskTemplateRepo } from '@/lib/offline/repositories';
+import { createRunId } from '@/lib/offline/runnerSession';
 import { correctedNow, getDeviceId, getServerOffsetMs } from '@/lib/offline/meta';
 import { syncNow } from '@/lib/offline/syncEngine';
 import type { LocalAttempt, LocalSession, LocalTaskAction } from '@/lib/offline/records';
@@ -347,11 +348,36 @@ export async function getDailyTasksOffline(learner: Learner, date = todayDateStr
 
   return projected.map((task) => {
     const action = actionFor(task.templateId);
+    // Map each local action status explicitly. Only genuinely-settled actions
+    // may render as done; rejected / needs_review / returned must NOT show as
+    // completed, or a child could see a failed task as successful (RTM-005).
     let status: OfflineDailyTask['status'] = 'active';
-    if (action) {
-      if (action.status === 'conflict') status = 'locked';
-      else if (task.requiresApproval) status = 'pending_approval';
-      else status = 'completed';
+    switch (action?.status) {
+      case undefined:
+        status = 'active';
+        break;
+      case 'applied':
+      case 'duplicate':
+        status = 'completed';
+        break;
+      case 'conflict':
+        status = 'locked';
+        break;
+      case 'pending_approval':
+        status = 'pending_approval';
+        break;
+      case 'pending':
+      case 'syncing':
+        // Queued locally and not yet settled by the server. Show it optimistically
+        // as done (offline-first), or awaiting approval when the task requires it.
+        status = task.requiresApproval ? 'pending_approval' : 'completed';
+        break;
+      case 'rejected':
+      case 'needs_review':
+      case 'returned':
+        // Not done. Return the task to an actionable state; reasonCode explains why.
+        status = 'active';
+        break;
     }
     return {
       templateId: task.templateId,
@@ -376,7 +402,9 @@ export async function completeTaskOffline(input: { learner: Learner; templateId:
 
   const deviceId = await getDeviceId();
   const offsetMs = await getServerOffsetMs();
-  const clientActionId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // Always an RFC 4122 v4 UUID (createRunId falls back to getRandomValues), so
+  // the server's strict clientActionId validation accepts it on every browser.
+  const clientActionId = createRunId();
   const action: LocalTaskAction = {
     clientActionId,
     deviceId,

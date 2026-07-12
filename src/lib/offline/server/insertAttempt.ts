@@ -16,6 +16,7 @@ import { catalogueGrantForAttempt, rewardPolicyByVersion, runnerContractForGrant
 import { applyRewardProjectionV2, getProjectedRewardV2 } from '@/lib/server/rewards/projection';
 import { metadataMatchesContract, validateAttemptRecordV2 } from '@/lib/server/http/requestValidation';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
+import { isOfflineProtocolV2Enabled } from '@/lib/offline/protocol';
 
 // Both legacy online completion and phased protocol-v2 sync use this one
 // insertion path. Protocol v2 adds strict contract validation and server score
@@ -92,7 +93,7 @@ type V2Preparation = {
 };
 
 function prepareV2(input: InsertAttemptInput, serverNow: string): V2Preparation | InsertAttemptResult {
-  if (process.env.OFFLINE_PROTOCOL_V2_ENABLED !== '1') {
+  if (!isOfflineProtocolV2Enabled()) {
     return { status: 'rejected', reasonCode: 'client_upgrade_required', message: 'Offline protocol v2 is not enabled.' };
   }
   const validation = validateAttemptRecordV2(input);
@@ -238,6 +239,16 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
     return { status: 'rejected', reasonCode: 'not_active', message: 'Harjutus ei ole praegu aktiivne.' };
   }
 
+  // Authoritative reward eligibility, persisted on the row. Only 'eligible'
+  // attempts ever enter the canonical reward projection; unpermitted attempts are
+  // 'withheld' and clock-drift / policy holds are 'needs_review'. Neither awards,
+  // affects the daily cap/decay, nor contributes to a streak until separately
+  // approved (RTM-003). v1 rows are never projected, so they default to eligible.
+  const eligible = protocolVersion === 2 ? permitted && !review : permitted;
+  const settlementStatus = protocolVersion === 2
+    ? (eligible ? 'eligible' : review ? 'needs_review' : 'withheld')
+    : 'eligible';
+
   const insertRow = db.prepare(`
     INSERT INTO attempts (
       createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions,
@@ -246,8 +257,8 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       catalogueVersion, clientTimeZone, clientUtcOffsetMinutes,
       clientCorrectedCompletedAt, effectiveCompletedAt, completionDate, clockStatus, clockSkewMs,
       rewardPolicyVersion, rewardEngineVersion, generatorVersion, runnerId, runnerVersion,
-      rotationVersion, runnerSeed, questionIdsJson, protocolVersion
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      rotationVersion, runnerSeed, questionIdsJson, protocolVersion, rewardSettlementStatus
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const run = db.transaction((): InsertAttemptResult => {
@@ -290,7 +301,8 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       input.rotationVersion ?? null,
       input.seed == null ? null : String(input.seed),
       input.questionIds ? JSON.stringify(input.questionIds) : null,
-      protocolVersion
+      protocolVersion,
+      settlementStatus
     );
     const attemptId = Number(result.lastInsertRowid);
     if (protocolVersion === 2) settlementFaultInjector?.('after_attempt');
@@ -308,14 +320,17 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       }
     }
 
-    const reward = permitted
+    // v2: award only when the attempt is eligible (permitted and not held for
+    // review). v1 keeps its prior permitted-gated behavior during sunset.
+    const shouldSettle = protocolVersion === 2 ? eligible : permitted;
+    const reward = shouldSettle
       ? protocolVersion === 2 && learner
         ? applyRewardProjectionV2(learner, attemptId).rewardForTrigger
         : awardStudyPointsForAttempt(attemptId)
       : null;
     if (protocolVersion === 2) settlementFaultInjector?.('after_reward');
 
-    if (permitted) {
+    if (shouldSettle) {
       if (protocolVersion === 2) recordDailyLeaderboard(completionDate ?? undefined);
       else {
         try {

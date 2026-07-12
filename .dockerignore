@@ -1,7 +1,11 @@
 .git
+.github
 .next
 node_modules
 data
 *.sqlite
 *.sqlite-*
 npm-debug.log*
+e2e
+playwright-report
+test-results

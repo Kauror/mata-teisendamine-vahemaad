@@ -3,9 +3,12 @@ import db from '@/lib/db';
 import type { RewardPolicyV2 } from '@/lib/server/rewards/policy';
 import {
   applyRewardProjectionV2,
+  approveHeldRewardAttempt,
+  getProjectedRewardV2,
   projectCanonicalRewardsPure,
   type ProjectionAttempt
 } from '@/lib/server/rewards/projection';
+import { getBalance } from '@/lib/tasks';
 
 const policy: RewardPolicyV2 = {
   schemaVersion: 2,
@@ -23,17 +26,17 @@ function projected(id: number, completed: string, clientId: string): ProjectionA
   };
 }
 
-function insertAttempt(attempt: ProjectionAttempt) {
+function insertAttempt(attempt: ProjectionAttempt, settlementStatus: 'eligible' | 'withheld' | 'needs_review' = 'eligible') {
   db.prepare(`
     INSERT INTO attempts (
       id, createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions,
       learner, exerciseId, runnerId, clientAttemptId, completedAt, effectiveCompletedAt,
-      completionDate, rewardPolicyVersion, protocolVersion
-    ) VALUES (?, ?, 'cat', 'easy', ?, ?, 1, '[]', ?, ?, ?, ?, ?, ?, ?, ?, 2)
+      completionDate, rewardPolicyVersion, protocolVersion, rewardSettlementStatus
+    ) VALUES (?, ?, 'cat', 'easy', ?, ?, 1, '[]', ?, ?, ?, ?, ?, ?, ?, ?, 2, ?)
   `).run(
     attempt.id, attempt.effectiveCompletedAt, attempt.questionCount, attempt.score, attempt.learner,
     attempt.exerciseId, attempt.runnerId, attempt.clientAttemptId, attempt.effectiveCompletedAt,
-    attempt.effectiveCompletedAt, attempt.completionDate, attempt.rewardPolicyVersion
+    attempt.effectiveCompletedAt, attempt.completionDate, attempt.rewardPolicyVersion, settlementStatus
   );
 }
 
@@ -96,5 +99,57 @@ describe('deterministic reward protocol v2', () => {
     expect((db.prepare("SELECT COUNT(*) AS count FROM point_ledger WHERE source = 'reward_v2'").get() as { count: number }).count).toBe(0);
     expect((db.prepare('SELECT COUNT(*) AS count FROM attempt_reward_components').get() as { count: number }).count).toBe(0);
     expect((db.prepare('SELECT COUNT(*) AS count FROM reward_projection_runs').get() as { count: number }).count).toBe(0);
+  });
+});
+
+// RTM-003: an unpermitted / held attempt must never enter the canonical reward
+// projection until separately approved.
+describe('reward settlement eligibility', () => {
+  const u = (n: number) => `018f47f6-9f2c-7b9a-8a2e-00000000000${n}`;
+
+  it('excludes an invalid-catalogue (withheld) attempt; only the valid attempt earns', () => {
+    // Same exercise and day, so a leaked withheld attempt would consume the daily
+    // cap and shift decay for the valid one.
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)), 'withheld');
+    insertAttempt(projected(2, '2026-07-01T09:00:00.000Z', u(2)), 'eligible');
+    db.transaction(() => applyRewardProjectionV2('kiur', 2))();
+
+    expect(db.prepare('SELECT attemptId, componentKey, canonicalAmount FROM attempt_reward_components ORDER BY attemptId').all())
+      .toEqual([{ attemptId: 2, componentKey: 'study', canonicalAmount: 1 }]);
+    expect(getBalance('kiur')).toBeCloseTo(1);
+    expect((db.prepare('SELECT COUNT(*) AS c FROM point_ledger WHERE sourceId = 1').get() as { c: number }).c).toBe(0);
+  });
+
+  it('does not throw or block a valid attempt when a held attempt references an unavailable policy', () => {
+    insertAttempt({ ...projected(1, '2026-07-01T08:00:00.000Z', u(1)), rewardPolicyVersion: 'p-unknown' }, 'needs_review');
+    insertAttempt(projected(2, '2026-07-01T09:00:00.000Z', u(2)), 'eligible');
+    expect(() => db.transaction(() => applyRewardProjectionV2('kiur', 2))()).not.toThrow();
+    expect(getBalance('kiur')).toBeCloseTo(1);
+  });
+
+  it('a needs_review attempt never affects balance, cap, decay or streak', () => {
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)), 'eligible');
+    insertAttempt(projected(2, '2026-07-01T09:00:00.000Z', u(2)), 'needs_review'); // same day + exercise
+    insertAttempt(projected(3, '2026-07-02T08:00:00.000Z', u(3)), 'eligible');
+    db.transaction(() => applyRewardProjectionV2('kiur', 3))();
+
+    // Two full-value study days (decay not shifted by the review row) = 1 + 1;
+    // a 2-day streak adds the standard bonus 2 and rule 3 → 7. A leaked review row
+    // would add ~0.9 of decayed study, so 7 (not 7.9) proves exclusion.
+    expect(getBalance('kiur')).toBeCloseTo(7);
+    expect(getProjectedRewardV2(2)?.awardedAmount).toBe(0);
+  });
+
+  it('settles a held attempt exactly once when later approved', () => {
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)), 'needs_review');
+    expect(getBalance('kiur')).toBe(0);
+
+    const first = approveHeldRewardAttempt(1);
+    expect(first?.changedComponents).toBe(1);
+    expect(getBalance('kiur')).toBeCloseTo(1);
+
+    const second = approveHeldRewardAttempt(1);
+    expect(second).toBeNull();
+    expect(getBalance('kiur')).toBeCloseTo(1);
   });
 });

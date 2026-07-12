@@ -33,6 +33,6 @@
     { "id": "kirsi.reading.pilt-ja-sona", "runnerId": "kirsi-picture-word", "runnerVersion": "picture-word-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kirsi"], "route": "/kirsi/lugemine/pilt-ja-sona", "offlineStart": true },
     { "id": "kirsi.reading.esimene-haalik", "runnerId": "kirsi-first-sound", "runnerVersion": "first-sound-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kirsi"], "route": "/kirsi/lugemine/esimene-haalik", "offlineStart": true },
     { "id": "kiur.science.loodusopetus", "runnerId": "kiur-science", "runnerVersion": "science-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kiur"], "route": "/kiur/loodusopetus/test", "offlineStart": true },
-    { "id": "remediation", "runnerId": "remediation", "runnerVersion": "remediation-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kiur", "kirsi"], "route": "/kiur/kordamine", "alternateRoutes": ["/kirsi/kordamine"], "offlineStart": true, "requiresPreparedData": true }
+    { "id": "remediation", "runnerId": "remediation", "runnerVersion": "remediation-v1", "generatorVersion": "2026-07-1", "rotationVersion": 1, "learners": ["kiur", "kirsi"], "route": "/kiur/kordamine", "alternateRoutes": ["/kirsi/kordamine"], "offlineStart": false }
   ]
 }

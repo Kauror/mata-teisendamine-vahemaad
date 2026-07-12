@@ -127,11 +127,16 @@ export function projectCanonicalRewards(attempts: ProjectionAttempt[]): Canonica
 }
 
 function projectionAttempts(learner: Learner): ProjectionAttempt[] {
+  // Only authoritative, reward-eligible attempts feed the canonical projection.
+  // Attempts that were unpermitted, rejected for policy, or held for review are
+  // 'withheld'/'needs_review' and must never earn points, affect the daily cap or
+  // decay, contribute to a streak, or throw an unknown-policy error here (RTM-003).
   return db.prepare(`
     SELECT id, clientAttemptId, learner, exerciseId, runnerId, score, questionCount,
            completionDate, effectiveCompletedAt, rewardPolicyVersion
     FROM attempts
     WHERE learner = ? AND protocolVersion = 2 AND rewardPolicyVersion IS NOT NULL
+      AND rewardSettlementStatus = 'eligible'
       AND completionDate IS NOT NULL AND effectiveCompletedAt IS NOT NULL
       AND exerciseId IS NOT NULL AND runnerId IS NOT NULL
   `).all(learner) as ProjectionAttempt[];
@@ -156,6 +161,24 @@ export type AppliedProjection = {
   changedComponents: number;
   rewardForTrigger: { awardedAmount: number; balanceAfter: number } | null;
 };
+
+// Promote a withheld / needs-review attempt to eligible and settle it exactly
+// once. Idempotent: a second call is a no-op because the attempt is already
+// eligible, and the projection itself is revision/idempotency-keyed (RTM-003).
+export function approveHeldRewardAttempt(attemptId: number): AppliedProjection | null {
+  const row = db.prepare(
+    'SELECT learner, rewardSettlementStatus, rewardPolicyVersion FROM attempts WHERE id = ? AND protocolVersion = 2'
+  ).get(attemptId) as { learner: Learner; rewardSettlementStatus: string; rewardPolicyVersion: string | null } | undefined;
+  if (!row) return null;
+  if (row.rewardSettlementStatus === 'eligible') return null;
+  if (!row.rewardPolicyVersion || !rewardPolicyByVersion(row.rewardPolicyVersion)) {
+    throw new Error(`Cannot approve attempt ${attemptId}: reward policy is unavailable.`);
+  }
+  return db.transaction(() => {
+    db.prepare("UPDATE attempts SET rewardSettlementStatus = 'eligible' WHERE id = ? AND rewardSettlementStatus <> 'eligible'").run(attemptId);
+    return applyRewardProjectionV2(row.learner, attemptId);
+  })();
+}
 
 export function getProjectedRewardV2(attemptId: number) {
   const attempt = db.prepare('SELECT learner FROM attempts WHERE id = ? AND protocolVersion = 2').get(attemptId) as { learner: Learner } | undefined;

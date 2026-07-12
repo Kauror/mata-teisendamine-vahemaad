@@ -18,10 +18,11 @@ describe('versioned SQLite migrations', () => {
     try {
       expect(connection.prepare('SELECT id, name, length(checksum) AS length FROM schema_migrations ORDER BY id').all()).toEqual([
         { id: 1, name: 'legacy_schema_baseline', length: 64 },
-        { id: 2, name: 'offline_protocol_v2_foundation', length: 64 }
+        { id: 2, name: 'offline_protocol_v2_foundation', length: 64 },
+        { id: 3, name: 'reward_settlement_state', length: 64 }
       ]);
       runMigrations(connection);
-      expect((connection.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get() as { count: number }).count).toBe(2);
+      expect((connection.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get() as { count: number }).count).toBe(3);
       expect(verifyDatabase(connection).integrity).toBe('ok');
     } finally {
       connection.close();
@@ -74,7 +75,7 @@ describe('versioned SQLite migrations', () => {
     }
   });
 
-  it('backs up a disposable file before migration and verifies dates/FKs', () => {
+  it('backs up a disposable file before migration and verifies dates/FKs', async () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maths-db-startup-'));
     cleanup.push(directory);
     const file = path.join(directory, 'fixture.sqlite');
@@ -86,10 +87,10 @@ describe('versioned SQLite migrations', () => {
     )`);
     legacy.close();
 
-    const result = prepareDatabaseForStartup(file, path.join(directory, 'backups'));
+    const result = await prepareDatabaseForStartup(file, path.join(directory, 'backups'));
     expect(result.backupFile).toBeTruthy();
     expect(fs.existsSync(result.backupFile!)).toBe(true);
-    expect(result.verification.migrationCount).toBe(2);
+    expect(result.verification.migrationCount).toBe(3);
 
     const migrated = openDatabase(file);
     try {

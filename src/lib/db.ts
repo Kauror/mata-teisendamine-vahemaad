@@ -696,6 +696,28 @@ function applyProtocolV2Schema(connection: DatabaseConnection) {
   }
 }
 
+function applyRewardSettlementState(connection: DatabaseConnection) {
+  // Explicit reward eligibility per attempt (RTM-003). Only 'eligible' attempts
+  // enter the canonical reward projection; 'withheld' (rejected/unpermitted) and
+  // 'needs_review' attempts never award, affect caps/decay/streaks, nor can they
+  // throw an unknown-policy error inside a later valid learner's projection.
+  addColumn(connection, 'attempts', 'rewardSettlementStatus', "TEXT NOT NULL DEFAULT 'eligible'");
+
+  // Cure any already-poisoned data: a protocol-v2 attempt that was never
+  // projected has no reward components. Those are exactly the unpermitted /
+  // needs-review attempts that must be excluded from reward projection.
+  connection.exec(`
+    UPDATE attempts SET rewardSettlementStatus = 'withheld'
+    WHERE protocolVersion = 2
+      AND id NOT IN (SELECT DISTINCT attemptId FROM attempt_reward_components);
+  `);
+
+  connection.exec(`
+    CREATE INDEX IF NOT EXISTS idx_attempts_reward_settlement
+      ON attempts(learner, rewardSettlementStatus, protocolVersion);
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -708,6 +730,12 @@ const migrations: Migration[] = [
     name: 'offline_protocol_v2_foundation',
     checksumSource: 'offline_protocol_v2_foundation:v1:2026-07-12',
     up: applyProtocolV2Schema
+  },
+  {
+    id: 3,
+    name: 'reward_settlement_state',
+    checksumSource: 'reward_settlement_state:v1:2026-07-12',
+    up: applyRewardSettlementState
   }
 ];
 

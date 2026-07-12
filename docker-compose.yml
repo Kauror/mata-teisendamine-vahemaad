@@ -3,7 +3,27 @@ services:
     build: .
     container_name: pikkuste-harjutaja
     ports:
-      - "3000:3000"
+      # Bind to loopback only; a TLS-terminating reverse proxy is expected to
+      # provide the HTTPS origin named in APP_ORIGIN.
+      - "127.0.0.1:3000:3000"
+    # Required production secrets and switches live in .env (copy .env.example).
+    # Startup (npm start -> verified-start) refuses to boot if APP_ACCESS_PIN_HASH,
+    # APP_SESSION_SECRET_CURRENT or APP_ORIGIN are missing/invalid, if APP_ORIGIN
+    # is not HTTPS, or if the advertised offline protocol is not actually enabled.
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      MATHS_GAME_DB_FILE: /data/maths-game.sqlite
+      MATHS_GAME_BACKUP_DIR: /data/backups
     volumes:
       - ./data:/data
     restart: unless-stopped
+    healthcheck:
+      # The app boots only after database verification passes, so a healthy
+      # container is also a verified one.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/offline/ping').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s

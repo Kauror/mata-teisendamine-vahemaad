@@ -7,5 +7,10 @@ yarn-error.log*
 .codex-server*.log
 tsconfig.tsbuildinfo
 .env*
+!.env.example
 /data/
 public/sw.js
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright/

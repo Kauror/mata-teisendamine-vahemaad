@@ -6,6 +6,7 @@ import { insertAttempt } from '@/lib/offline/server/insertAttempt';
 import { getCurrentCatalogue } from '@/lib/offline/server/catalogVersions';
 import { applyOfflineTaskAction, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
 import { getHistoryEpoch, getTombstonesAfter } from '@/lib/offline/server/tombstones';
+import { getTaskChangesAfter, MAX_TASK_CHANGES_PER_SYNC } from '@/lib/offline/server/taskChanges';
 import { grantCatalogueContract } from '@/lib/server/rewards/policy';
 import {
   validateAttemptRecordV2,
@@ -211,8 +212,10 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
   };
   const pulledAttempts = attemptsAfter(request.cursor.lastServerAttemptId);
   const tombstones = getTombstonesAfter(request.cursor.lastTombstoneId);
+  const taskChanges = getTaskChangesAfter(request.cursor.lastTaskChangeId, MAX_TASK_CHANGES_PER_SYNC);
   const lastServerAttemptId = pulledAttempts.reduce((max, row) => Math.max(max, row.id), request.cursor.lastServerAttemptId);
   const lastTombstoneId = tombstones.reduce((max, row) => Math.max(max, row.tombstoneId), request.cursor.lastTombstoneId);
+  const lastTaskChangeId = taskChanges.reduce((max, row) => Math.max(max, row.changeId), request.cursor.lastTaskChangeId);
   const epoch = getHistoryEpoch();
 
   return {
@@ -223,7 +226,7 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
     pull: {
       attempts: pulledAttempts,
       tombstones,
-      taskChanges: [],
+      taskChanges,
       remediationChanges: [],
       catalogues,
       catalogueGrants: grants,
@@ -235,7 +238,7 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
     hasMore: {
       attempts: pulledAttempts.length >= MAX_HISTORY_PULL_PER_SYNC,
       tombstones: false,
-      taskChanges: false,
+      taskChanges: taskChanges.length >= MAX_TASK_CHANGES_PER_SYNC,
       remediationChanges: false,
       historyBackfill: false
     },
@@ -243,6 +246,7 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
       ...request.cursor,
       lastServerAttemptId,
       lastTombstoneId,
+      lastTaskChangeId,
       historyEpoch: epoch,
       catalogueVersions: { kiur: catalogues.kiur.version, kirsi: catalogues.kirsi.version },
       syncedAt: serverTime

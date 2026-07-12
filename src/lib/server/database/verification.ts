@@ -129,7 +129,7 @@ export type StartupPreparation = {
   verification: DatabaseVerification;
 };
 
-export function prepareDatabaseForStartup(databaseFile: string, backupDirectory?: string): StartupPreparation {
+export async function prepareDatabaseForStartup(databaseFile: string, backupDirectory?: string): Promise<StartupPreparation> {
   if (!databaseFile) throw new Error('Database file is required.');
   if (databaseFile === ':memory:') {
     const connection = openDatabase(':memory:');
@@ -141,19 +141,29 @@ export function prepareDatabaseForStartup(databaseFile: string, backupDirectory?
   }
 
   const absoluteDatabase = path.resolve(databaseFile);
-  let backupFile: string | null = null;
-  if (fs.existsSync(absoluteDatabase)) {
-    const targetDirectory = path.resolve(backupDirectory ?? path.join(path.dirname(absoluteDatabase), 'backups'));
-    fs.mkdirSync(targetDirectory, { recursive: true });
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    backupFile = path.join(targetDirectory, `${path.basename(absoluteDatabase)}.${stamp}.bak`);
-    if (path.resolve(backupFile) === absoluteDatabase) throw new Error('Backup path must differ from the live database path.');
-    fs.copyFileSync(absoluteDatabase, backupFile, fs.constants.COPYFILE_EXCL);
-    fsyncFile(backupFile);
-  }
+  // Whether the database predates this boot must be decided before we open it,
+  // because opening creates the file (and its WAL) when it is absent.
+  const preexisting = fs.existsSync(absoluteDatabase);
 
   const connection = openDatabase(absoluteDatabase);
+  let backupFile: string | null = null;
   try {
+    if (preexisting) {
+      const targetDirectory = path.resolve(backupDirectory ?? path.join(path.dirname(absoluteDatabase), 'backups'));
+      fs.mkdirSync(targetDirectory, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      backupFile = path.join(targetDirectory, `${path.basename(absoluteDatabase)}.${stamp}.bak`);
+      if (path.resolve(backupFile) === absoluteDatabase) throw new Error('Backup path must differ from the live database path.');
+      // WAL-safe backup: better-sqlite3's online backup copies a transactionally
+      // consistent view of the database, folding in any committed pages still
+      // living in the WAL. A plain copyFileSync of the main file before
+      // checkpointing would miss those pages and could yield an incomplete
+      // backup after an unclean shutdown (RTM-007). We hold the only connection,
+      // so there is no concurrent writer.
+      await connection.backup(backupFile);
+      fsyncFile(backupFile);
+    }
+
     const verification = verifyDatabase(connection);
     connection.pragma('wal_checkpoint(TRUNCATE)');
     return { databaseFile: absoluteDatabase, backupFile, verification };
