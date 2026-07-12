@@ -2,6 +2,7 @@
 
 import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { todayDateString } from '@/lib/appDate';
 import { formatStars } from '@/lib/formatStars';
 import { OfflineReadiness } from '@/app/components/offline/OfflineReadiness';
@@ -764,7 +765,7 @@ export default function ParentHub() {
                 );
               })}
             </div>
-            <a className='weekly-digest-link' href='/stats'>📊 Vaata täielikku statistikat</a>
+            <Link className='weekly-digest-link' href='/history'>📊 Vaata täielikku statistikat</Link>
           </>
         )}
       </section>

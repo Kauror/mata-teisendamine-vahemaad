@@ -649,6 +649,10 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .stats-section h2{margin:0;font-size:16px;font-weight:850;color:#0b1b45}
 .stats-chart-scroll{overflow-x:auto}
 .stats-chart{display:block;width:100%;min-width:320px;height:auto}
+.history-stats-accordion{margin-top:18px;border:1px solid #dfe8f6;border-radius:20px;background:rgba(255,255,255,.92);box-shadow:0 12px 28px rgba(30,64,175,.07);overflow:hidden}
+.history-stats-toggle{width:100%;min-height:58px;padding:12px 16px;border:0;background:transparent;color:#0b1b45;display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:18px;font-weight:900;cursor:pointer;text-align:left}
+.history-stats-toggle:hover{background:#f8fbff}
+.history-stats-content{padding:0 16px 16px;display:grid;gap:14px}
 @media (max-width:560px){.stats-totals{grid-template-columns:1fr}.stats-chart{min-width:520px}}
 
 /* Offline status + update notice */

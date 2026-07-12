@@ -128,7 +128,6 @@ export default function Home() {
       <NoticeBoard />
       <div className='dashboard-footer-links'>
         <Link href='/history' className='dashboard-history-link'>Ajalugu</Link>
-        <Link href='/stats' className='dashboard-history-link'>Statistika</Link>
         <Link href='/vanem' className='dashboard-history-link'>Lapsevanema ala</Link>
       </div>
     </main>

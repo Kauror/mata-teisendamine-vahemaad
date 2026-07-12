@@ -7,6 +7,7 @@ import { compactTopicLabel, dayLabel, learnerLabel, scorePercent, subjectLabel }
 import { formatStars } from '@/lib/formatStars';
 import { getMergedExerciseHistory } from '@/lib/offline/api';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
+import HistoryStats from '@/app/components/HistoryStats';
 
 type ExerciseHistory = {
   kind: 'exercise';
@@ -239,6 +240,8 @@ export default function HistoryPage() {
         </header>
 
         {!online && <p className='offline-warning' role='status'>Võrguühenduseta kuvatakse seadmesse salvestatud ajalugu. Kustutamine on saadaval pärast ühenduse taastamist.</p>}
+
+        <HistoryStats />
 
         <section className='filter-bar'>
           <button type='button' className={childFilter === 'all' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('all')}>Kõik</button>
