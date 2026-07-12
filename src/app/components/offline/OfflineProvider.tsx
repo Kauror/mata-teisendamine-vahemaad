@@ -13,6 +13,7 @@ type OfflineContextValue = {
   online: boolean; // server actually reachable (ping), not just navigator.onLine
   syncing: boolean;
   pendingCount: number;
+  syncState: 'healthy' | 'offline' | 'retry_wait' | 'auth_blocked' | 'upgrade_required' | 'storage_error' | 'epoch_regression' | 'timeout' | 'unknown';
   lastSyncAt: string | null;
   updateAvailable: boolean;
   updateBlocked: boolean;
@@ -31,6 +32,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [online, setOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [syncState, setSyncState] = useState<OfflineContextValue['syncState']>('unknown');
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateBlocked, setUpdateBlocked] = useState(false);
@@ -61,6 +63,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     try {
       const outcome = await syncNow(reason);
       setOnline(outcome.reason !== 'offline');
+      setSyncState(outcome.ok ? 'healthy' : (outcome.reason as OfflineContextValue['syncState']) ?? 'unknown');
     } catch {
       /* transient */
     } finally {
@@ -173,7 +176,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <OfflineContext.Provider value={{ online, syncing, pendingCount, lastSyncAt, updateAvailable, updateBlocked, serviceWorkerError, sync, applyUpdate, refreshPending }}>
+    <OfflineContext.Provider value={{ online, syncing, pendingCount, syncState, lastSyncAt, updateAvailable, updateBlocked, serviceWorkerError, sync, applyUpdate, refreshPending }}>
       {children}
     </OfflineContext.Provider>
   );
@@ -187,6 +190,7 @@ export function useOffline(): OfflineContextValue {
       online: true,
       syncing: false,
       pendingCount: 0,
+      syncState: 'healthy',
       lastSyncAt: null,
       updateAvailable: false,
       updateBlocked: false,

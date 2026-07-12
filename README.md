@@ -165,9 +165,10 @@ Skript:
 - auditeerib ka `daily_leaderboard` ja `monthly_competition_awards` ridu, mis vajaksid
   ümberarvutust.
 
-Kui audit leiab v2 katseid, lahenda need käsitsi (vt `npm run leaderboard:rebuild`
-allpool) ja käivita seejärel `npm run audit:v2 -- <fail> --approve-existing`. Kui koopia
-on juba külmalt tehtud (container peatatud), kasuta `--no-copy`.
+Kui audit leiab v2 katseid, on tootmisjuurutus blokeeritud. Lepita ajalugu
+käsitsi (vt `npm run leaderboard:rebuild` allpool) ja korda auditit uue
+andmebaasikoopiaga, kuni see teatab nullist v2 katsest. Külmalt tehtud koopia
+(container peatatud) saab kontrollida lipuga `--no-copy`.
 
 ### Ajaloolise edetabeli taastamine (RTM4-H03)
 

@@ -74,7 +74,7 @@ export default function LocalResultContent({ clientId }: { clientId: string | nu
       <div className='dashboard-footer-links'>
         <Link href={backHref} className='dashboard-history-link'>Tagasi</Link>
         {result.kind === 'confirmed'
-          ? <Link href={`/history/${result.row.id}`} className='dashboard-history-link'>Vaata kinnitatud tulemust</Link>
+          ? <Link href={`/history/offline?id=${result.row.id}`} className='dashboard-history-link'>Vaata kinnitatud tulemust</Link>
           : <Link href='/history' className='dashboard-history-link'>Ajalugu</Link>}
       </div>
     </main>

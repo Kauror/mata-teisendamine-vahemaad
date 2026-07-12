@@ -255,6 +255,10 @@ export async function getConfirmedAttemptByClientId(clientAttemptId: string) {
   return historyRepo.findByClientId(clientAttemptId);
 }
 
+export async function getConfirmedAttempt(id: number) {
+  return historyRepo.get(id);
+}
+
 export type OfflineHistoryItem = {
   id: number;
   clientAttemptId?: string;

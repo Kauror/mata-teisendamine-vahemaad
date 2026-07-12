@@ -17,7 +17,13 @@ test('a protected child route also redirects to the PIN gate', async ({ page }) 
 
 test('a wrong PIN shows an error and stays on the gate', async ({ page }) => {
   await page.goto('/access');
-  await page.locator('form input').fill('0000');
+  // WebKit occasionally reports fill() complete before React has processed the
+  // controlled input's input events. Real keystrokes exercise the same path a
+  // child uses and make the enabled-state assertion cross-browser reliable.
+  const pin = page.locator('form input');
+  await pin.click();
+  await pin.pressSequentially('0000');
+  await expect(page.getByRole('button', { name: 'Sisene' })).toBeEnabled();
   await page.getByRole('button', { name: 'Sisene' }).click();
   await expect(page.locator('.error')).toBeVisible();
   await expect(page).toHaveURL(/\/access$/);

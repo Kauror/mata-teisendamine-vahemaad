@@ -311,7 +311,7 @@ export default function HistoryPage() {
                           <div className='row-actions'>
                             {isExercise && (isPending
                               ? <Link className='view-button' href={`/tulemus?clientId=${encodeURIComponent((h as ExerciseHistory).clientAttemptId ?? '')}`}>Vaata</Link>
-                              : <Link className='view-button' href={`/history/${h.id}`}>Vaata</Link>)}
+                              : <Link className='view-button' href={`/history/offline?id=${h.id}`}>Vaata</Link>)}
                             {isExercise && !isPending && <button type='button' className='delete-text-button' disabled={!online} onClick={() => setConfirmId(h.id)}>Kustuta</button>}
                           </div>
                           {isExercise && confirmId === h.id && (

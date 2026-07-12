@@ -5,13 +5,25 @@ import { useOffline } from '@/app/components/offline/OfflineProvider';
 // Compact, non-alarming status shown to children. Renders nothing when everything
 // is online and synced; never shows codes, exceptions or technical terms.
 export function OfflineStatusBar() {
-  const { online, syncing, pendingCount } = useOffline();
+  const { online, syncing, pendingCount, syncState } = useOffline();
 
-  if (online && !syncing && pendingCount === 0) return null;
+  if (online && !syncing && pendingCount === 0 && syncState === 'healthy') return null;
 
   let label = '';
   let tone: 'ok' | 'warn' | 'muted' = 'muted';
-  if (!online) {
+  if (syncState === 'auth_blocked') {
+    label = 'Palun sisesta PIN uuesti, et tulemused saaks sünkroonida';
+    tone = 'warn';
+  } else if (syncState === 'upgrade_required') {
+    label = 'Rakendus vajab uuendamist enne sünkroonimist';
+    tone = 'warn';
+  } else if (syncState === 'storage_error') {
+    label = 'Seadme salvestus vajab tähelepanu';
+    tone = 'warn';
+  } else if (syncState === 'retry_wait' || syncState === 'timeout') {
+    label = 'Sünkroonimist proovitakse varsti uuesti';
+    tone = 'muted';
+  } else if (!online) {
     label = 'Võrguühendus puudub · harjutamist saab jätkata';
     tone = 'warn';
   } else if (syncing) {
