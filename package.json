@@ -17,7 +17,8 @@
     "test:e2e:install": "playwright install chromium webkit",
     "db:startup": "tsx scripts/database-startup.ts",
     "audit:v2": "tsx scripts/audit-v2-population.ts",
-    "auth:hash": "tsx scripts/hash-secret.ts --",
+    "leaderboard:rebuild": "tsx scripts/rebuild-leaderboard.ts",
+    "auth:hash": "tsx scripts/hash-secret.ts",
     "validate:science": "node scripts/validate-loodusopetus.mjs"
   },
   "dependencies": {

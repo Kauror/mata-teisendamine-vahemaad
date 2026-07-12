@@ -9,3 +9,9 @@ npm-debug.log*
 e2e
 playwright-report
 test-results
+# RTM4-H01: keep runtime secrets out of the build context, the builder cache and
+# `next build`. The image is built without secrets; .env is generated afterwards
+# and supplied to the container at run time via the compose env_file.
+.env
+.env.*
+!.env.example

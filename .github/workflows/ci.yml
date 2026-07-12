@@ -78,9 +78,9 @@ jobs:
       - name: Generate a production .env before any compose command
         run: |
           SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")
-          # Same hasher the container ships. Invoke the script directly so the PIN
-          # is argv[2]; the `npm run auth:hash --` alias swallows the argument.
-          PIN_HASH=$(npx tsx scripts/hash-secret.ts 1234 | tr -d '\r')
+          # The exact documented operator command (RTM4-C02): it now hashes the PIN
+          # rather than the literal '--'.
+          PIN_HASH=$(npm run --silent auth:hash -- 1234 | tr -d '\r')
           # The hash contains '$'; it MUST be single-quoted so compose does not
           # interpolate it (this is the exact failure RTM2-C01 guards against).
           {

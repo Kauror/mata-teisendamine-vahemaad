@@ -141,24 +141,46 @@ andmebaasi.
   `data/backups/`) ja verifitseerib andmebaasi terviklikkuse.
 - Käsitsi varundus: peata container ja kopeeri `data/maths-game.sqlite`.
 
-### Migratsiooni turvakontroll enne juurutust (RTM3-C02)
+### Migratsiooni turvakontroll enne juurutust (RTM3-C02 / RTM4-C03)
 
 Migratsioon 3 märkis kõik olemasolevad protokoll-v2 katsed ilma tasukomponentideta
 `withheld`-iks ja migratsioon 4 pööras need tagasi `eligible`-iks. See edasi-tagasi
-teisendus on ohutu **ainult siis**, kui andmebaasis pole varasematest offline-buildidest
-pärit ehtsaid v2 katseid. Kontrolli seda enne juurutust **andmebaasi koopia** peal:
+teisendus — ja kogu held-attempt väljalase — on ohutu **ainult siis**, kui andmebaasis
+pole varasematest offline-buildidest pärit ehtsaid v2 katseid. Kontrolli seda enne
+juurutust:
 
 ```bash
-# Tee koopia elavast failist ja auditeeri seda (avab kirjutuskaitstult).
-cp data/maths-game.sqlite /tmp/audit-copy.sqlite
-npm run audit:v2 -- /tmp/audit-copy.sqlite
+# Osuta elavale failile: skript teeb ise WAL-turvalise koopia (SQLite backup API)
+# ja rakendab migratsioonid ühekordsele koopiale, nii et puuduv skeem ei anna viga.
+npm run audit:v2 -- data/maths-game.sqlite
 ```
 
-Skript trükib katsete jaotuse `protocolVersion` / `rewardSettlementStatus` järgi ja iga
-v2 katse komponentide arvu. See **kukub läbi** (väljumiskood 1), kui mõni kinni hoitud
-(`withheld`/`needs_review`) katse kannab siiski tasukomponente — see on ainus seisund,
-mida migratsioonid ise parandada ei suuda ja mis tuleb enne väljalaset käsitsi lahendada.
-Juurutus on ohutu alles siis, kui audit on läbitud ja loendid üle vaadatud.
+Skript:
+
+- tuvastab, kas allikas juba sisaldab offline-skeemi (ehtne offline-eelne andmebaas
+  loetakse õigesti, mitte ei anna „puuduva veeru" viga);
+- **kukub läbi** (väljumiskood 1), kui leidub **ükskõik milline** varasem protokoll-v2
+  katse — sh dokumenteeritud „`eligible` + komponendid" seisund, mida migratsioon 4 ei
+  paranda — ja trükib iga katse valideerimise (grant, kataloog, poliitika, komponendid);
+- auditeerib ka `daily_leaderboard` ja `monthly_competition_awards` ridu, mis vajaksid
+  ümberarvutust.
+
+Kui audit leiab v2 katseid, lahenda need käsitsi (vt `npm run leaderboard:rebuild`
+allpool) ja käivita seejärel `npm run audit:v2 -- <fail> --approve-existing`. Kui koopia
+on juba külmalt tehtud (container peatatud), kasuta `--no-copy`.
+
+### Ajaloolise edetabeli taastamine (RTM4-H03)
+
+Kui varasem build jõudis juba kirjutada `daily_leaderboard` ridu, mis lugesid kinni
+hoitud katset, ei paranda koodi uuendus neid automaatselt (parandus rakendub ainult
+päeva ümberarvutusel). Ehita ridade ajalugu ühekordselt uuesti:
+
+```bash
+MATHS_GAME_DB_FILE=/data/maths-game.sqlite npm run leaderboard:rebuild
+```
+
+See arvutab iga päeva `attempts` tabelist parandatud filtriga uuesti ja lepitab kõik
+juba välja antud kuud (idempotentne).
 
 ## Skriptid
 
@@ -169,7 +191,8 @@ Juurutus on ohutu alles siis, kui audit on läbitud ja loendid üle vaadatud.
 - `npm run start:next` – Next.js server ilma verifitseerimiskihita (ainult arendus)
 - `npm run auth:hash -- <pin>` – genereerib `APP_ACCESS_PIN_HASH` väärtuse
 - `npm run db:startup` – ainult andmebaasi varundus + verifitseerimine
-- `npm run audit:v2 -- <db-koopia>` – protokoll-v2 populatsiooni audit enne juurutust (RTM3-C02)
+- `npm run audit:v2 -- <db-fail>` – WAL-turvaline protokoll-v2 populatsiooni audit enne juurutust (RTM3-C02 / RTM4-C03)
+- `npm run leaderboard:rebuild` – ehitab `daily_leaderboard` ridade ajaloo uuesti + lepitab kuud (RTM4-H03)
 - `npm run lint` – ESLint
 - `npm run typecheck` – tüübikontroll (`tsc --noEmit`)
 - `npm test` – ühiktestid (Vitest)
@@ -182,12 +205,35 @@ Juurutus on ohutu alles siis, kui audit on läbitud ja loendid üle vaadatud.
 - `npm run test:e2e` – arendusrežiimi brauseri-smoke (`e2e/`, Chromium + WebKit):
   käivitus, marsruutimine, PIN-värav. Enne esimest korda: `npm run test:e2e:install`.
 - `npm run test:e2e:prod` – **produktsiooni-buildi** teenindustöötaja testid
-  (`e2e-prod/`): ehitab rakenduse, käivitab `next start` ja kontrollib reaalses
-  Chromiumis teenindustöötaja registreerimise, paigalduse (kogu app-shell'i
-  eelvahemällu võtmine) ja võrguühenduseta taaslaadimise.
+  (`e2e-prod/`). Mida see **automaatselt** kontrollib: et genereeritud `/sw.js`
+  eksisteerib ja sisaldab app-shell'i eelvahemälu manifesti (`SHELL_ROUTES`,
+  `PRECACHE`, `BUILD_ID`, `installedAt`), et produktsiooniserver aktsepteerib
+  allkirjastatud pere-seansi (ei suuna `/access`-ile) ja et rakendus registreerib
+  teenindustöötaja. See **ei** kontrolli veel automaatselt tegelikku
+  võrguühenduseta töövoogu (vt allpool).
 - `.github/workflows/ci.yml` käivitab lint + tüübikontroll + ühiktestid, mõlemad
   Playwright-komplektid ning **ehitab ja käivitab `docker compose` kaudu
   produktsiooni-image'i** (release-gate) koos tervisekontrolliga.
+
+### Käsitsi võrguühenduseta väljalaskevärav (RTM4-H02)
+
+Toode on offline-first, kuid järgnev **ei ole veel automatiseeritud** ja tuleb enne
+väljalaset käsitsi läbi teha (`next start` produktsiooni-buildil ja reaalsel iPhone'il
+Add-to-Home-Screen kaudu):
+
+- teenindustöötaja aktiveerub ja kogu app-shell (`/`, `/kiur`, `/kirsi`, `/test`,
+  `/_next/*`) võetakse „kõik-või-mitte-midagi" põhimõttel eelvahemällu;
+- `OfflineReadiness` jõuab `ready` seisundisse;
+- brauseri võrk lülitatakse välja (lennukirežiim);
+- `/`, `/kiur` ja `/kirsi` taaslaadimine töötab võrguühenduseta;
+- harjutuse alustamine ja lõpetamine võrguühenduseta; aktiivse seansi täpne taastamine;
+- taasühendumine ja üleslaadimine; vastuse kaotuse idempotentsus (sama katse ei dubleeru);
+- kaks brauseri konteksti (Kiur + Kirsi) samal seadmel;
+- ööpäeva vahetus ja hilinenud kuupiiri sünkroonimine;
+- iga lubatud runner (matemaatika, inglise sprint, lugemine, loodusõpetus, kordamine).
+
+**Väljalaskeblokeerija:** offline-tugi ei ole väljalaskevalmis enne, kui see käsitsi
+värav on reaalsel seadmel läbitud.
 
 > Physical iPhone Add-to-Home-Screen ja pikaajaline mitmeseadme-sünk tuleb enne
 > lõplikku väljalaset siiski käsitsi üle kontrollida — automaattestid katavad

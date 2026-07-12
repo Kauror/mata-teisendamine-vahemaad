@@ -231,6 +231,34 @@ export function getProjectedRewardV2(attemptId: number) {
   return { attemptId, awardedAmount: rounded(row.awardedAmount), balanceAfter: getBalance(attempt.learner) };
 }
 
+export type CanonicalRewardComponent = { componentKey: string; amount: number };
+export type CanonicalRewardSummary = {
+  attemptId: number;
+  total: number;
+  study: number;
+  streakBonus: number;
+  ruleRewards: CanonicalRewardComponent[];
+  components: CanonicalRewardComponent[];
+  balanceAfter: number;
+};
+
+// Canonical reward breakdown for a protocol-v2 attempt from the authoritative
+// attempt_reward_components ledger (latest revision per component). Used so the
+// result-detail page reports the same total as the history list and the actual
+// balance, instead of the study component alone (RTM4-M01).
+export function getCanonicalRewardSummary(attemptId: number): CanonicalRewardSummary | null {
+  const attempt = db.prepare('SELECT learner FROM attempts WHERE id = ? AND protocolVersion = 2').get(attemptId) as { learner: Learner } | undefined;
+  if (!attempt) return null;
+  const components = (latestComponents(attemptId) as Array<{ componentKey: string; canonicalAmount: number }>)
+    .map((row) => ({ componentKey: row.componentKey, amount: rounded(row.canonicalAmount) }))
+    .filter((component) => component.amount !== 0);
+  const total = rounded(components.reduce((sum, component) => sum + component.amount, 0));
+  const study = components.find((component) => component.componentKey === 'study')?.amount ?? 0;
+  const streakBonus = components.find((component) => component.componentKey === 'streak:standard')?.amount ?? 0;
+  const ruleRewards = components.filter((component) => component.componentKey.startsWith('rule:'));
+  return { attemptId, total, study, streakBonus, ruleRewards, components, balanceAfter: getBalance(attempt.learner) };
+}
+
 /** Apply inside the authoritative attempt transaction. Any thrown error must roll
  * back the attempt, components and ledger together. */
 export function applyRewardProjectionV2(

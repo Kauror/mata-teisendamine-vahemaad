@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import db from '@/lib/db';
 import type { RewardPolicyV2 } from '@/lib/server/rewards/policy';
-import { getLeaderboardHistory, recordDailyLeaderboard } from '@/lib/leaderboard';
+import { getLeaderboardHistory, rebuildDailyLeaderboard, recordDailyLeaderboard } from '@/lib/leaderboard';
 import { approveHeldRewardAttempt } from '@/lib/server/rewards/projection';
 import { getMonthlyTrophies } from '@/lib/monthlyCompetition';
 
@@ -159,6 +159,27 @@ describe('daily leaderboard eligibility gate (RTM3-C01)', () => {
     insertLeaderboardAttempt('kiur', `${date}T08:00:00.000Z`, 'eligible', { protocolVersion: 1 });
     recordDailyLeaderboard(date);
     expect(countsFor(date)).toMatchObject({ kiurCount: 1 });
+  });
+});
+
+describe('historical leaderboard rebuild (RTM4-H03)', () => {
+  it('corrects a stored row that an earlier build poisoned with a held attempt', () => {
+    const date = '2026-02-14';
+    // One eligible Kiur attempt and one held Kirsi attempt on the same day.
+    insertLeaderboardAttempt('kiur', `${date}T08:00:00.000Z`, 'eligible');
+    insertLeaderboardAttempt('kirsi', `${date}T09:00:00.000Z`, 'needs_review');
+
+    // Simulate a pre-fix build that counted the held attempt: Kirsi shown winning.
+    db.prepare(`
+      INSERT INTO daily_leaderboard (date, kiurCount, kirsiCount, winner, updatedAt)
+      VALUES (?, 1, 1, 'tie', '2026-01-01T00:00:00.000Z')
+    `).run(date);
+    db.prepare("UPDATE daily_leaderboard SET kirsiCount = 1, winner = 'tie' WHERE date = ?").run(date);
+
+    rebuildDailyLeaderboard();
+
+    const row = db.prepare('SELECT kiurCount, kirsiCount, winner FROM daily_leaderboard WHERE date = ?').get(date);
+    expect(row).toMatchObject({ kiurCount: 1, kirsiCount: 0, winner: 'kiur' });
   });
 });
 

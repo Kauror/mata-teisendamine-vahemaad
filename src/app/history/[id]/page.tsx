@@ -4,6 +4,7 @@ import { compactTopicLabel, HELD_REWARD_MESSAGE, isHeldReward, isKirsiAttempt } 
 import { KIUR_LENGTH_TOPIC_ID } from '@/lib/kiurMathTopics';
 import { formatStars } from '@/lib/formatStars';
 import { getStudyReward } from '@/lib/learningPoints';
+import { getCanonicalRewardSummary } from '@/lib/server/rewards/projection';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,7 @@ type AttemptRow = {
   subject?: string | null;
   topic?: string | null;
   rewardSettlementStatus?: string | null;
+  protocolVersion?: number | null;
 };
 
 function safeParseQuestions(raw: string): SavedQuestion[] {
@@ -108,7 +110,12 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   }
 
   const questions = safeParseQuestions(row.questions);
-  const reward = getStudyReward(row.id);
+  // Protocol-v2 rewards live in attempt_reward_components (study + streak + rule);
+  // the legacy getStudyReward reads v1-only tables and under-reports the total.
+  // Use the canonical component total for v2 so this page agrees with the history
+  // list and the actual balance (RTM4-M01).
+  const canonicalReward = row.protocolVersion === 2 ? getCanonicalRewardSummary(row.id) : null;
+  const reward = canonicalReward ? null : getStudyReward(row.id);
   const remediationSession = db.prepare('SELECT metadataJson FROM remediation_sessions WHERE historyAttemptId = ?').get(row.id) as { metadataJson?: string | null } | undefined;
   const remediationMetadata = safeParseMetadata(remediationSession?.metadataJson);
 
@@ -172,6 +179,14 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
               {reward.streakBonusAwarded && <span>Seeriaboonus: +{formatStars(reward.streakBonusAmount)} ⭐</span>}
               {reward.streakRewards.map((streakReward) => <span key={streakReward.ruleId}>Auhind ({streakReward.thresholdDays} päeva): +{formatStars(streakReward.amount)} ⭐</span>)}
               {reward.capReached && reward.awardedAmount === 0 && <span>Tänane õppimise punktipiir on täis.</span>}
+            </div>
+          )}
+          {canonicalReward && (
+            <div className='result-meta-grid'>
+              <span>Teenitud: +{formatStars(canonicalReward.total)} ⭐</span>
+              <span>Tähed kokku: {formatStars(canonicalReward.balanceAfter)} ⭐</span>
+              {canonicalReward.streakBonus > 0 && <span>Seeriaboonus: +{formatStars(canonicalReward.streakBonus)} ⭐</span>}
+              {canonicalReward.ruleRewards.map((ruleReward) => <span key={ruleReward.componentKey}>Auhind: +{formatStars(ruleReward.amount)} ⭐</span>)}
             </div>
           )}
         </section>

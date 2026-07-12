@@ -2,6 +2,7 @@ import db from '@/lib/db';
 import { isKirsiAttempt } from '@/lib/history';
 import { sprintAttemptQualifies } from '@/lib/sprintReward';
 import { isoToAppDate, nowIso, todayDateString } from '@/lib/tasks';
+import { reconcileMonthForDate, reconcileMonthlyPrize } from '@/lib/monthlyCompetition';
 
 // 'tie' = both children did the same number of exercises that day.
 export type DailyWinner = 'kiur' | 'kirsi' | 'tie';
@@ -123,7 +124,43 @@ export function recordDailyLeaderboard(date = todayDateString()) {
   const { kiurCount, kirsiCount } = countsForDate(date);
   const winner = winnerOf(kiurCount, kirsiCount);
   upsertLeaderboard(date, kiurCount, kirsiCount, winner, nowIso());
+  // If this date belongs to a month that was already settled (a late offline
+  // attempt or a held-attempt approval landing after the month boundary), the
+  // stored monthly winner and prize must be reconciled to the corrected daily
+  // standings (RTM4-C01). No-op for the current, still-open month.
+  reconcileMonthForDate(date);
   return { date, kiurCount, kirsiCount, winner };
+}
+
+// RTM4-H03: the eligibility filter only takes effect when a day is recalculated,
+// and the one-time backfill runs only when daily_leaderboard is empty. A build
+// deployed before RTM3 may have already written daily rows that counted a held
+// attempt, poisoning historical standings, trophies and settled monthly awards.
+// This deterministically rebuilds EVERY dated row from the attempts table using
+// the corrected filter, then reconciles every settled month, so a poisoned
+// history is repaired in place rather than only for future recalculations. Safe
+// to run repeatedly (idempotent) as a post-deploy maintenance step.
+export function rebuildDailyLeaderboard() {
+  const now = nowIso();
+  const dates = new Set<string>();
+  for (const row of allAttempts()) {
+    const date = isoToAppDate(row.createdAt);
+    if (date) dates.add(date);
+  }
+  const rebuild = db.transaction(() => {
+    // Include any date that already has a stored row so a poisoned row with no
+    // remaining qualifying attempts is corrected to zero rather than left stale.
+    for (const row of db.prepare('SELECT date FROM daily_leaderboard').all() as Array<{ date: string }>) dates.add(row.date);
+    for (const date of dates) {
+      const { kiurCount, kirsiCount } = countsForDate(date);
+      upsertLeaderboard(date, kiurCount, kirsiCount, winnerOf(kiurCount, kirsiCount), now);
+    }
+  });
+  rebuild();
+  // Re-settle every already-awarded month against the corrected standings.
+  const months = db.prepare('SELECT month FROM monthly_competition_awards ORDER BY month').all() as Array<{ month: string }>;
+  for (const { month } of months) reconcileMonthlyPrize(month);
+  return { rebuiltDates: dates.size, reconciledMonths: months.length };
 }
 
 // Full per-day history (most recent first) plus how many days each child has won.

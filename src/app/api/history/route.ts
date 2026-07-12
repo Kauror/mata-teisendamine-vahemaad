@@ -13,7 +13,7 @@ export async function GET() {
   const db = await getDb();
   const rows = db.prepare(`
     SELECT
-      a.id, a.createdAt, a.category, a.difficulty, a.questionCount, a.score, a.elapsedSeconds, a.learner, a.subject, a.topic,
+      a.id, a.clientAttemptId, a.createdAt, a.category, a.difficulty, a.questionCount, a.score, a.elapsedSeconds, a.learner, a.subject, a.topic,
       a.exerciseId,
       -- RTM3-M03: the displayed "stars earned" must reflect the whole canonical
       -- ledger for the attempt (study + streak + configurable rule components),
