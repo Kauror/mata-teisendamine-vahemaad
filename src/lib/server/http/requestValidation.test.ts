@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MAX_MUTATION_BODY_BYTES,
   PublicRequestError,
+  isIanaTimeZone,
   isRfc3339,
   parseOfflineSyncRequest,
   readJsonBody,
@@ -35,6 +36,24 @@ describe('strict mutation validation', () => {
 
   it('accepts a strict record but does not treat its client score as authoritative', () => {
     expect(validateAttemptRecordV2({ ...attempt(), score: 0 }, deviceId).ok).toBe(true);
+  });
+
+  it('accepts valid device time zones without changing Tallinn business-time rules', () => {
+    expect(isIanaTimeZone('Europe/Kiev')).toBe(true);
+    expect(isIanaTimeZone('not/a-time-zone')).toBe(false);
+    expect(validateAttemptRecordV2({ ...attempt(), clientTimeZone: 'Europe/Kiev' }, deviceId).ok).toBe(true);
+
+    const body = {
+      protocolVersion: 2,
+      phase: 'pull',
+      device: { deviceId, appVersion: '2', buildId: 'b', timeZone: 'Europe/Kiev', clientNow: '2026-07-01T10:00:00.000Z' },
+      cursor: {}
+    };
+    expect(parseOfflineSyncRequest(body)).toMatchObject({ device: { timeZone: 'Europe/Kiev' } });
+    expect(() => parseOfflineSyncRequest({
+      ...body,
+      device: { ...body.device, timeZone: 'not/a-time-zone' }
+    })).toThrowError(PublicRequestError);
   });
 
   it('never silently truncates an oversized v2 attempt batch', () => {

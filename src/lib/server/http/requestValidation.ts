@@ -61,6 +61,16 @@ function boundedString(value: unknown, min: number, max: number) {
   return typeof value === 'string' && value.length >= min && value.length <= max;
 }
 
+export function isIanaTimeZone(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length < 1 || value.length > 100) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function readJsonBody(request: Request, maxBytes = MAX_MUTATION_BODY_BYTES): Promise<unknown> {
   const declared = Number(request.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > maxBytes) {
@@ -122,7 +132,7 @@ export function validateAttemptRecordV2(value: unknown, requestDeviceId?: string
   if (!isRfc3339(value.rawDeviceCompletedAt)) issues.push('rawDeviceCompletedAt must be RFC 3339');
   if (!isRfc3339(value.completedAt)) issues.push('completedAt must be RFC 3339');
   if (value.clientCorrectedCompletedAt !== undefined && !isRfc3339(value.clientCorrectedCompletedAt)) issues.push('clientCorrectedCompletedAt must be RFC 3339');
-  if (value.clientTimeZone !== 'Europe/Tallinn') issues.push('clientTimeZone must be Europe/Tallinn');
+  if (!isIanaTimeZone(value.clientTimeZone)) issues.push('clientTimeZone must be a valid IANA time zone');
   if (!integer(value.clientUtcOffsetMinutes, -840, 840)) issues.push('clientUtcOffsetMinutes is invalid');
   if (!integer(value.questionCount, 1, 500)) issues.push('questionCount is invalid');
   if (!integer(value.score, 0, 500)) issues.push('score is invalid');
@@ -175,7 +185,7 @@ function validateDevice(value: unknown, issues: string[]) {
   if (!isRfcUuid(value.deviceId)) issues.push('device.deviceId must be an RFC UUID');
   if (!boundedString(value.appVersion, 1, 80)) issues.push('device.appVersion is invalid');
   if (value.buildId !== undefined && !boundedString(value.buildId, 1, 160)) issues.push('device.buildId is invalid');
-  if (value.timeZone !== 'Europe/Tallinn') issues.push('device.timeZone must be Europe/Tallinn');
+  if (!isIanaTimeZone(value.timeZone)) issues.push('device.timeZone must be a valid IANA time zone');
   if (!isRfc3339(value.clientNow)) issues.push('device.clientNow must be RFC 3339');
   if (value.lastKnownServerOffsetMs !== undefined && !finiteNumber(value.lastKnownServerOffsetMs, -86_400_000, 86_400_000)) {
     issues.push('device.lastKnownServerOffsetMs is invalid');
