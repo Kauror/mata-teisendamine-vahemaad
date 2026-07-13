@@ -2,12 +2,9 @@ services:
   app:
     build: .
     container_name: pikkuste-harjutaja
-    ports:
-      # Bind to loopback only; a TLS-terminating reverse proxy is expected to
-      # provide the HTTPS origin named in APP_ORIGIN.
-      - "127.0.0.1:3000:3000"
+    init: true
     # Required production secrets and switches live in .env (copy .env.example).
-    # Startup (npm start -> verified-start) refuses to boot if APP_ACCESS_PIN_HASH,
+    # Startup (verified-start -> Next.js) refuses to boot if APP_ACCESS_PIN_HASH,
     # APP_SESSION_SECRET_CURRENT or APP_ORIGIN are missing/invalid, if APP_ORIGIN
     # is not HTTPS, or if the advertised offline protocol is not actually enabled.
     env_file:
@@ -17,7 +14,16 @@ services:
       MATHS_GAME_DB_FILE: /data/maths-game.sqlite
       MATHS_GAME_BACKUP_DIR: /data/backups
     volumes:
-      - ./data:/data
+      - ${APP_DATA_DIR:-./data}:/data
+    networks:
+      - edge
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     healthcheck:
       # /api/healthz is public (no family session), so the probe reflects real
@@ -28,3 +34,25 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.7.0
+    profiles: ["tunnel"]
+    init: true
+    command: tunnel --no-autoupdate --metrics 127.0.0.1:2000 run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - edge
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+networks:
+  edge:
+    name: pikkuste-harjutaja-edge
+    driver: bridge

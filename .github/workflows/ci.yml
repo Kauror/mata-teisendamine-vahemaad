@@ -81,13 +81,17 @@ jobs:
           # The exact documented operator command (RTM4-C02): it now hashes the PIN
           # rather than the literal '--'.
           PIN_HASH=$(npm run --silent auth:hash -- 1234 | tr -d '\r')
+          PARENT_HASH=$(npm run --silent auth:hash -- parent-password-for-ci | tr -d '\r')
           # The hash contains '$'; it MUST be single-quoted so compose does not
           # interpolate it (this is the exact failure RTM2-C01 guards against).
           {
             echo "APP_ACCESS_PIN_HASH='$PIN_HASH'"
+            echo "PARENT_PASSWORD_HASH='$PARENT_HASH'"
             echo "APP_SESSION_SECRET_CURRENT='$SECRET'"
             echo "APP_ORIGIN=https://ci.example.com"
             echo "OFFLINE_PROTOCOL_V2_ENABLED=1"
+            echo "CLOUDFLARE_TUNNEL_TOKEN=ci-config-only-token"
+            echo "APP_DATA_DIR=./data"
           } > .env
       - name: Build the production image via compose
         run: docker compose build
@@ -96,8 +100,12 @@ jobs:
           docker compose config
           RESOLVED=$(docker compose config --format json | node -e "const fs=require('fs');let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const c=JSON.parse(s);process.stdout.write(c.services.app.environment.APP_ACCESS_PIN_HASH||'')})")
           EXPECTED=$(grep -oP "(?<=APP_ACCESS_PIN_HASH=').*(?=')" .env)
+          RESOLVED_PARENT=$(docker compose config --format json | node -e "const fs=require('fs');let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const c=JSON.parse(s);process.stdout.write(c.services.app.environment.PARENT_PASSWORD_HASH||'')})")
+          EXPECTED_PARENT=$(grep -oP "(?<=PARENT_PASSWORD_HASH=').*(?=')" .env)
           echo "resolved: $RESOLVED"
           test "$RESOLVED" = "$EXPECTED" || { echo "PIN hash was mangled by compose interpolation"; exit 1; }
+          test "$RESOLVED_PARENT" = "$EXPECTED_PARENT" || { echo "Parent hash was mangled by compose interpolation"; exit 1; }
+          docker compose --profile tunnel config >/dev/null
       - name: Start via compose (verified startup must pass)
         run: docker compose up -d
       - name: Wait for the container to report healthy
@@ -112,6 +120,27 @@ jobs:
           echo "Container did not become healthy"; docker compose logs; exit 1
       - name: Verified-startup log must confirm database verification
         run: docker compose logs 2>&1 | grep -q "Database startup verification passed"
+      - name: Application must have no published host port
+        run: test "$(docker inspect --format '{{json .HostConfig.PortBindings}}' pikkuste-harjutaja)" = "null"
+      - name: Tunnel-style probe reaches the app only over the named network
+        run: docker run --rm --network pikkuste-harjutaja-edge node:22.22.3-alpine3.23 node -e "fetch('http://pikkuste-harjutaja:3000/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      - name: Mounted data survives container replacement
+        run: |
+          docker compose exec -T app node -e "require('fs').writeFileSync('/data/container-replacement-probe','persisted')"
+          docker compose up -d --force-recreate app
+          for i in $(seq 1 40); do
+            [ "$(docker inspect --format '{{ .State.Health.Status }}' pikkuste-harjutaja 2>/dev/null || true)" = "healthy" ] && break
+            sleep 3
+          done
+          test "$(docker inspect --format '{{ .State.Health.Status }}' pikkuste-harjutaja)" = "healthy"
+          docker compose exec -T app node -e "process.exit(require('fs').readFileSync('/data/container-replacement-probe','utf8')==='persisted'?0:1)"
+      - name: Graceful stop completes within the timeout
+        run: |
+          START=$(date +%s)
+          docker compose stop -t 20 app
+          ELAPSED=$(($(date +%s)-START))
+          test "$ELAPSED" -lt 25
+          test "$(docker inspect --format '{{.State.ExitCode}}' pikkuste-harjutaja)" = "0"
       - name: Tear down
         if: always()
         run: docker compose down -v || true

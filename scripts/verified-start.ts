@@ -21,7 +21,17 @@ async function main() {
     env: { ...process.env, DATABASE_STARTUP_VERIFIED: '1' }
   });
 
+  let stopping = false;
+  const forward = (signal: NodeJS.Signals) => {
+    if (stopping) return;
+    stopping = true;
+    child.kill(signal);
+  };
+  process.once('SIGTERM', () => forward('SIGTERM'));
+  process.once('SIGINT', () => forward('SIGINT'));
+
   child.once('exit', (code, signal) => {
+    if (signal && stopping) process.exit(0);
     if (signal) process.kill(process.pid, signal);
     process.exit(code ?? 1);
   });
