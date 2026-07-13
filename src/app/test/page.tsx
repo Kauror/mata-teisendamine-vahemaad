@@ -6,7 +6,7 @@ import { Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { compactTopicLabel } from '@/lib/history';
-import { formatElapsed, isAnswerCorrect, validateAnswerInput } from '@/lib/validation';
+import { formatElapsed, validateAnswerInput } from '@/lib/validation';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 import {
   clearSession,
@@ -25,6 +25,7 @@ import {
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
+import { buildMathQuestionResults, mathChoiceLabels, type MathAnswerSnapshot } from '@/lib/mathResults';
 
 type ActiveLearningExercise = {
   id?: string;
@@ -103,15 +104,7 @@ function ShapeVisual({ question }: { question: GeneratedQuestion }) {
   return <svg width='180' height='120' aria-label='Ristküliku joonis'><rect x='20' y='20' width='140' height='70' fill='#e9ffe9' stroke='#2e7d32' /></svg>;
 }
 
-function choiceLabels(question: GeneratedQuestion) {
-  const options = question.choiceOptions;
-  if (!options?.length) {
-    return [question.correctAnswer === -1 ? '<' : question.correctAnswer === 0 ? '=' : '>'];
-  }
-
-  const answerIndexes = question.correctAnswers?.length ? question.correctAnswers : [question.correctAnswer];
-  return answerIndexes.map((answerIndex) => options[answerIndex]).filter((answer): answer is string => Boolean(answer));
-}
+const choiceLabels = mathChoiceLabels;
 
 function CountingObjectGrid({ question }: { question: GeneratedQuestion }) {
   if (question.type !== 'counting' || !question.emoji || !question.count) return null;
@@ -194,7 +187,10 @@ function TestPageContent() {
   const categoryParam = params.get('category') || 'Teisendamine';
   const exerciseIdParam = params.get('exerciseId');
   const difficulty = 'Lihtne' as Difficulty;
-  const count = topic === 'tekstulesanded' || categoryParam === 'Tekstülesanded' ? 5 : 15;
+  const requestedCount = Number(params.get('count'));
+  const count = topic === 'tekstulesanded' || categoryParam === 'Tekstülesanded'
+    ? 5
+    : Number.isSafeInteger(requestedCount) && requestedCount >= 1 && requestedCount <= 15 ? requestedCount : 15;
   const seed = Number(params.get('seed') || 1);
 
   const isKirsiMath = learner === 'kirsi' && subject === 'matemaatika';
@@ -472,28 +468,6 @@ function TestPageContent() {
   if (exerciseAvailability === 'blocked' && !questions.length) return <main className='test-page'><section className='test-shell'><section className='question-card'><h2>Harjutus ei ole saadaval</h2><p>See harjutus ei ole praegu aktiivne.</p><button type='button' className='btn' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
   if (!current) return <main className='test-page'><section className='test-shell'><section className='question-card'><h2>Harjutus ei ole saadaval</h2><p>Valitud teemat ei leitud.</p><button type='button' className='btn' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
 
-  const finalizeResults = () => {
-    return questions.map((question, i) => {
-      if (question.kind === 'ordering') {
-        const orderedCards = [...(question.orderingCards ?? [])].sort((a, b) => (question.orderingDirection === 'desc' ? b.valueMm - a.valueMm : a.valueMm - b.valueMm));
-        const orderedIds = orderedCards.map((c) => c.id);
-        const userOrder = orderingAnswers[i] ?? [];
-        const labelMap = new Map((question.orderingCards ?? []).map((c) => [c.id, c.label]));
-        return { ...question, userAnswer: userOrder.map((id) => labelMap.get(id) ?? id).join(' → '), isCorrect: JSON.stringify(userOrder) === JSON.stringify(orderedIds), correctAnswer: 0 };
-      }
-      if (question.kind === 'choice') {
-        const answer = choiceAnswers[i] ?? '';
-        const correctLabels = choiceLabels(question);
-        return { ...question, userAnswer: answer, correctAnswer: question.correctAnswer, isCorrect: correctLabels.includes(answer) };
-      }
-      if (question.kind === 'text') {
-        const answer = answers[i] ?? '';
-        return { ...question, userAnswer: answer, correctAnswer: 0, isCorrect: isTextAnswerCorrect(answer, question) };
-      }
-      return { ...question, userAnswer: answers[i], isCorrect: isAnswerCorrect(answers[i], question.correctAnswer) };
-    });
-  };
-
   const handleSubmit = async () => {
     if (isSaving) return;
     setShowStopConfirm(false);
@@ -529,6 +503,14 @@ function TestPageContent() {
       if (err) { setError(err === 'Palun sisesta vastus.' ? 'Sisesta vastus enne jätkamist.' : err); inputRef.current?.focus(); return; }
     }
 
+    const finalAnswers = [...answers];
+    if (current.kind !== 'ordering' && !isChoiceQuestion) finalAnswers[index] = getCurrentAnswer();
+    const answerSnapshot: MathAnswerSnapshot = {
+      answers: finalAnswers,
+      orderingAnswers: orderingAnswers.map((answer) => [...answer]),
+      choiceAnswers: [...choiceAnswers]
+    };
+    setAnswers(finalAnswers);
     setError('');
     if (index < count - 1) {
       setCountingFeedback(null);
@@ -537,7 +519,7 @@ function TestPageContent() {
     }
 
     setIsSaving(true);
-    const results = finalizeResults();
+    const results = buildMathQuestionResults(questions, answerSnapshot, isTextAnswerCorrect);
     const score = results.filter((r) => r.isCorrect).length;
 
     try {

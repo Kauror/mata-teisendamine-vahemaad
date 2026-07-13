@@ -30,7 +30,9 @@ export default defineConfig({
     env: {
       MATHS_GAME_DB_FILE: ':memory:',
       OFFLINE_PROTOCOL_V2_ENABLED: '1',
-      APP_ORIGIN: 'http://localhost:3000'
+      APP_ORIGIN: 'http://localhost:3000',
+      APP_SESSION_SECRET_CURRENT: 'e2e-session-secret-with-at-least-thirty-two-bytes',
+      APP_ACCESS_PIN_HASH: 'scrypt$v=1$N=16384,r=8,p=1$CmO5D6zhaeWjWLkyuNBXgw$V1f-JtGInwY1cCau3S2iS1PdwC2Uo_2XdYCgdqdyZQs'
     }
   }
 });
