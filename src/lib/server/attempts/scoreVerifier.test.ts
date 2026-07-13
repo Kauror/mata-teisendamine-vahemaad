@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
+import { KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
+import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
 import { AttemptContractError, recomputeScore } from '@/lib/server/attempts/scoreVerifier';
 import type { GeneratedQuestion } from '@/lib/types';
 import { buildMathQuestionResults, type MathAnswerSnapshot } from '@/lib/mathResults';
@@ -50,6 +52,23 @@ describe('server-owned score recomputation', () => {
       }))
     });
     expect(verified.score).toBe(1);
+  });
+
+  it('rejects forged English and picture-word contract metadata while accepting unmodified answers', () => {
+    const english = ENGLISH_VOCABULARY[0];
+    const englishId = `run:1:0:${english.id}`;
+    const baseEnglish = { id: englishId, question: english.english, vocabularyId: english.id, direction: 'en-et', userAnswer: english.estonian, isCorrect: false };
+    expect(recomputeScore({ runnerId: 'kiur-english-sprint', learner: 'kiur', subject: 'inglise-keel', topic: 'sprint', category: 'Sprint', difficulty: 'normal', seed: 1, questionIds: [englishId], questions: [baseEnglish] }).score).toBe(1);
+    for (const forged of [{ ...baseEnglish, vocabularyId: ENGLISH_VOCABULARY[1].id }, { ...baseEnglish, direction: 'et-en' }, { ...baseEnglish, question: 'forged' }]) {
+      expect(() => recomputeScore({ runnerId: 'kiur-english-sprint', learner: 'kiur', subject: 'inglise-keel', topic: 'sprint', category: 'Sprint', difficulty: 'normal', seed: 1, questionIds: [englishId], questions: [forged] })).toThrow(AttemptContractError);
+    }
+    const picture = KIRSI_READING_PAIRS[0];
+    const pictureId = `run:1:0:${picture.id}`;
+    const basePicture = { id: pictureId, question: `${picture.image} â€” ${picture.word}`, vocabularyId: picture.id, selectedWord: picture.word, isCorrect: false };
+    expect(recomputeScore({ runnerId: 'kirsi-picture-word', learner: 'kirsi', subject: 'lugemine', topic: 'pilt-ja-sona', category: 'Pilt ja sÃµna', difficulty: 'normal', seed: 1, questionIds: [pictureId], questions: [basePicture] }).score).toBe(1);
+    for (const forged of [{ ...basePicture, vocabularyId: KIRSI_READING_PAIRS[1].id }, { ...basePicture, question: 'forged' }]) {
+      expect(() => recomputeScore({ runnerId: 'kirsi-picture-word', learner: 'kirsi', subject: 'lugemine', topic: 'pilt-ja-sona', category: 'Pilt ja sÃµna', difficulty: 'normal', seed: 1, questionIds: [pictureId], questions: [forged] })).toThrow(AttemptContractError);
+    }
   });
 
   it('matches client verification over a generated mathematics corpus', () => {

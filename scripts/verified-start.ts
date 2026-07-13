@@ -5,12 +5,14 @@ import { prepareDatabaseForStartup } from '../src/lib/server/database/verificati
 import { assertProductionAuthConfigured } from '../src/lib/appAccess';
 import { assertOfflineProtocolConsistent } from '../src/lib/offline/protocol';
 import { assertProductionParentAuthReady } from '../src/lib/server/auth/parentStartup';
+import { maxOfflineAttemptAgeDays } from '../src/lib/offline/server/attemptTiming';
 
 // tsx transforms this script as CommonJS, so top-level await is unavailable; the
 // verified startup sequence runs inside an async main() instead.
 async function main() {
   assertProductionAuthConfigured();
   assertOfflineProtocolConsistent();
+  maxOfflineAttemptAgeDays();
   const positiveInteger = (name: string, fallback: number) => {
     const value = process.env[name];
     if (!value) return fallback;

@@ -18,6 +18,7 @@ import { recomputeSprintQualifications } from '@/lib/sprintQualification';
 import { metadataMatchesContract, validateAttemptRecordV2 } from '@/lib/server/http/requestValidation';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import { isOfflineProtocolV2Enabled } from '@/lib/offline/protocol';
+import { validateAttemptTiming } from '@/lib/offline/server/attemptTiming';
 
 // Both legacy online completion and phased protocol-v2 sync use this one
 // insertion path. Protocol v2 adds strict contract validation and server score
@@ -223,6 +224,20 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       return { status: 'rejected', reasonCode: 'metadata_mismatch', message: 'Attempt metadata does not match its catalogue grant.' };
     } else if (!rewardPolicyByVersion(grant.rewardPolicyVersion)) {
       return { status: 'rejected', reasonCode: 'unknown_reward_policy', message: 'Reward policy is not available.' };
+    } else {
+      const timing = validateAttemptTiming({
+        serverReceivedAt: serverNow,
+        rawDeviceCompletedAt: v2!.rawDeviceCompletedAt,
+        clientCorrectedCompletedAt: v2!.clientCorrectedCompletedAt,
+        startedAt: input.startedAt,
+        grant,
+        lastKnownServerOffsetMs: null
+      });
+      if (timing.verdict === 'reject') return { status: 'rejected', reasonCode: timing.reasonCode, message: 'Attempt completion time is not acceptable.' };
+      if (timing.verdict === 'review') {
+        review = true;
+        reasonCode = timing.reasonCode;
+      }
     }
   }
 
