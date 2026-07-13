@@ -77,7 +77,11 @@ jobs:
       - run: npx playwright install chromium
       # Builds the production app + generated service worker and exercises SW
       # install / offline reload in a real Chromium (RTM2-H06).
-      - run: npm run test:e2e:prod
+      - run: PW_TEST_PORT=3100 CI=1 npm run test:e2e:prod
+      - name: Build and test must not alter tracked or unignored files
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain --untracked-files=all)"
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -90,6 +94,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Confirm the checked-out release candidate SHA
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -166,6 +172,19 @@ jobs:
           done
           test "$(docker inspect --format '{{ .State.Health.Status }}' pikkuste-harjutaja)" = "healthy"
           docker compose exec -T app node -e "process.exit(require('fs').readFileSync('/data/container-replacement-probe','utf8')==='persisted'?0:1)"
+      - name: WAL-safe database audit passes on the running safe CI database
+        run: npm run audit:v2 -- ./data/maths-game.sqlite | tee database-audit.txt
+      - name: Record exact release candidate and image identifiers
+        run: |
+          echo "release_sha=$(git rev-parse HEAD)" > release-evidence.txt
+          echo "image_id=$(docker image inspect --format '{{.Id}}' pikkuste-harjutaja:local)" >> release-evidence.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-evidence
+          path: |
+            database-audit.txt
+            release-evidence.txt
+          retention-days: 30
       - name: Graceful stop completes within the timeout
         run: |
           START=$(date +%s)

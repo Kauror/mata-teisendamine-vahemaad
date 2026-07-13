@@ -1,5 +1,7 @@
 # RTM offline release gate
 
+The complete release decision record is [release-checklist.md](release-checklist.md). This document keeps the offline-specific procedure; neither document permits bypassing the production database audit or physical-device acceptance.
+
 Run the automated checks from a clean checkout:
 
 ```bash
