@@ -78,7 +78,7 @@ describe('protocol-v2 attempt writes', () => {
       device: device(),
       cursor: cursor(),
       pending: {
-        attempts: [{
+        attempts: [{ clientAttemptId: 'malformed-sibling' } as never, {
           clientAttemptId: '018f47f6-9f2c-7b9a-8a2e-abcdefabcdef',
           deviceId,
           learner: 'kiur',
@@ -109,7 +109,8 @@ describe('protocol-v2 attempt writes', () => {
       }
     });
 
-    expect(response.attemptResults[0]).toMatchObject({ status: 'created' });
+    expect(response.attemptResults[0]).toMatchObject({ status: 'rejected' });
+    expect(response.attemptResults[1]).toMatchObject({ status: 'created' });
     const stored = db.prepare('SELECT protocolVersion, score, questionCount FROM attempts').get() as { protocolVersion: number; score: number; questionCount: number };
     expect(stored).toEqual({ protocolVersion: 2, score: 1, questionCount: 1 });
   });

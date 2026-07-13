@@ -525,7 +525,7 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
     await writeRetryState({ status: 'idle', retryCount: 0 });
     return { ok: true, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
   } catch (error) {
-    if (error instanceof StopSyncCycle) return { ok: false, reason: error.reason, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+    if (error instanceof StopSyncCycle) return { ok: false, reason: error.disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('history epoch regressed')) {
       await blockRetry('epoch_regression', message);

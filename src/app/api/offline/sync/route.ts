@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runSyncPullV2, runSyncPushV2 } from '@/lib/offline/server/syncService';
 import type { OfflineSyncPullRequestV2, OfflineSyncPushRequestV2 } from '@/lib/shared/types';
 import { parseOfflineSyncRequest, PublicRequestError, readJsonBody } from '@/lib/server/http/requestValidation';
+import { runSyncRouteFaultInjector } from './faultInjection';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
   await getDb();
   try {
     const body = parseOfflineSyncRequest(await readJsonBody(req));
+    runSyncRouteFaultInjector();
     const response = body.phase === 'push'
       ? runSyncPushV2(body as OfflineSyncPushRequestV2)
       : runSyncPullV2(body as OfflineSyncPullRequestV2);
@@ -26,6 +28,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ code: error.code, message: error.message, issues: error.issues }, { status: error.status });
     }
     console.error('offline sync failed', error);
-    return NextResponse.json({ code: 'invalid_request', message: 'Sync request failed.' }, { status: 422 });
+    return NextResponse.json(
+      { code: 'internal_error', message: 'Sync is temporarily unavailable.' },
+      { status: 500 }
+    );
   }
 }
