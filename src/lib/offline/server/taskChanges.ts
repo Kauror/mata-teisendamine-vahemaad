@@ -10,6 +10,31 @@ import type { CanonicalTaskState, Learner, TaskActionChange } from '@/lib/shared
 
 export const MAX_TASK_CHANGES_PER_SYNC = 300;
 
+export function emitTaskChangeForAction(input: {
+  clientActionId: string;
+  assignmentId?: number | null;
+  learner?: Learner | null;
+  state: CanonicalTaskState;
+  reasonCode?: string;
+  serverState?: unknown;
+  changedAt?: string;
+}): void {
+  const changedAt = input.changedAt ?? new Date().toISOString();
+  const payload = {
+    clientActionId: input.clientActionId,
+    assignmentId: input.assignmentId ?? null,
+    learner: input.learner ?? null,
+    state: input.state,
+    reasonCode: input.reasonCode,
+    serverState: input.serverState,
+    changedAt
+  };
+  db.prepare(`
+    INSERT INTO server_change_log (stream, entityType, entityId, operation, payloadJson, createdAt)
+    VALUES ('taskChanges', 'task_action', ?, ?, ?, ?)
+  `).run(input.clientActionId, input.state, JSON.stringify(payload), changedAt);
+}
+
 type AssignmentIdentity = { templateId: number; date: string; learner: Learner };
 
 function assignmentIdentity(assignmentId: number): AssignmentIdentity | null {
@@ -42,15 +67,11 @@ export function emitTaskChangeForAssignment(
   const updateAction = db.prepare(`
     UPDATE offline_task_actions SET status = ?, reasonCode = ?, processedAt = ? WHERE clientActionId = ?
   `);
-  const insertChange = db.prepare(`
-    INSERT INTO server_change_log (stream, entityType, entityId, operation, payloadJson, createdAt)
-    VALUES ('taskChanges', 'task_action', ?, ?, ?, ?)
-  `);
   for (const action of actions) {
     // Keep the stored action status consistent so idempotent retries of the
     // original push observe the settled outcome, not the stale one.
     updateAction.run(state, options.reasonCode ?? null, now, action.clientActionId);
-    const payload = {
+    emitTaskChangeForAction({
       clientActionId: action.clientActionId,
       assignmentId,
       learner: identity.learner,
@@ -58,8 +79,7 @@ export function emitTaskChangeForAssignment(
       reasonCode: options.reasonCode,
       serverState: options.serverState,
       changedAt: now
-    };
-    insertChange.run(action.clientActionId, state, JSON.stringify(payload), now);
+    });
   }
 }
 

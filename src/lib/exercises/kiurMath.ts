@@ -441,5 +441,3 @@ export function generateKiurMathSession(topic: string, category: string, difficu
   }
   return out;
 }
-
-export const generateLengthExercises = generateLengthSession;

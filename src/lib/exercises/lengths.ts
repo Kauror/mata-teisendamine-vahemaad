@@ -141,5 +141,3 @@ export function generateSession(_mode: Category, difficulty: Difficulty, count: 
   }
   return out;
 }
-
-export const generateLengthExercises = generateSession;

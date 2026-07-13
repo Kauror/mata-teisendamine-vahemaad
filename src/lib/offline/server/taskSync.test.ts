@@ -3,6 +3,7 @@ import db from '@/lib/db';
 import { approveTaskAssignment, createTaskTemplate, findAssignmentId, getBalance, rejectTaskAssignment, todayDateString, updateTaskTemplate } from '@/lib/tasks';
 import { applyOfflineTaskAction, getSyncTaskAssignments, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
 import { getTaskChangesAfter } from '@/lib/offline/server/taskChanges';
+import { listOfflineTaskReviews, resolveOfflineTaskReview } from '@/lib/offline/server/taskReviews';
 import { projectTasksForDate, type SyncTaskTemplate, type TaskAssignmentMode } from '@/lib/shared/taskProjection';
 import type { OfflineTaskActionPayload } from '@/lib/shared/types';
 
@@ -134,6 +135,37 @@ describe('task-change stream', () => {
     approveTaskAssignment(assignmentId);
     const [change] = getTaskChangesAfter(0);
     expect(getTaskChangesAfter(change.changeId)).toEqual([]);
+  });
+});
+
+describe('offline task review resolution', () => {
+  function queueChangedTask(clientActionId: string) {
+    const template = makeTemplate('both_independent');
+    const staleVersion = template.version;
+    updateTaskTemplate(template.id, { title: 'Koru tuba', points: 9, assignmentMode: 'both_independent', recurrenceType: 'daily', requiresApproval: false });
+    const result = applyOfflineTaskAction(action({ templateId: template.id, templateVersion: staleVersion, learner: 'kiur', clientActionId }));
+    expect(result.status).toBe('needs_review');
+  }
+
+  it('approves the original snapshot once and publishes the decision', () => {
+    queueChangedTask('review-approve');
+    expect(listOfflineTaskReviews()).toMatchObject([{ clientActionId: 'review-approve', points: 5 }]);
+
+    expect(resolveOfflineTaskReview('review-approve', 'approve')).toEqual({ parentDecision: 'approve', pointsAwarded: 5 });
+    expect(getBalance('kiur')).toBe(5);
+    expect(getTaskChangesAfter(0)).toMatchObject([{ clientActionId: 'review-approve', state: 'applied', reasonCode: 'parent_approved' }]);
+    const ledger = db.prepare("SELECT source, amount FROM point_ledger WHERE idempotencyKey = 'offline-task-review:review-approve'").get() as { source: string; amount: number };
+    expect(ledger).toEqual({ source: 'real_world_task', amount: 5 });
+    expect(() => resolveOfflineTaskReview('review-approve', 'approve')).toThrow('Ülevaatust ootavat tegevust ei leitud.');
+    expect(getBalance('kiur')).toBe(5);
+    expect(getTaskChangesAfter(0)).toHaveLength(1);
+  });
+
+  it('rejects without awarding and publishes the decision', () => {
+    queueChangedTask('review-reject');
+    expect(resolveOfflineTaskReview('review-reject', 'reject')).toEqual({ parentDecision: 'reject', pointsAwarded: 0 });
+    expect(getBalance('kiur')).toBe(0);
+    expect(getTaskChangesAfter(0)).toMatchObject([{ clientActionId: 'review-reject', state: 'rejected', reasonCode: 'parent_rejected' }]);
   });
 });
 
