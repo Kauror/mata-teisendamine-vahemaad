@@ -25,6 +25,7 @@ import {
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
+import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
 import { buildMathQuestionResults, mathChoiceLabels, type MathAnswerSnapshot } from '@/lib/mathResults';
 import { verifyMathTextAnswer } from '@/lib/shared/answerVerification';
 
@@ -374,27 +375,8 @@ function TestPageContent() {
     void patchRunnerSession<MathSession>(runId, snapshotRef.current).catch((cause) => setStorageError(runnerStorageFailure(cause).message));
   }, [answers, choiceAnswers, countingFeedback, index, isSaving, orderingAnswers, questions.length, runId, sessionReady, showStopConfirm, storageError, textFeedback]);
 
-  useEffect(() => {
-    if (!questions.length || !sessionReady || isSaving || storageError) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') setElapsed((value) => value + 1);
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [isSaving, questions.length, sessionReady, storageError]);
-
-  useEffect(() => {
-    if (!sessionReady || !runId || isSaving) return;
-    const checkpoint = () => void patchRunnerSession<MathSession>(runId, snapshotRef.current).catch((cause) => setStorageError(runnerStorageFailure(cause).message));
-    const timer = window.setInterval(checkpoint, 5000);
-    const onVisibility = () => { if (document.visibilityState === 'hidden') checkpoint(); };
-    window.addEventListener('pagehide', checkpoint);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('pagehide', checkpoint);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [isSaving, runId, sessionReady]);
+  useVisibleElapsedTimer(Boolean(questions.length && sessionReady && !isSaving && !storageError), setElapsed);
+  useRunnerCheckpoint<MathSession>({ enabled: sessionReady && !isSaving, runId, snapshotRef, setStorageError });
 
   useEffect(() => setError(''), [index]);
 

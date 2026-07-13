@@ -19,6 +19,7 @@ import {
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
+import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
 
 const QUESTION_COUNT = 10;
 
@@ -205,29 +206,8 @@ export default function KirsiFirstSoundPage() {
     });
   }, [hintCount, hintVisible, index, reviewItems, runId, saved, score, selectedLetter, session.length, sessionReady, showStopConfirm, storageError]);
 
-  useEffect(() => {
-    if (!sessionReady || saved || storageError || index >= session.length) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') setElapsedSeconds((value) => value + 1);
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [index, saved, session.length, sessionReady, storageError]);
-
-  useEffect(() => {
-    if (!sessionReady || !runId || saved) return;
-    const checkpoint = () => {
-      void patchRunnerSession<FirstSoundSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
-    };
-    const timer = window.setInterval(checkpoint, 5000);
-    const onVisibility = () => { if (document.visibilityState === 'hidden') checkpoint(); };
-    window.addEventListener('pagehide', checkpoint);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('pagehide', checkpoint);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [runId, saved, sessionReady]);
+  useVisibleElapsedTimer(sessionReady && !saved && !storageError && index < session.length, setElapsedSeconds);
+  useRunnerCheckpoint<FirstSoundSession>({ enabled: sessionReady && !saved, runId, snapshotRef, setStorageError });
 
   useEffect(() => {
     if (!sessionReady || !runId || index < session.length || saved || exerciseActive !== true || !session.length) return;

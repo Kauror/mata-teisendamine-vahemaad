@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../e2e/test';
 
 // Runs against the real production build (next build + generated service worker)
 // with a valid (injected) family session. These assert the pieces unit tests

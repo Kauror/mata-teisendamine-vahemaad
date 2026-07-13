@@ -19,6 +19,7 @@ import {
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import type { CatalogueContract } from '@/lib/offline/api';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
+import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
 import { ROTATION_ALGORITHM_VERSION } from '@/lib/shared/types';
 
 const EYEBROW: Record<ScienceTaskType, string> = {
@@ -270,27 +271,8 @@ function ScienceTestContent() {
     void patchRunnerSession<ScienceSession>(runId, snapshotRef.current).catch((cause) => setStorageError(runnerStorageFailure(cause).message));
   }, [checked, choiceSel, index, isSaving, matchSel, runId, sessionReady, showStopConfirm, sortSel, storageError]);
 
-  useEffect(() => {
-    if (!session.length || !sessionReady || isSaving || storageError) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') setElapsed((value) => value + 1);
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [isSaving, session.length, sessionReady, storageError]);
-
-  useEffect(() => {
-    if (!sessionReady || !runId || isSaving) return;
-    const checkpoint = () => void patchRunnerSession<ScienceSession>(runId, snapshotRef.current).catch((cause) => setStorageError(runnerStorageFailure(cause).message));
-    const timer = window.setInterval(checkpoint, 5000);
-    const onVisibility = () => { if (document.visibilityState === 'hidden') checkpoint(); };
-    window.addEventListener('pagehide', checkpoint);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('pagehide', checkpoint);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [isSaving, runId, sessionReady]);
+  useVisibleElapsedTimer(Boolean(session.length && sessionReady && !isSaving && !storageError), setElapsed);
+  useRunnerCheckpoint<ScienceSession>({ enabled: sessionReady && !isSaving, runId, snapshotRef, setStorageError });
 
   useEffect(() => setError(''), [index]);
 

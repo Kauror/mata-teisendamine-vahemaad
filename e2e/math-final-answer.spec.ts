@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './test';
 import { generateKiurMathSession } from '../src/lib/exercises/kiurMath';
 
 type Exercise = { id: string; subject: string; topic: string; category: string };

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import PictureWordSprintBoard, { type PictureWordSprintBoardState } from '@/app/components/PictureWordSprintBoard';
 import { shuffle } from '@/lib/englishGame';
 import { fetchBestKirsiReadingSprintScore } from '@/lib/kirsiReadingHistory';
-import { KIRSI_READING_PAIRS, KirsiReadingPair } from '@/lib/kirsiReadingPairs';
+import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS, KirsiReadingPair } from '@/lib/kirsiReadingPairs';
 import { formatStars } from '@/lib/formatStars';
 import { formatElapsed } from '@/lib/validation';
 import {
@@ -23,6 +23,7 @@ import {
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
+import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
 
 type ReviewItem = {
   taskId: string;
@@ -183,27 +184,8 @@ export default function KirsiPictureWordSprintPage() {
     void patchRunnerSession<PictureWordSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
   }, [boardIndex, boardState, ended, reviewItems, runId, score, sessionReady, showStopConfirm, started, storageError, streak, wrongMatch]);
 
-  useEffect(() => {
-    if (!started || ended || storageError) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') setElapsedSeconds((value) => value + 1);
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [ended, started, storageError]);
-
-  useEffect(() => {
-    if (!runId || !sessionReady || !started || ended) return;
-    const checkpoint = () => void patchRunnerSession<PictureWordSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
-    const timer = window.setInterval(checkpoint, 5000);
-    const onVisibility = () => { if (document.visibilityState === 'hidden') checkpoint(); };
-    window.addEventListener('pagehide', checkpoint);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('pagehide', checkpoint);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [ended, runId, sessionReady, started]);
+  useVisibleElapsedTimer(started && !ended && !storageError, setElapsedSeconds);
+  useRunnerCheckpoint<PictureWordSession>({ enabled: sessionReady && started && !ended, runId, snapshotRef, setStorageError });
 
   useEffect(() => {
     if (!ended || savedHistoryRef.current || exerciseActive !== true || !runId) return;
@@ -309,7 +291,7 @@ export default function KirsiPictureWordSprintPage() {
     const item: ReviewItem = {
         taskId: `${runId ?? 'run'}:${boardIndex}:${reviewItems.length}:${picture.id}`,
         id: `${runId ?? 'run'}:${boardIndex}:${reviewItems.length}:${picture.id}`,
-      question: `${picture.image} — ${picture.word}`,
+      question: buildKirsiPictureWordQuestion(picture),
       userAnswer: selected.word,
       correctAnswer: 0,
       isCorrect: ok,

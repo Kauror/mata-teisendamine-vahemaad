@@ -19,6 +19,7 @@ import {
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
+import { useRunnerCheckpoint } from '@/lib/offline/useRunnerLifecycle';
 
 type FailedSprintPair = {
   word: EnglishVocabularyWord;
@@ -234,19 +235,7 @@ export default function SprintPage() {
     return () => window.clearInterval(t);
   }, [ended, sessionReady, sprintActive, storageError]);
 
-  useEffect(() => {
-    if (!runId || !sessionReady || ended) return;
-    const checkpoint = () => void patchRunnerSession<EnglishSprintSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
-    const timer = window.setInterval(checkpoint, 5000);
-    const onVisibility = () => { if (document.visibilityState === 'hidden') checkpoint(); };
-    window.addEventListener('pagehide', checkpoint);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('pagehide', checkpoint);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [ended, runId, sessionReady]);
+  useRunnerCheckpoint<EnglishSprintSession>({ enabled: sessionReady && !ended, runId, snapshotRef, setStorageError });
 
   useEffect(() => {
     if (!ended || savedHistoryRef.current || sprintActive !== true || !runId) return;

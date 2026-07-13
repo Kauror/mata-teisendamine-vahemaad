@@ -459,7 +459,7 @@ export function submitRemediationSession(input: {
     const latestByMistake = new Map<number, { allCorrect: boolean; anyWrong: boolean }>();
     const historyQuestions = items.map((item) => {
       const question = parseSnapshotSafeQuestion(item.renderedQuestionJson);
-      if (!question) throw new Error('KÃ¼simust ei saanud lugeda.');
+      if (!question) throw new Error('Küsimust ei saanud lugeda.');
       const childAnswer = answerMap.get(item.id) ?? '';
       const isCorrect = answerMatches(childAnswer, question.correctAnswerLabel);
       const current = latestByMistake.get(item.mistakeId) ?? { allCorrect: true, anyWrong: false };

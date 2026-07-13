@@ -22,6 +22,7 @@ import {
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
+import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
 
 const RUN_LENGTH = 5;
 
@@ -179,27 +180,8 @@ export default function KiurReadingPage() {
     void patchRunnerSession<ReadingSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
   }, [index, phase, reviewItems, runId, saved, score, selectedAnswer, sessionReady, showStopConfirm, storageError]);
 
-  useEffect(() => {
-    if (!sessionReady || saved || storageError || phase === 'start' || phase === 'result') return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') setElapsedSeconds((value) => value + 1);
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [phase, saved, sessionReady, storageError]);
-
-  useEffect(() => {
-    if (!runId || !sessionReady || phase === 'start' || saved) return;
-    const checkpoint = () => void patchRunnerSession<ReadingSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
-    const timer = window.setInterval(checkpoint, 5000);
-    const onVisibility = () => { if (document.visibilityState === 'hidden') checkpoint(); };
-    window.addEventListener('pagehide', checkpoint);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('pagehide', checkpoint);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [phase, runId, saved, sessionReady]);
+  useVisibleElapsedTimer(sessionReady && !saved && !storageError && phase !== 'start' && phase !== 'result', setElapsedSeconds);
+  useRunnerCheckpoint<ReadingSession>({ enabled: sessionReady && phase !== 'start' && !saved, runId, snapshotRef, setStorageError });
 
   useEffect(() => {
     if (phase !== 'result' || saved || runCount === 0 || !runId) return;

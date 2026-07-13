@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { decodeHistoryCursor, encodeHistoryCursor, historyPageLimit } from '@/lib/server/historyCursor';
+import { CANONICAL_EARNED_STARS_SQL, CANONICAL_REVIEW_REASON_SQL } from '@/lib/server/attempts/canonicalAttemptProjection';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,24 +43,13 @@ export async function GET(request: Request) {
       -- ledger for the attempt (study + streak + configurable rule components),
       -- not only the study component. Fall back to the legacy study reward for v1
       -- rows that have no canonical components.
-      COALESCE((
-        SELECT SUM(latest.canonicalAmount)
-        FROM attempt_reward_components latest
-        JOIN (
-          SELECT componentKey, MAX(revision) AS revision
-          FROM attempt_reward_components
-          WHERE attemptId = a.id
-          GROUP BY componentKey
-        ) mx ON mx.componentKey = latest.componentKey AND mx.revision = latest.revision
-        WHERE latest.attemptId = a.id
-      ), r.awardedAmount) as earnedStars,
+      ${CANONICAL_EARNED_STARS_SQL} as earnedStars,
       r.dailyCap as learningDailyCap,
       r.dailyLearningEarnedAfter as dailyLearningEarnedAfter,
       -- RTM3-H02: settlement so the child sees a held result as awaiting approval,
       -- not as an ordinary zero-star completion.
       a.rewardSettlementStatus as rewardSettlementStatus,
-      COALESCE(a.reviewReasonCode,
-        CASE WHEN a.clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END) as reviewReasonCode
+      ${CANONICAL_REVIEW_REASON_SQL} as reviewReasonCode
     FROM attempts a
     LEFT JOIN study_attempt_rewards r ON r.attemptId = a.id
     WHERE ${clauses.join(' AND ')}

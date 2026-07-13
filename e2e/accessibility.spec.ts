@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './test';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -41,15 +41,20 @@ test('child-specific history selects the child and contains no destructive contr
 });
 
 test('parent controls are keyboard-accessible after parent login', async ({ page }) => {
-  await page.goto('/vanem');
+  await page.getByRole('link', { name: 'Lapsevanema ala' }).click();
   const password = page.getByLabel('Sisesta parool');
   await password.click();
   await password.pressSequentially('e2e-parent-password');
   await expect(password).toHaveValue('e2e-parent-password');
+  const dashboardLoaded = page.waitForResponse((response) => response.url().endsWith('/api/parent/dashboard') && response.ok());
   await page.getByRole('button', { name: 'Sisene' }).click();
+  await dashboardLoaded;
   const controls = page.getByRole('button', { name: /Tähed ja karikad/ });
   await expect(controls).toBeVisible();
+  const initiallyExpanded = await controls.getAttribute('aria-expanded');
   await controls.focus();
   await controls.press('Enter');
-  await expect(controls).toHaveAttribute('aria-expanded', 'true');
+  await expect(controls).toHaveAttribute('aria-expanded', initiallyExpanded === 'true' ? 'false' : 'true');
+  await controls.press('Enter');
+  await expect(controls).toHaveAttribute('aria-expanded', initiallyExpanded ?? 'false');
 });

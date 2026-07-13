@@ -9,15 +9,10 @@ export {
   hasActiveRunnerSessions,
   isRunId,
   createRunnerSession,
-  beginRunnerFinalization,
-  checkpointRunnerSession,
   loadRunnerSession,
   makeRunnerSession,
   patchRunnerSession,
-  pauseRunnerSession,
-  runnerStorageFailure,
-  resumeRunnerSession,
-  saveRunnerSession
+  runnerStorageFailure
 } from '@/lib/offline/runnerSession';
 export type { CreateRunnerSessionInput, RunnerStorageFailure } from '@/lib/offline/runnerSession';
 import { childExerciseCards, type ChildExerciseCard } from '@/lib/childExerciseCards';

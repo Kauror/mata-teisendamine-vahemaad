@@ -780,6 +780,10 @@ function addAttemptFingerprint(connection: DatabaseConnection) {
   connection.exec('CREATE INDEX IF NOT EXISTS idx_attempts_fingerprint ON attempts(clientAttemptId, attemptFingerprint)');
 }
 
+function addAttemptStatsWindowIndex(connection: DatabaseConnection) {
+  connection.exec('CREATE INDEX IF NOT EXISTS idx_attempts_created_at ON attempts(createdAt)');
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -816,6 +820,12 @@ const migrations: Migration[] = [
     name: 'attempt_fingerprint',
     checksumSource: 'attempt_fingerprint:v1:2026-07-13',
     up: addAttemptFingerprint
+  },
+  {
+    id: 7,
+    name: 'attempt_stats_window_index',
+    checksumSource: 'attempt_stats_window_index:v1:2026-07-13',
+    up: addAttemptStatsWindowIndex
   }
 ];
 

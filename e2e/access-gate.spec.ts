@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './test';
 
 // The family PIN gate is the entry point for every child/parent surface. These
 // checks prove the server boots, middleware redirects unauthenticated traffic,

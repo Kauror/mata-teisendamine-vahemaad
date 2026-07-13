@@ -165,16 +165,6 @@ export async function loadRunnerSession<
   return runnerSessionRepo.get(runId) as Promise<RunnerSessionV3<Question, Answer, RunnerState, Feedback> | undefined>;
 }
 
-export async function saveRunnerSession<Session extends RunnerSessionV3>(session: Session): Promise<Session> {
-  try {
-    const updated = { ...session, storageRevision: session.storageRevision + 1, updatedAt: new Date().toISOString() } as Session;
-    await runnerSessionRepo.put(updated);
-    return updated;
-  } catch (error) {
-    throw new RunnerStorageError(runnerStorageFailure(error), error);
-  }
-}
-
 export async function patchRunnerSession<Session extends RunnerSessionV3>(runId: string, patch: Partial<Session>): Promise<Session> {
   try {
     return await runnerSessionRepo.patch<Session>(runId, patch);
@@ -184,43 +174,6 @@ export async function patchRunnerSession<Session extends RunnerSessionV3>(runId:
       ? { code: 'session_missing', message: 'Salvestatud harjutust ei leitud.', recoverable: false }
       : runnerStorageFailure(error), error);
   }
-}
-
-function elapsedSince(lastActiveAt: string | null, now: Date): number {
-  if (!lastActiveAt) return 0;
-  return Math.max(0, now.getTime() - new Date(lastActiveAt).getTime());
-}
-
-export async function checkpointRunnerSession<Session extends RunnerSessionV3>(runId: string, patch: Partial<Session> = {}, now = new Date()): Promise<Session> {
-  const session = await loadRunnerSession(runId) as Session | undefined;
-  if (!session) throw new RunnerStorageError({ code: 'session_missing', message: 'Salvestatud harjutust ei leitud.', recoverable: false });
-  const extraActiveMs = session.status === 'active' ? elapsedSince(session.lastActiveAt, now) : 0;
-  return patchRunnerSession<Session>(runId, {
-    ...patch,
-    activeElapsedMs: session.activeElapsedMs + extraActiveMs,
-    lastActiveAt: session.status === 'active' ? now.toISOString() : session.lastActiveAt
-  } as Partial<Session>);
-}
-
-export async function pauseRunnerSession<Session extends RunnerSessionV3>(runId: string, patch: Partial<Session> = {}, now = new Date()): Promise<Session> {
-  const session = await loadRunnerSession(runId) as Session | undefined;
-  if (!session) throw new RunnerStorageError({ code: 'session_missing', message: 'Salvestatud harjutust ei leitud.', recoverable: false });
-  const extraActiveMs = session.status === 'active' ? elapsedSince(session.lastActiveAt, now) : 0;
-  return patchRunnerSession<Session>(runId, {
-    ...patch,
-    status: 'paused',
-    activeElapsedMs: session.activeElapsedMs + extraActiveMs,
-    lastActiveAt: null
-  } as Partial<Session>);
-}
-
-export async function resumeRunnerSession<Session extends RunnerSessionV3>(runId: string, now = new Date()): Promise<Session> {
-  return patchRunnerSession<Session>(runId, { status: 'active', lastActiveAt: now.toISOString() } as Partial<Session>);
-}
-
-export async function beginRunnerFinalization<Session extends RunnerSessionV3>(runId: string, patch: Partial<Session> = {}, now = new Date()): Promise<Session> {
-  await pauseRunnerSession<Session>(runId, patch, now);
-  return patchRunnerSession<Session>(runId, { status: 'finalizing' } as Partial<Session>);
 }
 
 export async function hasActiveRunnerSessions(): Promise<boolean> {

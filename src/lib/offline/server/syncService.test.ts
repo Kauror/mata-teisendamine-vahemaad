@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import db from '@/lib/db';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
+import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { updateChildLearningExerciseStatus } from '@/lib/learningExercises';
 import { runSyncPullV2, runSyncPushV2 } from '@/lib/offline/server/syncService';
+import { writeTombstone } from '@/lib/offline/server/tombstones';
+import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import type { GeneratedQuestion } from '@/lib/types';
 import type { OfflineSyncCursorV2, OfflineSyncDevice } from '@/lib/shared/types';
 
@@ -50,6 +53,7 @@ beforeEach(() => {
     DELETE FROM study_attempt_rewards;
     DELETE FROM point_ledger;
     DELETE FROM attempts;
+    DELETE FROM attempt_tombstones;
     DELETE FROM catalogue_grants;
     DELETE FROM offline_catalog_versions;
     DELETE FROM reward_policy_current;
@@ -57,9 +61,28 @@ beforeEach(() => {
   `);
   db.pragma('foreign_keys = ON');
   updateChildLearningExerciseStatus('kiur.math.mootuhikud-pikkused', 'kiur', 'permanent');
+  updateChildLearningExerciseStatus('kirsi.reading.pilt-ja-sona', 'kirsi', 'permanent');
 });
 
 describe('protocol-v2 attempt writes', () => {
+  it('continues pulling when more than one tombstone page exists', () => {
+    const insertTombstones = db.transaction(() => {
+      for (let index = 0; index < 301; index += 1) writeTombstone(null, `deleted-${index}`);
+    });
+    insertTombstones();
+
+    const first = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor() });
+    expect(first.pull.tombstones).toHaveLength(300);
+    expect(first.hasMore.tombstones).toBe(true);
+    expect(first.nextCursor.lastTombstoneId).toBe(first.pull.tombstones.at(-1)?.tombstoneId);
+
+    const second = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: first.nextCursor });
+    expect(second.pull.tombstones).toHaveLength(1);
+    expect(second.pull.tombstones[0].clientAttemptId).toBe('deleted-300');
+    expect(second.hasMore.tombstones).toBe(false);
+    expect(second.nextCursor.lastTombstoneId).toBe(second.pull.tombstones[0].tombstoneId);
+  });
+
   it('accepts a valid submission and ignores a forged client score', () => {
     const pull = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor() });
     const catalogue = pull.pull.catalogues?.kiur;
@@ -113,6 +136,75 @@ describe('protocol-v2 attempt writes', () => {
     expect(response.attemptResults[1]).toMatchObject({ status: 'created' });
     const stored = db.prepare('SELECT protocolVersion, score, questionCount FROM attempts').get() as { protocolVersion: number; score: number; questionCount: number };
     expect(stored).toEqual({ protocolVersion: 2, score: 1, questionCount: 1 });
+  });
+
+  it('accepts the picture-word runner payload through the full sync contract', () => {
+    const pull = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor() });
+    const catalogue = pull.pull.catalogues?.kirsi;
+    const grant = pull.pull.catalogueGrants?.kirsi;
+    const entry = catalogue?.entries.find((candidate) => candidate.id === 'kirsi.reading.pilt-ja-sona');
+    const capability = getOfflineRunnerCapability('kirsi-picture-word');
+    expect(entry).toBeTruthy();
+    expect(grant).toBeTruthy();
+    expect(capability).toBeTruthy();
+
+    const pair = KIRSI_READING_PAIRS[0];
+    const questionId = `run:0:0:${pair.id}`;
+    const completedAt = new Date(Date.now() - 60_000).toISOString();
+    const response = runSyncPushV2({
+      protocolVersion: 2,
+      phase: 'push',
+      pushKind: 'attempts',
+      device: device(),
+      cursor: cursor(),
+      pending: {
+        attempts: [{
+          clientAttemptId: '018f47f6-9f2c-7b9a-8a2e-fedcbafedcba',
+          deviceId,
+          learner: 'kirsi',
+          subject: entry!.subject,
+          topic: entry!.topic,
+          category: entry!.category,
+          difficulty: 'Sprint',
+          exerciseId: entry!.id,
+          catalogueVersion: catalogue!.version,
+          rewardPolicyVersion: grant!.rewardPolicyVersion,
+          generatorVersion: capability!.generatorVersion,
+          runnerVersion: capability!.runnerVersion,
+          rotationVersion: capability!.rotationVersion,
+          startedAt: completedAt,
+          rawDeviceCompletedAt: completedAt,
+          completedAt,
+          clientCorrectedCompletedAt: completedAt,
+          clientTimeZone: 'Europe/Tallinn',
+          clientUtcOffsetMinutes: 180,
+          questionCount: 1,
+          score: 0,
+          elapsedSeconds: 10,
+          seed: 1,
+          runnerId: capability!.runnerId,
+          questionIds: [questionId],
+          questions: [{
+            taskId: questionId,
+            id: questionId,
+            question: buildKirsiPictureWordQuestion(pair),
+            userAnswer: pair.word,
+            selectedWord: pair.word,
+            correctWord: pair.word,
+            vocabularyId: pair.id,
+            isCorrect: false,
+            kind: 'choice',
+            image: pair.image,
+            correctAnswer: 0
+          }]
+        }]
+      }
+    });
+
+    expect(response.attemptResults[0]).toMatchObject({ status: 'created' });
+    const stored = db.prepare('SELECT score, questionCount FROM attempts WHERE clientAttemptId = ?')
+      .get('018f47f6-9f2c-7b9a-8a2e-fedcbafedcba');
+    expect(stored).toEqual({ score: 1, questionCount: 1 });
   });
 
   it('never materializes a hidden attempt through normal or changed-attempt pulls', () => {

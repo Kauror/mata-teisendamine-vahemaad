@@ -4,6 +4,10 @@ export type KirsiReadingPair = {
   image: string;
 };
 
+export function buildKirsiPictureWordQuestion(pair: Pick<KirsiReadingPair, 'image' | 'word'>) {
+  return `${pair.image} — ${pair.word}`;
+}
+
 export const KIRSI_READING_PAIRS: KirsiReadingPair[] = [
   { id: 'ema', word: 'EMA', image: '👩' },
   { id: 'isa', word: 'ISA', image: '👨' },

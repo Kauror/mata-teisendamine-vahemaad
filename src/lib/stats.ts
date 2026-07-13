@@ -60,6 +60,17 @@ function accuracy(correct: number, questions: number) {
   return questions > 0 ? Math.round((correct / questions) * 100) : 0;
 }
 
+function statsQueryBounds(from: string, to: string) {
+  // Tallinn is UTC+2/+3. A four-hour lower buffer keeps the SQL range safely
+  // outside both DST offsets; the exact app-day check below remains authoritative.
+  const fromInclusive = new Date(`${from}T00:00:00.000Z`);
+  fromInclusive.setUTCHours(fromInclusive.getUTCHours() - 4);
+  return {
+    fromInclusive: fromInclusive.toISOString(),
+    toExclusive: `${addAppDays(to, 1)}T00:00:00.000Z`
+  };
+}
+
 // Per-day exercise counts, accuracy and the running karikas race for the last
 // `windowDays` calendar days (Tallinn time), ending today. Everything is derived
 // from the attempts table so exercises and accuracy come from one consistent
@@ -69,10 +80,11 @@ export function getStatsOverview(windowDays = 30, today = todayDateString()): St
   const dates = appDateRange(from, today);
   const byDate = new Map<string, { kiur: StatsChildDay; kirsi: StatsChildDay }>();
   for (const date of dates) byDate.set(date, { kiur: emptyChildDay(), kirsi: emptyChildDay() });
+  const queryBounds = statsQueryBounds(from, today);
 
   const attempts = db
-    .prepare('SELECT id, createdAt, category, learner, subject, topic, score, questionCount FROM attempts')
-    .all() as AttemptRow[];
+    .prepare('SELECT id, createdAt, category, learner, subject, topic, score, questionCount FROM attempts WHERE createdAt >= ? AND createdAt < ?')
+    .all(queryBounds.fromInclusive, queryBounds.toExclusive) as AttemptRow[];
 
   for (const attempt of attempts) {
     // A sprint run that does not clear Kiur's threshold earns no trophy, so it

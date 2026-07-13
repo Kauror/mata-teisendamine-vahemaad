@@ -308,7 +308,7 @@ export default function HistoryPage() {
 
         {nextHistoryCursor && (
           <button type='button' className='subject-button' disabled={loadingMore} onClick={() => void loadMoreExercises()}>
-            {loadingMore ? 'Laadinâ€¦' : 'Laadi varasemad kirjed'}
+            {loadingMore ? 'Laadin…' : 'Laadi varasemad kirjed'}
           </button>
         )}
 

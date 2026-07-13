@@ -10,8 +10,16 @@ export function writeTombstone(serverAttemptId: number | null, clientAttemptId: 
 }
 
 export function getTombstonesAfter(cursorId: number): AttemptTombstone[] {
-  return db.prepare('SELECT tombstoneId, serverAttemptId, clientAttemptId, deletedAt FROM attempt_tombstones WHERE tombstoneId > ? ORDER BY tombstoneId ASC LIMIT ?')
-    .all(cursorId, MAX_HISTORY_PULL_PER_SYNC) as AttemptTombstone[];
+  return getTombstonePageAfter(cursorId).tombstones;
+}
+
+export function getTombstonePageAfter(cursorId: number): { tombstones: AttemptTombstone[]; hasMore: boolean } {
+  const rows = db.prepare('SELECT tombstoneId, serverAttemptId, clientAttemptId, deletedAt FROM attempt_tombstones WHERE tombstoneId > ? ORDER BY tombstoneId ASC LIMIT ?')
+    .all(cursorId, MAX_HISTORY_PULL_PER_SYNC + 1) as AttemptTombstone[];
+  return {
+    tombstones: rows.slice(0, MAX_HISTORY_PULL_PER_SYNC),
+    hasMore: rows.length > MAX_HISTORY_PULL_PER_SYNC
+  };
 }
 
 export function getHistoryEpoch(): number {

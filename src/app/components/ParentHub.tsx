@@ -7,6 +7,7 @@ import { todayDateString } from '@/lib/appDate';
 import { formatStars } from '@/lib/formatStars';
 import { OfflineReadiness } from '@/app/components/offline/OfflineReadiness';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
+import { ParentNoticePanel, ParentPasswordPanel } from '@/app/components/ParentAccountPanels';
 import { csrfHeaders } from '@/lib/auth/client';
 
 // Parent APIs require the parent-session double-submit token. Keeping the
@@ -256,9 +257,6 @@ export default function ParentHub() {
   const [historyConfirmId, setHistoryConfirmId] = useState<number | null>(null);
   const [confirmHideAllHistory, setConfirmHideAllHistory] = useState(false);
   const [monthlyPrizeInput, setMonthlyPrizeInput] = useState(10);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [nextPassword, setNextPassword] = useState('');
-  const [noticeText, setNoticeText] = useState('');
   const [openSections, setOpenSections] = useState<Set<ParentSectionId>>(() => new Set(['stars']));
   const [exerciseChildFilter, setExerciseChildFilter] = useState<'all' | Learner>('all');
   const [exerciseSubjectFilter, setExerciseSubjectFilter] = useState<'all' | LearningExerciseSubject>('all');
@@ -282,20 +280,18 @@ export default function ParentHub() {
       fetch('/api/parent/learning-settings').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/learning-exercises').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/reward-rules').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/notice').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/monthly-prize').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/weekly-digest').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/held-rewards').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/task-reviews').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/history').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData, monthlyPrizeData, weeklyDigestData, heldRewardData, taskReviewData, historyData]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, monthlyPrizeData, weeklyDigestData, heldRewardData, taskReviewData, historyData]) => {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
         setLearningExercises((exerciseDashboard as LearningExerciseDashboard).exercises);
         setRewardRules(Array.isArray(rewardData?.rules) ? rewardData.rules : []);
-        setNoticeText(typeof noticeData?.text === 'string' ? noticeData.text : '');
         setMonthlyPrize(monthlyPrizeData as MonthlyPrize);
         setMonthlyPrizeInput((monthlyPrizeData as MonthlyPrize)?.prizeStars ?? 10);
         setWeeklyDigest(weeklyDigestData as WeeklyDigest);
@@ -635,43 +631,6 @@ export default function ParentHub() {
     }
     setNotice(action === 'hide_today' ? 'Peidetud tänaseks.' : 'Näidatakse täna.');
     load();
-  };
-
-  const changePassword = async (event: FormEvent) => {
-    event.preventDefault();
-    setError('');
-    setNotice('');
-    const res = await fetch('/api/parent/password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword, nextPassword })
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.message || 'Parooli ei saanud muuta.');
-      return;
-    }
-    setCurrentPassword('');
-    setNextPassword('');
-    setNotice('Parool muudetud.');
-  };
-
-  const saveNotice = async (event: FormEvent) => {
-    event.preventDefault();
-    setError('');
-    setNotice('');
-    const res = await fetch('/api/parent/notice', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: noticeText })
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.message || 'Teksti ei saanud salvestada.');
-      return;
-    }
-    setNoticeText(typeof body.text === 'string' ? body.text : '');
-    setNotice('Teated ja reeglid salvestatud.');
   };
 
   const saveMonthlyPrize = async (event: FormEvent) => {
@@ -1054,26 +1013,11 @@ export default function ParentHub() {
       </ParentAccordionSection>
 
       <ParentAccordionSection title='Parool' summary='Lapsevanema ala ligipääs' open={openSections.has('password')} onToggle={() => toggleSection('password')}>
-      <section className='parent-card'>
-        <form className='parent-form parent-task-form' onSubmit={changePassword}>
-          <label><span>Praegune parool</span><input type='password' value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label>
-          <label><span>Uus parool</span><input type='password' value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} /></label>
-          <button type='submit'>Muuda parool</button>
-        </form>
-      </section>
+      <ParentPasswordPanel request={fetch} onError={setError} onNotice={setNotice} />
       </ParentAccordionSection>
 
       <ParentAccordionSection title='Teated ja reeglid' summary='Tekst laste avalehel' open={openSections.has('notice')} onToggle={() => toggleSection('notice')}>
-      <section className='parent-card'>
-        <p>See tekst kuvatakse pealehel ja laste avalehel. Jäta tühjaks, et seda peita.</p>
-        <form className='parent-form' onSubmit={saveNotice}>
-          <label><span>Tekst</span><textarea className='parent-notice-input' value={noticeText} maxLength={2000} rows={6} onChange={(event) => setNoticeText(event.target.value)} placeholder={'Näiteks:\n• Enne mängimist tee päevased tegevused\n• Ekraaniaeg kuni 1h'} /></label>
-          <div className='parent-action-row'>
-            {noticeText && <button type='button' className='filter-chip' onClick={() => setNoticeText('')}>Tühjenda</button>}
-            <button type='submit'>Salvesta</button>
-          </div>
-        </form>
-      </section>
+      <ParentNoticePanel request={fetch} onError={setError} onNotice={setNotice} />
       </ParentAccordionSection>
 
       <ParentAccordionSection title='Auhinnad' summary={rewardRules.length === 0 ? 'Pole seadistatud' : `${rewardRules.length} auhinda`} open={openSections.has('rewards')} onToggle={() => toggleSection('rewards')}>

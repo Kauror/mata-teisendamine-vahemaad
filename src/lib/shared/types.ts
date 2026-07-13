@@ -230,9 +230,7 @@ export type RemediationChange = {
 
 // ---- Sync protocol (POST /api/offline/sync) ----
 
-export const LEGACY_OFFLINE_PROTOCOL_VERSION = 1 as const;
 export const OFFLINE_PROTOCOL_VERSION = 2 as const;
-export const SUPPORTED_OFFLINE_PROTOCOL_VERSIONS = [OFFLINE_PROTOCOL_VERSION] as const;
 
 export type OfflineSyncDevice = {
   deviceId: string;
@@ -241,45 +239,6 @@ export type OfflineSyncDevice = {
   timeZone: string;
   clientNow: string;
   lastKnownServerOffsetMs?: number;
-};
-
-export type OfflineSyncRequestV1 = {
-  protocolVersion: 1;
-  device: OfflineSyncDevice;
-  cursor: {
-    lastServerAttemptId?: number;
-    lastTombstoneId?: number;
-    historyEpoch?: number;
-    catalogueVersions?: Partial<Record<Learner, string>>;
-    lastSuccessfulSyncAt?: string;
-  };
-  pending: {
-    attempts: OfflineAttemptPayload[];
-    taskActions?: OfflineTaskActionPayload[];
-  };
-};
-
-export type OfflineSyncResponseV1 = {
-  protocolVersion: 1;
-  serverTime: string;
-  historyEpoch: number;
-  attemptResults: AttemptResult[];
-  taskActionResults: TaskActionResult[];
-  pull: {
-    attempts: ServerAttempt[];
-    tombstones: AttemptTombstone[];
-    catalogues: Record<Learner, OfflineCatalogue>;
-    dashboards: Record<Learner, ChildDashboardSnapshot>;
-    taskTemplates: import('@/lib/shared/taskProjection').SyncTaskTemplate[];
-    notices?: unknown;
-  };
-  nextCursor: {
-    lastServerAttemptId: number;
-    lastTombstoneId: number;
-    historyEpoch: number;
-    catalogueVersions: Partial<Record<Learner, string>>;
-    syncedAt: string;
-  };
 };
 
 export type OfflineSyncCursorV2 = {
@@ -368,11 +327,6 @@ export type OfflineSyncPullResponseV2 = {
 };
 
 export type OfflineSyncResponseV2 = OfflineSyncPushResponseV2 | OfflineSyncPullResponseV2;
-
-// The v1 shapes remain solely for reading old IndexedDB/application data. The
-// network API accepts and advertises protocol v2 only.
-export type OfflineSyncRequest = OfflineSyncRequestV1 | OfflineSyncRequestV2;
-export type OfflineSyncResponse = OfflineSyncResponseV1 | OfflineSyncResponseV2;
 
 // A compact, server-authoritative snapshot the device caches to render the
 // dashboard offline. Confirmed values only; the device never mints these.

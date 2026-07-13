@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
-import { KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
+import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
 import { AttemptContractError, recomputeScore } from '@/lib/server/attempts/scoreVerifier';
 import type { GeneratedQuestion } from '@/lib/types';
@@ -64,10 +64,10 @@ describe('server-owned score recomputation', () => {
     }
     const picture = KIRSI_READING_PAIRS[0];
     const pictureId = `run:1:0:${picture.id}`;
-    const basePicture = { id: pictureId, question: `${picture.image} â€” ${picture.word}`, vocabularyId: picture.id, selectedWord: picture.word, isCorrect: false };
-    expect(recomputeScore({ runnerId: 'kirsi-picture-word', learner: 'kirsi', subject: 'lugemine', topic: 'pilt-ja-sona', category: 'Pilt ja sÃµna', difficulty: 'normal', seed: 1, questionIds: [pictureId], questions: [basePicture] }).score).toBe(1);
+    const basePicture = { id: pictureId, question: buildKirsiPictureWordQuestion(picture), vocabularyId: picture.id, selectedWord: picture.word, isCorrect: false };
+    expect(recomputeScore({ runnerId: 'kirsi-picture-word', learner: 'kirsi', subject: 'lugemine', topic: 'pilt-ja-sona', category: 'Pilt ja sõna', difficulty: 'normal', seed: 1, questionIds: [pictureId], questions: [basePicture] }).score).toBe(1);
     for (const forged of [{ ...basePicture, vocabularyId: KIRSI_READING_PAIRS[1].id }, { ...basePicture, question: 'forged' }]) {
-      expect(() => recomputeScore({ runnerId: 'kirsi-picture-word', learner: 'kirsi', subject: 'lugemine', topic: 'pilt-ja-sona', category: 'Pilt ja sÃµna', difficulty: 'normal', seed: 1, questionIds: [pictureId], questions: [forged] })).toThrow(AttemptContractError);
+      expect(() => recomputeScore({ runnerId: 'kirsi-picture-word', learner: 'kirsi', subject: 'lugemine', topic: 'pilt-ja-sona', category: 'Pilt ja sõna', difficulty: 'normal', seed: 1, questionIds: [pictureId], questions: [forged] })).toThrow(AttemptContractError);
     }
   });
 
