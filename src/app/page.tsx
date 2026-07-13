@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel, trophyWord } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
@@ -20,14 +19,14 @@ type H = {
 };
 
 function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, balance, trophies }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; streak: number; balance: number; trophies: number }) {
-  const router = useRouter();
   const latest = attempts.slice(0, 3);
+  const learner = name === 'Kiur' ? 'kiur' : 'kirsi';
 
   return (
-    <section className='child-dashboard-card' data-accent={accent} role='button' tabIndex={0} onClick={() => router.push(href)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); router.push(href); } }}>
+    <section className='child-dashboard-card' data-accent={accent} aria-labelledby={`${learner}-dashboard-name`}>
       <div className='child-profile'>
         <div className='child-avatar' aria-hidden>{avatar}</div>
-        <h2 className='child-name'>{name}</h2>
+        <h2 className='child-name' id={`${learner}-dashboard-name`}>{name}</h2>
       </div>
 
       <div className='child-overview'>
@@ -55,7 +54,8 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, bala
       </div>
 
       <div className='card-actions'>
-        <button type='button' className='subject-button' onClick={(event) => { event.stopPropagation(); router.push(href); }}>Ava harjutused</button>
+        <Link className='subject-button' href={href}>Ava harjutused</Link>
+        <Link className='history-link' href={`/history?child=${learner}`}>Vaata {name} ajalugu</Link>
       </div>
     </section>
   );
@@ -74,9 +74,9 @@ function TodayLeaderboard({ kiurCount, kirsiCount }: { kiurCount: number; kirsiC
   );
 
   return (
-    <section className='today-leaderboard' aria-label='Tänane edetabel'>
+    <section className='today-leaderboard' aria-label='Täna harjutatud'>
       {child('Kiur', kiurCount, leader === 'kiur')}
-      <span className='leaderboard-vs' aria-hidden>vs</span>
+      <span className='leaderboard-vs' aria-hidden>ja</span>
       {child('Kirsi', kirsiCount, leader === 'kirsi')}
     </section>
   );
@@ -120,11 +120,11 @@ export default function Home() {
 
   return (
     <main className='container dashboard'>
-      <TodayLeaderboard kiurCount={kiurToday} kirsiCount={kirsiToday} />
       <div className='children-list'>
         <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} balance={balances.kiur} trophies={trophies.kiur} />
         <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} balance={balances.kirsi} trophies={trophies.kirsi} />
       </div>
+      <TodayLeaderboard kiurCount={kiurToday} kirsiCount={kirsiToday} />
       <NoticeBoard />
       <div className='dashboard-footer-links'>
         <Link href='/history' className='dashboard-history-link'>Ajalugu</Link>

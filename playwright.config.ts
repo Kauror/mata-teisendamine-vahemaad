@@ -12,7 +12,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // The dev-server fixture intentionally shares one in-memory database and
+  // authentication rate limiter across both browser projects. Serial workers
+  // keep login and restoration evidence independent instead of cross-throttled.
+  workers: 1,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://localhost:3000',
@@ -32,7 +35,8 @@ export default defineConfig({
       OFFLINE_PROTOCOL_V2_ENABLED: '1',
       APP_ORIGIN: 'http://localhost:3000',
       APP_SESSION_SECRET_CURRENT: 'e2e-session-secret-with-at-least-thirty-two-bytes',
-      APP_ACCESS_PIN_HASH: 'scrypt$v=1$N=16384,r=8,p=1$CmO5D6zhaeWjWLkyuNBXgw$V1f-JtGInwY1cCau3S2iS1PdwC2Uo_2XdYCgdqdyZQs'
+      APP_ACCESS_PIN_HASH: 'scrypt$v=1$N=16384,r=8,p=1$CmO5D6zhaeWjWLkyuNBXgw$V1f-JtGInwY1cCau3S2iS1PdwC2Uo_2XdYCgdqdyZQs',
+      PARENT_PASSWORD_HASH: 'scrypt$v=1$N=16384,r=8,p=1$vPQPNlFVAOE0K4jvsgU2eQ$Fj3ktEJSm6cG_BI2gTvaBAd36_36pbx7ke8Ewg6j86c'
     }
   }
 });

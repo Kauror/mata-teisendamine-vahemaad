@@ -127,6 +127,11 @@ export default function HistoryPage() {
   const [nextHistoryCursor, setNextHistoryCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  useEffect(() => {
+    const requestedChild = new URLSearchParams(window.location.search).get('child');
+    if (requestedChild === 'kiur' || requestedChild === 'kirsi') setChildFilter(requestedChild);
+  }, []);
+
   const loadLocalExercises = useCallback(async () => {
     const offline = await getMergedExerciseHistory().catch(() => []);
     const rows = offline.map((item) => ({ ...item, kind: 'exercise' as const }));

@@ -50,7 +50,7 @@ export default function AccessPage() {
               onChange={(event) => setPin(event.target.value)}
             />
           </label>
-          {error ? <p className='error'>{error}</p> : null}
+          {error ? <p className='error' role='alert' aria-live='assertive'>{error}</p> : null}
           <button type='submit' disabled={busy || pin.length === 0}>{busy ? 'Kontrollin...' : 'Sisene'}</button>
         </form>
       </section>

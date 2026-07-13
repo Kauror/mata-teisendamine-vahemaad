@@ -35,14 +35,14 @@ export default function ParentLogin({ passwordMissing }: { passwordMissing: bool
     <section className='parent-card parent-login-card'>
       <h1>Lapsevanema ala</h1>
       {passwordMissing ? (
-        <p className='error'>Arendajale: lapsevanema parooli räsi puudub. Seadista PARENT_PASSWORD_HASH käsuga npm run auth:hash.</p>
+        <p className='error' role='alert'>Arendajale: lapsevanema parooli räsi puudub. Seadista PARENT_PASSWORD_HASH käsuga npm run auth:hash.</p>
       ) : (
         <form className='parent-form' onSubmit={login}>
           <label>
             <span>Sisesta parool</span>
             <input type='password' value={password} onChange={(event) => setPassword(event.target.value)} />
           </label>
-          {error && <p className='error'>{error}</p>}
+          {error && <p className='error' role='alert' aria-live='assertive'>{error}</p>}
           <button type='submit' disabled={busy}>{busy ? 'Kontrollin...' : 'Sisene'}</button>
         </form>
       )}

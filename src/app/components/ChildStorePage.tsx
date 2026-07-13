@@ -201,15 +201,15 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
       </section>
 
       {confirmItem && (
-        <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
+        <div className='task-modal-backdrop' role='dialog' aria-modal='true' aria-labelledby='purchase-confirm-title'>
           <div className='task-modal'>
-            <h2>Kas ostad selle?</h2>
+            <h2 id='purchase-confirm-title'>Kas ostad selle?</h2>
             <p>{confirmItem.title}</p>
             <span>Hind: {confirmItem.price} ⭐</span>
             <span>Sul on praegu: {formatStars(balance)} ⭐</span>
             <strong>Pärast ostu jääb: {formatStars(balance - confirmItem.price)} ⭐</strong>
             <div className='task-modal-actions'>
-              <button type='button' className='filter-chip' onClick={() => setConfirmItem(null)}>Ei</button>
+              <button type='button' className='filter-chip' autoFocus onClick={() => setConfirmItem(null)}>Ei</button>
               <button type='button' disabled={!online || busy} onClick={buy}>Jah, ostan</button>
             </div>
           </div>
@@ -217,26 +217,26 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
       )}
 
       {success && (
-        <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
+        <div className='task-modal-backdrop' role='dialog' aria-modal='true' aria-labelledby='purchase-success-title'>
           <div className='task-modal'>
-            <h2>Ost tehtud!</h2>
+            <h2 id='purchase-success-title'>Ost tehtud!</h2>
             <p>Ostsid: {success.title}</p>
             <span>Kulutasid: {success.price} ⭐</span>
             <strong>Alles: {formatStars(success.balanceAfter)} ⭐</strong>
-            <button type='button' onClick={() => setSuccess(null)}>Selge</button>
+            <button type='button' autoFocus onClick={() => setSuccess(null)}>Selge</button>
           </div>
         </div>
       )}
 
       {confirmGift && (
-        <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
+        <div className='task-modal-backdrop' role='dialog' aria-modal='true' aria-labelledby='gift-confirm-title'>
           <div className='task-modal'>
-            <h2>Kas kingid {recipientName}le?</h2>
+            <h2 id='gift-confirm-title'>Kas kingid {recipientName}le?</h2>
             <span>Kingitus: {giftValue} ⭐</span>
             <span>Sul on praegu: {formatStars(balance)} ⭐</span>
             <strong>Pärast kinkimist jääb: {formatStars(balance - giftValue)} ⭐</strong>
             <div className='task-modal-actions'>
-              <button type='button' className='filter-chip' onClick={() => setConfirmGift(false)}>Ei</button>
+              <button type='button' className='filter-chip' autoFocus onClick={() => setConfirmGift(false)}>Ei</button>
               <button type='button' disabled={!online || giftBusy} onClick={sendGift}>Jah, kingin</button>
             </div>
           </div>
@@ -244,12 +244,12 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
       )}
 
       {giftSuccess && (
-        <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
+        <div className='task-modal-backdrop' role='dialog' aria-modal='true' aria-labelledby='gift-success-title'>
           <div className='task-modal'>
-            <h2>Kingitud! 🎁</h2>
+            <h2 id='gift-success-title'>Kingitud! 🎁</h2>
             <p>Kinkisid {recipientName}le {giftSuccess.amount} ⭐</p>
             <strong>Sul on alles: {formatStars(giftSuccess.balanceAfter)} ⭐</strong>
-            <button type='button' onClick={() => setGiftSuccess(null)}>Selge</button>
+            <button type='button' autoFocus onClick={() => setGiftSuccess(null)}>Selge</button>
           </div>
         </div>
       )}

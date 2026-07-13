@@ -262,14 +262,14 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
       </div>
 
       {confirmTask && (
-        <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
+        <div className='task-modal-backdrop' role='dialog' aria-modal='true' aria-labelledby='complete-task-title'>
           <div className='task-modal'>
-            <h2>Kas tegevus on tehtud?</h2>
+            <h2 id='complete-task-title'>Kas tegevus on tehtud?</h2>
             <p>{confirmTask.title}</p>
             <strong>+{confirmTask.points} ⭐</strong>
             {confirmTask.requiresApproval && <p className='daily-approval-hint'>✋ Vanem kinnitab tähed.</p>}
             <div className='task-modal-actions'>
-              <button type='button' className='filter-chip' onClick={() => setConfirmTask(null)}>Ei</button>
+              <button type='button' className='filter-chip' autoFocus onClick={() => setConfirmTask(null)}>Ei</button>
               <button type='button' onClick={completeTask} disabled={busyId === confirmTask.assignmentId}>Jah, tehtud</button>
             </div>
           </div>
@@ -277,12 +277,12 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
       )}
 
       {bonusOpen && (
-        <div className='task-modal-backdrop' role='dialog' aria-modal='true'>
+        <div className='task-modal-backdrop' role='dialog' aria-modal='true' aria-labelledby='bonus-task-title'>
           <div className='task-modal'>
-            <h2>Boonuspunkt</h2>
+            <h2 id='bonus-task-title'>Boonuspunkt</h2>
             <p>Mõlemal on tänased ülesanded tehtud. Siit tuleb boonuspunkt.</p>
             <strong>Kiur +1 ⭐ ja Kirsi +1 ⭐</strong>
-            <button type='button' onClick={() => setBonusOpen(false)}>Selge</button>
+            <button type='button' autoFocus onClick={() => setBonusOpen(false)}>Selge</button>
           </div>
         </div>
       )}

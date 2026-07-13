@@ -40,6 +40,8 @@ export default function ChildHomeDashboard({
           </div>
         </header>
 
+        <Link className='history-link child-history-link' href={`/history?child=${child.learner}`}>📄 Vaata {child.name} ajalugu</Link>
+
         <DailyTasksPanel learner={child.learner} />
 
         <ChildExerciseGrid

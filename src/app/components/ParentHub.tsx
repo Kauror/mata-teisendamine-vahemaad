@@ -301,7 +301,7 @@ export default function ParentHub() {
         setWeeklyDigest(weeklyDigestData as WeeklyDigest);
         setHeldRewards(Array.isArray(heldRewardData?.held) ? heldRewardData.held : []);
         setOfflineTaskReviews(Array.isArray(taskReviewData?.reviews) ? taskReviewData.reviews : []);
-        setParentHistory(Array.isArray(historyData) ? historyData : []);
+        setParentHistory(Array.isArray(historyData?.items) ? historyData.items : []);
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
   };
