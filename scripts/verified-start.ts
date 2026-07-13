@@ -4,6 +4,7 @@ import { configuredDatabaseFile } from '../src/lib/db';
 import { prepareDatabaseForStartup } from '../src/lib/server/database/verification';
 import { assertProductionAuthConfigured } from '../src/lib/appAccess';
 import { assertOfflineProtocolConsistent } from '../src/lib/offline/protocol';
+import { assertProductionParentAuthReady } from '../src/lib/server/auth/parentStartup';
 
 // tsx transforms this script as CommonJS, so top-level await is unavailable; the
 // verified startup sequence runs inside an async main() instead.
@@ -11,6 +12,7 @@ async function main() {
   assertProductionAuthConfigured();
   assertOfflineProtocolConsistent();
   const result = await prepareDatabaseForStartup(configuredDatabaseFile(), process.env.MATHS_GAME_BACKUP_DIR);
+  assertProductionParentAuthReady(result.databaseFile);
   process.stdout.write(`Database startup verification passed: ${JSON.stringify(result.verification)}\n`);
 
   const nextBin = path.resolve('node_modules', 'next', 'dist', 'bin', 'next');

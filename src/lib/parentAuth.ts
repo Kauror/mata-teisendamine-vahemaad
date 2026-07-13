@@ -3,10 +3,16 @@ import db from '@/lib/db';
 import { hashSecret, isScryptHash, verifySecretHash } from '@/lib/auth/password';
 import { issueSession, verifySession } from '@/lib/auth/session';
 import { PARENT_CSRF_COOKIE, PARENT_SESSION_COOKIE } from '@/lib/auth/constants';
+import {
+  PARENT_AUTH_VERSION_KEY,
+  PARENT_HASH_KEY,
+  PARENT_LEGACY_PASSWORD_KEY,
+  parentAuthVersion,
+  parentSessionMatchesCurrentVersion,
+  replaceParentPasswordHash,
+  storedParentPasswordHash
+} from '@/lib/auth/parentState';
 
-const HASH_KEY = 'parent_password_hash';
-const LEGACY_PASSWORD_KEY = 'parent_password';
-const AUTH_VERSION_KEY = 'parent_auth_version';
 const MAX_AGE_SECONDS = 60 * 60 * 12;
 
 function setting(key: string) {
@@ -21,21 +27,23 @@ function setSetting(key: string, value: string) {
 }
 
 function authVersion() {
-  const parsed = Number(setting(AUTH_VERSION_KEY));
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1;
+  return parentAuthVersion(db);
 }
 
 function migrateLegacyPassword() {
-  const existingHash = setting(HASH_KEY);
-  if (existingHash && isScryptHash(existingHash)) return existingHash;
+  const existingHash = storedParentPasswordHash(db);
+  if (existingHash) {
+    if (!isScryptHash(existingHash)) throw new Error('Stored parent password hash is malformed.');
+    return existingHash;
+  }
 
-  const legacy = setting(LEGACY_PASSWORD_KEY);
+  const legacy = setting(PARENT_LEGACY_PASSWORD_KEY);
   if (!legacy) return null;
   const migrated = hashSecret(legacy);
   const transaction = db.transaction(() => {
-    setSetting(HASH_KEY, migrated);
-    setSetting(AUTH_VERSION_KEY, String(authVersion() + 1));
-    db.prepare('DELETE FROM parent_settings WHERE key = ?').run(LEGACY_PASSWORD_KEY);
+    setSetting(PARENT_HASH_KEY, migrated);
+    setSetting(PARENT_AUTH_VERSION_KEY, String(authVersion() + 1));
+    db.prepare('DELETE FROM parent_settings WHERE key = ?').run(PARENT_LEGACY_PASSWORD_KEY);
   });
   transaction();
   return migrated;
@@ -63,19 +71,14 @@ export function updateParentPassword(currentPassword: string, nextPassword: stri
   const cleanNext = nextPassword.trim();
   if (cleanNext.length < 8) throw new Error('Uus parool peab olema vähemalt 8 märki.');
   const nextHash = hashSecret(cleanNext);
-  const transaction = db.transaction(() => {
-    setSetting(HASH_KEY, nextHash);
-    setSetting(AUTH_VERSION_KEY, String(authVersion() + 1));
-    db.prepare('DELETE FROM parent_settings WHERE key = ?').run(LEGACY_PASSWORD_KEY);
-  });
-  transaction();
+  replaceParentPasswordHash(db, nextHash);
 }
 
 export async function hasParentSession() {
   if (!isParentPasswordConfigured()) return false;
   const jar = await cookies();
   const payload = await verifySession(jar.get(PARENT_SESSION_COOKIE)?.value, 'parent');
-  return Boolean(payload && payload.authVersion === authVersion());
+  return parentSessionMatchesCurrentVersion(db, payload);
 }
 
 export async function setParentSession() {

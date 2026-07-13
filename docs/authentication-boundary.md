@@ -23,3 +23,12 @@ Family and parent login scopes have separate per-source and global throttles.
 Successful login clears only the matching source bucket; it does not clear the
 global distributed-attack bucket. Expired limiter rows are removed
 opportunistically after seven days.
+
+Production startup also requires a working inner parent-authentication path.
+The preferred model is enforced: `PARENT_PASSWORD_HASH` must contain a generated
+scrypt hash unless the migrated database already contains a valid
+`parent_password_hash`. A missing or malformed credential stops verified startup;
+neither the password nor either hash is printed. Legacy plaintext database values
+continue to migrate under the database migration lock. Changing the parent
+password writes only a new scrypt hash and increments `parent_auth_version`, so
+every previously issued parent session fails its version check immediately.

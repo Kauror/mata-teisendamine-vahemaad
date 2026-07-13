@@ -97,9 +97,10 @@ Kohustuslikud muutujad `.env` failis:
 | Muutuja | Kirjeldus |
 | --- | --- |
 | `APP_ACCESS_PIN_HASH` | Pere PIN-koodi scrypt-räsi (`npm run auth:hash`). |
+| `PARENT_PASSWORD_HASH` | Lapsevanema parooli scrypt-räsi; pole nõutud ainult siis, kui andmebaasis on kehtiv migreeritud räsi. |
 | `APP_SESSION_SECRET_CURRENT` | Seansiküpsiste allkirjastamise saladus (≥ 32 märki). |
 | `APP_ORIGIN` | Täpne avalik päritolu, **peab olema HTTPS**, ilma lõpukaldkriipsu/teeta (nt `https://harjutaja.example.com`). |
-| `OFFLINE_PROTOCOL_V2_ENABLED` | `1` lülitab sisse offline-protokolli v2 (ping reklaamib ja server aktsepteerib v2). Väärtus `0`/puudu jätab kasutusele v1. |
+| `OFFLINE_PROTOCOL_V2_ENABLED` | Peab olema `1`; puuduv, `0` või vigane väärtus peatab käivituse ning protokolli v1 kirjutusi ei aktsepteerita. |
 
 Valikulised: `APP_SESSION_SECRET_PREVIOUS` (saladuse rotatsioon),
 `MATHS_GAME_DB_FILE`, `MATHS_GAME_BACKUP_DIR`. Kõik on kirjeldatud failis
