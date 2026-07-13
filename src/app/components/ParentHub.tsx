@@ -9,11 +9,11 @@ import { OfflineReadiness } from '@/app/components/offline/OfflineReadiness';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { csrfHeaders } from '@/lib/auth/client';
 
-// Parent APIs require the family-session double-submit token. Keeping the
+// Parent APIs require the parent-session double-submit token. Keeping the
 // wrapper local makes every existing and future request in this screen use the
 // same protection, including DELETE/PATCH calls that have no JSON body.
 function fetch(input: RequestInfo | URL, init: RequestInit = {}) {
-  return globalThis.fetch(input, { ...init, headers: csrfHeaders(init.headers) });
+  return globalThis.fetch(input, { ...init, headers: csrfHeaders(init.headers, 'parent_csrf') });
 }
 
 type AssignmentMode = 'kiur' | 'kirsi' | 'both_independent' | 'first_completer';
@@ -26,6 +26,7 @@ type Template = { id: number; title: string; points: number; assignmentMode: Ass
 type PendingApproval = { assignmentId: number; learner: Learner; title: string; points: number; assignmentMode: AssignmentMode; completedAt: string | null };
 type HeldReward = { id: number; learner: Learner; completionDate: string | null; score: number; questionCount: number; exerciseId: string | null; status: 'withheld' | 'needs_review'; reviewReasonCode: string | null };
 type OfflineTaskReview = { clientActionId: string; learner: Learner; taskDate: string; title: string; points: number; completedAt: string | null; reasonCode: string | null };
+type ParentHistoryAttempt = { id: number; createdAt: string; learner: Learner | null; category: string; score: number; questionCount: number };
 type Dashboard = {
   balances: Record<Learner, number>;
   templates: Template[];
@@ -109,7 +110,7 @@ type MonthlyPrize = { prizeStars: number; standing: MonthlyStanding };
 type WeeklyChildDigest = { exercises: number; accuracyPercent: number; starsEarned: number; trophies: number; streak: number };
 type WeeklyDigest = { from: string; to: string; learners: Record<Learner, WeeklyChildDigest> };
 
-type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards';
+type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards' | 'history';
 
 function ParentAccordionSection({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
   return (
@@ -251,6 +252,9 @@ export default function ParentHub() {
   const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigest | null>(null);
   const [heldRewards, setHeldRewards] = useState<HeldReward[]>([]);
   const [offlineTaskReviews, setOfflineTaskReviews] = useState<OfflineTaskReview[]>([]);
+  const [parentHistory, setParentHistory] = useState<ParentHistoryAttempt[]>([]);
+  const [historyConfirmId, setHistoryConfirmId] = useState<number | null>(null);
+  const [confirmHideAllHistory, setConfirmHideAllHistory] = useState(false);
   const [monthlyPrizeInput, setMonthlyPrizeInput] = useState(10);
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
@@ -282,9 +286,10 @@ export default function ParentHub() {
       fetch('/api/parent/monthly-prize').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/weekly-digest').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/held-rewards').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/parent/task-reviews').then((res) => (res.ok ? res.json() : Promise.reject()))
+      fetch('/api/parent/task-reviews').then((res) => (res.ok ? res.json() : Promise.reject())),
+      fetch('/api/parent/history').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData, monthlyPrizeData, weeklyDigestData, heldRewardData, taskReviewData]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, noticeData, monthlyPrizeData, weeklyDigestData, heldRewardData, taskReviewData, historyData]) => {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
@@ -296,6 +301,7 @@ export default function ParentHub() {
         setWeeklyDigest(weeklyDigestData as WeeklyDigest);
         setHeldRewards(Array.isArray(heldRewardData?.held) ? heldRewardData.held : []);
         setOfflineTaskReviews(Array.isArray(taskReviewData?.reviews) ? taskReviewData.reviews : []);
+        setParentHistory(Array.isArray(historyData) ? historyData : []);
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
   };
@@ -690,6 +696,31 @@ export default function ParentHub() {
   const deleteStore = async (id: number) => {
     await fetch(`/api/parent/store/${id}`, { method: 'DELETE' });
     load();
+  };
+
+  const hideHistoryAttempt = async (id: number) => {
+    const res = await fetch(`/api/parent/history/${id}`, { method: 'DELETE' });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.message || 'Tulemust ei saanud peita.');
+      return;
+    }
+    setParentHistory((current) => current.filter((item) => item.id !== id));
+    setHistoryConfirmId(null);
+    setNotice('Tulemus on ajaloos peidetud.');
+  };
+
+  const hideAllHistory = async () => {
+    const res = await fetch('/api/parent/history', { method: 'DELETE' });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.message || 'Ajalugu ei saanud peita.');
+      return;
+    }
+    setParentHistory([]);
+    setConfirmHideAllHistory(false);
+    setHistoryConfirmId(null);
+    setNotice('Harjutuste ajalugu on peidetud.');
   };
 
   const logout = async () => {
@@ -1093,6 +1124,45 @@ export default function ParentHub() {
           ))}
           {rewardRules.length === 0 && <p>Auhindu ei ole veel lisatud.</p>}
         </div>
+      </section>
+      </ParentAccordionSection>
+
+      <ParentAccordionSection title='Ajaloo haldamine' summary={`${parentHistory.length} harjutust`} open={openSections.has('history')} onToggle={() => toggleSection('history')}>
+      <section className='parent-card'>
+        <p>Peitmine eemaldab tulemuse laste ajaloovaatest, kuid ei muuda teenitud tähti, seeriat ega võistlustulemusi.</p>
+        <div className='stock-list'>
+          {parentHistory.map((item) => (
+            <div key={item.id} className='stock-row'>
+              <div className='stock-info'>
+                <strong>{item.learner === 'kirsi' ? 'Kirsi' : 'Kiur'} · {item.category}</strong>
+                <span>{new Date(item.createdAt).toLocaleString('et-EE')} · {item.score}/{item.questionCount}</span>
+              </div>
+              <div className='stock-actions'>
+                {historyConfirmId === item.id ? (
+                  <>
+                    <button type='button' className='filter-chip' onClick={() => setHistoryConfirmId(null)}>Tühista</button>
+                    <button type='button' className='delete-button' onClick={() => hideHistoryAttempt(item.id)}>Peida tulemus</button>
+                  </>
+                ) : (
+                  <button type='button' className='delete-button' onClick={() => setHistoryConfirmId(item.id)}>Peida</button>
+                )}
+              </div>
+            </div>
+          ))}
+          {parentHistory.length === 0 && <p>Nähtavaid harjutustulemusi ei ole.</p>}
+        </div>
+        {parentHistory.length > 0 && (
+          <div className='parent-action-row'>
+            {confirmHideAllHistory ? (
+              <>
+                <button type='button' className='filter-chip' onClick={() => setConfirmHideAllHistory(false)}>Tühista</button>
+                <button type='button' className='delete-button' onClick={hideAllHistory}>Jah, peida kõik</button>
+              </>
+            ) : (
+              <button type='button' className='delete-button' onClick={() => setConfirmHideAllHistory(true)}>Peida kogu harjutuste ajalugu</button>
+            )}
+          </div>
+        )}
       </section>
       </ParentAccordionSection>
       </fieldset>

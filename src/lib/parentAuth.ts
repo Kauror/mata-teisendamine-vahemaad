@@ -2,9 +2,8 @@ import { cookies } from 'next/headers';
 import db from '@/lib/db';
 import { hashSecret, isScryptHash, verifySecretHash } from '@/lib/auth/password';
 import { issueSession, verifySession } from '@/lib/auth/session';
+import { PARENT_CSRF_COOKIE, PARENT_SESSION_COOKIE } from '@/lib/auth/constants';
 
-const COOKIE_NAME = 'parent_session';
-const CSRF_COOKIE_NAME = 'parent_csrf';
 const HASH_KEY = 'parent_password_hash';
 const LEGACY_PASSWORD_KEY = 'parent_password';
 const AUTH_VERSION_KEY = 'parent_auth_version';
@@ -75,7 +74,7 @@ export function updateParentPassword(currentPassword: string, nextPassword: stri
 export async function hasParentSession() {
   if (!isParentPasswordConfigured()) return false;
   const jar = await cookies();
-  const payload = await verifySession(jar.get(COOKIE_NAME)?.value, 'parent');
+  const payload = await verifySession(jar.get(PARENT_SESSION_COOKIE)?.value, 'parent');
   return Boolean(payload && payload.authVersion === authVersion());
 }
 
@@ -83,14 +82,14 @@ export async function setParentSession() {
   const jar = await cookies();
   const session = await issueSession('parent', { maxAgeSeconds: MAX_AGE_SECONDS, authVersion: authVersion() });
   const secure = process.env.NODE_ENV === 'production';
-  jar.set(COOKIE_NAME, session.token, {
+  jar.set(PARENT_SESSION_COOKIE, session.token, {
     httpOnly: true,
     sameSite: 'strict',
     secure,
     path: '/',
     maxAge: MAX_AGE_SECONDS
   });
-  jar.set(CSRF_COOKIE_NAME, session.payload.csrf, {
+  jar.set(PARENT_CSRF_COOKIE, session.payload.csrf, {
     httpOnly: false,
     sameSite: 'strict',
     secure,
@@ -101,9 +100,9 @@ export async function setParentSession() {
 
 export async function clearParentSession() {
   const jar = await cookies();
-  for (const name of [COOKIE_NAME, CSRF_COOKIE_NAME]) {
+  for (const name of [PARENT_SESSION_COOKIE, PARENT_CSRF_COOKIE]) {
     jar.set(name, '', {
-      httpOnly: name === COOKIE_NAME,
+      httpOnly: name === PARENT_SESSION_COOKIE,
       sameSite: 'strict',
       secure: process.env.NODE_ENV === 'production',
       path: '/',

@@ -120,11 +120,6 @@ export default function HistoryPage() {
   const [history, setHistory] = useState<ExerciseHistory[]>([]);
   const [taskHistory, setTaskHistory] = useState<TaskHistory[]>([]);
   const [storeHistory, setStoreHistory] = useState<PurchaseHistory[]>([]);
-  const [deleteError, setDeleteError] = useState('');
-  const [confirmId, setConfirmId] = useState<number | null>(null);
-  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
-  const [showHistoryTools, setShowHistoryTools] = useState(false);
-  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [childFilter, setChildFilter] = useState<ChildFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
   const [openDays, setOpenDays] = useState<Set<string>>(() => new Set([todayKey]));
@@ -196,42 +191,6 @@ export default function HistoryPage() {
     });
   };
 
-  const onDelete = async (id: number) => {
-    setDeleteError('');
-    if (!online) {
-      setDeleteError('Ajaloo kustutamiseks taasta internetiühendus. Võrguühenduseta ajalugu on ainult lugemiseks.');
-      return;
-    }
-    try {
-      const res = await fetch(`/api/history/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('delete-failed');
-      setHistory((prev) => prev.filter((x) => x.id !== id));
-      setConfirmId(null);
-    } catch {
-      setDeleteError('Kustutamine ebaõnnestus.');
-    }
-  };
-
-  const onDeleteAll = async () => {
-    setDeleteError('');
-    if (!online) {
-      setDeleteError('Kogu ajaloo kustutamiseks taasta internetiühendus.');
-      return;
-    }
-    setIsDeletingAll(true);
-    try {
-      const res = await fetch('/api/history', { method: 'DELETE' });
-      if (!res.ok) throw new Error('delete-all-failed');
-      setHistory([]);
-      setConfirmDeleteAll(false);
-      setConfirmId(null);
-    } catch {
-      setDeleteError('Kogu ajaloo kustutamine ebaõnnestus.');
-    } finally {
-      setIsDeletingAll(false);
-    }
-  };
-
   return (
     <main className='history-page'>
       <div className='history-shell'>
@@ -243,7 +202,7 @@ export default function HistoryPage() {
           </div>
         </header>
 
-        {!online && <p className='offline-warning' role='status'>Võrguühenduseta kuvatakse seadmesse salvestatud ajalugu. Kustutamine on saadaval pärast ühenduse taastamist.</p>}
+        {!online && <p className='offline-warning' role='status'>Võrguühenduseta kuvatakse seadmesse salvestatud ajalugu.</p>}
 
         <HistoryStats />
 
@@ -262,8 +221,6 @@ export default function HistoryPage() {
           <button type='button' className={subjectFilter === 'paevategevused' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('paevategevused')}>⭐ Päevategevused</button>
           <button type='button' className={subjectFilter === 'pood' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('pood')}>🛒 Pood</button>
         </section>
-
-        {deleteError && <p className='error'>{deleteError}</p>}
 
         {history.length === 0 && taskHistory.length === 0 && storeHistory.length === 0 ? (
           <p>Ajalugu puudub.</p>
@@ -312,18 +269,7 @@ export default function HistoryPage() {
                             {isExercise && (isPending
                               ? <Link className='view-button' href={`/tulemus?clientId=${encodeURIComponent((h as ExerciseHistory).clientAttemptId ?? '')}`}>Vaata</Link>
                               : <Link className='view-button' href={`/history/offline?id=${h.id}`}>Vaata</Link>)}
-                            {isExercise && !isPending && <button type='button' className='delete-text-button' disabled={!online} onClick={() => setConfirmId(h.id)}>Kustuta</button>}
                           </div>
-                          {isExercise && confirmId === h.id && (
-                            <div className='confirm-panel'>
-                              <strong>Kustuta tulemus?</strong>
-                              <p>Seda tegevust ei saa tagasi võtta.</p>
-                              <div className='confirm-actions'>
-                                <button type='button' className='filter-chip' onClick={() => setConfirmId(null)}>Tühista</button>
-                                <button type='button' className='delete-button' onClick={() => onDelete(h.id)}>Kustuta</button>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -334,22 +280,6 @@ export default function HistoryPage() {
           </section>
         )}
 
-        {history.length > 0 && (
-          <section className='history-danger-zone'>
-            <button type='button' className='history-tools-toggle' onClick={() => setShowHistoryTools((open) => !open)}>Halda ajalugu</button>
-            {showHistoryTools && <button type='button' className='history-delete-all-link' disabled={!online} onClick={() => setConfirmDeleteAll(true)}>Kustuta kogu ajalugu</button>}
-            {showHistoryTools && confirmDeleteAll && (
-              <div className='confirm-panel confirm-panel-wide'>
-                <strong>Kas oled kindel, et soovid terve ajaloo kustutada?</strong>
-                <p>Kõik senised tulemused kustutatakse ja seda tegevust ei saa tagasi võtta.</p>
-                <div className='confirm-actions'>
-                  <button type='button' className='filter-chip' onClick={() => setConfirmDeleteAll(false)} disabled={isDeletingAll}>Tühista</button>
-                  <button type='button' className='delete-button' onClick={onDeleteAll} disabled={isDeletingAll}>{isDeletingAll ? 'Kustutan...' : 'Jah, kustuta kõik'}</button>
-                </div>
-              </div>
-            )}
-          </section>
-        )}
       </div>
     </main>
   );

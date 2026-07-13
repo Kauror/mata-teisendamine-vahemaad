@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { APP_ACCESS_COOKIE } from '@/lib/auth/constants';
+import { APP_ACCESS_COOKIE, PARENT_SESSION_COOKIE } from '@/lib/auth/constants';
 import { hasExactOrigin, verifySession } from '@/lib/auth/session';
 
 function isPublicPath(pathname: string) {
@@ -14,8 +14,8 @@ function isMutation(request: NextRequest) {
   return !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
 }
 
-function requiresCsrf(pathname: string) {
-  return pathname.startsWith('/api/parent/') || pathname.startsWith('/api/offline/');
+function requiresFamilyCsrf(pathname: string) {
+  return pathname === '/api/parent/login' || pathname.startsWith('/api/offline/');
 }
 
 export async function middleware(req: NextRequest) {
@@ -37,8 +37,17 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (isMutation(req) && requiresCsrf(pathname) && req.headers.get('x-csrf-token') !== session.csrf) {
+  if (isMutation(req) && requiresFamilyCsrf(pathname) && req.headers.get('x-csrf-token') !== session.csrf) {
     return NextResponse.json({ code: 'csrf_invalid', message: 'Turvatunnus puudub või ei sobi.' }, { status: 403 });
+  }
+  if (isMutation(req) && pathname.startsWith('/api/parent/') && pathname !== '/api/parent/login') {
+    const parent = await verifySession(req.cookies.get(PARENT_SESSION_COOKIE)?.value, 'parent');
+    if (!parent) {
+      return NextResponse.json({ code: 'parent_auth_required', message: 'Vanema sisselogimine on vajalik.' }, { status: 401 });
+    }
+    if (req.headers.get('x-csrf-token') !== parent.csrf) {
+      return NextResponse.json({ code: 'csrf_invalid', message: 'Turvatunnus puudub või ei sobi.' }, { status: 403 });
+    }
   }
   return NextResponse.next();
 }

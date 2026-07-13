@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { insertAttempt } from '@/lib/offline/server/insertAttempt';
-import { deleteAllHistory } from '@/lib/historyMaintenance';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -70,15 +69,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: result.message ?? 'Vigane vastus.' }, { status });
   }
   return NextResponse.json({ id: result.serverAttemptId, reward: result.reward, status: result.status }, { status: 201 });
-}
-
-export async function DELETE() {
-  await getDb();
-  try {
-    deleteAllHistory();
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error('History wipe failed', error);
-    return NextResponse.json({ message: 'Kogu ajaloo kustutamine ebaõnnestus.' }, { status: 500 });
-  }
 }
