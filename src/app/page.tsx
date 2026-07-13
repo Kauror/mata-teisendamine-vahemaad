@@ -55,7 +55,6 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, bala
 
       <div className='card-actions'>
         <Link className='subject-button' href={href}>Ava harjutused</Link>
-        <Link className='history-link' href={`/history?child=${learner}`}>Vaata {name} ajalugu</Link>
       </div>
     </section>
   );
@@ -120,11 +119,11 @@ export default function Home() {
 
   return (
     <main className='container dashboard'>
+      <TodayLeaderboard kiurCount={kiurToday} kirsiCount={kirsiToday} />
       <div className='children-list'>
         <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} balance={balances.kiur} trophies={trophies.kiur} />
         <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} balance={balances.kirsi} trophies={trophies.kirsi} />
       </div>
-      <TodayLeaderboard kiurCount={kiurToday} kirsiCount={kirsiToday} />
       <NoticeBoard />
       <div className='dashboard-footer-links'>
         <Link href='/history' className='dashboard-history-link'>Ajalugu</Link>
