@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
 test('an unauthenticated visit is redirected to the PIN gate', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/access$/);
-  await expect(page.getByRole('heading', { name: 'Sisesta PIN' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sisesta pere parool' })).toBeVisible();
 });
 
 test('a protected child route also redirects to the PIN gate', async ({ page }) => {

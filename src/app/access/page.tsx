@@ -37,23 +37,21 @@ export default function AccessPage() {
     <main className='access-page'>
       <section className='access-card'>
         <div className='access-icon' aria-hidden>🔒</div>
-        <h1>Sisesta PIN</h1>
+        <h1>Sisesta pere parool</h1>
         <form className='access-form' onSubmit={submit}>
           <label>
-            <span>PIN</span>
+            <span>PIN või parool</span>
             <input
-              autoComplete='off'
+              autoComplete='current-password'
               autoFocus
-              inputMode='numeric'
-              maxLength={4}
-              pattern='[0-9]*'
+              maxLength={128}
               type='password'
               value={pin}
-              onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
+              onChange={(event) => setPin(event.target.value)}
             />
           </label>
           {error ? <p className='error'>{error}</p> : null}
-          <button type='submit' disabled={busy || pin.length !== 4}>{busy ? 'Kontrollin...' : 'Sisene'}</button>
+          <button type='submit' disabled={busy || pin.length === 0}>{busy ? 'Kontrollin...' : 'Sisene'}</button>
         </form>
       </section>
     </main>
