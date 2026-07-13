@@ -535,6 +535,17 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
       await scheduleRetry(message);
       return { ok: false, reason: 'timeout', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
     }
+    // Pull requests use the same HTTP policy as every push path.  Do not turn
+    // an authentication/server response into a local IndexedDB failure.
+    const disposition = errorDisposition(error);
+    if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
+      await blockRetry(disposition, message);
+      return { ok: false, reason: disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+    }
+    if (disposition === 'retryable' || disposition === 'timeout') {
+      await scheduleRetry(message);
+      return { ok: false, reason: disposition === 'timeout' ? 'timeout' : 'retryable', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+    }
     await blockRetry('storage_error', message).catch(() => {});
     return { ok: false, reason: 'storage_error', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
   } finally {
