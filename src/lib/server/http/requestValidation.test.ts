@@ -27,6 +27,15 @@ function attempt() {
 }
 
 describe('strict mutation validation', () => {
+  it('returns deterministic upgrade-required classification for protocol v1', () => {
+    expect(() => parseOfflineSyncRequest({ protocolVersion: 1 })).toThrowError(PublicRequestError);
+    try {
+      parseOfflineSyncRequest({ protocolVersion: 1 });
+    } catch (error) {
+      expect(error).toMatchObject({ status: 426, code: 'client_upgrade_required' });
+    }
+  });
+
   it('rejects impossible RFC3339 values and malformed UUIDs per record', () => {
     expect(isRfc3339('2026-99-99T25:61:00Z')).toBe(false);
     const invalid = validateAttemptRecordV2({ ...attempt(), clientAttemptId: 'not-uuid' }, deviceId);

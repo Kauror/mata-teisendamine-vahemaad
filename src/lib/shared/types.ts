@@ -232,7 +232,7 @@ export type RemediationChange = {
 
 export const LEGACY_OFFLINE_PROTOCOL_VERSION = 1 as const;
 export const OFFLINE_PROTOCOL_VERSION = 2 as const;
-export const SUPPORTED_OFFLINE_PROTOCOL_VERSIONS = [OFFLINE_PROTOCOL_VERSION, LEGACY_OFFLINE_PROTOCOL_VERSION] as const;
+export const SUPPORTED_OFFLINE_PROTOCOL_VERSIONS = [OFFLINE_PROTOCOL_VERSION] as const;
 
 export type OfflineSyncDevice = {
   deviceId: string;
@@ -369,9 +369,8 @@ export type OfflineSyncPullResponseV2 = {
 
 export type OfflineSyncResponseV2 = OfflineSyncPushResponseV2 | OfflineSyncPullResponseV2;
 
-// The API route accepts both during the 60-day transition period. New clients
-// negotiate v2 from /api/offline/ping and downgrade only when the server
-// explicitly advertises protocol v1.
+// The v1 shapes remain solely for reading old IndexedDB/application data. The
+// network API accepts and advertises protocol v2 only.
 export type OfflineSyncRequest = OfflineSyncRequestV1 | OfflineSyncRequestV2;
 export type OfflineSyncResponse = OfflineSyncResponseV1 | OfflineSyncResponseV2;
 

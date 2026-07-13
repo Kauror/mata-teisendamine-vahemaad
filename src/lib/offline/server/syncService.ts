@@ -124,14 +124,11 @@ export function runSyncV1(request: OfflineSyncRequestV1): OfflineSyncResponseV1 
       attemptResults.push({ clientAttemptId: String(payload?.clientAttemptId ?? ''), status: 'rejected', reasonCode: 'bad_payload' });
       continue;
     }
-    const result = insertAttempt({ ...payload, syncedAt: serverTime });
     attemptResults.push({
       clientAttemptId: payload.clientAttemptId,
-      status: result.status,
-      serverAttemptId: result.serverAttemptId,
-      reward: result.reward,
-      reasonCode: result.reasonCode,
-      message: result.message
+      status: 'needs_review',
+      reasonCode: 'legacy_client_upgrade_required',
+      message: 'Protocol v1 attempt was preserved for manual review and was not uploaded.'
     });
   }
 
@@ -200,7 +197,7 @@ export function runSyncPushV2(request: OfflineSyncPushRequestV2): OfflineSyncPus
       continue;
     }
     const payload = validation.value;
-    const result = insertAttempt({ ...payload, syncedAt: serverTime });
+    const result = insertAttempt({ ...payload, protocolVersion: 2, syncedAt: serverTime });
     const canonical = result.serverAttemptId ? canonicalAttempt(result.serverAttemptId) : undefined;
     attemptResults.push({
       clientAttemptId: payload.clientAttemptId,

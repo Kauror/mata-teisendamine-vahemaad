@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { applySyncEnvelope } from '@/lib/offline/syncApply';
-import { taskAssignmentRepo } from '@/lib/offline/repositories';
+import { attemptRepo, taskAssignmentRepo } from '@/lib/offline/repositories';
+import type { LocalAttempt } from '@/lib/offline/records';
 import { closeOfflineDbForTests, OFFLINE_DB_NAME } from '@/lib/offline/db';
 import type { OfflineSyncPullDataV2 } from '@/lib/shared/types';
 
@@ -60,5 +61,36 @@ describe('task assignment snapshot replacement (RTM3-H05)', () => {
     const rows = await taskAssignmentRepo.forLearner('kiur');
     expect(rows.find((row) => row.taskDate === tomorrow)?.assignmentId).toBe('tomorrow-1');
     expect(rows.filter((row) => row.taskDate === today).map((row) => row.assignmentId)).toEqual(['today-2']);
+  });
+});
+
+describe('legacy attempt preservation', () => {
+  it('keeps an unverifiable pending row and marks it for manual review', async () => {
+    const attempt: LocalAttempt = {
+      clientAttemptId: '018f47f6-9f2c-7b9a-8a2e-abcdefabcdef',
+      deviceId: '018f47f6-9f2c-7b9a-8a2e-123456789abc',
+      learner: 'kiur', subject: 'matemaatika', topic: 'pikkused', category: 'Teisendamine', difficulty: 'Lihtne',
+      exerciseId: 'kiur.math.mootuhikud-pikkused', catalogueVersion: null,
+      startedAt: '2025-01-01T10:00:00.000Z', rawDeviceCompletedAt: '2025-01-01T10:01:00.000Z',
+      completedAt: '2025-01-01T10:01:00.000Z', clientTimeZone: 'Europe/Tallinn', clientUtcOffsetMinutes: 120,
+      questionCount: 1, score: 1, elapsedSeconds: 60, questions: [{ id: 'legacy' }],
+      status: 'pending', retryCount: 0, createdLocallyAt: '2025-01-01T10:01:00.000Z'
+    };
+    await attemptRepo.put(attempt);
+
+    await applySyncEnvelope({
+      serverTime: '2026-07-13T10:00:00.000Z',
+      attemptResults: [{
+        clientAttemptId: attempt.clientAttemptId,
+        status: 'needs_review',
+        reasonCode: 'legacy_client_upgrade_required'
+      }]
+    });
+
+    expect(await attemptRepo.get(attempt.clientAttemptId)).toMatchObject({
+      status: 'needs_review',
+      reasonCode: 'legacy_client_upgrade_required',
+      questions: [{ id: 'legacy' }]
+    });
   });
 });

@@ -18,7 +18,6 @@ import {
 } from '@/lib/offline/syncPolicy';
 import {
   APP_VERSION,
-  LEGACY_OFFLINE_PROTOCOL_VERSION,
   OFFLINE_PROTOCOL_VERSION,
   type AttemptResult,
   type OfflineAttemptPayload,
@@ -29,8 +28,6 @@ import {
   type OfflineSyncPullResponseV2,
   type OfflineSyncPushRequestV2,
   type OfflineSyncPushResponseV2,
-  type OfflineSyncRequestV1,
-  type OfflineSyncResponseV1,
   type OfflineRemediationActionPayload,
   type OfflineTaskActionPayload,
   type PingResponse,
@@ -434,66 +431,6 @@ async function pushRemediationBatch(
   }
 }
 
-async function runLegacyCycle(
-  attempts: LocalAttempt[],
-  actions: LocalTaskAction[],
-  device: OfflineSyncDevice,
-  signal: AbortSignal,
-  aggregateAttempts: AttemptResult[],
-  aggregateActions: TaskActionResult[]
-): Promise<{ pushed: number; pulled: number }> {
-  if (attempts.length) await attemptRepo.markSyncing(attempts.map((row) => row.clientAttemptId), new Date(Date.now() + OUTBOX_LEASE_MS).toISOString());
-  if (actions.length) await taskActionRepo.markSyncing(actions.map((row) => row.clientActionId), new Date(Date.now() + OUTBOX_LEASE_MS).toISOString());
-  const cursor = await getCursor();
-  const request: OfflineSyncRequestV1 = {
-    protocolVersion: LEGACY_OFFLINE_PROTOCOL_VERSION,
-    device: { ...device, clientNow: new Date().toISOString() },
-    cursor: {
-      lastServerAttemptId: cursor.lastServerAttemptId,
-      lastTombstoneId: cursor.lastTombstoneId,
-      historyEpoch: cursor.historyEpoch,
-      catalogueVersions: cursor.catalogueVersions,
-      lastSuccessfulSyncAt: cursor.lastSuccessfulSyncAt
-    },
-    pending: { attempts: attempts.map(toPayload), taskActions: actions.map(toActionPayload) }
-  };
-  try {
-    const response = await postSync<OfflineSyncResponseV1>(request, signal);
-    if (response.protocolVersion !== 1) throw new Error('invalid-v1-sync-response');
-    aggregateAttempts.push(...response.attemptResults);
-    aggregateActions.push(...response.taskActionResults);
-    const current = await getCursor();
-    await applySyncEnvelope({
-      serverTime: response.serverTime,
-      historyEpoch: response.historyEpoch,
-      attemptResults: response.attemptResults,
-      taskActionResults: response.taskActionResults,
-      pull: {
-        attempts: response.pull.attempts,
-        tombstones: response.pull.tombstones,
-        taskChanges: [],
-        remediationChanges: [],
-        catalogues: response.pull.catalogues,
-        dashboards: response.pull.dashboards,
-        taskTemplates: response.pull.taskTemplates
-      },
-      nextCursor: {
-        ...cursorV2(current),
-        lastServerAttemptId: response.nextCursor.lastServerAttemptId,
-        lastTombstoneId: response.nextCursor.lastTombstoneId,
-        historyEpoch: response.nextCursor.historyEpoch,
-        catalogueVersions: response.nextCursor.catalogueVersions,
-        syncedAt: response.nextCursor.syncedAt
-      }
-    });
-    return { pushed: response.attemptResults.length + response.taskActionResults.length, pulled: response.pull.attempts.length };
-  } catch (error) {
-    if (attempts.length) await handleAttemptPushError(error, attempts);
-    if (actions.length) await handleTaskPushError(error, actions);
-    throw error;
-  }
-}
-
 async function pullV2(device: OfflineSyncDevice, signal: AbortSignal): Promise<number> {
   let pulled = 0;
   let previousCursor = '';
@@ -558,20 +495,8 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
     const dueRemediationActions = await remediationActionRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE);
 
     if (!protocols.has(2)) {
-      if (!protocols.has(1)) {
-        await blockRetry('upgrade_required', 'No mutually supported offline protocol.');
-        return { ok: false, reason: 'upgrade_required', pushed: 0, pulled: 0 };
-      }
-      const legacy = await runLegacyCycle(
-        dueAttempts.slice(0, CLIENT_ATTEMPT_BATCH_SIZE),
-        dueActions.slice(0, CLIENT_ACTION_BATCH_SIZE),
-        device,
-        cycleController.signal,
-        aggregateAttempts,
-        aggregateActions
-      );
-      pushed += legacy.pushed;
-      pulled += legacy.pulled;
+      await blockRetry('upgrade_required', 'No mutually supported offline protocol.');
+      return { ok: false, reason: 'upgrade_required', pushed: 0, pulled: 0 };
     } else {
       const modernAttempts = dueAttempts.filter((row) => toV2Payload(row) !== null);
       const legacyAttempts = dueAttempts.filter((row) => toV2Payload(row) === null);
@@ -585,20 +510,10 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
       for (const batch of chunkRecords(dueRemediationActions, CLIENT_ACTION_BATCH_SIZE)) {
         pushed += await pushRemediationBatch(batch, device, cycleController.signal, aggregateRemediationActions);
       }
-      // One bounded v1 compatibility batch preserves upgraded legacy outbox rows
-      // during the 60-day transition without weakening the v2 record contract.
-      if (legacyAttempts.length && protocols.has(1)) {
-        const legacy = await runLegacyCycle(
-          legacyAttempts.slice(0, CLIENT_ATTEMPT_BATCH_SIZE),
-          [],
-          device,
-          cycleController.signal,
-          aggregateAttempts,
-          aggregateActions
-        );
-        pushed += legacy.pushed;
-        pulled += legacy.pulled;
-      } else if (legacyAttempts.length) {
+      // Preserve pre-v2 outbox rows in IndexedDB for explicit manual review.
+      // They cannot be safely upgraded because their immutable runner contract
+      // and server-verifiable answer payload do not exist.
+      if (legacyAttempts.length) {
         await applySyncEnvelope({
           serverTime: ping.serverTime,
           attemptResults: legacyAttempts.map((row) => ({ clientAttemptId: row.clientAttemptId, status: 'needs_review', reasonCode: 'legacy_client_upgrade_required' }))

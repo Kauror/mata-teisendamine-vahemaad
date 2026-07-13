@@ -1,26 +1,22 @@
-import { LEGACY_OFFLINE_PROTOCOL_VERSION, OFFLINE_PROTOCOL_VERSION } from '@/lib/shared/types';
+import { OFFLINE_PROTOCOL_VERSION } from '@/lib/shared/types';
 
-// Single source of truth for whether offline protocol v2 is switched on. Both the
-// ping endpoint (what the server advertises) and the attempt-insertion path (what
-// the server actually accepts) read this, so the two can never disagree: the
-// server never advertises a protocol it would then reject. See RTM-002.
+// Protocol v2 is the only write protocol. The legacy environment switch remains
+// only as a deployment assertion: an explicit `0` is invalid instead of silently
+// downgrading to unverifiable protocol-v1 writes.
 
 const V2_ENV = 'OFFLINE_PROTOCOL_V2_ENABLED';
 
 export function isOfflineProtocolV2Enabled(): boolean {
-  return process.env[V2_ENV] === '1';
+  return process.env[V2_ENV] !== '0';
 }
 
-// The protocol version the ping endpoint advertises to clients. Never advertise
-// v2 unless v2 attempt insertion is actually enabled.
+// The ping endpoint advertises only the authoritative write protocol.
 export function advertisedProtocolVersion(): 1 | 2 {
-  return isOfflineProtocolV2Enabled() ? OFFLINE_PROTOCOL_VERSION : LEGACY_OFFLINE_PROTOCOL_VERSION;
+  return OFFLINE_PROTOCOL_VERSION;
 }
 
 export function advertisedSupportedProtocolVersions(): Array<1 | 2> {
-  return isOfflineProtocolV2Enabled()
-    ? [OFFLINE_PROTOCOL_VERSION, LEGACY_OFFLINE_PROTOCOL_VERSION]
-    : [LEGACY_OFFLINE_PROTOCOL_VERSION];
+  return [OFFLINE_PROTOCOL_VERSION];
 }
 
 // Startup invariant: refuse to boot if the server would advertise a protocol it
@@ -30,12 +26,12 @@ export function advertisedSupportedProtocolVersions(): Array<1 | 2> {
 // typo like OFFLINE_PROTOCOL_V2_ENABLED=true does not silently downgrade v2.
 export function assertOfflineProtocolConsistent(): void {
   const raw = process.env[V2_ENV];
-  if (raw !== undefined && raw !== '0' && raw !== '1') {
+  if (raw !== undefined && raw !== '1') {
     throw new Error(
-      `${V2_ENV} must be exactly "1" (enabled) or "0"/unset (disabled), got ${JSON.stringify(raw)}.`
+      `${V2_ENV} must be exactly "1" when set; protocol v1 writes are retired, got ${JSON.stringify(raw)}.`
     );
   }
-  if (advertisedProtocolVersion() === OFFLINE_PROTOCOL_VERSION && !isOfflineProtocolV2Enabled()) {
+  if (process.env.NODE_ENV === 'production' && !isOfflineProtocolV2Enabled()) {
     throw new Error('Offline protocol v2 is advertised by ping but not enabled for attempt insertion.');
   }
 }

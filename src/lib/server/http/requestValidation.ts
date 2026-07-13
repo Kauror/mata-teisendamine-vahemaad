@@ -1,13 +1,12 @@
 import type {
   OfflineAttemptPayload,
   OfflineRemediationActionPayload,
-  OfflineSyncRequest,
+  OfflineSyncRequestV2,
   OfflineTaskActionPayload
 } from '@/lib/shared/types';
 import {
   MAX_PENDING_ACTIONS_PER_SYNC,
   MAX_PENDING_ATTEMPTS_PER_SYNC,
-  SUPPORTED_OFFLINE_PROTOCOL_VERSIONS
 } from '@/lib/shared/types';
 
 export const MAX_MUTATION_BODY_BYTES = 1024 * 1024;
@@ -193,23 +192,20 @@ function validateDevice(value: unknown, issues: string[]) {
   return typeof value.deviceId === 'string' ? value.deviceId : null;
 }
 
-export function parseOfflineSyncRequest(value: unknown): OfflineSyncRequest {
+export function parseOfflineSyncRequest(value: unknown): OfflineSyncRequestV2 {
   if (!object(value)) throw new PublicRequestError(422, 'invalid_request', 'Sync request must be an object.');
   const protocolVersion = value.protocolVersion;
-  if (!SUPPORTED_OFFLINE_PROTOCOL_VERSIONS.includes(protocolVersion as 1 | 2)) {
+  if (protocolVersion === 1) {
+    throw new PublicRequestError(426, 'client_upgrade_required', 'Offline protocol v1 writes are no longer accepted.');
+  }
+  if (protocolVersion !== 2) {
     throw new PublicRequestError(426, 'client_upgrade_required', 'Unsupported offline protocol version.');
   }
   const issues: string[] = [];
   const deviceId = validateDevice(value.device, issues);
   if (!object(value.cursor)) issues.push('cursor is required');
 
-  if (protocolVersion === 1) {
-    if (!object(value.pending) || !Array.isArray(value.pending.attempts)) issues.push('pending.attempts is required');
-    const attempts = object(value.pending) && Array.isArray(value.pending.attempts) ? value.pending.attempts : [];
-    const actions = object(value.pending) && Array.isArray(value.pending.taskActions) ? value.pending.taskActions : [];
-    if (attempts.length > MAX_PENDING_ATTEMPTS_PER_SYNC) issues.push(`attempt batch exceeds ${MAX_PENDING_ATTEMPTS_PER_SYNC}`);
-    if (actions.length > MAX_PENDING_ACTIONS_PER_SYNC) issues.push(`action batch exceeds ${MAX_PENDING_ACTIONS_PER_SYNC}`);
-  } else if (value.phase === 'push') {
+  if (value.phase === 'push') {
     if (value.pushKind !== 'attempts' && value.pushKind !== 'actions') issues.push('pushKind is invalid');
     if (!object(value.pending)) issues.push('pending is required');
     const pending = object(value.pending) ? value.pending : {};
@@ -237,7 +233,7 @@ export function parseOfflineSyncRequest(value: unknown): OfflineSyncRequest {
 
   if (issues.length > 0) throw new PublicRequestError(422, 'invalid_request', 'Sync request is invalid.', issues);
   if (!deviceId) throw new PublicRequestError(422, 'invalid_request', 'Device ID is invalid.');
-  return value as unknown as OfflineSyncRequest;
+  return value as unknown as OfflineSyncRequestV2;
 }
 
 export type AttemptContract = {

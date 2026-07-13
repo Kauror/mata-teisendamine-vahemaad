@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runSyncPullV2, runSyncPushV2, runSyncV1 } from '@/lib/offline/server/syncService';
-import type { OfflineSyncPullRequestV2, OfflineSyncPushRequestV2, OfflineSyncRequestV1 } from '@/lib/shared/types';
+import { runSyncPullV2, runSyncPushV2 } from '@/lib/offline/server/syncService';
+import type { OfflineSyncPullRequestV2, OfflineSyncPushRequestV2 } from '@/lib/shared/types';
 import { parseOfflineSyncRequest, PublicRequestError, readJsonBody } from '@/lib/server/http/requestValidation';
 
 export const dynamic = 'force-dynamic';
@@ -17,11 +17,9 @@ export async function POST(req: NextRequest) {
   await getDb();
   try {
     const body = parseOfflineSyncRequest(await readJsonBody(req));
-    const response = body.protocolVersion === 1
-      ? runSyncV1(body as OfflineSyncRequestV1)
-      : body.phase === 'push'
-        ? runSyncPushV2(body as OfflineSyncPushRequestV2)
-        : runSyncPullV2(body as OfflineSyncPullRequestV2);
+    const response = body.phase === 'push'
+      ? runSyncPushV2(body as OfflineSyncPushRequestV2)
+      : runSyncPullV2(body as OfflineSyncPullRequestV2);
     return NextResponse.json(response, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof PublicRequestError) {

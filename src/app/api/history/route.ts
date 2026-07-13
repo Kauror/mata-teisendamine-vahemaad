@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { insertAttempt } from '@/lib/offline/server/insertAttempt';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -44,29 +43,9 @@ export async function GET() {
   return NextResponse.json(rows);
 }
 
-export async function POST(req: NextRequest) {
-  await getDb();
-  const body = await req.json();
-  // Route through the shared authoritative service. This is the online direct
-  // path (no clientAttemptId / catalogueVersion), so behaviour is unchanged:
-  // non-active exercises still 403 and nothing is inserted.
-  const result = insertAttempt({
-    createdAt: body.createdAt,
-    learner: body.learner,
-    subject: body.subject,
-    topic: body.topic,
-    category: body.category,
-    difficulty: body.difficulty,
-    questionCount: body.questionCount,
-    score: body.score,
-    elapsedSeconds: body.elapsedSeconds,
-    questions: body.questions,
-    exerciseId: body.exerciseId
-  });
-
-  if (result.status === 'rejected') {
-    const status = result.reasonCode === 'not_active' ? 403 : 400;
-    return NextResponse.json({ message: result.message ?? 'Vigane vastus.' }, { status });
-  }
-  return NextResponse.json({ id: result.serverAttemptId, reward: result.reward, status: result.status }, { status: 201 });
+export async function POST() {
+  return NextResponse.json(
+    { code: 'legacy_write_retired', message: 'Kasuta kontrollitud võrguühenduseta protokolli v2.' },
+    { status: 410 }
+  );
 }
