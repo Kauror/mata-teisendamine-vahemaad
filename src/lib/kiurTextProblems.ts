@@ -695,12 +695,14 @@ export const kiurTextProblemPool: TextProblemTask[] = [
     id: "tekst-115",
     question: "Rong väljub kell 14:20. Sõit kestab 45 minutit. Mis kell rong kohale jõuab?",
     answer: "15:05",
+    acceptedAnswers: ["15.05"],
     solution: "14:20 + 40 minutit = 15:00 ja veel 5 minutit = 15:05."
   },
   {
     id: "tekst-116",
     question: "Esimene tund algab kell 9:00 ja kestab 45 minutit. Siis on 10-minutiline vahetund ja pärast seda teine 45-minutiline tund. Mis kell teine tund lõpeb?",
     answer: "10:40",
+    acceptedAnswers: ["10.40"],
     solution: "45 + 10 + 45 = 100 minutit. Kell 9:00 + 100 minutit = 10:40."
   },
   {
@@ -725,6 +727,7 @@ export const kiurTextProblemPool: TextProblemTask[] = [
     id: "tekst-120",
     question: "Kell on 16:35. Treening algab 2 tunni ja 25 minuti pärast. Mis kell treening algab?",
     answer: "19:00",
+    acceptedAnswers: ["19.00"],
     solution: "16:35 + 2 tundi = 18:35. 18:35 + 25 minutit = 19:00."
   }
 ];

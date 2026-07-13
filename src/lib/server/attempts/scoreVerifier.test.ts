@@ -3,6 +3,7 @@ import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
 import { AttemptContractError, recomputeScore } from '@/lib/server/attempts/scoreVerifier';
 import type { GeneratedQuestion } from '@/lib/types';
+import { buildMathQuestionResults, type MathAnswerSnapshot } from '@/lib/mathResults';
 
 function answerFor(question: GeneratedQuestion) {
   if (question.kind === 'ordering' && question.orderingCards) {
@@ -49,5 +50,44 @@ describe('server-owned score recomputation', () => {
       }))
     });
     expect(verified.score).toBe(1);
+  });
+
+  it('matches client verification over a generated mathematics corpus', () => {
+    const corpora = [
+      { topic: 'pikkused', category: 'Segaharjutus', count: 15, seed: 42 },
+      { topic: 'tekstulesanded', category: 'Tekstülesanded', count: 5, seed: 115 },
+      { topic: 'korrutamine', category: 'Korrutamine', count: 15, seed: 7 },
+      { topic: 'arvud-10000-piires', category: 'Segaharjutus', count: 15, seed: 99 }
+    ];
+
+    for (const corpus of corpora) {
+      const questions = generateKiurMathSession(corpus.topic, corpus.category, 'Lihtne', corpus.count, corpus.seed);
+      const snapshot: MathAnswerSnapshot = {
+        answers: questions.map((question) => question.kind === 'text' ? question.correctAnswerText ?? '' : String(question.correctAnswer)),
+        choiceAnswers: questions.map((question) => question.kind === 'choice' ? answerFor(question) ?? '' : ''),
+        orderingAnswers: questions.map((question) => question.kind === 'ordering'
+          ? [...(question.orderingCards ?? [])].sort((a, b) => question.orderingDirection === 'desc' ? b.valueMm - a.valueMm : a.valueMm - b.valueMm).map((card) => card.id)
+          : [])
+      };
+      const client = buildMathQuestionResults(questions, snapshot);
+      const server = recomputeScore({
+        runnerId: 'math', learner: 'kiur', subject: 'matemaatika', topic: corpus.topic, category: corpus.category,
+        difficulty: 'Lihtne', seed: corpus.seed, questionIds: questions.map((question) => question.id), questions: client
+      });
+      expect(server.isCorrect).toEqual(client.map((question) => question.isCorrect));
+      expect(server.isCorrect.every(Boolean), `${corpus.topic}: ${JSON.stringify(client.filter((question) => !question.isCorrect))}`).toBe(true);
+
+      const incorrectSnapshot: MathAnswerSnapshot = {
+        answers: questions.map(() => 'definitely wrong'),
+        choiceAnswers: questions.map(() => 'definitely wrong'),
+        orderingAnswers: questions.map((question) => [...(question.orderingCards ?? [])].map((card) => card.id).reverse())
+      };
+      const clientIncorrect = buildMathQuestionResults(questions, incorrectSnapshot);
+      const serverIncorrect = recomputeScore({
+        runnerId: 'math', learner: 'kiur', subject: 'matemaatika', topic: corpus.topic, category: corpus.category,
+        difficulty: 'Lihtne', seed: corpus.seed, questionIds: questions.map((question) => question.id), questions: clientIncorrect
+      });
+      expect(serverIncorrect.isCorrect).toEqual(clientIncorrect.map((question) => question.isCorrect));
+    }
   });
 });

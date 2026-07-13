@@ -16,8 +16,7 @@ describe('immutable mathematics answer snapshots', () => {
     const finalAnswers = ['12', '-4', '2,5'];
     const results = buildMathQuestionResults(
       [numeric('correct', 12), numeric('negative', 4), numeric('decimal-comma', 2.5)],
-      { answers: finalAnswers, orderingAnswers: [[], [], []], choiceAnswers: ['', '', ''] },
-      () => false
+      { answers: finalAnswers, orderingAnswers: [[], [], []], choiceAnswers: ['', '', ''] }
     );
 
     expect(staleAnswers).toEqual(['old', 'old', 'old']);

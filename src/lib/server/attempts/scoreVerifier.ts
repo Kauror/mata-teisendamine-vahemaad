@@ -7,6 +7,7 @@ import { KIUR_READING_TASKS } from '@/lib/kiurReadingTasks';
 import { LOODUSOPETUS_TASKS } from '@/lib/loodusopetus/tasks';
 import { isChoiceTask, type ScienceTask } from '@/lib/loodusopetus/types';
 import type { Difficulty, GeneratedQuestion } from '@/lib/types';
+import { verifyGeneratedMathAnswer } from '@/lib/shared/answerVerification';
 
 type ResultRow = Record<string, unknown>;
 
@@ -63,24 +64,7 @@ function numberSeed(value: number | string) {
 
 function verifyMathQuestion(expected: GeneratedQuestion, actual: ResultRow) {
   if (actual.id !== expected.id || actual.question !== expected.question) throw new AttemptContractError(`Generated question ${expected.id} does not match its immutable contract.`);
-  const answer = answerOf(actual);
-  if (expected.kind === 'ordering' && expected.orderingCards) {
-    const order = [...expected.orderingCards]
-      .sort((a, b) => expected.orderingDirection === 'desc' ? b.valueMm - a.valueMm : a.valueMm - b.valueMm)
-      .map((card) => normalize(card.label));
-    const submitted = String(answer).split(/\s*(?:→|->|,|\|)\s*/).map(normalize).filter(Boolean);
-    return JSON.stringify(submitted) === JSON.stringify(order);
-  }
-  if (expected.kind === 'choice' && expected.choiceOptions) {
-    const correctIndexes = expected.correctAnswers?.length ? expected.correctAnswers : [expected.correctAnswer];
-    return correctIndexes.some((index) => normalize(answer) === normalize(expected.choiceOptions?.[index]) || Number(answer) === index);
-  }
-  if (expected.kind === 'text' || expected.correctAnswerText) {
-    const accepted = [expected.correctAnswerText, ...(expected.acceptedAnswers ?? [])].filter(Boolean).map(normalize);
-    return accepted.includes(normalize(answer));
-  }
-  const numeric = Number(String(answer).replace(',', '.'));
-  return Number.isFinite(numeric) && numeric === expected.correctAnswer;
+  return verifyGeneratedMathAnswer(expected, answerOf(actual));
 }
 
 function verifyMath(input: VerifiableAttempt) {

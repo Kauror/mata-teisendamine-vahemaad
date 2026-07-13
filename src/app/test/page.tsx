@@ -26,6 +26,7 @@ import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import { buildMathQuestionResults, mathChoiceLabels, type MathAnswerSnapshot } from '@/lib/mathResults';
+import { verifyMathTextAnswer } from '@/lib/shared/answerVerification';
 
 type ActiveLearningExercise = {
   id?: string;
@@ -116,28 +117,10 @@ function CountingObjectGrid({ question }: { question: GeneratedQuestion }) {
   );
 }
 
-function normalizeTextAnswer(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .replace(/\s+ja\s+/g, ' ')
-    .replace(/(\d)\s+(?=[a-zõäöüšž])/gi, '$1')
-    .replace(/(\d{1,2})\.(\d{2})/g, '$1:$2');
-}
-
 function normalizeNumberEntry(value: string) {
   const compact = value.replace(/\s/g, '').replace(',', '.');
   if (!/^\d*(?:\.\d*)?$/.test(compact)) return null;
   return compact.replace('.', ',');
-}
-
-function numberParts(value: string) {
-  return (value.match(/\d+(?:[,.]\d+)?/g) ?? []).map((part) => part.replace(',', '.'));
-}
-
-function textAnswerLabels(question: GeneratedQuestion) {
-  return [question.correctAnswerText, ...(question.acceptedAnswers ?? [])].filter((answer): answer is string => Boolean(answer));
 }
 
 type TextAnswerField = { unit: string };
@@ -158,16 +141,6 @@ function textAnswerValues(answer: string, fields: TextAnswerField[]) {
 
 function composeTextAnswer(fields: TextAnswerField[], values: string[]) {
   return fields.map((field, index) => `${values[index] ?? ''} ${field.unit}`.trim()).join(' ').trim();
-}
-
-function isTextAnswerCorrect(answer: string, question: GeneratedQuestion) {
-  const normalized = normalizeTextAnswer(answer);
-  const enteredNumbers = numberParts(answer);
-  return textAnswerLabels(question).some((label) => {
-    if (normalizeTextAnswer(label) === normalized) return true;
-    const labelNumbers = numberParts(label);
-    return enteredNumbers.length > 0 && enteredNumbers.length === labelNumbers.length && enteredNumbers.every((part, index) => part === labelNumbers[index]);
-  });
 }
 
 function testTopicLabel(topic: string, category: string, isKirsiMath: boolean) {
@@ -490,7 +463,7 @@ function TestPageContent() {
           inputRef.current?.focus();
           return;
         }
-        setTextFeedback({ answer: currentAnswer, isCorrect: isTextAnswerCorrect(currentAnswer, current) });
+        setTextFeedback({ answer: currentAnswer, isCorrect: verifyMathTextAnswer(current, currentAnswer) });
         setError('');
         return;
       }
@@ -519,7 +492,7 @@ function TestPageContent() {
     }
 
     setIsSaving(true);
-    const results = buildMathQuestionResults(questions, answerSnapshot, isTextAnswerCorrect);
+    const results = buildMathQuestionResults(questions, answerSnapshot);
     const score = results.filter((r) => r.isCorrect).length;
 
     try {
