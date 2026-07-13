@@ -24,7 +24,6 @@ type AttemptCountRow = {
   score: number;
   protocolVersion: number;
   rewardSettlementStatus: string;
-  deletedAt: string | null;
 };
 
 function winnerOf(kiurCount: number, kirsiCount: number): DailyWinner {
@@ -34,7 +33,7 @@ function winnerOf(kiurCount: number, kirsiCount: number): DailyWinner {
 
 function allAttempts(): AttemptCountRow[] {
   return db
-    .prepare('SELECT id, category, learner, createdAt, subject, topic, score, protocolVersion, rewardSettlementStatus, deletedAt FROM attempts')
+    .prepare('SELECT id, category, learner, createdAt, subject, topic, score, protocolVersion, rewardSettlementStatus FROM attempts')
     .all() as AttemptCountRow[];
 }
 
@@ -49,7 +48,8 @@ function allAttempts(): AttemptCountRow[] {
 // valid attempt — or the backfill — recalculates that date. Legacy v1 attempts
 // have no settlement lifecycle and continue to count under the legacy rules.
 function isAuthoritativeAttempt(row: AttemptCountRow) {
-  if (row.deletedAt) return false;
+  // `deletedAt` is history visibility only; hiding must not silently revise a
+  // historical competition result.
   if (row.protocolVersion === 2) return row.rewardSettlementStatus === 'eligible';
   return true;
 }

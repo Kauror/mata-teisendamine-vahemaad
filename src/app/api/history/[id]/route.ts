@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { deleteAttempt } from '@/lib/historyMaintenance';
-import { recordDailyLeaderboard } from '@/lib/leaderboard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,13 +35,6 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   try {
     const removed = deleteAttempt(attemptId);
     if (removed === 0) return NextResponse.json({ message: 'Tulemust ei leitud.' }, { status: 404 });
-    // Deleting an attempt changes today's exercise counts, so refresh the
-    // leaderboard snapshot the trophies are derived from.
-    try {
-      recordDailyLeaderboard();
-    } catch (error) {
-      console.warn('Daily leaderboard snapshot failed after delete', error);
-    }
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('History delete failed', error);

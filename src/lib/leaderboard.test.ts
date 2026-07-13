@@ -4,6 +4,7 @@ import type { RewardPolicyV2 } from '@/lib/server/rewards/policy';
 import { getLeaderboardHistory, rebuildDailyLeaderboard, recordDailyLeaderboard } from '@/lib/leaderboard';
 import { approveHeldRewardAttempt } from '@/lib/server/rewards/projection';
 import { getMonthlyTrophies } from '@/lib/monthlyCompetition';
+import { deleteAttempt } from '@/lib/historyMaintenance';
 
 // Reward engine and leaderboard must apply the SAME eligibility gate. These
 // tests exercise the leaderboard side of RTM3-C01: a held protocol-v2 attempt
@@ -80,6 +81,18 @@ beforeEach(() => {
 });
 
 describe('daily leaderboard eligibility gate (RTM3-C01)', () => {
+  it('keeps a hidden authoritative attempt in historical competition results', () => {
+    const date = '2026-03-09';
+    const id = insertLeaderboardAttempt('kiur', `${date}T08:00:00.000Z`, 'eligible');
+    recordDailyLeaderboard(date);
+    expect(countsFor(date)).toMatchObject({ kiurCount: 1, winner: 'kiur' });
+
+    deleteAttempt(id);
+    recordDailyLeaderboard(date);
+
+    expect(countsFor(date)).toMatchObject({ kiurCount: 1, winner: 'kiur' });
+  });
+
   it('a needs_review attempt does not affect the daily winner', () => {
     const date = '2026-03-10';
     // Kiur and Kirsi each have one authoritative attempt → a genuine tie.

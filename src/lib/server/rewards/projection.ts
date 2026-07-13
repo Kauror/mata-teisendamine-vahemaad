@@ -137,13 +137,14 @@ function projectionAttempts(learner: Learner): ProjectionAttempt[] {
   // Attempts that were unpermitted, rejected for policy, or held for review are
   // 'withheld'/'needs_review' and must never earn points, affect the daily cap or
   // decay, contribute to a streak, or throw an unknown-policy error here (RTM-003).
+  // `deletedAt` is intentionally not a predicate: hiding a history row is only
+  // a display preference and cannot rewrite canonical accounting.
   return db.prepare(`
     SELECT id, clientAttemptId, learner, exerciseId, runnerId, score, questionCount,
            completionDate, effectiveCompletedAt, rewardPolicyVersion, subject, topic
     FROM attempts
     WHERE learner = ? AND protocolVersion = 2 AND rewardPolicyVersion IS NOT NULL
       AND rewardSettlementStatus = 'eligible'
-      AND deletedAt IS NULL
       AND completionDate IS NOT NULL AND effectiveCompletedAt IS NOT NULL
       AND exerciseId IS NOT NULL AND runnerId IS NOT NULL
   `).all(learner) as ProjectionAttempt[];

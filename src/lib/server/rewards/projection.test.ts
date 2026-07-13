@@ -11,6 +11,7 @@ import {
 } from '@/lib/server/rewards/projection';
 import { getBalance } from '@/lib/tasks';
 import { getChangedAttemptIdsAfter } from '@/lib/offline/server/attemptChanges';
+import { deleteAllHistory, deleteAttempt } from '@/lib/historyMaintenance';
 
 const policy: RewardPolicyV2 = {
   schemaVersion: 2,
@@ -221,5 +222,80 @@ describe('reward settlement eligibility', () => {
     expect(canonicalTotal.total).toBeGreaterThan(studyOnly);
     // The canonical total is exactly what getProjectedRewardV2 reports for the row.
     expect(canonicalTotal.total).toBeCloseTo(getProjectedRewardV2(2)!.awardedAmount);
+  });
+});
+
+describe('hidden-history reward integrity', () => {
+  const u = (n: number) => `018f47f6-9f2c-7b9a-8a2e-10000000000${n}`;
+
+  it('keeps hidden attempts in same-day decay and cap accounting without duplicate stars', () => {
+    const cappedPolicy = {
+      ...policy,
+      learning: { ...policy.learning, decayStep: 0.4, dailyCap: 1.5 }
+    };
+    db.prepare("UPDATE reward_policy_versions SET policyJson = ? WHERE version = 'p1'")
+      .run(JSON.stringify(cappedPolicy));
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)));
+    applyRewardProjectionV2('kiur', 1);
+    deleteAttempt(1);
+
+    insertAttempt(projected(2, '2026-07-01T09:00:00.000Z', u(2)));
+    applyRewardProjectionV2('kiur', 2);
+
+    expect(getProjectedRewardV2(1)?.awardedAmount).toBeCloseTo(1);
+    // The hidden attempt remains attempt 1 for decay (next base = 0.6), while
+    // the 1.5 daily cap limits the later award to 0.5.
+    expect(getProjectedRewardV2(2)?.awardedAmount).toBeCloseTo(0.5);
+    expect(getBalance('kiur')).toBeCloseTo(1.5);
+    expect((db.prepare("SELECT COUNT(*) AS count FROM point_ledger WHERE source = 'reward_v2'").get() as { count: number }).count).toBe(2);
+  });
+
+  it('does not move or duplicate streak rewards when the middle attempt is hidden', () => {
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)));
+    insertAttempt(projected(2, '2026-07-02T08:00:00.000Z', u(2)));
+    insertAttempt(projected(3, '2026-07-03T08:00:00.000Z', u(3)));
+    applyRewardProjectionV2('kiur', 3);
+    const before = db.prepare(`
+      SELECT attemptId, componentKey, canonicalAmount
+      FROM attempt_reward_components
+      ORDER BY attemptId, componentKey, revision
+    `).all();
+    const balanceBefore = getBalance('kiur');
+
+    deleteAttempt(2);
+    const rerun = applyRewardProjectionV2('kiur', 3);
+
+    expect(rerun.changedComponents).toBe(0);
+    expect(getBalance('kiur')).toBeCloseTo(balanceBefore);
+    expect(db.prepare(`
+      SELECT attemptId, componentKey, canonicalAmount
+      FROM attempt_reward_components
+      ORDER BY attemptId, componentKey, revision
+    `).all()).toEqual(before);
+  });
+
+  it('keeps hide-all accounting authoritative for later attempts', () => {
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)));
+    insertAttempt(projected(2, '2026-07-01T09:00:00.000Z', u(2)));
+    applyRewardProjectionV2('kiur', 2);
+    deleteAllHistory();
+
+    insertAttempt(projected(3, '2026-07-01T10:00:00.000Z', u(3)));
+    applyRewardProjectionV2('kiur', 3);
+
+    expect(getProjectedRewardV2(1)?.awardedAmount).toBeCloseTo(1);
+    expect(getProjectedRewardV2(2)?.awardedAmount).toBeCloseTo(0.9);
+    expect(getProjectedRewardV2(3)?.awardedAmount).toBeCloseTo(0.8);
+    expect(getBalance('kiur')).toBeCloseTo(2.7);
+  });
+
+  it('is idempotent when projection runs again after hiding history', () => {
+    insertAttempt(projected(1, '2026-07-01T08:00:00.000Z', u(1)));
+    applyRewardProjectionV2('kiur', 1);
+    deleteAttempt(1);
+
+    expect(applyRewardProjectionV2('kiur', 1).changedComponents).toBe(0);
+    expect(applyRewardProjectionV2('kiur', 1).changedComponents).toBe(0);
+    expect(getBalance('kiur')).toBeCloseTo(1);
   });
 });
