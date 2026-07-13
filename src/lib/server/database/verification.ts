@@ -127,14 +127,53 @@ export type StartupPreparation = {
   databaseFile: string;
   backupFile: string | null;
   verification: DatabaseVerification;
+  backupRetention: BackupRetentionResult | null;
 };
 
-export async function prepareDatabaseForStartup(databaseFile: string, backupDirectory?: string): Promise<StartupPreparation> {
+export type BackupRetentionOptions = { maxAgeDays?: number; maxCount?: number; now?: Date };
+export type BackupRetentionResult = { retained: string[]; deleted: string[] };
+
+export function applyBackupRetention(
+  databaseFile: string,
+  backupDirectory: string,
+  currentBackupFile: string | null,
+  options: BackupRetentionOptions = {}
+): BackupRetentionResult {
+  const maxAgeDays = options.maxAgeDays ?? 30;
+  const maxCount = options.maxCount ?? 10;
+  if (!Number.isInteger(maxAgeDays) || maxAgeDays < 1 || !Number.isInteger(maxCount) || maxCount < 1) {
+    throw new Error('Backup retention values must be positive integers.');
+  }
+  if (!fs.existsSync(backupDirectory)) return { retained: [], deleted: [] };
+  const prefix = `${path.basename(databaseFile)}.`;
+  const candidates = fs.readdirSync(backupDirectory)
+    .filter((name) => name.startsWith(prefix) && name.endsWith('.bak'))
+    .map((name) => ({ name, fullPath: path.join(backupDirectory, name), stat: fs.statSync(path.join(backupDirectory, name)) }))
+    .filter((candidate) => candidate.stat.isFile())
+    .map(({ name, fullPath, stat }) => ({ name, fullPath, modified: stat.mtimeMs }))
+    .sort((a, b) => b.modified - a.modified || b.name.localeCompare(a.name));
+  const protectedPaths = new Set([candidates[0]?.fullPath, currentBackupFile].filter(Boolean).map((file) => path.resolve(file!)));
+  const cutoff = (options.now ?? new Date()).getTime() - maxAgeDays * 24 * 60 * 60 * 1000;
+  const retained: string[] = [];
+  const deleted: string[] = [];
+  for (const [index, candidate] of candidates.entries()) {
+    const protectedBackup = protectedPaths.has(path.resolve(candidate.fullPath));
+    if (!protectedBackup && (candidate.modified < cutoff || index >= maxCount)) {
+      fs.rmSync(candidate.fullPath);
+      deleted.push(candidate.name);
+    } else {
+      retained.push(candidate.name);
+    }
+  }
+  return { retained, deleted };
+}
+
+export async function prepareDatabaseForStartup(databaseFile: string, backupDirectory?: string, retention: BackupRetentionOptions = {}): Promise<StartupPreparation> {
   if (!databaseFile) throw new Error('Database file is required.');
   if (databaseFile === ':memory:') {
     const connection = openDatabase(':memory:');
     try {
-      return { databaseFile, backupFile: null, verification: verifyDatabase(connection) };
+      return { databaseFile, backupFile: null, verification: verifyDatabase(connection), backupRetention: null };
     } finally {
       connection.close();
     }
@@ -170,7 +209,9 @@ export async function prepareDatabaseForStartup(databaseFile: string, backupDire
   try {
     const verification = verifyDatabase(connection);
     connection.pragma('wal_checkpoint(TRUNCATE)');
-    return { databaseFile: absoluteDatabase, backupFile, verification };
+    const targetDirectory = path.resolve(backupDirectory ?? path.join(path.dirname(absoluteDatabase), 'backups'));
+    const backupRetention = applyBackupRetention(absoluteDatabase, targetDirectory, backupFile, retention);
+    return { databaseFile: absoluteDatabase, backupFile, verification, backupRetention };
   } catch (error) {
     throw new Error(
       `Startup verification failed${backupFile ? `; pre-migration backup is ${backupFile}` : ''}: ${error instanceof Error ? error.message : String(error)}`

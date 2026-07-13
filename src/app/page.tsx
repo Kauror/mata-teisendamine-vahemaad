@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel, trophyWord } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import NoticeBoard from '@/app/components/NoticeBoard';
+import { fetchHistoryPage } from '@/lib/historyClient';
 
 type H = {
   id: number;
@@ -88,9 +89,8 @@ export default function Home() {
   const [trophies, setTrophies] = useState({ kiur: 0, kirsi: 0 });
 
   useEffect(() => {
-    fetch('/api/history')
-      .then((response) => (response.ok ? response.json() : []))
-      .then((rows: H[]) => setHistory(rows))
+    fetchHistoryPage<H>(new URLSearchParams({ limit: '50' }))
+      .then((page) => setHistory(page.items))
       .catch(() => setHistory([]));
   }, []);
 

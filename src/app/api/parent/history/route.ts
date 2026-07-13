@@ -13,9 +13,9 @@ function unauthorized() {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!await hasParentSession()) return unauthorized();
-  return getVisibleHistory();
+  return getVisibleHistory(request);
 }
 
 export async function DELETE() {

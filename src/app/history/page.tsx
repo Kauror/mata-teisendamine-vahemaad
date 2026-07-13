@@ -8,6 +8,7 @@ import { formatStars } from '@/lib/formatStars';
 import { getMergedExerciseHistory } from '@/lib/offline/api';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import HistoryStats from '@/app/components/HistoryStats';
+import { fetchHistoryPage } from '@/lib/historyClient';
 
 type ExerciseHistory = {
   kind: 'exercise';
@@ -123,6 +124,8 @@ export default function HistoryPage() {
   const [childFilter, setChildFilter] = useState<ChildFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
   const [openDays, setOpenDays] = useState<Set<string>>(() => new Set([todayKey]));
+  const [nextHistoryCursor, setNextHistoryCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const loadLocalExercises = useCallback(async () => {
     const offline = await getMergedExerciseHistory().catch(() => []);
@@ -137,11 +140,11 @@ export default function HistoryPage() {
     // IndexedDB is the immediate source. Network refresh is merged afterwards,
     // preserving pending work and avoiding an empty-history flash on reconnect.
     void loadLocalExercises();
-    const loadExercises = fetch('/api/history', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(async (attempts) => {
+    const loadExercises = fetchHistoryPage<Omit<ExerciseHistory, 'kind'>>(new URLSearchParams({ limit: '50' }))
+      .then(async (page) => {
         if (!active) return;
-        const serverRows = (attempts as Omit<ExerciseHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'exercise' as const }));
+        const serverRows = page.items.map((item) => ({ ...item, kind: 'exercise' as const }));
+        setNextHistoryCursor(page.nextCursor);
         const localRows = await loadLocalExercises();
         if (!active) return;
         const serverClientIds = new Set(serverRows.map((row) => row.clientAttemptId).filter(Boolean));
@@ -168,6 +171,24 @@ export default function HistoryPage() {
       channel?.close();
     };
   }, [loadLocalExercises]);
+
+  const loadMoreExercises = async () => {
+    if (!nextHistoryCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const parameters = new URLSearchParams({ limit: '50', cursor: nextHistoryCursor });
+      const page = await fetchHistoryPage<Omit<ExerciseHistory, 'kind'>>(parameters);
+      const incoming = page.items.map((item) => ({ ...item, kind: 'exercise' as const }));
+      setHistory((current) => {
+        const ids = new Set(current.filter((row) => !row.pending).map((row) => row.id));
+        const clientIds = new Set(current.map((row) => row.clientAttemptId).filter(Boolean));
+        return [...current, ...incoming.filter((row) => !ids.has(row.id) && (!row.clientAttemptId || !clientIds.has(row.clientAttemptId)))];
+      });
+      setNextHistoryCursor(page.nextCursor);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const allItems: HistoryItem[] = [...history, ...taskHistory, ...storeHistory].sort((a, b) => new Date(itemDate(b)).getTime() - new Date(itemDate(a)).getTime());
@@ -278,6 +299,12 @@ export default function HistoryPage() {
               );
             })}
           </section>
+        )}
+
+        {nextHistoryCursor && (
+          <button type='button' className='subject-button' disabled={loadingMore} onClick={() => void loadMoreExercises()}>
+            {loadingMore ? 'Laadinâ€¦' : 'Laadi varasemad kirjed'}
+          </button>
         )}
 
       </div>

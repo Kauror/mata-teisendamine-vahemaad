@@ -24,8 +24,8 @@ describe('history visibility', () => {
     insert.run(2, '2026-07-01T09:00:00.000Z');
 
     expect(deleteAttempt(1)).toBe(1);
-    const response = await GET();
-    const rows = await response.json() as Array<{ id: number }>;
+    const response = await GET(new Request('https://example.test/api/history'));
+    const { items: rows } = await response.json() as { items: Array<{ id: number }> };
 
     expect(rows.map((row) => row.id)).toEqual([2]);
   });

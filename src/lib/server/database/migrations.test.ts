@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDatabase, runMigrations } from '@/lib/db';
 import { verifySecretHash } from '@/lib/auth/password';
-import { prepareDatabaseForStartup, verifyDatabase } from '@/lib/server/database/verification';
+import { applyBackupRetention, prepareDatabaseForStartup, verifyDatabase } from '@/lib/server/database/verification';
 
 const cleanup: string[] = [];
 afterEach(() => {
@@ -118,6 +118,44 @@ describe('versioned SQLite migrations', () => {
     } finally {
       migrated.close();
     }
+  });
+
+  it('bounds backup age/count while protecting the newest and current deployment backups', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maths-backup-retention-'));
+    cleanup.push(directory);
+    const databaseFile = path.join(directory, 'fixture.sqlite');
+    const backupDirectory = path.join(directory, 'backups');
+    fs.mkdirSync(backupDirectory);
+    const names = ['fixture.sqlite.old.bak', 'fixture.sqlite.current.bak', 'fixture.sqlite.newest.bak'];
+    for (const name of names) fs.writeFileSync(path.join(backupDirectory, name), name);
+    fs.utimesSync(path.join(backupDirectory, names[0]), new Date('2025-01-01'), new Date('2025-01-01'));
+    fs.utimesSync(path.join(backupDirectory, names[1]), new Date('2025-01-02'), new Date('2025-01-02'));
+    fs.utimesSync(path.join(backupDirectory, names[2]), new Date('2025-01-03'), new Date('2025-01-03'));
+
+    const result = applyBackupRetention(databaseFile, backupDirectory, path.join(backupDirectory, names[1]), {
+      maxAgeDays: 1,
+      maxCount: 1,
+      now: new Date('2026-01-01')
+    });
+    expect(result.retained.sort()).toEqual([names[1], names[2]].sort());
+    expect(result.deleted).toEqual([names[0]]);
+  });
+
+  it('does not delete any old backup when current database verification fails', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maths-backup-failure-'));
+    cleanup.push(directory);
+    const file = path.join(directory, 'fixture.sqlite');
+    const backupDirectory = path.join(directory, 'backups');
+    fs.mkdirSync(backupDirectory);
+    const oldBackup = path.join(backupDirectory, 'fixture.sqlite.old.bak');
+    fs.writeFileSync(oldBackup, 'recovery-anchor');
+    fs.utimesSync(oldBackup, new Date('2020-01-01'), new Date('2020-01-01'));
+    const connection = openDatabase(file);
+    connection.prepare(`INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions) VALUES ('invalid', 'a', 'a', 1, 1, 1, '[]')`).run();
+    connection.close();
+
+    await expect(prepareDatabaseForStartup(file, backupDirectory, { maxAgeDays: 1, maxCount: 1 })).rejects.toThrow(/verification failed/i);
+    expect(fs.readFileSync(oldBackup, 'utf8')).toBe('recovery-anchor');
   });
 
   it('migration 4 corrects migration 3 mis-withholding of a zero-reward attempt (RTM2-C02)', () => {

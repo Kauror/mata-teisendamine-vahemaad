@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    image: pikkuste-harjutaja:${APP_IMAGE_TAG:-local}
     container_name: pikkuste-harjutaja
     init: true
     # Required production secrets and switches live in .env (copy .env.example).

@@ -5,12 +5,10 @@ type HistorySummaryRow = {
 };
 
 export async function fetchBestEnglishSprintScore() {
-  const response = await fetch('/api/history');
-  if (!response.ok) throw new Error('history-load-failed');
-
-  const rows = await response.json() as HistorySummaryRow[];
+  const rows = await fetchAllFilteredHistory<HistorySummaryRow>({ subject: 'inglise-keel', topic: 'sprint' });
   return rows.reduce((best, row) => {
     if (row.subject !== 'inglise-keel' || row.topic !== 'sprint') return best;
     return Math.max(best, typeof row.score === 'number' ? row.score : 0);
   }, 0);
 }
+import { fetchAllFilteredHistory } from '@/lib/historyClient';

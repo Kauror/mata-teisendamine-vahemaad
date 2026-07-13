@@ -808,6 +808,10 @@ const migrations: Migration[] = [
   }
 ];
 
+export function expectedSchemaMigrationCount() {
+  return migrations.length;
+}
+
 function migrationChecksum(migration: Migration) {
   return createHash('sha256')
     .update(`${migration.id}:${migration.name}:${migration.checksumSource}`)

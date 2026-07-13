@@ -11,9 +11,19 @@ import { assertProductionParentAuthReady } from '../src/lib/server/auth/parentSt
 async function main() {
   assertProductionAuthConfigured();
   assertOfflineProtocolConsistent();
-  const result = await prepareDatabaseForStartup(configuredDatabaseFile(), process.env.MATHS_GAME_BACKUP_DIR);
+  const positiveInteger = (name: string, fallback: number) => {
+    const value = process.env[name];
+    if (!value) return fallback;
+    if (!/^\d+$/.test(value) || Number(value) < 1) throw new Error(`${name} must be a positive integer.`);
+    return Number(value);
+  };
+  const result = await prepareDatabaseForStartup(configuredDatabaseFile(), process.env.MATHS_GAME_BACKUP_DIR, {
+    maxAgeDays: positiveInteger('BACKUP_RETENTION_DAYS', 30),
+    maxCount: positiveInteger('BACKUP_RETENTION_MAX_COUNT', 10)
+  });
   assertProductionParentAuthReady(result.databaseFile);
   process.stdout.write(`Database startup verification passed: ${JSON.stringify(result.verification)}\n`);
+  if (result.backupRetention) process.stdout.write(`Backup retention completed: ${JSON.stringify(result.backupRetention)}\n`);
 
   const nextBin = path.resolve('node_modules', 'next', 'dist', 'bin', 'next');
   const child = spawn(process.execPath, [nextBin, 'start', ...process.argv.slice(2)], {
