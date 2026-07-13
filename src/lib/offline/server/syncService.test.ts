@@ -114,4 +114,12 @@ describe('protocol-v2 attempt writes', () => {
     const stored = db.prepare('SELECT protocolVersion, score, questionCount FROM attempts').get() as { protocolVersion: number; score: number; questionCount: number };
     expect(stored).toEqual({ protocolVersion: 2, score: 1, questionCount: 1 });
   });
+
+  it('never materializes a hidden attempt through normal or changed-attempt pulls', () => {
+    db.prepare(`INSERT INTO attempts (createdAt, completedAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, clientAttemptId, protocolVersion, rewardSettlementStatus, deletedAt)
+      VALUES (?, ?, 'x', 'x', 1, 1, 1, '[]', 'kiur', 'matemaatika', ?, 2, 'eligible', ?)`)
+      .run('2026-07-13T10:00:00.000Z', '2026-07-13T10:00:00.000Z', 'hidden-attempt', '2026-07-13T11:00:00.000Z');
+    const pull = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor() });
+    expect(pull.pull.attempts.find((row) => row.clientAttemptId === 'hidden-attempt')).toBeUndefined();
+  });
 });

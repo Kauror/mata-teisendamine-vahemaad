@@ -65,7 +65,7 @@ function attemptsAfter(cursorId: number): ServerAttempt[] {
              CASE WHEN a.clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END) AS reviewReasonCode
     FROM attempts a
     LEFT JOIN study_attempt_rewards r ON r.attemptId = a.id
-    WHERE a.id > ?
+    WHERE a.id > ? AND a.deletedAt IS NULL
     ORDER BY a.id ASC
     LIMIT ?
   `).all(cursorId, MAX_HISTORY_PULL_PER_SYNC) as ServerAttempt[];
@@ -99,7 +99,7 @@ function canonicalAttemptsByIds(ids: number[]): ServerAttempt[] {
              CASE WHEN a.clockStatus = 'needs_review' THEN 'clock_drift' ELSE NULL END) AS reviewReasonCode
     FROM attempts a
     LEFT JOIN study_attempt_rewards r ON r.attemptId = a.id
-    WHERE a.id IN (${placeholders})
+    WHERE a.id IN (${placeholders}) AND a.deletedAt IS NULL
     ORDER BY a.id ASC
   `).all(...ids) as ServerAttempt[];
 }

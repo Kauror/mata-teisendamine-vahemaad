@@ -47,6 +47,16 @@ describe('strict mutation validation', () => {
     expect(validateAttemptRecordV2({ ...attempt(), score: 0 }, deviceId).ok).toBe(true);
   });
 
+  it.each([
+    ['missing questionIds', { questionIds: undefined }],
+    ['non-array questionIds', { questionIds: 'q1' }],
+    ['duplicate questionIds', { questionIds: ['q1', 'q1'], questionCount: 2, questions: [{ id: 'q1' }, { id: 'q1' }] }],
+    ['wrong question count', { questionCount: 2 }],
+    ['invalid seed', { seed: Number.NaN }]
+  ])('rejects %s without invalidating sibling records', (_name, patch) => {
+    expect(validateAttemptRecordV2({ ...attempt(), ...patch }, deviceId).ok).toBe(false);
+  });
+
   it('accepts valid device time zones without changing Tallinn business-time rules', () => {
     expect(isIanaTimeZone('Europe/Kiev')).toBe(true);
     expect(isIanaTimeZone('not/a-time-zone')).toBe(false);

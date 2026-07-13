@@ -125,8 +125,10 @@ export function validateAttemptRecordV2(value: unknown, requestDeviceId?: string
   if (!boundedString(value.catalogueVersion, 8, 128)) issues.push('catalogueVersion is required');
   if (!boundedString(value.rewardPolicyVersion, 8, 128)) issues.push('rewardPolicyVersion is required');
   if (!boundedString(value.generatorVersion, 1, 80)) issues.push('generatorVersion is required');
+  if (!boundedString(value.runnerId, 1, 120)) issues.push('runnerId is required');
   if (!boundedString(value.runnerVersion, 1, 80)) issues.push('runnerVersion is required');
   if (!integer(value.rotationVersion, 1, 1_000_000)) issues.push('rotationVersion is invalid');
+  if (!(Number.isSafeInteger(value.seed) || boundedString(value.seed, 1, 128))) issues.push('seed is invalid');
   if (value.startedAt !== null && !isRfc3339(value.startedAt)) issues.push('startedAt must be RFC 3339');
   if (!isRfc3339(value.rawDeviceCompletedAt)) issues.push('rawDeviceCompletedAt must be RFC 3339');
   if (!isRfc3339(value.completedAt)) issues.push('completedAt must be RFC 3339');
@@ -137,6 +139,13 @@ export function validateAttemptRecordV2(value: unknown, requestDeviceId?: string
   if (!integer(value.score, 0, 500)) issues.push('score is invalid');
   if (!finiteNumber(value.elapsedSeconds, 0, 7 * 24 * 60 * 60)) issues.push('elapsedSeconds is invalid');
   if (!Array.isArray(value.questions) || value.questions.length < 1 || value.questions.length > 500) issues.push('questions is invalid');
+  if (!Array.isArray(value.questionIds) || value.questionIds.length < 1 || value.questionIds.length > 500) {
+    issues.push('questionIds must be an array with 1..500 entries');
+  } else {
+    if (value.questionIds.some((id) => !boundedString(id, 1, 240))) issues.push('questionIds contain an invalid ID');
+    if (new Set(value.questionIds).size !== value.questionIds.length) issues.push('questionIds must be unique');
+    if (Array.isArray(value.questions) && value.questionIds.length !== value.questions.length) issues.push('questionIds does not match questions');
+  }
   if (integer(value.questionCount, 1, 500) && Array.isArray(value.questions) && value.questions.length !== value.questionCount) {
     issues.push('questionCount does not match questions');
   }
