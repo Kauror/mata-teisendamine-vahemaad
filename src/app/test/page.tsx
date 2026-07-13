@@ -186,8 +186,7 @@ function TestPageContent() {
   const [textFeedback, setTextFeedback] = useState<{ answer: string; isCorrect: boolean } | null>(null);
   // Offline: the catalogue version this session started from (attached to the
   // attempt so the server can validate it historically), plus a stable session id
-  // so an interrupted exercise resumes exactly, and a stale-data indicator.
-  const [isStale, setIsStale] = useState(false);
+  // so an interrupted exercise resumes exactly.
   const [sessionReady, setSessionReady] = useState(false);
   const [storageError, setStorageError] = useState('');
   const startedAtRef = useRef<string>(new Date().toISOString());
@@ -228,14 +227,12 @@ function TestPageContent() {
           return exercise.topic === topic || exercise.category === categoryParam;
         });
         if (cancelled) return;
-        setIsStale(false);
         setExerciseAvailability(isActive ? 'allowed' : 'blocked');
       })
       .catch(async () => {
         if (cancelled) return;
         const permitted = await isExercisePermittedOffline(learnerId, { exerciseId: exerciseIdParam, subject, topic, category: categoryParam }).catch(() => false);
         if (cancelled) return;
-        setIsStale(permitted);
         setExerciseAvailability(permitted ? 'allowed' : 'blocked');
       });
 
@@ -544,7 +541,6 @@ function TestPageContent() {
 
         <section className='question-card'>
           <p className='question-eyebrow'>Vasta küsimusele</p>
-          {isStale ? <p className='offline-stale-chip'>Näitan viimati sünkroonitud harjutust</p> : null}
           <h1 className='question-text'>{current.question}</h1>
           <CountingObjectGrid question={current} />
           {isClockQuestion && current.clockHour != null && current.clockMinutes != null && (

@@ -36,11 +36,8 @@ export default function ChildHomeDashboard({
           <span className='child-home-avatar' aria-hidden>{child.avatar}</span>
           <div>
             <h1>{child.name}</h1>
-            <p>Vali harjutus</p>
           </div>
         </header>
-
-        <Link className='history-link child-history-link' href={`/history?child=${child.learner}`}>📄 Vaata {child.name} ajalugu</Link>
 
         <DailyTasksPanel learner={child.learner} />
 

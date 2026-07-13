@@ -24,7 +24,7 @@ export function OfflineStatusBar() {
     label = 'Sünkroonimist proovitakse varsti uuesti';
     tone = 'muted';
   } else if (!online) {
-    label = 'Võrguühendus puudub · harjutamist saab jätkata';
+    label = 'Internetti pole';
     tone = 'warn';
   } else if (syncing) {
     label = 'Sünkroonin…';

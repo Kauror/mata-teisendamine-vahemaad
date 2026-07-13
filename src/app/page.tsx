@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel, trophyWord } from '@/lib/history';
+import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import NoticeBoard from '@/app/components/NoticeBoard';
 import { fetchHistoryPage } from '@/lib/historyClient';
+import { APP_VERSION } from '@/lib/shared/types';
 
 type H = {
   id: number;
@@ -30,9 +31,9 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, bala
       </div>
 
       <div className='child-overview'>
-        <p className='streak-badge'><span aria-hidden>🔥</span><strong>{streak}</strong> õpiseeria</p>
-        <p className='stars-badge'><span aria-hidden>⭐</span><strong>{formatStars(balance)}</strong> tähte</p>
-        <p className='trophy-badge'><span aria-hidden>🏆</span><strong>{trophies}</strong> {trophyWord(trophies)}</p>
+        <p className='streak-badge'><span aria-hidden>🔥</span> õpiseeria <strong>{streak}</strong></p>
+        <p className='stars-badge'><span aria-hidden>⭐</span><strong>{formatStars(balance)}</strong></p>
+        <p className='trophy-badge'><span aria-hidden>🏆</span><strong>{trophies}</strong></p>
       </div>
 
       <div className='recent-panel'>
@@ -129,6 +130,7 @@ export default function Home() {
         <Link href='/history' className='dashboard-history-link'>Ajalugu</Link>
         <Link href='/vanem' className='dashboard-history-link'>Lapsevanema ala</Link>
       </div>
+      <p className='dashboard-version'>v{APP_VERSION}</p>
     </main>
   );
 }

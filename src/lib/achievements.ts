@@ -1,10 +1,11 @@
 import db from '@/lib/db';
 import { isKirsiAttempt } from '@/lib/history';
-import { getLongestLearningStreak } from '@/lib/learningPoints';
+import { getLearningDaysThisWeek } from '@/lib/learningPoints';
 import { type Learner } from '@/lib/tasks';
 
 export type Achievement = {
   id: string;
+  kind: 'exercise_milestone' | 'weekly';
   title: string;
   emoji: string;
   description: string;
@@ -22,33 +23,40 @@ function totalExercises(learner: Learner) {
   return rows.filter((row) => (isKirsiAttempt(row.category, row.learner) ? 'kirsi' : 'kiur') === learner).length;
 }
 
-const EXERCISES_TARGET = 50;
 const PERFECT_WEEK_DAYS = 7;
+export const EXERCISE_MILESTONES = [...Array.from({ length: 19 }, (_, index) => (index + 1) * 50), 999] as const;
 
-// Milestones a child unlocks by practising. They are derived from history on each
-// read (rather than stored), and because both use monotonic measures — a
-// cumulative count and an all-time-longest streak — they never re-lock once earned.
+export function latestExerciseMilestone(exercises: number) {
+  return EXERCISE_MILESTONES.filter((milestone) => exercises >= milestone).at(-1) ?? null;
+}
+
+// Milestones are derived from history on each read rather than stored. Exercise
+// milestones are cumulative, while the weekly achievement is current-week only.
 export function getAchievements(learner: Learner): Achievement[] {
   const exercises = totalExercises(learner);
-  const longestStreak = getLongestLearningStreak(learner);
+  const exerciseMilestone = latestExerciseMilestone(exercises);
+  const nextExerciseMilestone = EXERCISE_MILESTONES.find((milestone) => milestone > exercises) ?? 999;
+  const weeklyDays = getLearningDaysThisWeek(learner);
 
   return [
     {
-      id: 'exercises-50',
-      title: '50 harjutust',
+      id: `exercises-${exerciseMilestone ?? nextExerciseMilestone}`,
+      kind: 'exercise_milestone',
+      title: `${exerciseMilestone ?? nextExerciseMilestone} harjutust`,
       emoji: '🎯',
-      description: 'Lahenda kokku 50 harjutust',
-      unlocked: exercises >= EXERCISES_TARGET,
-      current: Math.min(exercises, EXERCISES_TARGET),
-      target: EXERCISES_TARGET
+      description: `Lahenda kokku ${nextExerciseMilestone} harjutust`,
+      unlocked: exerciseMilestone !== null,
+      current: exerciseMilestone ?? exercises,
+      target: exerciseMilestone ?? nextExerciseMilestone
     },
     {
       id: 'perfect-week',
+      kind: 'weekly',
       title: 'Täiuslik nädal',
       emoji: '🗓️',
-      description: 'Harjuta 7 päeva järjest',
-      unlocked: longestStreak >= PERFECT_WEEK_DAYS,
-      current: Math.min(longestStreak, PERFECT_WEEK_DAYS),
+      description: 'Harjuta sel nädalal 7 päeval',
+      unlocked: weeklyDays >= PERFECT_WEEK_DAYS,
+      current: weeklyDays,
       target: PERFECT_WEEK_DAYS
     }
   ];

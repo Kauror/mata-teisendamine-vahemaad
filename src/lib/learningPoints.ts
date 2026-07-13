@@ -1,5 +1,5 @@
 import db from '@/lib/db';
-import { addAppDays, isoToAppDate } from '@/lib/appDate';
+import { addAppDays, appDateRange, isoToAppDate, startOfAppWeek } from '@/lib/appDate';
 import { isKirsiAttempt } from '@/lib/history';
 import { awardLearningStreakRewards, AwardedStreakReward, getStreakRewardsForAttempt } from '@/lib/rewardRules';
 import { sprintAttemptQualifies } from '@/lib/sprintReward';
@@ -231,6 +231,13 @@ export function getLongestLearningStreak(learner: Learner) {
     previous = day;
   }
   return longest;
+}
+
+// Counts distinct study days in the current Monday-Sunday week. A new Monday
+// naturally starts at zero, which keeps the weekly achievement current.
+export function getLearningDaysThisWeek(learner: Learner, today = todayDateString()) {
+  const dates = studyDates(learner);
+  return appDateRange(startOfAppWeek(today), today).filter((day) => dates.has(day)).length;
 }
 
 export function getActiveLearningStreak(learner: Learner, today = todayDateString()) {

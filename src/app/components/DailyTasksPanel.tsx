@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
 import { trophyWord } from '@/lib/history';
 import { completeTaskOffline, getDailyTasksOffline, getDashboardSnapshot } from '@/lib/offline/api';
@@ -36,6 +36,7 @@ type MonthlyCelebration = {
 
 type Achievement = {
   id: string;
+  kind: 'exercise_milestone' | 'weekly';
   title: string;
   emoji: string;
   description: string;
@@ -66,6 +67,7 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
   const [confirmTask, setConfirmTask] = useState<ChildTask | null>(null);
   const [bonusOpen, setBonusOpen] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [milestoneNotice, setMilestoneNotice] = useState<Achievement | null>(null);
 
   const load = useCallback(() => {
     setError('');
@@ -165,12 +167,27 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
   const balance = data?.balance ?? 0;
   const trophies = data?.trophies ?? 0;
   const celebration = data?.monthlyCelebration ?? null;
-  const achievements = data?.achievements ?? [];
+  const achievements = useMemo(() => data?.achievements ?? [], [data]);
   const tasks = data?.tasks ?? [];
   const isDone = (task: ChildTask) => task.status === 'completed' || task.status === 'locked';
   const activeTasks = tasks.filter((task) => !isDone(task));
   const doneTasks = tasks.filter(isDone);
   const storeHref = learner === 'kiur' ? '/kiur/pood' : '/kirsi/pood';
+
+  useEffect(() => {
+    const milestone = achievements.find((achievement) => achievement.kind === 'exercise_milestone' && achievement.unlocked);
+    if (!milestone) return;
+    const storageKey = `exercise-milestone:${learner}`;
+    const seenMilestone = window.localStorage.getItem(storageKey);
+    if (seenMilestone === null) {
+      window.localStorage.setItem(storageKey, milestone.id);
+      return;
+    }
+    if (seenMilestone !== milestone.id) {
+      window.localStorage.setItem(storageKey, milestone.id);
+      setMilestoneNotice(milestone);
+    }
+  }, [achievements, learner]);
 
   const renderTask = (task: ChildTask) => {
     const completed = task.status === 'completed';
@@ -206,12 +223,20 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
         </div>
       )}
       <div className='daily-summary'>
-        <span>⭐ {formatStars(balance)} tähte</span>
-        <span>🔥 Õpiseeria: {data?.streak ?? 0} päeva</span>
-        <span>🏆 Sul on {trophies} {trophyWord(trophies)}</span>
+        <span>⭐ {formatStars(balance)}</span>
+        <span>🔥 Õpiseeria {data?.streak ?? 0}</span>
+        <span>🏆 {trophies}</span>
         <Link href={storeHref}>🛒 Pood</Link>
         <Link href='/history'>📄 Ajalugu</Link>
       </div>
+
+      {milestoneNotice && (
+        <div className='achievement-notice' role='status'>
+          <span aria-hidden>🎉</span>
+          <strong>Saavutus: {milestoneNotice.title}!</strong>
+          <button type='button' aria-label='Sulge saavutuseteade' onClick={() => setMilestoneNotice(null)}>×</button>
+        </div>
+      )}
 
       {achievements.length > 0 && (
         <div className='achievement-strip' aria-label='Saavutused'>

@@ -10,10 +10,7 @@ input{padding:12px;border:2px solid #c8d1ff;border-radius:12px;font-size:18px}.i
 .access-page{min-height:100vh;padding:18px;display:grid;place-items:center;background:radial-gradient(circle at top left,rgba(219,234,254,.9),transparent 32%),linear-gradient(180deg,#eef5ff,#f8fbff);color:#0b1b45}
 .access-card{width:min(380px,100%);padding:24px;border-radius:26px;background:rgba(255,255,255,.96);border:1px solid #dfe8f6;box-shadow:0 24px 70px rgba(30,64,175,.12);display:grid;gap:16px;text-align:center}
 .access-icon{width:64px;height:64px;margin:0 auto;display:grid;place-items:center;border-radius:20px;background:#eff6ff;font-size:34px}
-.access-card h1{margin:0;font-size:clamp(30px,8vw,42px);line-height:1;font-weight:900;letter-spacing:0}
 .access-form{display:grid;gap:12px;text-align:left}
-.access-form label{display:grid;gap:6px;font-weight:850;color:#0b1b45}
-.access-form label span{color:#64748b;font-size:14px}
 .access-form input{width:100%;min-height:58px;text-align:center;font-size:28px;font-weight:900;letter-spacing:.18em}
 .access-form button{width:100%;min-height:54px;border-radius:18px;background:linear-gradient(180deg,#3b82f6,#2563eb);font-size:18px;font-weight:900}
 @media (max-width:520px){.access-page{padding:12px}.access-card{padding:20px;border-radius:22px}.access-icon{width:54px;height:54px;border-radius:17px;font-size:29px}.access-form input{min-height:54px;font-size:25px}}
@@ -96,7 +93,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .exercise-row{margin:0;font-size:13.5px;color:#33416f;word-break:break-word;line-height:1.25}
 .recent-empty{margin:0;color:#64748b;font-size:14px;line-height:1.25}
 .card-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:2px;flex-wrap:wrap}
-.subject-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border:0;border-radius:14px;background:linear-gradient(180deg,#3b82f6 0%,#2563eb 100%);color:#fff;font-size:16px;font-weight:800;letter-spacing:-.01em;cursor:pointer;text-decoration:none;box-shadow:0 7px 16px rgba(37,99,235,.24);transition:transform 160ms ease,box-shadow 160ms ease,opacity 160ms ease}
+.subject-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 13px;border:0;border-radius:12px;background:linear-gradient(180deg,#3b82f6 0%,#2563eb 100%);color:#fff;font-size:14px;font-weight:800;letter-spacing:-.01em;cursor:pointer;text-decoration:none;box-shadow:0 5px 12px rgba(37,99,235,.22);transition:transform 160ms ease,box-shadow 160ms ease,opacity 160ms ease}
 .subject-button:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(37,99,235,.3)}
 .subject-button:focus{outline:3px solid #99a8ff;outline-offset:2px}
 .subject-button:active{transform:translateY(0)}
@@ -107,8 +104,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .noticeboard-title{margin:0;font-size:13px;font-weight:800;color:#a16207;opacity:.85}
 .noticeboard-text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#6b5a32;font-weight:600;font-size:13px;line-height:1.4}
 .dashboard-footer-links{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:2px}
+.dashboard-version{margin:0;text-align:center;color:#cbd5e1;font-size:12px;font-weight:700}
 .dashboard-history-link{width:fit-content;min-height:44px;margin:2px auto 0;display:inline-flex;align-items:center;color:#2563eb;font-size:16px;font-weight:800;text-decoration:none;border-bottom:1px dashed currentColor}
-@media (max-width:560px){.dashboard{padding:8px}.children-list{gap:8px}.child-dashboard-card{border-radius:16px;padding:10px;gap:7px}.child-profile{gap:9px}.child-avatar{font-size:31px}.child-name{font-size:21px}.last-practiced{font-size:13px}.today-practiced{font-size:13px}.streak-badge{min-height:32px;font-size:13px}.card-actions{margin-top:0}.subject-button{width:fit-content;min-height:44px;border-radius:14px;padding:0 16px;gap:8px;font-size:15px;box-shadow:0 5px 13px rgba(37,99,235,.2)}.child-dashboard-card[data-accent="pink"] .subject-button{box-shadow:0 5px 13px rgba(219,39,119,.18)}.history-link{justify-content:center}.dashboard-footer-links{gap:12px}}
+@media (max-width:560px){.dashboard{padding:8px}.children-list{gap:8px}.child-dashboard-card{border-radius:16px;padding:10px;gap:7px}.child-profile{gap:9px}.child-avatar{font-size:31px}.child-name{font-size:21px}.last-practiced{font-size:13px}.today-practiced{font-size:13px}.streak-badge{min-height:32px;font-size:13px}.card-actions{margin-top:0}.subject-button{width:fit-content;min-height:38px;border-radius:12px;padding:0 13px;gap:7px;font-size:14px;box-shadow:0 4px 10px rgba(37,99,235,.18)}.child-dashboard-card[data-accent="pink"] .subject-button{box-shadow:0 4px 10px rgba(219,39,119,.16)}.history-link{justify-content:center}.dashboard-footer-links{gap:12px}}
 
 
 .subject-flow-page{max-width:900px}
@@ -615,6 +613,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .achievement-text strong{font-size:14px;font-weight:850;color:#0b1b45}
 .achievement-text small{font-size:12px;font-weight:700;color:#64748b}
 .achievement-badge.unlocked .achievement-text small{color:#b45309}
+.achievement-notice{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:14px;background:#ecfdf5;border:1px solid #86efac;color:#166534}
+.achievement-notice strong{font-size:14px}.achievement-notice button{margin-left:auto;width:28px;height:28px;padding:0;border-radius:999px;background:#dcfce7;color:#166534;font-size:20px;line-height:1;cursor:pointer}
 
 /* Weekly digest (parent hub) */
 .weekly-digest-card{gap:12px}

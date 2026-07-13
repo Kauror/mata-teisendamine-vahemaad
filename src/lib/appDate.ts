@@ -37,6 +37,13 @@ export function previousAppDate(date: string): string {
   return addAppDays(date, -1);
 }
 
+// Monday is the first day of the app week. This is deliberately calendar-based
+// so weekly counters reset at the family's local Monday rather than after 168h.
+export function startOfAppWeek(date: string): string {
+  const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+  return addAppDays(date, -((weekday + 6) % 7));
+}
+
 // Inclusive list of 'YYYY-MM-DD' strings from `start` to `end` (both calendar
 // dates). Returns [] if start is after end.
 export function appDateRange(start: string, end: string): string[] {

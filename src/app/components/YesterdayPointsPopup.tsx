@@ -47,7 +47,7 @@ export default function YesterdayPointsPopup({
         {summary.hasEarnings ? (
           <>
             <span className='points-recap-emoji' aria-hidden>🎉</span>
-            <h2 id='points-recap-title'>Eile teenisid tähti!</h2>
+            <h2 id='points-recap-title'>Eile</h2>
             <strong className='points-recap-total'>+{formatStars(summary.total)} ⭐</strong>
             <ul className='points-recap-list'>
               {summary.breakdown.map((item) => (

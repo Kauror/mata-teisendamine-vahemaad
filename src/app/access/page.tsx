@@ -37,21 +37,18 @@ export default function AccessPage() {
     <main className='access-page'>
       <section className='access-card'>
         <div className='access-icon' aria-hidden>🔒</div>
-        <h1>Sisesta pere parool</h1>
         <form className='access-form' onSubmit={submit}>
-          <label>
-            <span>PIN või parool</span>
-            <input
-              autoComplete='current-password'
-              autoFocus
-              maxLength={128}
-              type='password'
-              value={pin}
-              onChange={(event) => setPin(event.target.value)}
-            />
-          </label>
+          <input
+            aria-label='Sisesta pere parool'
+            autoComplete='current-password'
+            autoFocus
+            maxLength={128}
+            type='password'
+            value={pin}
+            onChange={(event) => setPin(event.target.value)}
+          />
           {error ? <p className='error' role='alert' aria-live='assertive'>{error}</p> : null}
-          <button type='submit' disabled={busy || pin.length === 0}>{busy ? 'Kontrollin...' : 'Sisene'}</button>
+          <button type='submit' aria-label={busy ? 'Kontrollin...' : 'Sisene'} disabled={busy || pin.length === 0}>{busy ? '…' : '→'}</button>
         </form>
       </section>
     </main>
