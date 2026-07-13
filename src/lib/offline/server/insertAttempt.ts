@@ -19,6 +19,7 @@ import { metadataMatchesContract, validateAttemptRecordV2 } from '@/lib/server/h
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import { isOfflineProtocolV2Enabled } from '@/lib/offline/protocol';
 import { validateAttemptTiming } from '@/lib/offline/server/attemptTiming';
+import { createHash } from 'node:crypto';
 
 // Both legacy online completion and phased protocol-v2 sync use this one
 // insertion path. Protocol v2 adds strict contract validation and server score
@@ -74,7 +75,12 @@ export function setSettlementFaultInjectorForTests(injector: ((stage: string) =>
 }
 
 function existingByClientId(clientAttemptId: string) {
-  return db.prepare('SELECT id, protocolVersion FROM attempts WHERE clientAttemptId = ?').get(clientAttemptId) as { id: number; protocolVersion: number } | undefined;
+  return db.prepare('SELECT id, protocolVersion, attemptFingerprint FROM attempts WHERE clientAttemptId = ?').get(clientAttemptId) as { id: number; protocolVersion: number; attemptFingerprint: string | null } | undefined;
+}
+
+function attemptFingerprint(input: InsertAttemptInput, prepared: V2Preparation) {
+  const data = JSON.stringify({ id: input.clientAttemptId, device: input.deviceId, learner: input.learner, runner: input.runnerId, exercise: input.exerciseId, catalogue: input.catalogueVersion, policy: input.rewardPolicyVersion, generator: input.generatorVersion, version: input.runnerVersion, rotation: input.rotationVersion, seed: input.seed, ids: input.questionIds, answers: prepared.questions.map((row) => [row.id, row.userAnswer ?? row.selectedAnswer ?? row.selectedLetter ?? row.selectedWord ?? row.answer ?? '']), completed: prepared.clientCorrectedCompletedAt, raw: prepared.rawDeviceCompletedAt });
+  return createHash('sha256').update(data).digest('hex');
 }
 
 function rewardForExisting(row: { id: number; protocolVersion: number }) {
@@ -164,7 +170,7 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
   let questions = Array.isArray(input.questions) ? input.questions : [];
   const exercise = learner && subject ? findLearningExerciseForAttempt({ learner, subject, topic, category }) : null;
 
-  if (input.clientAttemptId) {
+  if (protocolVersion === 1 && input.clientAttemptId) {
     const existing = existingByClientId(input.clientAttemptId);
     if (existing) return { status: 'duplicate', serverAttemptId: existing.id, reward: rewardForExisting(existing) };
   }
@@ -175,6 +181,13 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
     if ('status' in prepared) return prepared;
     v2 = prepared;
     questions = prepared.questions;
+    if (input.clientAttemptId) {
+      const existing = existingByClientId(input.clientAttemptId);
+      if (existing) {
+        if (existing.attemptFingerprint === attemptFingerprint(input, prepared)) return { status: 'duplicate', serverAttemptId: existing.id, reward: rewardForExisting(existing) };
+        return { status: 'needs_review', serverAttemptId: existing.id, reasonCode: 'attempt_id_conflict', message: 'Attempt ID already exists with different data.' };
+      }
+    }
   }
 
   const isLearningAttempt = rawSubject !== 'inglise-keel';
@@ -279,12 +292,12 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       catalogueVersion, clientTimeZone, clientUtcOffsetMinutes,
       clientCorrectedCompletedAt, effectiveCompletedAt, completionDate, clockStatus, clockSkewMs,
       rewardPolicyVersion, rewardEngineVersion, generatorVersion, runnerId, runnerVersion,
-      rotationVersion, runnerSeed, questionIdsJson, protocolVersion, rewardSettlementStatus, reviewReasonCode
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      rotationVersion, runnerSeed, questionIdsJson, protocolVersion, rewardSettlementStatus, reviewReasonCode, attemptFingerprint
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const run = db.transaction((): InsertAttemptResult => {
-    if (input.clientAttemptId) {
+    if (protocolVersion === 1 && input.clientAttemptId) {
       const duplicate = existingByClientId(input.clientAttemptId);
       if (duplicate) return { status: 'duplicate', serverAttemptId: duplicate.id, reward: rewardForExisting(duplicate) };
     }
@@ -325,7 +338,8 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       input.questionIds ? JSON.stringify(input.questionIds) : null,
       protocolVersion,
       settlementStatus,
-      persistedReviewReasonCode
+      persistedReviewReasonCode,
+      protocolVersion === 2 && v2 ? attemptFingerprint(input, v2) : null
     );
     const attemptId = Number(result.lastInsertRowid);
     const isKiurSprint = learner === 'kiur' && (subject ?? rawSubject) === 'inglise-keel' && topic === 'sprint';

@@ -775,6 +775,11 @@ function persistReviewReasonCode(connection: DatabaseConnection) {
   addColumn(connection, 'attempts', 'reviewReasonCode', 'TEXT');
 }
 
+function addAttemptFingerprint(connection: DatabaseConnection) {
+  addColumn(connection, 'attempts', 'attemptFingerprint', 'TEXT');
+  connection.exec('CREATE INDEX IF NOT EXISTS idx_attempts_fingerprint ON attempts(clientAttemptId, attemptFingerprint)');
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -805,6 +810,12 @@ const migrations: Migration[] = [
     name: 'persist_review_reason_code',
     checksumSource: 'persist_review_reason_code:v1:2026-07-12',
     up: persistReviewReasonCode
+  },
+  {
+    id: 6,
+    name: 'attempt_fingerprint',
+    checksumSource: 'attempt_fingerprint:v1:2026-07-13',
+    up: addAttemptFingerprint
   }
 ];
 
