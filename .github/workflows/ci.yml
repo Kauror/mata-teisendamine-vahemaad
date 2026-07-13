@@ -161,7 +161,7 @@ jobs:
       - name: Application must have no published host port
         run: test "$(docker inspect --format '{{json .HostConfig.PortBindings}}' pikkuste-harjutaja)" = "null"
       - name: Tunnel-style probe reaches the app only over the named network
-        run: docker run --rm --network pikkuste-harjutaja-edge node:22.22.3-alpine3.23 node -e "fetch('http://pikkuste-harjutaja:3000/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        run: docker run --rm --network pikkuste-harjutaja-edge node:22.22.3-alpine3.23@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 node -e "fetch('http://pikkuste-harjutaja:3000/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       - name: Mounted data survives container replacement
         run: |
           docker compose exec -T app node -e "require('fs').writeFileSync('/data/container-replacement-probe','persisted')"

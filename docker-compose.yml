@@ -37,7 +37,7 @@ services:
       start_period: 20s
 
   cloudflared:
-    image: cloudflare/cloudflared:2026.7.0
+    image: cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df
     profiles: ["tunnel"]
     init: true
     command: tunnel --no-autoupdate --metrics 127.0.0.1:2000 run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
