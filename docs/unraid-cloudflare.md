@@ -63,3 +63,38 @@ To replace the app without losing data, keep `APP_DATA_DIR` unchanged and run
 `docker compose up -d --build --force-recreate app`. Do not remove the host data
 directory. Restore only from a reviewed backup and keep the application stopped
 while replacing the live SQLite files.
+
+## Release and rollback runbook
+
+Run these commands on Unraid. Replace `RELEASE_SHA` only with the reviewed
+candidate SHA; keep the old SHA and image until acceptance completes.
+
+```sh
+cd /mnt/user/appdata/pikkuste-harjutaja
+OLD_SHA=$(git rev-parse HEAD); OLD_IMAGE=$(docker image inspect pikkuste-harjutaja:local --format '{{.Id}}' 2>/dev/null || true)
+git fetch origin && git checkout RELEASE_SHA
+test -f .env || cp .env.example .env
+mkdir -p /mnt/user/appdata/pikkuste-harjutaja/backups
+docker compose stop app
+tar -C /mnt/user/appdata/pikkuste-harjutaja -czf /mnt/user/appdata/pikkuste-harjutaja/backups/data-pre-RELEASE_SHA.tgz data
+tar -tzf /mnt/user/appdata/pikkuste-harjutaja/backups/data-pre-RELEASE_SHA.tgz >/dev/null
+docker compose build --pull app
+docker compose run --rm --no-deps app npm run audit:v2 -- /data/maths-game.sqlite
+docker compose --profile tunnel up -d --force-recreate
+docker compose ps
+docker compose logs --tail=300 app
+curl -fsS http://pikkuste-harjutaja:3000/api/healthz
+```
+
+Rollback only after stopping the new app. Never run old code against a migrated
+database; restore the matching pre-deployment archive first.
+
+```sh
+cd /mnt/user/appdata/pikkuste-harjutaja
+docker compose down
+mv data data.failed-RELEASE_SHA
+mkdir data
+tar -C /mnt/user/appdata/pikkuste-harjutaja -xzf /mnt/user/appdata/pikkuste-harjutaja/backups/data-pre-RELEASE_SHA.tgz
+git checkout "$OLD_SHA"
+docker compose up -d --force-recreate
+```
