@@ -76,7 +76,6 @@ function TodayLeaderboard({ kiurCount, kirsiCount }: { kiurCount: number; kirsiC
   return (
     <section className='today-leaderboard' aria-label='Täna harjutatud'>
       {child('Kiur', kiurCount, leader === 'kiur')}
-      <span className='leaderboard-vs' aria-hidden>ja</span>
       {child('Kirsi', kirsiCount, leader === 'kirsi')}
     </section>
   );

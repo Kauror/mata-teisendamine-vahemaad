@@ -60,7 +60,6 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .leaderboard-name{font-size:17px;font-weight:900;color:#0b1b45;line-height:1.1}
 .leaderboard-child[data-leader="true"] .leaderboard-name{color:#5b21b6;font-size:17px}
 .leaderboard-count{font-size:13px;font-weight:800;color:#64748b}
-.leaderboard-vs{align-self:center;font-size:13px;font-weight:850;color:#94a3b8}
 @media (max-width:640px){.today-leaderboard{gap:8px;padding:8px 10px}.leaderboard-trophy{font-size:30px}}
 .children-list{display:grid;gap:12px}
 .child-dashboard-card{background:#fff;border:2px solid #dbe3ff;border-radius:20px;padding:12px;box-shadow:0 6px 24px #2341a512;display:grid;gap:8px}
@@ -100,9 +99,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .child-dashboard-card[data-accent="pink"] .subject-button{background:linear-gradient(180deg,#ec4899 0%,#db2777 100%);box-shadow:0 12px 26px rgba(219,39,119,.24)}
 .history-link{min-height:44px;display:inline-flex;align-items:center;gap:8px;color:#2563eb;font-size:17px;font-weight:650;text-decoration:none;border-bottom:1px dashed currentColor}
 .child-dashboard-card[data-accent="pink"] .history-link{color:#db2777}
-.noticeboard{background:#fffdf5;border:1px solid #fef0c7;border-radius:12px;padding:9px 12px;display:grid;gap:4px}
-.noticeboard-title{margin:0;font-size:13px;font-weight:800;color:#a16207;opacity:.85}
-.noticeboard-text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#6b5a32;font-weight:600;font-size:13px;line-height:1.4}
+.noticeboard{background:#fffdf5;border:1px solid #fef0c7;border-radius:12px;padding:9px 12px}
+.noticeboard-title{cursor:pointer;font-size:13px;font-weight:800;color:#a16207;opacity:.85}
+.noticeboard-text{margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere;color:#6b5a32;font-weight:600;font-size:13px;line-height:1.4}
 .dashboard-footer-links{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:2px}
 .dashboard-version{margin:0;text-align:center;color:#cbd5e1;font-size:12px;font-weight:700}
 .dashboard-history-link{width:fit-content;min-height:44px;margin:2px auto 0;display:inline-flex;align-items:center;color:#2563eb;font-size:16px;font-weight:800;text-decoration:none;border-bottom:1px dashed currentColor}

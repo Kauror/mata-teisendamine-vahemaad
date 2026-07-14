@@ -1,11 +1,14 @@
 import db from '@/lib/db';
+import { childExerciseCards } from '@/lib/childExerciseCards';
+import { getCompletedExerciseIdsToday } from '@/lib/exerciseCompletion';
+import { DAILY_EXERCISE_LIMIT, getActiveLearningExercises } from '@/lib/learningExercises';
 import { isKirsiAttempt } from '@/lib/history';
 import { getLearningDaysThisWeek } from '@/lib/learningPoints';
 import { type Learner } from '@/lib/tasks';
 
 export type Achievement = {
   id: string;
-  kind: 'exercise_milestone' | 'weekly';
+  kind: 'exercise_milestone' | 'daily' | 'weekly';
   title: string;
   emoji: string;
   description: string;
@@ -30,12 +33,18 @@ export function latestExerciseMilestone(exercises: number) {
   return EXERCISE_MILESTONES.filter((milestone) => exercises >= milestone).at(-1) ?? null;
 }
 
+function completedExercisesToday(learner: Learner) {
+  const exercises = childExerciseCards(learner, getActiveLearningExercises(learner));
+  return Math.min(getCompletedExerciseIdsToday(learner, exercises).size, DAILY_EXERCISE_LIMIT);
+}
+
 // Milestones are derived from history on each read rather than stored. Exercise
 // milestones are cumulative, while the weekly achievement is current-week only.
 export function getAchievements(learner: Learner): Achievement[] {
   const exercises = totalExercises(learner);
   const exerciseMilestone = latestExerciseMilestone(exercises);
   const nextExerciseMilestone = EXERCISE_MILESTONES.find((milestone) => milestone > exercises) ?? 999;
+  const dailyExercises = completedExercisesToday(learner);
   const weeklyDays = getLearningDaysThisWeek(learner);
 
   return [
@@ -48,6 +57,16 @@ export function getAchievements(learner: Learner): Achievement[] {
       unlocked: exerciseMilestone !== null,
       current: exerciseMilestone ?? exercises,
       target: exerciseMilestone ?? nextExerciseMilestone
+    },
+    {
+      id: 'daily-exercises',
+      kind: 'daily',
+      title: 'Täna',
+      emoji: '✅',
+      description: `Lahenda täna ${DAILY_EXERCISE_LIMIT} erinevat harjutust`,
+      unlocked: dailyExercises >= DAILY_EXERCISE_LIMIT,
+      current: dailyExercises,
+      target: DAILY_EXERCISE_LIMIT
     },
     {
       id: 'perfect-week',

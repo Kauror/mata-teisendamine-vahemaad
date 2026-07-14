@@ -16,8 +16,10 @@ export default function NoticeBoard() {
 
   return (
     <section className='noticeboard' aria-label='Teated ja reeglid'>
-      <h2 className='noticeboard-title'>📌 Teated ja reeglid</h2>
-      <div className='noticeboard-text'>{text}</div>
+      <details>
+        <summary className='noticeboard-title'>📌 Teated ja reeglid</summary>
+        <div className='noticeboard-text'>{text}</div>
+      </details>
     </section>
   );
 }

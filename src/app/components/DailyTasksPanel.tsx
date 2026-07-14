@@ -36,7 +36,7 @@ type MonthlyCelebration = {
 
 type Achievement = {
   id: string;
-  kind: 'exercise_milestone' | 'weekly';
+  kind: 'exercise_milestone' | 'daily' | 'weekly';
   title: string;
   emoji: string;
   description: string;
