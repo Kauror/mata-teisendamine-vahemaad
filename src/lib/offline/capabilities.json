@@ -1,5 +1,5 @@
 {
-  "manifestVersion": 2,
+  "manifestVersion": 4,
   "shellRoutes": [
     "/",
     "/kiur",
@@ -9,6 +9,10 @@
     "/history/offline",
     "/offline",
     "/tulemus",
+    "/opi/ring-ja-ringjoon",
+    "/opi/kellaaeg",
+    "/opi/mootuhikud-pikkused",
+    "/opi/loodusopetus",
     "/kiur/inglise-keel/sprint",
     "/kiur/lugemine",
     "/kirsi/lugemine/pilt-ja-sona",

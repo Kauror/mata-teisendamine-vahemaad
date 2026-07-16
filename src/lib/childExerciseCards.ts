@@ -1,4 +1,5 @@
 import { KIUR_MATH_TOPICS } from '@/lib/kiurMathTopics';
+import { STUDY_PAGE_BY_EXERCISE_ID, studyPageRoute } from '@/lib/studyPages';
 import type { CatalogueEntry as LearningExerciseRow, Learner } from '@/lib/shared/types';
 
 export type ChildExerciseAccent = 'blue' | 'pink' | 'green' | 'amber' | 'orange' | 'purple' | 'teal' | 'violet';
@@ -71,6 +72,28 @@ function testRoute(exercise: LearningExerciseRow, learner: Learner) {
   return `/test?learner=${learner}&subject=${exercise.subject}&topic=${encodeURIComponent(exercise.topic)}&category=${encodeURIComponent(exercise.category)}&exerciseId=${encodeURIComponent(exercise.id)}&count=${count}&seed=${Date.now()}`;
 }
 
+// Exercises with a study page open it first (the child chooses to revise or
+// start straight away). Applied after fixed/catalogue cards are merged so both
+// card sources are covered from one place.
+function applyStudyRoutes(learner: Learner, cards: ChildExerciseCard[]): ChildExerciseCard[] {
+  return cards.map((card) => {
+    const studyKey = STUDY_PAGE_BY_EXERCISE_ID[card.id];
+    if (!studyKey) return card;
+    const count = card.legacySubject === 'loodusopetus' ? 10 : 15;
+    return {
+      ...card,
+      route: studyPageRoute(studyKey, {
+        learner,
+        subject: card.legacySubject,
+        topic: card.legacyTopic,
+        category: card.legacyCategory,
+        exerciseId: card.id,
+        count
+      })
+    };
+  });
+}
+
 function metadataFor(exercise: LearningExerciseRow) {
   const kiurTopic = KIUR_MATH_TOPICS.find((topic) => exercise.id === `kiur.math.${topic.id}`);
   if (kiurTopic) {
@@ -119,5 +142,5 @@ export function childExerciseCards(learner: Learner, exercises: LearningExercise
         ]
       };
     });
-  return mergeFixedChildExerciseCards(learner, catalogueCards);
+  return applyStudyRoutes(learner, mergeFixedChildExerciseCards(learner, catalogueCards));
 }
