@@ -5,6 +5,7 @@ import { KIUR_LENGTH_TOPIC_ID } from '@/lib/kiurMathTopics';
 import { formatStars } from '@/lib/formatStars';
 import { getStudyReward } from '@/lib/learningPoints';
 import { getCanonicalRewardSummary } from '@/lib/server/rewards/projection';
+import { resolveCorrectAnswer, resolveCorrectOrder, shouldAppendUnit } from '@/lib/reviewAnswers';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 
 export const dynamic = 'force-dynamic';
@@ -131,6 +132,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   const isKirsiReading = row.learner === 'kirsi' && row.subject === 'lugemine';
   const isKiurReading = row.learner === 'kiur' && row.subject === 'lugemine';
   const isReading = row.subject === 'lugemine';
+  const reviewCtx = { isReading, isKirsiReading, isEnglish, isKirsi };
   const attemptLabel = isScience ? 'Loodusõpetus' : (compactTopicLabel(row.topic, row.category) || row.category);
 
   const retryParams = new URLSearchParams({
@@ -193,22 +195,9 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
 
         <section className='result-list'>
         {questions.map((q, i) => {
-          const order = (q.orderingCards ?? [])
-            .slice()
-            .sort((a, b) => (q.orderingDirection === 'desc' ? b.valueMm - a.valueMm : a.valueMm - b.valueMm))
-            .map((c) => c.label)
-            .join(' → ');
-          const correctChoiceAnswer = isReading && q.correctAnswerText
-            ? q.correctAnswerText
-            : q.correctAnswerText
-            ? q.correctAnswerText
-            : isKirsiReading
-            ? (q.correctWord ?? '—')
-            : q.kind === 'choice' && q.choiceOptions?.length
-            ? (q.correctAnswers?.length ? q.correctAnswers.map((answerIndex) => q.choiceOptions?.[answerIndex]).filter(Boolean).join(' / ') : (q.choiceOptions[q.correctAnswer] ?? '—'))
-            : q.kind === 'choice' && !isEnglish
-              ? (q.correctAnswer === -1 ? '<' : q.correctAnswer === 0 ? '=' : '>')
-              : (isEnglish ? 'Sõnapaar sobib' : String(q.correctAnswer ?? '—'));
+          const order = resolveCorrectOrder(q);
+          const correctChoiceAnswer = resolveCorrectAnswer(q, reviewCtx);
+          const unit = shouldAppendUnit(q, reviewCtx) ? ` ${q.expectedUnit || ''}` : '';
 
           const isReadingPair = isKirsiReading && (q.image || q.question.includes('—'));
           const isEnglishPair = isEnglish && (q.estonian || q.question.includes('—'));
@@ -219,7 +208,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
               <ClockHistoryVisual question={q} />
               {q.kind === 'ordering'
                 ? <div className='answer-review-grid'><p className='answer-line'><span>Sinu järjestus:</span> <strong>{q.userAnswer || '—'}</strong></p><p className='answer-line'><span>Õige järjestus:</span> <strong>{order || '—'}</strong></p></div>
-                : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{correctChoiceAnswer}{(q.kind === 'choice' || isKirsi || isEnglish) ? '' : ` ${q.expectedUnit || ''}`}</strong></p></div>}
+                : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{q.userAnswer || '—'}{unit}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{correctChoiceAnswer}{unit}</strong></p></div>}
               <p className={q.isCorrect ? 'result-status correct' : 'result-status wrong'}>{q.isCorrect ? 'Õige' : 'Vale vastus'}</p>
               {(isReading || isRemediation) && q.text && (
                 <div className='reading-history-detail'>

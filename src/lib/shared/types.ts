@@ -358,7 +358,7 @@ export type PingResponse = {
 
 // Human-readable app version reported by the ping/sync endpoints. Independent of
 // the service-worker cache id (which is the build hash).
-export const APP_VERSION = '0.9.1';
+export const APP_VERSION = '0.9.2';
 
 // Server-side batch limits for the sync endpoint (untrusted client input).
 export const CLIENT_PENDING_ATTEMPTS_PER_SYNC = 20;

@@ -7,6 +7,14 @@ import { getConfirmedAttemptByClientId, getLocalAttempt } from '@/lib/offline/ap
 import type { LocalAttempt } from '@/lib/offline/records';
 import type { ServerAttempt } from '@/lib/shared/types';
 import { HELD_REWARD_MESSAGE, isHeldReward } from '@/lib/history';
+import {
+  reviewContext,
+  resolveCorrectAnswer,
+  resolveCorrectOrder,
+  resolveUserAnswer,
+  shouldAppendUnit,
+  type ReviewQuestion
+} from '@/lib/reviewAnswers';
 
 type ResultRecord =
   | { kind: 'local'; row: LocalAttempt }
@@ -61,6 +69,9 @@ export default function LocalResultContent({ clientId }: { clientId: string | nu
     ? isHeldReward(result.row.rewardSettlementStatus)
     : local?.status === 'needs_review';
 
+  const questions = Array.isArray(attempt.questions) ? attempt.questions as ReviewQuestion[] : [];
+  const ctx = reviewContext(attempt);
+
   return (
     <main className='container' style={{ display: 'grid', gap: 16 }}>
       <section className='question-card' style={{ display: 'grid', gap: 12, textAlign: 'center' }}>
@@ -71,6 +82,23 @@ export default function LocalResultContent({ clientId }: { clientId: string | nu
         {isHeld && <p className='result-held-notice' role='status'>{HELD_REWARD_MESSAGE}</p>}
         {result.kind === 'local' && !online && !isHeld && <p style={{ color: '#64748b', fontSize: 13 }}>Tähed liidetakse kontole, kui internet naaseb.</p>}
       </section>
+      {questions.length > 0 && (
+        <section className='result-list'>
+          {questions.map((question, index) => {
+            const unit = shouldAppendUnit(question, ctx) ? ` ${question.expectedUnit || ''}` : '';
+            return (
+              <article key={question.id ?? index} className={question.isCorrect ? 'result-review-card correct' : 'result-review-card wrong'}>
+                <p className='result-question'>{index + 1}. {question.question ?? 'Küsimus'}</p>
+                {question.kind === 'ordering'
+                  ? <div className='answer-review-grid'><p className='answer-line'><span>Sinu järjestus:</span> <strong>{resolveUserAnswer(question) || '—'}</strong></p><p className='answer-line'><span>Õige järjestus:</span> <strong>{resolveCorrectOrder(question) || '—'}</strong></p></div>
+                  : <div className='answer-review-grid'><p className='answer-line'><span>Sinu vastus:</span> <strong>{resolveUserAnswer(question) || '—'}{unit}</strong></p><p className='answer-line'><span>Õige vastus:</span> <strong>{resolveCorrectAnswer(question, ctx)}{unit}</strong></p></div>}
+                <p className={question.isCorrect ? 'result-status correct' : 'result-status wrong'}>{question.isCorrect ? 'Õige' : 'Vale vastus'}</p>
+                {question.explanation && <p className='answer-line'><span>Selgitus:</span> <strong>{question.explanation}</strong></p>}
+              </article>
+            );
+          })}
+        </section>
+      )}
       <div className='dashboard-footer-links'>
         <Link href={backHref} className='dashboard-history-link'>Tagasi</Link>
         {result.kind === 'confirmed'
