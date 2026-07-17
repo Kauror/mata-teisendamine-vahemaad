@@ -6,7 +6,9 @@ import { formatStars } from '@/lib/formatStars';
 import { trophyWord } from '@/lib/history';
 import { completeTaskOffline, getDailyTasksOffline, getDashboardSnapshot } from '@/lib/offline/api';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
+import MetricTooltip from '@/app/components/MetricTooltip';
 import { todayDateString } from '@/lib/appDate';
+import { achievementTooltip, starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -43,6 +45,7 @@ type Achievement = {
   unlocked: boolean;
   current: number;
   target: number;
+  tooltipCount: number;
 };
 
 type ChildDashboard = {
@@ -223,9 +226,9 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
         </div>
       )}
       <div className='daily-summary'>
-        <span>⭐ {formatStars(balance)}</span>
-        <span>🔥 Õpiseeria {data?.streak ?? 0}</span>
-        <span>🏆 {trophies}</span>
+        <MetricTooltip className='daily-summary-metric' label={starsTooltip(balance)}>⭐ {formatStars(balance)}</MetricTooltip>
+        <MetricTooltip className='daily-summary-metric' label={streakTooltip(data?.streak ?? 0)}>🔥 {data?.streak ?? 0}</MetricTooltip>
+        <MetricTooltip className='daily-summary-metric' label={trophiesTooltip(trophies)}>🏆 {trophies}</MetricTooltip>
         <Link href={storeHref}>🛒 Pood</Link>
         <Link href='/history'>📄 Ajalugu</Link>
       </div>
@@ -241,17 +244,17 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
       {achievements.length > 0 && (
         <div className='achievement-strip' aria-label='Saavutused'>
           {achievements.map((achievement) => (
-            <div
+            <MetricTooltip
               key={achievement.id}
               className={achievement.unlocked ? 'achievement-badge unlocked' : 'achievement-badge locked'}
-              title={achievement.unlocked ? `${achievement.title} — tehtud!` : `${achievement.description} (${achievement.current}/${achievement.target})`}
+              label={achievementTooltip(achievement.kind, achievement.tooltipCount)}
             >
               <span className='achievement-emoji' aria-hidden>{achievement.unlocked ? achievement.emoji : '🔒'}</span>
               <span className='achievement-text'>
                 <strong>{achievement.title}</strong>
                 <small>{achievement.unlocked ? 'Tehtud!' : `${achievement.current}/${achievement.target}`}</small>
               </span>
-            </div>
+            </MetricTooltip>
           ))}
         </div>
       )}

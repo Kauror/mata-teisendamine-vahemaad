@@ -7,7 +7,13 @@ import { syncNow } from '@/lib/offline/syncEngine';
 import { getPendingCount } from '@/lib/offline/api';
 import { getCursor } from '@/lib/offline/meta';
 import { prepareOffline } from '@/lib/offline/readiness';
-import { hasActiveRunnerSessions } from '@/lib/offline/runnerSession';
+import {
+  RUNNER_HEARTBEAT_INTERVAL_MS,
+  clearRunnerHeartbeat,
+  hasLiveRunnerHeartbeat,
+  isRunnerPath,
+  writeRunnerHeartbeat
+} from '@/lib/offline/runnerLiveness';
 
 type OfflineContextValue = {
   online: boolean; // server actually reachable (ping), not just navigator.onLine
@@ -45,6 +51,8 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const bootstrapDoneRef = useRef(false);
   const bootstrapInFlightRef = useRef(false);
   const registrationStartedRef = useRef(false);
+  const updateActivationStartedRef = useRef(false);
+  const runnerTabIdRef = useRef<string | null>(null);
 
   const refreshPending = useCallback(async () => {
     try {
@@ -110,6 +118,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         setServiceWorkerError(null);
         if (registration.waiting) {
           waitingWorker.current = registration.waiting;
+          setUpdateBlocked(false);
           setUpdateAvailable(true);
         }
         registration.addEventListener('updatefound', () => {
@@ -118,6 +127,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
           installing.addEventListener('statechange', () => {
             if (installing.state === 'installed' && navigator.serviceWorker.controller) {
               waitingWorker.current = registration.waiting;
+              setUpdateBlocked(false);
               setUpdateAvailable(true);
             } else if (installing.state === 'redundant') {
               registrationStartedRef.current = false;
@@ -158,22 +168,83 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     };
   }, [sync, runBootstrap]);
 
-  const applyUpdate = useCallback(async () => {
-    const worker = waitingWorker.current;
-    if (!worker) return;
-    if (await hasActiveRunnerSessions().catch(() => true)) {
-      setUpdateBlocked(true);
+  // A durable runner session can remain in IndexedDB after a tab is abandoned.
+  // Track only tabs that are actually on a runner route, with a short lease so
+  // a crashed or closed tab cannot keep the update guard stuck indefinitely.
+  useEffect(() => {
+    if (!runnerTabIdRef.current) {
+      runnerTabIdRef.current = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
+    }
+    const tabId = runnerTabIdRef.current;
+    if (!tabId) return;
+
+    const clear = () => {
+      try { clearRunnerHeartbeat(window.localStorage, tabId); } catch { /* storage unavailable */ }
+    };
+
+    if (!isRunnerPath(pathname)) {
+      clear();
       return;
     }
+
+    const heartbeat = () => {
+      try { writeRunnerHeartbeat(window.localStorage, tabId); } catch { /* current route still guards locally */ }
+    };
+    heartbeat();
+    const interval = window.setInterval(heartbeat, RUNNER_HEARTBEAT_INTERVAL_MS);
+    window.addEventListener('pagehide', clear);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('pagehide', clear);
+      clear();
+    };
+  }, [pathname]);
+
+  const hasLiveRunner = useCallback(() => {
+    if (isRunnerPath(pathname)) return true;
+    try { return hasLiveRunnerHeartbeat(window.localStorage); } catch { return false; }
+  }, [pathname]);
+
+  const activateWaitingWorker = useCallback(() => {
+    const worker = waitingWorker.current;
+    if (!worker || updateActivationStartedRef.current) return;
+    updateActivationStartedRef.current = true;
     setUpdateBlocked(false);
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      void hasActiveRunnerSessions().then((active) => {
-        if (!active) window.location.reload();
-        else setUpdateBlocked(true);
-      }).catch(() => setUpdateBlocked(true));
+      setUpdateAvailable(false);
+      window.location.reload();
     }, { once: true });
     worker.postMessage({ type: 'SKIP_WAITING' });
   }, []);
+
+  const applyUpdate = useCallback(async () => {
+    if (!waitingWorker.current) return;
+    if (hasLiveRunner()) {
+      setUpdateBlocked(true);
+      return;
+    }
+    activateWaitingWorker();
+  }, [activateWaitingWorker, hasLiveRunner]);
+
+  // If an update was deferred, retry automatically when the runner route is
+  // left or the last runner heartbeat in another tab expires/disappears.
+  useEffect(() => {
+    if (!updateAvailable || !updateBlocked) return;
+    const retry = () => {
+      if (!hasLiveRunner()) activateWaitingWorker();
+    };
+    retry();
+    const interval = window.setInterval(retry, 2_000);
+    window.addEventListener('storage', retry);
+    document.addEventListener('visibilitychange', retry);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('storage', retry);
+      document.removeEventListener('visibilitychange', retry);
+    };
+  }, [activateWaitingWorker, hasLiveRunner, updateAvailable, updateBlocked]);
 
   return (
     <OfflineContext.Provider value={{ online, syncing, pendingCount, syncState, lastSyncAt, updateAvailable, updateBlocked, serviceWorkerError, sync, applyUpdate, refreshPending }}>

@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import NoticeBoard from '@/app/components/NoticeBoard';
+import MetricTooltip from '@/app/components/MetricTooltip';
 import { fetchHistoryPage } from '@/lib/historyClient';
 import { APP_VERSION } from '@/lib/shared/types';
+import { starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
 
 type H = {
   id: number;
@@ -31,9 +33,9 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, bala
       </div>
 
       <div className='child-overview'>
-        <p className='streak-badge'><span aria-hidden>🔥</span> õpiseeria <strong>{streak}</strong></p>
-        <p className='stars-badge'><span aria-hidden>⭐</span><strong>{formatStars(balance)}</strong></p>
-        <p className='trophy-badge'><span aria-hidden>🏆</span><strong>{trophies}</strong></p>
+        <MetricTooltip className='streak-badge' label={streakTooltip(streak)}><span aria-hidden>🔥</span><strong>{streak}</strong></MetricTooltip>
+        <MetricTooltip className='stars-badge' label={starsTooltip(balance)}><span aria-hidden>⭐</span><strong>{formatStars(balance)}</strong></MetricTooltip>
+        <MetricTooltip className='trophy-badge' label={trophiesTooltip(trophies)}><span aria-hidden>🏆</span><strong>{trophies}</strong></MetricTooltip>
       </div>
 
       <div className='recent-panel'>

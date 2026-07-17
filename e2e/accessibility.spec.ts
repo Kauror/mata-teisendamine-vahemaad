@@ -23,6 +23,30 @@ test('dashboard has semantic independent links with keyboard focus and mobile to
   expect(historyBox?.height).toBeGreaterThanOrEqual(44);
 });
 
+test('dashboard metrics explain their live values on focus and tap', async ({ page }) => {
+  const firstChild = page.locator('.child-dashboard-card').first();
+  const streak = firstChild.locator('.streak-badge');
+  const streakTooltip = streak.locator('xpath=following-sibling::*[@role="tooltip"]');
+
+  await expect(streak).toHaveAccessibleName('Oled 0 päeva järjest harjutanud.');
+  await expect(streakTooltip).toBeHidden();
+  await streak.focus();
+  await expect(streakTooltip).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const stars = firstChild.locator('.stars-badge');
+  const starsTooltip = stars.locator('xpath=following-sibling::*[@role="tooltip"]');
+  await stars.click();
+  await expect(starsTooltip).toBeVisible();
+
+  await navigateStable(page, '/kiur');
+  const achievements = page.locator('.achievement-badge');
+  await expect(achievements).toHaveCount(3);
+  await expect(achievements.nth(0)).toHaveAccessibleName('Sul on seni tehtud 0 harjutust.');
+  await expect(achievements.nth(1)).toHaveAccessibleName('Täna oled teinud 0 harjutust.');
+  await expect(achievements.nth(2)).toHaveAccessibleName('Sellel nädalal oled teinud 0 harjutust.');
+});
+
 test('child-specific history selects the child and contains no destructive controls', async ({ page }) => {
   await navigateStable(page, '/history?child=kiur');
   await expect(page).toHaveURL(/\/history\?child=kiur$/);

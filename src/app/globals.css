@@ -67,6 +67,20 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .child-avatar{font-size:38px;line-height:1}
 .child-name{margin:0;font-size:24px;line-height:1.05}
 .child-overview{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.metric-tooltip{position:relative;display:inline-flex;min-width:0}
+.metric-tooltip-trigger{font:inherit;cursor:help;touch-action:manipulation}
+.metric-tooltip-trigger:focus-visible{outline:3px solid #818cf8;outline-offset:3px}
+.metric-tooltip-content{position:absolute;z-index:80;left:50%;top:calc(100% + 9px);width:max-content;max-width:min(280px,calc(100vw - 28px));padding:8px 10px;border-radius:10px;background:#0b1b45;color:#fff!important;box-shadow:0 10px 28px rgba(11,27,69,.24);font-size:13px!important;font-weight:750!important;line-height:1.3;text-align:left;white-space:normal;opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,-4px);transition:opacity 120ms ease,transform 120ms ease,visibility 120ms ease}
+.metric-tooltip-content::before{content:'';position:absolute;left:50%;bottom:100%;border:6px solid transparent;border-bottom-color:#0b1b45;transform:translateX(-50%)}
+.metric-tooltip:hover .metric-tooltip-content,.metric-tooltip:focus-within .metric-tooltip-content{opacity:1;visibility:visible;transform:translate(-50%,0)}
+@media (max-width:640px){
+  .child-overview .metric-tooltip:first-child .metric-tooltip-content,.daily-summary .metric-tooltip:first-child .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(3) .metric-tooltip-content{left:0;transform:translateY(-4px)}
+  .child-overview .metric-tooltip:first-child:hover .metric-tooltip-content,.child-overview .metric-tooltip:first-child:focus-within .metric-tooltip-content,.daily-summary .metric-tooltip:first-child:hover .metric-tooltip-content,.daily-summary .metric-tooltip:first-child:focus-within .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child:hover .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child:focus-within .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(3):hover .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(3):focus-within .metric-tooltip-content{transform:translateY(0)}
+  .child-overview .metric-tooltip:first-child .metric-tooltip-content::before,.daily-summary .metric-tooltip:first-child .metric-tooltip-content::before,.achievement-strip .metric-tooltip:first-child .metric-tooltip-content::before,.achievement-strip .metric-tooltip:nth-child(3) .metric-tooltip-content::before{left:22px}
+  .child-overview .metric-tooltip:nth-child(3) .metric-tooltip-content,.daily-summary .metric-tooltip:nth-child(3) .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(2) .metric-tooltip-content{right:0;left:auto;transform:translateY(-4px)}
+  .child-overview .metric-tooltip:nth-child(3):hover .metric-tooltip-content,.child-overview .metric-tooltip:nth-child(3):focus-within .metric-tooltip-content,.daily-summary .metric-tooltip:nth-child(3):hover .metric-tooltip-content,.daily-summary .metric-tooltip:nth-child(3):focus-within .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(2):hover .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(2):focus-within .metric-tooltip-content{transform:translateY(0)}
+  .child-overview .metric-tooltip:nth-child(3) .metric-tooltip-content::before,.daily-summary .metric-tooltip:nth-child(3) .metric-tooltip-content::before,.achievement-strip .metric-tooltip:nth-child(2) .metric-tooltip-content::before{right:22px;left:auto;transform:none}
+}
 .streak-badge{margin:0;display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 11px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:14px;font-weight:850;line-height:1}
 .streak-badge strong{font-size:18px;color:#7c2d12}
 .stars-badge{margin:0;display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 11px;border-radius:999px;background:#fefce8;border:1px solid #fde68a;color:#854d0e;font-size:14px;font-weight:850;line-height:1}
@@ -126,7 +140,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 
 .daily-panel{display:grid;gap:12px}
 .daily-summary{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:12px 14px;border-radius:18px;background:#f8fbff;border:1px solid #dfe8f6}
-.daily-summary span{font-weight:800;color:#64748b}.daily-summary a{color:#2563eb;font-weight:850;text-decoration:none;border-bottom:1px dashed currentColor}
+.daily-summary-metric{min-height:44px;padding:0;border:0;border-radius:0;background:transparent;color:#64748b;font-weight:800}.daily-summary a{color:#2563eb;font-weight:850;text-decoration:none;border-bottom:1px dashed currentColor}
 .monthly-celebration{display:flex;align-items:center;gap:13px;padding:13px 16px;border-radius:18px;background:linear-gradient(120deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;box-shadow:0 10px 26px rgba(202,138,4,.14)}
 .monthly-celebration-trophy{font-size:34px;line-height:1;flex-shrink:0;filter:drop-shadow(0 2px 4px rgba(202,138,4,.3))}
 .monthly-celebration-text{display:grid;gap:2px;min-width:0}
@@ -604,7 +618,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 
 /* Achievements strip (child dashboard) */
 .achievement-strip{display:flex;flex-wrap:wrap;gap:10px}
-.achievement-badge{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;border:1px solid #e2eafc;background:#f8fbff;min-width:0}
+.achievement-badge{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;border:1px solid #e2eafc;background:#f8fbff;color:inherit;min-width:0;text-align:left}
 .achievement-badge.unlocked{background:#fffbeb;border-color:#fde68a}
 .achievement-badge.locked{opacity:.7}
 .achievement-emoji{font-size:24px;line-height:1;flex:0 0 auto}

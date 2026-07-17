@@ -4,7 +4,8 @@ import { getCompletedExerciseIdsToday } from '@/lib/exerciseCompletion';
 import { DAILY_EXERCISE_LIMIT, getActiveLearningExercises } from '@/lib/learningExercises';
 import { isKirsiAttempt } from '@/lib/history';
 import { getLearningDaysThisWeek } from '@/lib/learningPoints';
-import { type Learner } from '@/lib/tasks';
+import { isoToAppDate, startOfAppWeek } from '@/lib/appDate';
+import { todayDateString, type Learner } from '@/lib/tasks';
 
 export type Achievement = {
   id: string;
@@ -15,15 +16,16 @@ export type Achievement = {
   unlocked: boolean;
   current: number;
   target: number;
+  tooltipCount: number;
 };
 
-type AttemptRow = { category: string; learner: string | null };
+type AttemptRow = { category: string; learner: string | null; createdAt: string };
 
 // Total exercise sessions the child has completed. Each attempt row is one
 // finished exercise, so this is simply how many they belong to.
-function totalExercises(learner: Learner) {
-  const rows = db.prepare('SELECT category, learner FROM attempts').all() as AttemptRow[];
-  return rows.filter((row) => (isKirsiAttempt(row.category, row.learner) ? 'kirsi' : 'kiur') === learner).length;
+function learnerAttempts(learner: Learner) {
+  const rows = db.prepare('SELECT category, learner, createdAt FROM attempts').all() as AttemptRow[];
+  return rows.filter((row) => (isKirsiAttempt(row.category, row.learner) ? 'kirsi' : 'kiur') === learner);
 }
 
 const PERFECT_WEEK_DAYS = 7;
@@ -41,7 +43,15 @@ function completedExercisesToday(learner: Learner) {
 // Milestones are derived from history on each read rather than stored. Exercise
 // milestones are cumulative, while the weekly achievement is current-week only.
 export function getAchievements(learner: Learner): Achievement[] {
-  const exercises = totalExercises(learner);
+  const attempts = learnerAttempts(learner);
+  const exercises = attempts.length;
+  const today = todayDateString();
+  const weekStart = startOfAppWeek(today);
+  const exercisesToday = attempts.filter((attempt) => isoToAppDate(attempt.createdAt) === today).length;
+  const exercisesThisWeek = attempts.filter((attempt) => {
+    const date = isoToAppDate(attempt.createdAt);
+    return date !== null && date >= weekStart && date <= today;
+  }).length;
   const exerciseMilestone = latestExerciseMilestone(exercises);
   const nextExerciseMilestone = EXERCISE_MILESTONES.find((milestone) => milestone > exercises) ?? 999;
   const dailyExercises = completedExercisesToday(learner);
@@ -56,7 +66,8 @@ export function getAchievements(learner: Learner): Achievement[] {
       description: `Lahenda kokku ${nextExerciseMilestone} harjutust`,
       unlocked: exerciseMilestone !== null,
       current: exerciseMilestone ?? exercises,
-      target: exerciseMilestone ?? nextExerciseMilestone
+      target: exerciseMilestone ?? nextExerciseMilestone,
+      tooltipCount: exercises
     },
     {
       id: 'daily-exercises',
@@ -66,7 +77,8 @@ export function getAchievements(learner: Learner): Achievement[] {
       description: `Lahenda täna ${DAILY_EXERCISE_LIMIT} erinevat harjutust`,
       unlocked: dailyExercises >= DAILY_EXERCISE_LIMIT,
       current: dailyExercises,
-      target: DAILY_EXERCISE_LIMIT
+      target: DAILY_EXERCISE_LIMIT,
+      tooltipCount: exercisesToday
     },
     {
       id: 'perfect-week',
@@ -76,7 +88,8 @@ export function getAchievements(learner: Learner): Achievement[] {
       description: 'Harjuta sel nädalal 7 päeval',
       unlocked: weeklyDays >= PERFECT_WEEK_DAYS,
       current: weeklyDays,
-      target: PERFECT_WEEK_DAYS
+      target: PERFECT_WEEK_DAYS,
+      tooltipCount: exercisesThisWeek
     }
   ];
 }
