@@ -20,7 +20,7 @@ const sectorPath = (startDegrees: number, endDegrees: number) => {
   return `M70 70 L${start.x.toFixed(2)} ${start.y.toFixed(2)} A50 50 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)} Z`;
 };
 
-export function SectorMissingVisual({ knownDegrees = 90 }: { knownDegrees?: number }) {
+function SectorMissingVisual({ knownDegrees = 90 }: { knownDegrees?: number }) {
   const missingDegrees = 360 - knownDegrees;
   const knownLabel = sectorPoint(knownDegrees / 2, 31);
   const missingLabel = sectorPoint(knownDegrees + missingDegrees / 2, 31);

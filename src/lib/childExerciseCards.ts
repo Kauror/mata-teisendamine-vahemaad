@@ -75,21 +75,13 @@ function testRoute(exercise: LearningExerciseRow, learner: Learner) {
 // Exercises with a study page open it first (the child chooses to revise or
 // start straight away). Applied after fixed/catalogue cards are merged so both
 // card sources are covered from one place.
-function applyStudyRoutes(learner: Learner, cards: ChildExerciseCard[]): ChildExerciseCard[] {
+function applyStudyRoutes(cards: ChildExerciseCard[]): ChildExerciseCard[] {
   return cards.map((card) => {
     const studyKey = STUDY_PAGE_BY_EXERCISE_ID[card.id];
     if (!studyKey) return card;
-    const count = card.legacySubject === 'loodusopetus' ? 10 : 15;
     return {
       ...card,
-      route: studyPageRoute(studyKey, {
-        learner,
-        subject: card.legacySubject,
-        topic: card.legacyTopic,
-        category: card.legacyCategory,
-        exerciseId: card.id,
-        count
-      })
+      route: studyPageRoute(studyKey)
     };
   });
 }
@@ -142,5 +134,5 @@ export function childExerciseCards(learner: Learner, exercises: LearningExercise
         ]
       };
     });
-  return applyStudyRoutes(learner, mergeFixedChildExerciseCards(learner, catalogueCards));
+  return applyStudyRoutes(mergeFixedChildExerciseCards(learner, catalogueCards));
 }

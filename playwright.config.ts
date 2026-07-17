@@ -26,7 +26,9 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } }
   ],
   webServer: {
-    command: 'npm run dev',
+    // Reuse the Node runtime that launched Playwright. This avoids a second
+    // package-manager shim and keeps local/CI server startup deterministic.
+    command: `"${process.execPath}" node_modules/next/dist/bin/next dev`,
     url: 'http://localhost:3000/access',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

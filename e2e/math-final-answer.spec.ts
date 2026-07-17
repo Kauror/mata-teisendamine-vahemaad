@@ -1,14 +1,12 @@
 import { expect, test, type Page } from './test';
 import { generateKiurMathSession } from '../src/lib/exercises/kiurMath';
+import { authenticateFamily } from './auth';
 
 type Exercise = { id: string; subject: string; topic: string; category: string };
 type StoredAttempt = { score: number; questions: Array<{ userAnswer: string; isCorrect: boolean }> };
 
 async function authenticate(page: Page) {
-  await page.goto('/access');
-  await page.locator('form input').pressSequentially('e2e-family-passphrase');
-  await page.getByRole('button', { name: 'Sisene' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await authenticateFamily(page);
   await expect.poll(() => page.evaluate(() => new Promise<boolean>((resolve) => {
     const open = indexedDB.open('harjutaja-offline');
     open.onerror = () => resolve(false);

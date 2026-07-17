@@ -18,8 +18,9 @@ describe('Unraid and Cloudflare deployment topology', () => {
   it('keeps the runtime non-root, read-only, and production-dependency-only', () => {
     const dockerfile = read('Dockerfile');
     const compose = read('docker-compose.yml');
-    expect(dockerfile).toContain('node:22.22.3-alpine3.23');
+    expect(dockerfile).toContain('node:22.23.1-alpine3.23');
     expect(dockerfile).toContain('npm ci --omit=dev');
+    expect(dockerfile).toContain('rm -rf /usr/local/lib/node_modules/npm');
     expect(dockerfile).toContain('USER node');
     expect(compose).toMatch(/app:[\s\S]*?read_only: true/);
     expect(compose).toContain('${APP_DATA_DIR:-./data}:/data');

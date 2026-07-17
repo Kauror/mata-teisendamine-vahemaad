@@ -1,14 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useRef, useState, type ComponentType } from 'react';
+import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
+import { useRef, useState, type ComponentType } from 'react';
 import StudyEntryScreen, { type StudyTheme } from '@/app/components/study/StudyEntryScreen';
-import RingStudyMaterial from '@/app/components/study/RingStudyMaterial';
-import ClockStudyMaterial from '@/app/components/study/ClockStudyMaterial';
-import LengthsStudyMaterial from '@/app/components/study/LengthsStudyMaterial';
-import ScienceStudyMaterial from '@/app/components/study/ScienceStudyMaterial';
-import { exerciseStartRoute, studyBackRoute, type StudyExerciseParams, type StudyKey } from '@/lib/studyPages';
+import { exerciseStartRoute, studyBackRoute, type StudyKey } from '@/lib/studyPages';
+
+const RingStudyMaterial = dynamic(() => import('@/app/components/study/RingStudyMaterial'));
+const ClockStudyMaterial = dynamic(() => import('@/app/components/study/ClockStudyMaterial'));
+const LengthsStudyMaterial = dynamic(() => import('@/app/components/study/LengthsStudyMaterial'));
+const ScienceStudyMaterial = dynamic(() => import('@/app/components/study/ScienceStudyMaterial'));
 
 type StudyMeta = {
   icon: string;
@@ -55,26 +57,13 @@ const STUDY_META: Record<StudyKey, StudyMeta> = {
 };
 
 function StudyRunnerContent({ studyKey }: { studyKey: StudyKey }) {
-  const search = useSearchParams();
   const router = useRouter();
   const materialRef = useRef<HTMLDivElement>(null);
-  const topRef = useRef<HTMLDivElement>(null);
   const [showMaterial, setShowMaterial] = useState(false);
 
   const meta = STUDY_META[studyKey];
-  const learner = search.get('learner') || '';
-  const parsedCount = Number(search.get('count'));
-  const params: StudyExerciseParams = {
-    learner,
-    subject: search.get('subject') || 'matemaatika',
-    topic: search.get('topic') || studyKey,
-    category: search.get('category') || '',
-    exerciseId: search.get('exerciseId'),
-    count: Number.isSafeInteger(parsedCount) && parsedCount >= 1 && parsedCount <= 15 ? parsedCount : 15
-  };
 
-  const startExercise = () => router.push(exerciseStartRoute(params));
-  const scrollTo = (element: HTMLElement | null) => requestAnimationFrame(() => element?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  const startExercise = () => router.push(exerciseStartRoute(studyKey));
   const revealMaterial = (anchor?: string) => {
     setShowMaterial(true);
     requestAnimationFrame(() => {
@@ -82,8 +71,6 @@ function StudyRunnerContent({ studyKey }: { studyKey: StudyKey }) {
       target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   };
-  const restart = () => scrollTo(topRef.current);
-
   const themes: StudyTheme[] | undefined = meta.themes?.map((theme) => ({
     icon: theme.icon,
     label: theme.label,
@@ -95,14 +82,13 @@ function StudyRunnerContent({ studyKey }: { studyKey: StudyKey }) {
   return (
     <main className='study-page'>
       <div className='study-shell'>
-        <div ref={topRef} />
         <StudyEntryScreen
           icon={meta.icon}
           title={meta.title}
           intro={meta.intro}
           subIntro={meta.subIntro}
           themes={themes}
-          backHref={studyBackRoute(learner)}
+          backHref={studyBackRoute(studyKey)}
           onStart={startExercise}
           onLearn={() => revealMaterial()}
         />
@@ -113,8 +99,7 @@ function StudyRunnerContent({ studyKey }: { studyKey: StudyKey }) {
             <section className='study-final-actions'>
               <p className='study-ready-text'>{meta.readyText}</p>
               <button type='button' className='study-primary-button' onClick={startExercise}>Alusta harjutust</button>
-              <button type='button' className='study-secondary-link' onClick={restart}>Vaata algusest uuesti</button>
-              <Link className='study-back-link' href={studyBackRoute(learner)}>← Tagasi harjutuste juurde</Link>
+              <Link className='study-back-link' href={studyBackRoute(studyKey)}>← Tagasi harjutuste juurde</Link>
             </section>
           </div>
         )}
@@ -124,9 +109,5 @@ function StudyRunnerContent({ studyKey }: { studyKey: StudyKey }) {
 }
 
 export default function StudyRunner({ studyKey }: { studyKey: StudyKey }) {
-  return (
-    <Suspense fallback={<main className='study-page'><section className='study-entry-card'>Laadin…</section></main>}>
-      <StudyRunnerContent studyKey={studyKey} />
-    </Suspense>
-  );
+  return <StudyRunnerContent studyKey={studyKey} />;
 }

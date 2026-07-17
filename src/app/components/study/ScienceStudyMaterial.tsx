@@ -1,15 +1,13 @@
 'use client';
 
+import { MemoryRule } from '@/app/components/study/StudyPrimitives';
+
 // Visual revision material for "Loodusõpetus". Six themes, each with a section
 // anchor so the entry screen's theme buttons can jump straight to it. Graphics
 // are simple, labelled, child-friendly SVGs (no external assets). Not scored.
 
 const INK = '#0f172a';
 const SUN = '#f59e0b';
-
-function MemoryRule({ children }: { children: React.ReactNode }) {
-  return <p className='study-memory-rule'>{children}</p>;
-}
 
 /* ---------------- Maailmaruum ---------------- */
 

@@ -27,7 +27,7 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } }
   ],
   webServer: {
-    command: 'npm run build && npm run start:next',
+    command: `"${process.execPath}" scripts/build-app.mjs && "${process.execPath}" node_modules/next/dist/bin/next start`,
     url: `${TEST_ORIGIN}/api/healthz`,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,

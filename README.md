@@ -194,6 +194,8 @@ juba välja antud kuud (idempotentne).
 - `npm run auth:hash -- <pin>` – genereerib `APP_ACCESS_PIN_HASH` väärtuse
 - `npm run db:startup` – ainult andmebaasi varundus + verifitseerimine
 - `npm run audit:v2 -- <db-fail>` – WAL-turvaline protokoll-v2 populatsiooni audit enne juurutust (RTM3-C02 / RTM4-C03)
+- `npm run reward:v2 -- --learner=kiur|kirsi` – näitab tasu-v2 projektsiooni sisendkatseid muutmata andmebaasi
+- `REWARD_V2_APPLY_CONFIRM=APPLY_COMPONENT_DELTAS npm run reward:v2 -- --learner=kiur|kirsi --apply` – rakendab projektsiooni ja aktiveerib v2 oleku ühe tehinguna; kasuta ainult pärast koopia peal läbiproovimist, väljundi kontrolli ja verifitseeritud varukoopiat
 - `npm run leaderboard:rebuild` – ehitab `daily_leaderboard` ridade ajaloo uuesti + lepitab kuud (RTM4-H03)
 - `npm run lint` – ESLint
 - `npm run typecheck` – tüübikontroll (`tsc --noEmit`)

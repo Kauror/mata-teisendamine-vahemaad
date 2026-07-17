@@ -1,5 +1,7 @@
 'use client';
 
+import { CmMmRulerGraphic, MemoryRule } from '@/app/components/study/StudyPrimitives';
+
 // Visual revision material for "Ring ja ringjoon". Pure SVG so it stays sharp,
 // works offline and matches the exercise graphics' pastel language. Nothing here
 // is scored or interactive beyond the shared start button rendered by the page.
@@ -30,8 +32,8 @@ function RingjoonGraphic() {
   return (
     <svg className='study-svg' viewBox='0 0 180 160' role='img' aria-label='Ringjoon: ainult ringi ümbritsev joon'>
       <circle cx='90' cy='80' r='58' fill='#ffffff' stroke={BLUE} strokeWidth='7' />
-      <line x1='150' y1='24' x2='128' y2='45' stroke={INK} strokeWidth='1.5' />
-      <text x='152' y='22' fontSize='14' fontWeight='700' fill={INK}>ringjoon</text>
+      <line x1='166' y1='28' x2='130' y2='46' stroke={INK} strokeWidth='1.5' />
+      <text x='168' y='24' fontSize='14' fontWeight='700' fill={INK} textAnchor='end'>ringjoon</text>
     </svg>
   );
 }
@@ -145,22 +147,6 @@ function ConcentricGraphic() {
   );
 }
 
-function CmMmRulerGraphic() {
-  const left = 20;
-  const right = 280;
-  const ticks = Array.from({ length: 11 }, (_, index) => left + (index * (right - left)) / 10);
-  return (
-    <svg className='study-svg' viewBox='0 0 300 120' role='img' aria-label='1 cm jaguneb kümneks millimeetriks'>
-      <rect x={left} y='40' width={right - left} height='34' rx='6' fill={SOFT} stroke={BLUE} strokeWidth='3' />
-      {ticks.map((x, index) => (
-        <line key={index} x1={x} y1='40' x2={x} y2={index % 10 === 0 ? 74 : 62} stroke={BLUE_DARK} strokeWidth={index % 10 === 0 ? 3 : 1.5} />
-      ))}
-      <text x='150' y='28' fontSize='14' fontWeight='800' fill={BLUE_DARK} textAnchor='middle'>1 cm</text>
-      <text x='150' y='98' fontSize='13' fontWeight='700' fill={INK} textAnchor='middle'>10 mm</text>
-    </svg>
-  );
-}
-
 function DegreesCircleGraphic({ filled, label }: { filled: number; label: string }) {
   const cx = 70;
   const cy = 70;
@@ -192,10 +178,6 @@ function MissingSectorGraphic() {
       <text x={missingMid.x} y={missingMid.y} fontSize='20' fontWeight='800' fill='#7c3aed' textAnchor='middle' dominantBaseline='middle'>?</text>
     </svg>
   );
-}
-
-function MemoryRule({ children }: { children: React.ReactNode }) {
-  return <p className='study-memory-rule'>{children}</p>;
 }
 
 export default function RingStudyMaterial() {

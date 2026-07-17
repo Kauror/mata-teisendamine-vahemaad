@@ -22,13 +22,14 @@ function AnnotatedClock() {
   const r = 76;
   const minuteHand = handPoint(cx, cy, 0, 63); // 12 → straight up
   const hourHand = handPoint(cx, cy, 90, 44); // 3 → right
+  const hourLeaderStart = handPoint(cx, cy, 90, 26);
   const numbers: Array<[number, number]> = [12, 3, 6, 9].map((num) => {
     const p = handPoint(cx, cy, (num % 12) * 30, 58);
     return [p.x, p.y];
   }) as unknown as Array<[number, number]>;
   const labels = [12, 3, 6, 9];
   return (
-    <svg className='study-svg' viewBox='0 0 240 236' role='img' aria-label='Kell 3:00 — pikk seier näitab minuteid, lühike seier tundi'>
+    <svg className='study-svg study-svg-clock-annotated' viewBox='0 0 300 236' role='img' aria-label='Kell 3:00 — pikk seier näitab minuteid, lühike seier tundi'>
       <circle cx={cx} cy={cy} r={r} fill='#f8fbff' stroke={BLUE} strokeWidth='5' />
       {labels.map((num, index) => (
         <text key={num} x={numbers[index][0]} y={numbers[index][1]} fontSize='16' fontWeight='800' fill={INK} textAnchor='middle' dominantBaseline='central'>{num}</text>
@@ -38,11 +39,17 @@ function AnnotatedClock() {
       <circle cx={cx} cy={cy} r='6' fill={INK} />
 
       {/* long hand → minutes */}
-      <line x1={minuteHand.x} y1={minuteHand.y} x2='150' y2='18' stroke={BLUE} strokeWidth='1.4' />
-      <text x='150' y='14' fontSize='14' fontWeight='800' fill={BLUE}>Pikk seier</text>
+      <line x1={minuteHand.x} y1={minuteHand.y} x2='158' y2='20' stroke={BLUE} strokeWidth='1.4' />
+      <text x='162' y='18' fontSize='14' fontWeight='800' fill={BLUE}>Pikk seier</text>
       {/* short hand → hour */}
-      <line x1={hourHand.x} y1={hourHand.y} x2='214' y2='150' stroke={INK} strokeWidth='1.4' />
-      <text x='168' y='168' fontSize='14' fontWeight='800' fill={INK}>Lühike seier</text>
+      <polyline
+        data-study-leader='short-hand'
+        points={`${hourLeaderStart.x},${hourLeaderStart.y} 182,142 202,142`}
+        fill='none'
+        stroke={INK}
+        strokeWidth='1.4'
+      />
+      <text x='208' y='147' fontSize='14' fontWeight='800' fill={INK}>Lühike seier</text>
     </svg>
   );
 }

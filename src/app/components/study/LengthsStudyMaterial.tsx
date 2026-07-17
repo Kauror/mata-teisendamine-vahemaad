@@ -1,5 +1,7 @@
 'use client';
 
+import { CmMmRulerGraphic, MemoryRule } from '@/app/components/study/StudyPrimitives';
+
 // Visual revision material for "Mõõtühikud" (length units). Pure SVG graphics in
 // the app's pastel language, matching the length exercise. Not scored.
 
@@ -34,22 +36,6 @@ function UnitLadderGraphic() {
         <marker id='arrowDown' markerWidth='8' markerHeight='8' refX='4' refY='7' orient='auto'><path d='M1 1 L4 7 L7 1' fill='none' stroke={GREEN} strokeWidth='1.5' /></marker>
         <marker id='arrowUp' markerWidth='8' markerHeight='8' refX='4' refY='1' orient='auto'><path d='M1 7 L4 1 L7 7' fill='none' stroke={BLUE_DARK} strokeWidth='1.5' /></marker>
       </defs>
-    </svg>
-  );
-}
-
-function CmMmRulerGraphic() {
-  const left = 20;
-  const right = 280;
-  const ticks = Array.from({ length: 11 }, (_, index) => left + (index * (right - left)) / 10);
-  return (
-    <svg className='study-svg' viewBox='0 0 300 120' role='img' aria-label='1 cm jaguneb kümneks millimeetriks'>
-      <rect x={left} y='40' width={right - left} height='34' rx='6' fill={SOFT} stroke={BLUE} strokeWidth='3' />
-      {ticks.map((x, index) => (
-        <line key={index} x1={x} y1='40' x2={x} y2={index % 10 === 0 ? 74 : 62} stroke={BLUE_DARK} strokeWidth={index % 10 === 0 ? 3 : 1.5} />
-      ))}
-      <text x='150' y='28' fontSize='14' fontWeight='800' fill={BLUE_DARK} textAnchor='middle'>1 cm</text>
-      <text x='150' y='98' fontSize='13' fontWeight='700' fill={INK} textAnchor='middle'>10 mm</text>
     </svg>
   );
 }
@@ -155,10 +141,6 @@ function RouteMapsGraphic() {
       </defs>
     </svg>
   );
-}
-
-function MemoryRule({ children }: { children: React.ReactNode }) {
-  return <p className='study-memory-rule'>{children}</p>;
 }
 
 export default function LengthsStudyMaterial() {

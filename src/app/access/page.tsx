@@ -37,6 +37,7 @@ export default function AccessPage() {
     <main className='access-page'>
       <section className='access-card'>
         <div className='access-icon' aria-hidden>🔒</div>
+        <h1>Sisesta pere parool</h1>
         <form className='access-form' onSubmit={submit}>
           <input
             aria-label='Sisesta pere parool'
