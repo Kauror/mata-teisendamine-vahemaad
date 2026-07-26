@@ -1,25 +1,9 @@
 import { expect, test, type Page } from './test';
 import { generateKiurMathSession } from '../src/lib/exercises/kiurMath';
-import { authenticateFamily } from './auth';
+import { authenticateFamilyWithCatalogue } from './auth';
 
 type Exercise = { id: string; subject: string; topic: string; category: string };
 type StoredAttempt = { score: number; questions: Array<{ userAnswer: string; isCorrect: boolean }> };
-
-async function authenticate(page: Page) {
-  await authenticateFamily(page);
-  await expect.poll(() => page.evaluate(() => new Promise<boolean>((resolve) => {
-    const open = indexedDB.open('harjutaja-offline');
-    open.onerror = () => resolve(false);
-    open.onsuccess = () => {
-      if (!open.result.objectStoreNames.contains('catalogues') || !open.result.objectStoreNames.contains('catalogueGrants')) return resolve(false);
-      const transaction = open.result.transaction(['catalogues', 'catalogueGrants']);
-      const catalogue = transaction.objectStore('catalogues').get('kiur');
-      const grant = transaction.objectStore('catalogueGrants').get('kiur');
-      transaction.oncomplete = () => resolve(Boolean(catalogue.result && grant.result));
-      transaction.onerror = () => resolve(false);
-    };
-  })), { timeout: 20_000 }).toBe(true);
-}
 
 async function numericExercise(page: Page) {
   const exercises = await page.evaluate(async () => {
@@ -76,7 +60,7 @@ async function storedAttempt(page: Page): Promise<StoredAttempt> {
   }), clientId);
 }
 
-test.beforeEach(async ({ page }) => authenticate(page));
+test.beforeEach(async ({ page }) => authenticateFamilyWithCatalogue(page));
 
 test('immediate final submission uses the visible immutable answer snapshot', async ({ page }) => {
   const { exercise, seed, answer } = await numericExercise(page);

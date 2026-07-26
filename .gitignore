@@ -15,3 +15,4 @@ public/sw.js
 /blob-report/
 /.playwright/
 /e2e-prod/.auth/
+/.e2e-data/

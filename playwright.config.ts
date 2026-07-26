@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { E2E_DB_FILE } from './e2e/config';
 
 // Browser-level release evidence (RTM-006). Runs the app in a real Chromium and
 // WebKit against a dev server. Full offline / service-worker certification also
@@ -17,6 +18,7 @@ export default defineConfig({
   // keep login and restoration evidence independent instead of cross-throttled.
   workers: 1,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  globalSetup: './e2e/global-setup.ts',
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry'
@@ -33,7 +35,10 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      MATHS_GAME_DB_FILE: ':memory:',
+      // A real file, not ':memory:'. See e2e/global-setup.ts: under `next dev`
+      // each route handler gets its own module instance, so ':memory:' gives
+      // every route a separate empty database.
+      MATHS_GAME_DB_FILE: E2E_DB_FILE,
       OFFLINE_PROTOCOL_V2_ENABLED: '1',
       APP_ORIGIN: 'http://localhost:3000',
       APP_SESSION_SECRET_CURRENT: 'e2e-session-secret-with-at-least-thirty-two-bytes',
