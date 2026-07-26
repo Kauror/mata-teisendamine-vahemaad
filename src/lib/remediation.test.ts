@@ -4,7 +4,8 @@ import {
   captureMistakesForAttempt,
   getOpenRenderableMistakeCount,
   REMEDIATION_QUESTION_COUNT,
-  startRemediationSession
+  startRemediationSession,
+  submitRemediationSession
 } from '@/lib/remediation';
 import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
 import { isRemediationAnswerCorrect } from '@/lib/shared/remediationQuestion';
@@ -60,11 +61,23 @@ function insertRawMistake(mistakeKey: string, rendererType: string, promptSnapsh
   `).run(mistakeKey, rendererType, promptSnapshotJson);
 }
 
+// Submitting a session writes an attempt plus its reward rows, so a plain
+// delete order cannot satisfy every foreign key. Dropping enforcement for the
+// reset keeps this independent of which tables happen to reference attempts.
 beforeEach(() => {
-  db.prepare('DELETE FROM remediation_session_items').run();
-  db.prepare('DELETE FROM remediation_sessions').run();
-  db.prepare('DELETE FROM mistake_pool').run();
-  db.prepare('DELETE FROM attempts').run();
+  db.pragma('foreign_keys = OFF');
+  for (const table of [
+    'remediation_session_items',
+    'remediation_sessions',
+    'mistake_pool',
+    'attempt_reward_components',
+    'study_attempt_rewards',
+    'point_ledger',
+    'attempts'
+  ]) {
+    db.prepare(`DELETE FROM ${table}`).run();
+  }
+  db.pragma('foreign_keys = ON');
   nextAttemptId = 1;
 });
 
@@ -413,6 +426,92 @@ describe('Loodusõpetus mistakes', () => {
   it('ignores a saved answer whose type disagrees with the dataset', () => {
     captureScience([savedScience(READING, 'sort')]);
     expect(getOpenRenderableMistakeCount('kiur')).toBe(0);
+  });
+});
+
+describe('submitRemediationSession', () => {
+  type Session = ReturnType<typeof startRemediationSession>;
+
+  function answerAll(session: Session, answerFor: (question: Session['questions'][number]) => string) {
+    return submitRemediationSession({
+      learner: 'kiur',
+      sessionId: session.sessionId,
+      answers: session.questions.map((question) => ({ sessionItemId: question.sessionItemId, answer: answerFor(question) })),
+      elapsedSeconds: 60
+    });
+  }
+
+  function statusOf(mistakeId: number) {
+    return db.prepare('SELECT status, reviewWrongCount FROM mistake_pool WHERE id = ?').get(mistakeId) as
+      { status: string; reviewWrongCount: number };
+  }
+
+  it('resolves a mistake answered correctly and scores the whole session', () => {
+    seedUsablePool(15);
+    const session = startRemediationSession('kiur');
+    const result = answerAll(session, (question) => question.correctAnswerLabel);
+
+    expect(result.score).toBe(REMEDIATION_QUESTION_COUNT);
+    expect(result.resolvedCount).toBe(15);
+    for (const question of session.questions) expect(statusOf(question.mistakeId).status).toBe('resolved');
+  });
+
+  it('keeps a mistake open and counts the review miss when it is answered wrong', () => {
+    seedUsablePool(15);
+    const session = startRemediationSession('kiur');
+    const result = answerAll(session, () => 'ilmselgelt vale');
+
+    expect(result.score).toBe(0);
+    expect(result.resolvedCount).toBe(0);
+    for (const question of session.questions) {
+      const row = statusOf(question.mistakeId);
+      expect(row.status).toBe('open');
+      expect(row.reviewWrongCount).toBe(1);
+    }
+  });
+
+  // A pool smaller than the session length repeats mistakes to fill the 15
+  // slots. A repeated mistake is only mastered if EVERY appearance was right —
+  // getting it right once and wrong once must not count as fixed.
+  it('resolves a repeated mistake only when every appearance was right', () => {
+    seedUsablePool(10);
+    const session = startRemediationSession('kiur');
+
+    const appearances = new Map<number, number>();
+    for (const question of session.questions) {
+      appearances.set(question.mistakeId, (appearances.get(question.mistakeId) ?? 0) + 1);
+    }
+    const repeated = [...appearances.entries()].filter(([, count]) => count > 1).map(([id]) => id);
+    expect(repeated.length).toBeGreaterThan(0);
+
+    // Answer the first appearance of one repeated mistake wrong, everything
+    // else right.
+    const spoiled = repeated[0];
+    let seenSpoiled = false;
+    const result = answerAll(session, (question) => {
+      if (question.mistakeId === spoiled && !seenSpoiled) {
+        seenSpoiled = true;
+        return 'ilmselgelt vale';
+      }
+      return question.correctAnswerLabel;
+    });
+
+    expect(result.score).toBe(REMEDIATION_QUESTION_COUNT - 1);
+    expect(statusOf(spoiled).status).toBe('open');
+    expect(statusOf(spoiled).reviewWrongCount).toBe(1);
+    for (const id of repeated.slice(1)) expect(statusOf(id).status).toBe('resolved');
+  });
+
+  it('returns the same saved attempt if the same session is submitted twice', () => {
+    seedUsablePool(15);
+    const session = startRemediationSession('kiur');
+    const first = answerAll(session, (question) => question.correctAnswerLabel);
+    const second = answerAll(session, () => 'ilmselgelt vale');
+
+    expect(second.historyAttemptId).toBe(first.historyAttemptId);
+    expect(second.score).toBe(first.score);
+    // The retry must not reopen what the first submission already fixed.
+    for (const question of session.questions) expect(statusOf(question.mistakeId).status).toBe('resolved');
   });
 });
 
