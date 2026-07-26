@@ -92,7 +92,11 @@ const KEY_BY_CATEGORY: Record<string, string> = {
   'Lugemine - pilt ja sõna': 'kirsi.reading.pilt-ja-sona',
   'Lugemine - esimene häälik': 'kirsi.reading.esimene-haalik',
   'Lugemine - loe ja vasta': 'kiur.reading.loe-ja-vasta',
-  'Korrutamine': 'kiur.math.multiplication'
+  'Korrutamine': 'kiur.math.multiplication',
+  // Without this, Loodusõpetus fell through to the generic tail and became
+  // 'kiur.math.loodusopetus' — a working but wrong bucket that named a science
+  // exercise as maths, both here and in mistake_pool.exerciseKey.
+  'Loodusõpetus': 'kiur.science.loodusopetus'
 };
 
 const KEY_BY_TOPIC: Record<string, string> = {
