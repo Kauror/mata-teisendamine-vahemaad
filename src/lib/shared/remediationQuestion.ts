@@ -20,8 +20,12 @@ export const REMEDIATION_RENDERER_TYPES = [
   'word_picture_choice',
   'sprint_word_choice',
   'science_choice',
-  'math_text_answer'
+  'math_text_answer',
+  'ordering_sequence'
 ] as const;
+
+// How the child gives an answer, which decides what the screen has to show.
+export const ORDERING_SEPARATOR = ' → ';
 
 export type RemediationRendererType = (typeof REMEDIATION_RENDERER_TYPES)[number];
 
@@ -33,6 +37,12 @@ export function isRemediationRendererType(value: string): value is RemediationRe
 // there are no choices to build and no distractors to mix in.
 export function isTypedAnswerRenderer(type: RemediationRendererType) {
   return type === 'math_numeric' || type === 'math_text_answer';
+}
+
+// Ordering is answered by arranging cards, so like the typed renderers it has
+// no option list to build.
+export function hasChoiceList(type: RemediationRendererType) {
+  return !isTypedAnswerRenderer(type) && type !== 'ordering_sequence';
 }
 
 // The one place an answer is judged, so the screen's instant feedback and the
@@ -80,5 +90,9 @@ export type RemediationQuestion = {
   scienceTaskType?: ScienceTaskType;
   scienceDiagram?: string;
   scienceData?: ScienceData;
+  // 'ordering_sequence' only: the cards to arrange, in the shuffled order they
+  // were originally presented in. The answer is their labels joined with
+  // ORDERING_SEPARATOR, which is also what correctAnswerLabel holds.
+  orderingCards?: Array<{ id: string; label: string }>;
   choices?: string[];
 };

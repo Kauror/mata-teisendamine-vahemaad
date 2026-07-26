@@ -6,9 +6,10 @@ import { awardStudyPointsForAttempt, exerciseKeyForAttempt } from '@/lib/learnin
 import { cleanScienceAnswer, getScienceTaskById } from '@/lib/loodusopetus/tasks';
 import { isChoiceTask, type ChoiceScienceTask } from '@/lib/loodusopetus/types';
 import {
+  hasChoiceList,
   isRemediationAnswerCorrect,
   isRemediationRendererType,
-  isTypedAnswerRenderer,
+  ORDERING_SEPARATOR,
   type RemediationQuestion,
   type RemediationRendererType
 } from '@/lib/shared/remediationQuestion';
@@ -48,6 +49,8 @@ type SavedQuestion = {
   objectLabel?: string;
   count?: number;
   choices?: number[];
+  orderingCards?: Array<{ id: string; label: string; valueMm: number }>;
+  orderingDirection?: 'asc' | 'desc';
   clockHour?: number;
   clockMinutes?: 0 | 15 | 30 | 45;
   visual?: string;
@@ -201,7 +204,7 @@ function rendererFor(learner: Learner, subject: string, topic: string, question:
   if (subject === 'matemaatika') {
     if (question.kind === 'text' || question.type === 'text-problem') return 'math_text_answer';
     if (learner === 'kirsi' && topic === 'loendamine' && question.type === 'counting') return 'counting_choice';
-    if (question.kind === 'ordering') return null;
+    if (question.kind === 'ordering') return 'ordering_sequence';
     return question.kind === 'choice' ? 'math_multiple_choice' : 'math_numeric';
   }
   if (learner === 'kirsi' && subject === 'lugemine' && topic === 'esimene-haalik') return 'initial_sound';
@@ -254,11 +257,39 @@ function buildScienceSnapshot(input: SnapshotInput): PromptSnapshot | null {
   };
 }
 
+// Ordering is answered by arranging the cards, so the right answer is a
+// sequence, not a label. The cards carry the measurement that defines the
+// order, so it is derived here once and stored as the sequence the child has to
+// reproduce; the cards themselves are kept in the order they were presented in.
+function buildOrderingSnapshot(input: SnapshotInput): PromptSnapshot | null {
+  const cards = input.question.orderingCards ?? [];
+  const wrongAnswerLabel = input.question.userAnswer || '';
+  if (cards.length < 2 || !input.question.question || !wrongAnswerLabel) return null;
+  if (cards.some((card) => !card.id || !card.label || typeof card.valueMm !== 'number')) return null;
+
+  const correctOrder = [...cards]
+    .sort((a, b) => input.question.orderingDirection === 'desc' ? b.valueMm - a.valueMm : a.valueMm - b.valueMm)
+    .map((card) => card.label);
+
+  return {
+    sessionItemId: 0,
+    mistakeId: 0,
+    rendererType: 'ordering_sequence',
+    exerciseKey: exerciseKeyForAttempt(input.learner, input.category, input.topic),
+    promptText: input.question.question,
+    correctAnswerLabel: correctOrder.join(ORDERING_SEPARATOR),
+    wrongAnswerLabel,
+    orderingCards: cards.map((card) => ({ id: card.id, label: card.label })),
+    originalQuestionData: input.question
+  };
+}
+
 function buildSnapshot(input: SnapshotInput): PromptSnapshot | null {
   if (input.question.isCorrect !== false) return null;
   const rendererType = rendererFor(input.learner, input.subject, input.topic, input.question);
   if (!rendererType) return null;
   if (rendererType === 'science_choice') return buildScienceSnapshot(input);
+  if (rendererType === 'ordering_sequence') return buildOrderingSnapshot(input);
 
   const rawPromptText = input.question.question || '';
   const correctAnswerLabel = correctLabel(input.question);
@@ -266,7 +297,7 @@ function buildSnapshot(input: SnapshotInput): PromptSnapshot | null {
   if (!rawPromptText || !correctAnswerLabel || !wrongAnswerLabel) return null;
 
   const exerciseKey = exerciseKeyForAttempt(input.learner, input.category, input.topic);
-  const choices = isTypedAnswerRenderer(rendererType)
+  const choices = !hasChoiceList(rendererType)
     ? undefined
     : isComparisonQuestion(input.question)
     ? ['<', '=', '>']
@@ -435,7 +466,7 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
   repairLegacyComparison(snapshot);
   const seed = row.id * 997 + position * 37;
   if (snapshot.rendererType === 'science_choice') return scienceQuestionForSnapshot(snapshot, row.id, sessionItemId, seed);
-  const choices = isTypedAnswerRenderer(snapshot.rendererType) ? undefined : choicesWithDistractors(snapshot, seed, snapshot.rendererType === 'initial_sound' ? 3 : 5);
+  const choices = !hasChoiceList(snapshot.rendererType) ? undefined : choicesWithDistractors(snapshot, seed, snapshot.rendererType === 'initial_sound' ? 3 : 5);
   const original = snapshot.originalQuestionData ?? {};
   const promptText = snapshot.rendererType === 'initial_sound'
     ? ''
@@ -465,6 +496,7 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
     readingText: original.text ?? snapshot.readingText,
     correctAnswerLabel: snapshot.correctAnswerLabel,
     acceptedAnswerLabels: snapshot.acceptedAnswerLabels,
+    orderingCards: snapshot.orderingCards,
     expectedUnit,
     clockHour: original.type === 'clock' ? original.clockHour ?? snapshot.clockHour : snapshot.clockHour,
     clockMinutes: original.type === 'clock' ? original.clockMinutes ?? snapshot.clockMinutes : snapshot.clockMinutes,
@@ -581,7 +613,9 @@ export function submitRemediationSession(input: {
         // has to describe how the child actually answered.
         kind: question.rendererType === 'math_numeric'
           ? 'numeric' as const
-          : question.rendererType === 'math_text_answer' ? 'text' as const : 'choice' as const,
+          : question.rendererType === 'math_text_answer'
+          ? 'text' as const
+          : question.rendererType === 'ordering_sequence' ? 'ordering' as const : 'choice' as const,
         choiceOptions: question.choices,
         clockHour: question.clockHour,
         clockMinutes: question.clockMinutes,

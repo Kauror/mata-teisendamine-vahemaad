@@ -295,6 +295,59 @@ describe('text problems', () => {
   });
 });
 
+describe('ordering questions', () => {
+  // Cards are stored in the shuffled order they were presented in; the correct
+  // sequence is derived once from valueMm at capture time.
+  const orderingQuestion = {
+    id: 'ord-1',
+    kind: 'ordering',
+    question: 'Järjesta pikkused lühimast pikimani.',
+    orderingCards: [
+      { id: 'c', label: '3 cm', valueMm: 30 },
+      { id: 'a', label: '5 mm', valueMm: 5 },
+      { id: 'd', label: '1 m', valueMm: 1000 },
+      { id: 'b', label: '2 dm', valueMm: 200 }
+    ],
+    orderingDirection: 'asc',
+    correctAnswer: 0,
+    userAnswer: '1 m → 3 cm → 5 mm → 2 dm',
+    isCorrect: false
+  };
+
+  function capturedOrdering(overrides: Record<string, unknown> = {}) {
+    captureMath([
+      ...Array.from({ length: 11 }, (_, index) => numericMistake(index + 1)),
+      { ...orderingQuestion, ...overrides }
+    ]);
+    return startRemediationSession('kiur').questions.find((item) => item.rendererType === 'ordering_sequence');
+  }
+
+  it('captures them with the cards to arrange and the right sequence', () => {
+    const question = capturedOrdering();
+    expect(question?.correctAnswerLabel).toBe('5 mm → 3 cm → 2 dm → 1 m');
+    expect(question?.orderingCards?.map((card) => card.id)).toEqual(['c', 'a', 'd', 'b']);
+    expect(question?.choices).toBeUndefined();
+  });
+
+  it('honours a descending question', () => {
+    const question = capturedOrdering({ orderingDirection: 'desc', question: 'Järjesta pikkused pikimast lühimani.' });
+    expect(question?.correctAnswerLabel).toBe('1 m → 2 dm → 3 cm → 5 mm');
+  });
+
+  it('accepts only the right sequence', () => {
+    const question = capturedOrdering()!;
+    expect(isRemediationAnswerCorrect(question, '5 mm → 3 cm → 2 dm → 1 m')).toBe(true);
+    expect(isRemediationAnswerCorrect(question, '3 cm → 5 mm → 2 dm → 1 m')).toBe(false);
+    expect(isRemediationAnswerCorrect(question, '5 mm → 3 cm → 2 dm')).toBe(false);
+  });
+
+  it('skips a question whose cards cannot be ordered', () => {
+    seedUsablePool(11);
+    captureMath([{ ...orderingQuestion, orderingCards: [{ id: 'a', label: '5 mm' }] }]);
+    expect(getOpenRenderableMistakeCount('kiur')).toBe(11);
+  });
+});
+
 describe('Loodusõpetus mistakes', () => {
   // Real dataset ids: the whole point is that the replay reads the task back
   // from the dataset rather than trusting a copy stored with the answer.

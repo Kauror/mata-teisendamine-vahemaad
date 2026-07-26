@@ -9,7 +9,12 @@ import { SCIENCE_EYEBROW, ScienceDataPanel } from '@/app/components/science/Scie
 import { formatStars } from '@/lib/formatStars';
 // Imported, not redeclared: a local copy of this contract is how the screen
 // silently falls behind the renderer types the server actually emits.
-import { isRemediationAnswerCorrect, isTypedAnswerRenderer, type RemediationQuestion } from '@/lib/shared/remediationQuestion';
+import {
+  isRemediationAnswerCorrect,
+  isTypedAnswerRenderer,
+  ORDERING_SEPARATOR,
+  type RemediationQuestion
+} from '@/lib/shared/remediationQuestion';
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -45,6 +50,61 @@ function promptEyebrow(question: RemediationQuestion) {
   // The same wording the science runner uses, so the task reads the same here.
   if (question.scienceTaskType) return SCIENCE_EYEBROW[question.scienceTaskType];
   return 'Vasta küsimusele';
+}
+
+// Same tap-to-add / move / remove control the runner uses for ordering, down to
+// the class names, so the child arranges the cards the same way in both places.
+function OrderingAnswerPanel({
+  question,
+  order,
+  disabled,
+  onChange,
+  onSubmit
+}: {
+  question: RemediationQuestion;
+  order: string[];
+  disabled: boolean;
+  onChange: (next: string[]) => void;
+  onSubmit: () => void;
+}) {
+  const cards = question.orderingCards ?? [];
+  const chosen = new Set(order);
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= order.length) return;
+    const next = [...order];
+    [next[from], next[to]] = [next[to], next[from]];
+    onChange(next);
+  };
+
+  return (
+    <div className='ordering-panel'>
+      <p>Sinu järjestus</p>
+      <div className='row ordering-available'>
+        {cards.filter((card) => !chosen.has(card.id)).map((card) => (
+          <button type='button' key={card.id} className='chip' disabled={disabled} onClick={() => onChange([...order, card.id])}>
+            {card.label}
+          </button>
+        ))}
+      </div>
+      <div className='ordering-list'>
+        {order.map((id, position) => {
+          const card = cards.find((item) => item.id === id);
+          if (!card) return null;
+          return (
+            <div key={id} className='ordering-item'>
+              <strong>{position + 1}. {card.label}</strong>
+              <div className='row'>
+                <button type='button' className='chip ordering-move-button' aria-label='Liiguta üles' disabled={disabled} onClick={() => move(position, position - 1)}>↑</button>
+                <button type='button' className='chip ordering-move-button' aria-label='Liiguta alla' disabled={disabled} onClick={() => move(position, position + 1)}>↓</button>
+                <button type='button' className='chip danger' disabled={disabled} onClick={() => onChange(order.filter((item) => item !== id))}>Eemalda</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <button type='button' className='start-button' disabled={disabled || order.length !== cards.length} onClick={onSubmit}>Vasta</button>
+    </div>
+  );
 }
 
 function ScienceReviewMaterial({ question }: { question: RemediationQuestion }) {
@@ -97,6 +157,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
   const [questions, setQuestions] = useState<RemediationQuestion[]>([]);
   const [index, setIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState('');
+  const [orderingOrder, setOrderingOrder] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
   const [hintVisible, setHintVisible] = useState(false);
@@ -139,11 +200,20 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
     setShowFeedback(true);
   };
 
+  // The cards are answered as the sequence of their labels, joined the same way
+  // the runner joins them, so the two produce the same answer string.
+  const submitOrdering = () => {
+    if (!current) return;
+    const labels = orderingOrder.map((id) => current.orderingCards?.find((card) => card.id === id)?.label ?? '');
+    chooseAnswer(labels.join(ORDERING_SEPARATOR));
+  };
+
   const next = async () => {
     if (!current || !answered) return;
     if (index < questions.length - 1) {
       setIndex((value) => value + 1);
       setSelectedAnswer('');
+      setOrderingOrder([]);
       setShowFeedback(false);
       setHintVisible(false);
       return;
@@ -262,7 +332,15 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
             </div>
           ) : null}
 
-          {isTypedAnswerRenderer(current.rendererType) ? (
+          {current.rendererType === 'ordering_sequence' ? (
+            <OrderingAnswerPanel
+              question={current}
+              order={orderingOrder}
+              disabled={answered}
+              onChange={setOrderingOrder}
+              onSubmit={submitOrdering}
+            />
+          ) : isTypedAnswerRenderer(current.rendererType) ? (
             <div className='answer-input-row'>
               <input
                 className='answer-input'
