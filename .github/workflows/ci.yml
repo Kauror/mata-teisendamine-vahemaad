@@ -125,7 +125,9 @@ jobs:
             echo "APP_DATA_DIR=./data"
           } > .env
       - name: Build the production image via compose
-        run: docker compose build
+        # .git is excluded from the build context, so the calendar version is
+        # computed on the runner and handed to the image as a build arg.
+        run: APP_VERSION=$(npm run --silent version:print) docker compose build
       - name: Fail on fixable high/critical production image vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
         with:

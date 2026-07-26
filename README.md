@@ -110,12 +110,33 @@ Valikulised: `APP_SESSION_SECRET_PREVIOUS` (saladuse rotatsioon),
 > TLS-i lõpetav pöördproksü (nt Nginx/Caddy/Traefik), mis serveerib
 > `APP_ORIGIN`-is nimetatud aadressi. Rakendust ei tohi avada otse üle HTTP.
 
+## Versioon
+
+Rakenduse versioon on kalendriversioon – viimase commiti kuupäev Tallinna
+kalendri järgi, näiteks `v2026.07.26`. See on näha avalehe jalusel ning
+`/api/offline/ping` ja sünkroonimise vastustes, nii et jooksvast rakendusest on
+alati näha, millal seda viimati uuendati.
+
+Käsitsi ei ole vaja midagi tõsta: `npm run build` tuletab väärtuse gitist
+(`scripts/app-version.mjs`) ja Next kirjutab selle build'i ajal koodi sisse.
+`package.json` versioon on jäänud ainult npm-i tarbeks ega ole enam kusagil
+kuvatud.
+
+Kuna `.git` on Dockeri build-kontekstist välja jäetud (`.dockerignore`), tuleb
+Dockeriga ehitades versioon hostis välja arvutada ja `APP_VERSION` build-argina
+kaasa anda. Kui see puudub, katkeb build veateatega – nii ei satu pilti vale
+kuupäev.
+
+```bash
+npm run version:print
+```
+
 ## Dockeris käivitamine
 
 Kui `.env` on täidetud:
 
 ```bash
-docker compose up -d --build
+APP_VERSION=$(npm run --silent version:print) docker compose up -d --build
 ```
 
 Rakendus on kättesaadav pöördproksü kaudu `APP_ORIGIN`-is (konteiner ise kuulab
@@ -129,8 +150,10 @@ andmebaasi.
 2. Kopeeri sinna kõik projektifailid ja loo `.env` (vt ülalt).
 3. Käivita samas kaustas:
    ```bash
-   docker compose up -d --build
+   APP_VERSION=$(npm run --silent version:print) docker compose up -d --build
    ```
+   (Kui kaustas ei ole git-checkout'i, anna kuupäev käsitsi:
+   `APP_VERSION=2026.07.26 docker compose up -d --build`.)
 4. Suuna pöördproksü HTTPS-liiklus konteineri porti 3000.
 
 ## Andmebaasi asukoht ja varundus
@@ -191,6 +214,7 @@ juba välja antud kuud (idempotentne).
 - `npm run start` – verifitseeritud produktsiooniserver (autentimise ja
   andmebaasi kontroll, seejärel `next start`)
 - `npm run start:next` – Next.js server ilma verifitseerimiskihita (ainult arendus)
+- `npm run version:print` – prindib kalendriversiooni (viimase commiti kuupäev), nt Dockeri build-argi jaoks
 - `npm run auth:hash -- <pin>` – genereerib `APP_ACCESS_PIN_HASH` väärtuse
 - `npm run db:startup` – ainult andmebaasi varundus + verifitseerimine
 - `npm run audit:v2 -- <db-fail>` – WAL-turvaline protokoll-v2 populatsiooni audit enne juurutust (RTM3-C02 / RTM4-C03)

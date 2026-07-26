@@ -356,9 +356,12 @@ export type PingResponse = {
   buildId?: string;
 };
 
-// Human-readable app version reported by the ping/sync endpoints. Independent of
-// the service-worker cache id (which is the build hash).
-export const APP_VERSION = '0.9.3';
+// Calendar version — the date of the last commit in the build, e.g. '2026.07.26'.
+// Shown on the dashboard and reported by the ping/sync endpoints, so "when was
+// the app last updated?" is answerable from the running app. Stamped by
+// scripts/build-app.mjs (see scripts/app-version.mjs for how it is derived) and
+// inlined at build time. `next dev` does no such build, hence the fallback.
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
 
 // Server-side batch limits for the sync endpoint (untrusted client input).
 export const CLIENT_PENDING_ATTEMPTS_PER_SYNC = 20;

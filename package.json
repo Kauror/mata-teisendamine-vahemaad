@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/build-app.mjs",
+    "version:print": "node scripts/app-version.mjs",
     "start": "tsx scripts/verified-start.ts",
     "start:next": "next start",
     "lint": "next lint",

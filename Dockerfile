@@ -12,6 +12,11 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
+# The calendar version is derived from the last commit date, but .git is kept out
+# of the build context, so the host computes it and passes it in. The build fails
+# rather than shipping a wrong "last updated" date if this is missing.
+ARG APP_VERSION
+ENV APP_VERSION=${APP_VERSION}
 ENV MATHS_GAME_DB_FILE=:memory:
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

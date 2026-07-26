@@ -1,6 +1,12 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        # Calendar version (last commit date). Compose cannot run git itself, so
+        # build with:
+        #   APP_VERSION=$(npm run --silent version:print) docker compose build
+        APP_VERSION: ${APP_VERSION:-}
     image: pikkuste-harjutaja:${APP_IMAGE_TAG:-local}
     container_name: pikkuste-harjutaja
     init: true
