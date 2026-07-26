@@ -1,7 +1,7 @@
 import db from '@/lib/db';
 import { childExerciseCards } from '@/lib/childExerciseCards';
 import { getCompletedExerciseIdsToday } from '@/lib/exerciseCompletion';
-import { DAILY_EXERCISE_LIMIT, getActiveLearningExercises } from '@/lib/learningExercises';
+import { DAILY_EXERCISE_LIMIT, getActiveLearningExercises, getLearningExerciseCatalog } from '@/lib/learningExercises';
 import { isKirsiAttempt } from '@/lib/history';
 import { getLearningDaysThisWeek } from '@/lib/learningPoints';
 import { isoToAppDate, startOfAppWeek } from '@/lib/appDate';
@@ -36,7 +36,7 @@ export function latestExerciseMilestone(exercises: number) {
 }
 
 function completedExercisesToday(learner: Learner) {
-  const exercises = childExerciseCards(learner, getActiveLearningExercises(learner));
+  const exercises = childExerciseCards(learner, getActiveLearningExercises(learner), getLearningExerciseCatalog());
   return Math.min(getCompletedExerciseIdsToday(learner, exercises).size, DAILY_EXERCISE_LIMIT);
 }
 

@@ -45,7 +45,7 @@ export async function getTodaysExercisesOffline(learner: Learner, date = todayDa
     algorithmVersion: catalogue.algorithmVersion,
     catalogueVersion: catalogue.version
   });
-  const cards = childExerciseCards(learner, chosen);
+  const cards = childExerciseCards(learner, chosen, catalogue.entries);
   return {
     cards,
     catalogueVersion: catalogue.version,
