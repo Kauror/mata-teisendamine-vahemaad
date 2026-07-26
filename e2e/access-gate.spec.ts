@@ -7,7 +7,17 @@ import { test, expect } from './test';
 test('an unauthenticated visit is redirected to the PIN gate', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/access$/);
-  await expect(page.getByRole('heading', { name: 'Sisesta pere parool' })).toBeVisible();
+  // The gate deliberately shows no wording: a lock, a box and an arrow. The
+  // heading stays in the accessibility tree but must not be drawn, so it is
+  // measured rather than read — sr-only text still counts as textContent.
+  const heading = page.getByRole('heading', { name: 'Sisesta pere parool' });
+  await expect(heading).toBeAttached();
+  const headingBox = await heading.boundingBox();
+  expect(headingBox?.width ?? 0).toBeLessThanOrEqual(1);
+  expect(headingBox?.height ?? 0).toBeLessThanOrEqual(1);
+
+  await expect(page.getByLabel('Sisesta pere parool')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sisene' })).toBeVisible();
 });
 
 test('a protected child route also redirects to the PIN gate', async ({ page }) => {

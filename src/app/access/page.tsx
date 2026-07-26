@@ -37,7 +37,11 @@ export default function AccessPage() {
     <main className='access-page'>
       <section className='access-card'>
         <div className='access-icon' aria-hidden>🔒</div>
-        <h1>Sisesta pere parool</h1>
+        {/* The lock, the box and the arrow say enough on their own. The heading
+            stays for screen readers and for the page's document outline, but is
+            not drawn — the input carries the same name visibly to assistive
+            tech via aria-label. */}
+        <h1 className='sr-only'>Sisesta pere parool</h1>
         <form className='access-form' onSubmit={submit}>
           <input
             aria-label='Sisesta pere parool'
