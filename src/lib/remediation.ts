@@ -8,6 +8,7 @@ import { isChoiceTask, type ChoiceScienceTask } from '@/lib/loodusopetus/types';
 import {
   isRemediationAnswerCorrect,
   isRemediationRendererType,
+  isTypedAnswerRenderer,
   type RemediationQuestion,
   type RemediationRendererType
 } from '@/lib/shared/remediationQuestion';
@@ -37,6 +38,7 @@ type SavedQuestion = {
   correctWord?: string;
   selectedWord?: string;
   correctAnswerText?: string;
+  acceptedAnswers?: string[];
   selectedAnswer?: string;
   estonian?: string;
   explanation?: string;
@@ -167,13 +169,19 @@ function isComparisonQuestion(question: { kind?: string; choiceOptions?: string[
   return question.kind === 'choice' && !question.choiceOptions?.length;
 }
 
-// Every option that counts as right. Most questions have exactly one; a few
-// list several indexes in correctAnswers ("Vali sobiv ühik" accepts mm, cm and
-// dm). These used to be dropped from the pool entirely.
+// Every answer that counts as right. Most questions have exactly one; a few
+// choice questions list several indexes in correctAnswers ("Vali sobiv ühik"
+// accepts mm, cm and dm) and text problems carry spelled-out alternatives in
+// acceptedAnswers ("15.05" for "kell 15.05"). Both used to be dropped.
 function acceptedLabels(question: SavedQuestion): string[] {
   const options = question.choiceOptions;
-  if (!options?.length || !question.correctAnswers?.length) return [];
-  return unique(question.correctAnswers.map((index) => options[index]).filter((label): label is string => Boolean(label)));
+  if (options?.length && question.correctAnswers?.length) {
+    return unique(question.correctAnswers.map((index) => options[index]).filter((label): label is string => Boolean(label)));
+  }
+  if (question.acceptedAnswers?.length && typeof question.correctAnswerText === 'string') {
+    return unique([question.correctAnswerText, ...question.acceptedAnswers]);
+  }
+  return [];
 }
 
 function correctLabel(question: SavedQuestion) {
@@ -191,7 +199,7 @@ function correctLabel(question: SavedQuestion) {
 
 function rendererFor(learner: Learner, subject: string, topic: string, question: SavedQuestion): RemediationRendererType | null {
   if (subject === 'matemaatika') {
-    if (question.kind === 'text' || question.type === 'text-problem') return null;
+    if (question.kind === 'text' || question.type === 'text-problem') return 'math_text_answer';
     if (learner === 'kirsi' && topic === 'loendamine' && question.type === 'counting') return 'counting_choice';
     if (question.kind === 'ordering') return null;
     return question.kind === 'choice' ? 'math_multiple_choice' : 'math_numeric';
@@ -258,7 +266,7 @@ function buildSnapshot(input: SnapshotInput): PromptSnapshot | null {
   if (!rawPromptText || !correctAnswerLabel || !wrongAnswerLabel) return null;
 
   const exerciseKey = exerciseKeyForAttempt(input.learner, input.category, input.topic);
-  const choices = rendererType === 'math_numeric'
+  const choices = isTypedAnswerRenderer(rendererType)
     ? undefined
     : isComparisonQuestion(input.question)
     ? ['<', '=', '>']
@@ -427,7 +435,7 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
   repairLegacyComparison(snapshot);
   const seed = row.id * 997 + position * 37;
   if (snapshot.rendererType === 'science_choice') return scienceQuestionForSnapshot(snapshot, row.id, sessionItemId, seed);
-  const choices = snapshot.rendererType === 'math_numeric' ? undefined : choicesWithDistractors(snapshot, seed, snapshot.rendererType === 'initial_sound' ? 3 : 5);
+  const choices = isTypedAnswerRenderer(snapshot.rendererType) ? undefined : choicesWithDistractors(snapshot, seed, snapshot.rendererType === 'initial_sound' ? 3 : 5);
   const original = snapshot.originalQuestionData ?? {};
   const promptText = snapshot.rendererType === 'initial_sound'
     ? ''
@@ -569,7 +577,11 @@ export function submitRemediationSession(input: {
         correctAnswer: 0,
         correctAnswerText: question.correctAnswerLabel,
         isCorrect,
-        kind: question.rendererType === 'math_numeric' ? 'numeric' as const : 'choice' as const,
+        // What the review screens use to decide how to show the answer, so it
+        // has to describe how the child actually answered.
+        kind: question.rendererType === 'math_numeric'
+          ? 'numeric' as const
+          : question.rendererType === 'math_text_answer' ? 'text' as const : 'choice' as const,
         choiceOptions: question.choices,
         clockHour: question.clockHour,
         clockMinutes: question.clockMinutes,

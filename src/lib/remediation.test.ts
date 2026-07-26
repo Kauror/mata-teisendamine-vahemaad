@@ -258,6 +258,43 @@ describe('questions with several right answers', () => {
   });
 });
 
+describe('text problems', () => {
+  const textProblem = {
+    id: 'tp-1',
+    type: 'text-problem',
+    kind: 'text',
+    question: 'Buss väljub kell 14.50 ja sõidab 15 minutit. Mis kell see kohale jõuab?',
+    correctAnswer: 0,
+    correctAnswerText: 'kell 15.05',
+    acceptedAnswers: ['15.05'],
+    userAnswer: 'kell 15.15',
+    isCorrect: false
+  };
+
+  function capturedTextProblem() {
+    captureMath([...Array.from({ length: 11 }, (_, index) => numericMistake(index + 1)), textProblem]);
+    return startRemediationSession('kiur').questions.find((item) => item.rendererType === 'math_text_answer');
+  }
+
+  it('captures them and asks for a typed answer', () => {
+    const question = capturedTextProblem();
+    expect(question).toBeDefined();
+    expect(question?.choices).toBeUndefined();
+    expect(question?.correctAnswerLabel).toBe('kell 15.05');
+    expect(question?.acceptedAnswerLabels).toEqual(['kell 15.05', '15.05']);
+  });
+
+  it('judges a typed answer exactly as the runner does', () => {
+    const question = capturedTextProblem()!;
+    for (const answer of ['kell 15.05', '15.05', ' 15,05 ']) {
+      expect(isRemediationAnswerCorrect(question, answer)).toBe(true);
+    }
+    for (const answer of ['15.15', 'kell 16.05', '']) {
+      expect(isRemediationAnswerCorrect(question, answer)).toBe(false);
+    }
+  });
+});
+
 describe('Loodusõpetus mistakes', () => {
   // Real dataset ids: the whole point is that the replay reads the task back
   // from the dataset rather than trusting a copy stored with the answer.

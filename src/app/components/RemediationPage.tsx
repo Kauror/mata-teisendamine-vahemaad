@@ -9,7 +9,7 @@ import { SCIENCE_EYEBROW, ScienceDataPanel } from '@/app/components/science/Scie
 import { formatStars } from '@/lib/formatStars';
 // Imported, not redeclared: a local copy of this contract is how the screen
 // silently falls behind the renderer types the server actually emits.
-import { isRemediationAnswerCorrect, type RemediationQuestion } from '@/lib/shared/remediationQuestion';
+import { isRemediationAnswerCorrect, isTypedAnswerRenderer, type RemediationQuestion } from '@/lib/shared/remediationQuestion';
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -35,7 +35,7 @@ function feedbackText(question: RemediationQuestion) {
   if (question.rendererType === 'initial_sound' && question.targetWord) {
     return `${question.targetWord} algab häälikuga ${question.correctAnswerLabel}.`;
   }
-  if (question.rendererType === 'math_numeric') return `Õige vastus on ${question.correctAnswerLabel}.`;
+  if (isTypedAnswerRenderer(question.rendererType)) return `Õige vastus on ${question.correctAnswerLabel}.`;
   return `Õige vastus on: ${question.correctAnswerLabel}.`;
 }
 
@@ -262,11 +262,13 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
             </div>
           ) : null}
 
-          {current.rendererType === 'math_numeric' ? (
+          {isTypedAnswerRenderer(current.rendererType) ? (
             <div className='answer-input-row'>
               <input
                 className='answer-input'
-                inputMode='decimal'
+                // A text problem's answer can be words or a time, not just a
+                // number, so it must not get the decimal keypad.
+                inputMode={current.rendererType === 'math_numeric' ? 'decimal' : 'text'}
                 value={selectedAnswer}
                 disabled={answered}
                 onChange={(event) => setSelectedAnswer(event.target.value)}
