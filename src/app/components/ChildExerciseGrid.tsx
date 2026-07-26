@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { ChildExerciseCard } from '@/lib/childExerciseCards';
+import { questionWord } from '@/lib/history';
 import type { Learner } from '@/lib/shared/types';
 import { getTodaysExercisesOffline } from '@/lib/offline/api';
 
@@ -54,7 +55,7 @@ export default function ChildExerciseGrid({
           <Link className='child-exercise-card' data-accent='green' href={remediationHref}>
             {/* The pool can hold more than one session's worth: a round is always
                 REMEDIATION_QUESTION_COUNT questions, this counts everything waiting. */}
-            {remediationCount ? <span className='exercise-count-marker' aria-label={`${remediationCount} ülesannet ootab kordamist`}>{remediationCount}</span> : null}
+            {remediationCount ? <span className='exercise-count-marker' aria-label={`${remediationCount} ${questionWord(remediationCount)} ootab kordamist`}>{remediationCount}</span> : null}
             <span className='child-exercise-icon' aria-hidden>↻</span>
             <span className='child-exercise-copy'>
               <strong>Kordamine</strong>

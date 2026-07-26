@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { compactTopicLabel, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, exerciseWord, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import NoticeBoard from '@/app/components/NoticeBoard';
 import MetricTooltip from '@/app/components/MetricTooltip';
@@ -71,7 +71,7 @@ function TodayLeaderboard({ kiurCount, kirsiCount }: { kiurCount: number; kirsiC
     <div className='leaderboard-child' data-leader={isLeader}>
       <span className='leaderboard-trophy' aria-hidden>{isLeader ? '🏆' : ''}</span>
       <span className='leaderboard-name'>{name}</span>
-      <span className='leaderboard-count'>{count} ülesannet</span>
+      <span className='leaderboard-count'>{count} {exerciseWord(count)}</span>
     </div>
   );
 

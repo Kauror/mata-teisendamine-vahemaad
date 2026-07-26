@@ -397,7 +397,10 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
   };
 }
 
-export function startRemediationSession(learner: Learner) {
+// Explicit return type: `db` is untyped (better-sqlite3 ships no types here),
+// so db.transaction() would otherwise widen the whole session to `any` at every
+// call site, including the API route.
+export function startRemediationSession(learner: Learner): { sessionId: number; questions: RemediationQuestion[] } {
   const openRows = openRenderableMistakes(learner);
   if (openRows.length < REMEDIATION_MIN_OPEN_MISTAKES) {
     throw new Error('Kordamine avaneb siis, kui kogunenud on 10 asja.');

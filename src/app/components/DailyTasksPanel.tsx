@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
-import { trophyWord } from '@/lib/history';
+import { exerciseWord, trophyWord } from '@/lib/history';
 import { completeTaskOffline, getDailyTasksOffline, getDashboardSnapshot } from '@/lib/offline/api';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import MetricTooltip from '@/app/components/MetricTooltip';
@@ -220,7 +220,7 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
           <span className='monthly-celebration-trophy' aria-hidden>🏆</span>
           <div className='monthly-celebration-text'>
             <strong>Sa olid eelmise kuu parim!</strong>
-            <span>Said {celebration.trophies} {trophyWord(celebration.trophies)}, lahendades {celebration.exercises} ülesannet.</span>
+            <span>Said {celebration.trophies} {trophyWord(celebration.trophies)}, lahendades {celebration.exercises} {exerciseWord(celebration.exercises)}.</span>
             {celebration.prizeStars > 0 && <span className='monthly-celebration-prize'>Auhind: +{formatStars(celebration.prizeStars)} ⭐</span>}
           </div>
         </div>

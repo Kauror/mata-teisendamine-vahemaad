@@ -25,6 +25,20 @@ export function trophyWord(count: number) {
   return count === 1 ? 'karikas' : 'karikat';
 }
 
+// Counts of finished exercise sessions ("attempts"), not of individual
+// questions. Everything that shows one of these numbers — the home leaderboard,
+// the monthly celebration, the parent library — counts attempt rows, so the
+// noun has to be "harjutus", not "ülesanne".
+export function exerciseWord(count: number) {
+  return count === 1 ? 'harjutus' : 'harjutust';
+}
+
+// Counts of individual questions, e.g. how many mistakes are waiting in the
+// remediation pool. One mistake_pool row is one question, not one session.
+export function questionWord(count: number) {
+  return count === 1 ? 'ülesanne' : 'ülesannet';
+}
+
 // A protocol-v2 attempt whose stars are held pending parent review (RTM3-H02).
 // The child sees a completed result with no stars; without this the row is
 // indistinguishable from an ordinary confirmed attempt that simply earned zero.
