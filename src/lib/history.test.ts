@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { exerciseWord, questionWord, trophyWord } from '@/lib/history';
+import { exerciseWord, questionWord, subjectLabel, trophyWord } from '@/lib/history';
+import { LEARNING_EXERCISE_SUBJECT_LABELS } from '@/lib/shared/types';
 
 // Estonian takes the nominative after exactly 1 and the partitive after every
 // other number, including 0. The counters these words label are attempt counts
@@ -18,5 +19,23 @@ describe('Estonian number words', () => {
       expect(questionWord(count)).toBe('ülesannet');
       expect(trophyWord(count)).toBe('karikat');
     }
+  });
+});
+
+describe('subjectLabel', () => {
+  it('labels every catalogue subject from the shared record', () => {
+    expect(Object.keys(LEARNING_EXERCISE_SUBJECT_LABELS)).toEqual([
+      'matemaatika', 'inglise-keel', 'lugemine', 'loodusopetus'
+    ]);
+    for (const [subject, label] of Object.entries(LEARNING_EXERCISE_SUBJECT_LABELS)) {
+      expect(subjectLabel(subject)).toBe(label);
+    }
+  });
+
+  it('keeps the attempt-only cases the catalogue does not have', () => {
+    expect(subjectLabel('kordamine')).toBe('Kordamine');
+    expect(subjectLabel(null)).toBe('Matemaatika');
+    expect(subjectLabel(undefined)).toBe('Matemaatika');
+    expect(subjectLabel('miski-muu')).toBe('miski-muu');
   });
 });

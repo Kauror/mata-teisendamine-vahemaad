@@ -1,4 +1,5 @@
 import { APP_TIME_ZONE, isoToAppDate, previousAppDate, todayDateString } from '@/lib/appDate';
+import { LEARNING_EXERCISE_SUBJECT_LABELS, type LearningExerciseSubject } from '@/lib/shared/types';
 
 export const KIRSI_CATEGORIES = new Set([
   'Arvutamine 10 piires',
@@ -71,13 +72,13 @@ export function relativeDateTimeLabel(createdAt: string) {
   return `${date} ${time}`;
 }
 
+// Attempt subjects are a superset of the catalogue subjects: 'kordamine' is a
+// synthetic subject that no catalogue entry has, and an unrecognised value is
+// shown as-is rather than guessed at.
 export function subjectLabel(subject?: string | null) {
   if (subject === 'kordamine') return 'Kordamine';
-  if (!subject || subject === 'matemaatika') return 'Matemaatika';
-  if (subject === 'inglise-keel') return 'Inglise keel';
-  if (subject === 'lugemine') return 'Lugemine';
-  if (subject === 'loodusopetus') return 'Loodusõpetus';
-  return subject;
+  if (!subject) return 'Matemaatika';
+  return LEARNING_EXERCISE_SUBJECT_LABELS[subject as LearningExerciseSubject] ?? subject;
 }
 
 export function compactTopicLabel(topic?: string | null, category?: string | null) {

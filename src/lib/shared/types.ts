@@ -7,6 +7,18 @@ export type Learner = 'kiur' | 'kirsi';
 export type LearningExerciseStatus = 'hidden' | 'rotation' | 'permanent';
 export type LearningExerciseSubject = 'matemaatika' | 'inglise-keel' | 'lugemine' | 'loodusopetus';
 
+// The one place a subject gets a human name. A Record over the union, so adding
+// a subject is a compile error until it is labelled — the parent library and the
+// history list previously kept separate copies of this map, and the copy in the
+// parent library silently lacked Loodusõpetus. Declaration order is also the
+// display order in the parent library, so new subjects belong at the end.
+export const LEARNING_EXERCISE_SUBJECT_LABELS: Record<LearningExerciseSubject, string> = {
+  matemaatika: 'Matemaatika',
+  'inglise-keel': 'Inglise keel',
+  lugemine: 'Lugemine',
+  loodusopetus: 'Loodusõpetus'
+};
+
 // The parent-configured catalogue entry for one exercise, plus each child's
 // visibility status. Mirrors the server's LearningExerciseRow but lives in a
 // client-safe module so the browser can compute today's cards offline.

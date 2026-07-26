@@ -9,6 +9,7 @@ import { OfflineReadiness } from '@/app/components/offline/OfflineReadiness';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { ParentNoticePanel, ParentPasswordPanel } from '@/app/components/ParentAccountPanels';
 import { csrfHeaders } from '@/lib/auth/client';
+import { LEARNING_EXERCISE_SUBJECT_LABELS, type LearningExerciseStatus, type LearningExerciseSubject } from '@/lib/shared/types';
 
 // Parent APIs require the parent-session double-submit token. Keeping the
 // wrapper local makes every existing and future request in this screen use the
@@ -59,8 +60,11 @@ type StoreDashboard = {
   purchases: Array<{ id: number; learner: Learner; titleSnapshot: string; priceSnapshot: number; purchasedAt: string }>;
 };
 
-type LearningExerciseStatus = 'hidden' | 'rotation' | 'permanent';
-type LearningExerciseSubject = 'matemaatika' | 'inglise-keel' | 'lugemine';
+// Imported, never redeclared. This screen used to carry its own copy of the
+// subject union without 'loodusopetus'; because the copy was structurally its
+// own type, TypeScript accepted a SUBJECT_LABELS record that was missing a
+// subject, and Loodusõpetus rendered with no label, sorted to the top and had
+// no filter option. Importing makes any future subject a compile error here.
 type LearningExercise = {
   id: string;
   title: string;
@@ -147,12 +151,10 @@ const STOCK_LABELS: Record<StoreStockType, string> = {
   daily_stock: 'Päevane kogus',
   one_time_global: 'Ühekordne'
 };
-const SUBJECT_LABELS: Record<LearningExerciseSubject, string> = {
-  matemaatika: 'Matemaatika',
-  'inglise-keel': 'Inglise keel',
-  lugemine: 'Lugemine'
-};
-const SUBJECT_ORDER: LearningExerciseSubject[] = ['matemaatika', 'inglise-keel', 'lugemine'];
+const SUBJECT_LABELS = LEARNING_EXERCISE_SUBJECT_LABELS;
+// Derived from the label record, which the compiler forces to be exhaustive, so
+// a new subject can never end up unordered (indexOf -1 would sort it first).
+const SUBJECT_ORDER = Object.keys(SUBJECT_LABELS) as LearningExerciseSubject[];
 const STATUS_OPTIONS: ReadonlyArray<{ value: LearningExerciseStatus; label: string }> = [
   { value: 'hidden', label: 'Peidus' },
   { value: 'rotation', label: 'Rotatsioon' },
