@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
+import { starWord } from '@/lib/history';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 
 type Learner = 'kiur' | 'kirsi';
@@ -142,7 +143,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
             <h1>Pood</h1>
             <p>{childName(learner)}</p>
           </div>
-          <div className='store-balance'>⭐ {formatStars(balance)} tähte</div>
+          <div className='store-balance'>⭐ {formatStars(balance)} {starWord(formatStars(balance))}</div>
         </header>
 
         <Link className='history-link' href='/history'>📄 Ajalugu</Link>

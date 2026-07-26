@@ -49,6 +49,19 @@ async function failEveryQuestion(page: Page) {
   await expect(page).toHaveURL(/\/tulemus|\/history\//);
 }
 
+// The yesterday-points recap is a modal over the child's dashboard, mounted
+// after hydration — so checking for it once races with it appearing. A child
+// closes it before doing anything else; this is called before every attempt.
+async function dismissPointsRecap(page: Page) {
+  const recap = page.locator('.task-modal-backdrop[aria-labelledby="points-recap-title"]');
+  // It renders on the first dashboard visit of a context whether or not there
+  // is anything to report, so wait for it rather than sampling for it.
+  await recap.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
+  if (await recap.count() === 0) return;
+  await recap.locator('button.next-button').click();
+  await expect(recap).toHaveCount(0);
+}
+
 function openMistakeCount(page: Page) {
   return page.evaluate(async () => {
     const response = await fetch('/api/remediation?learner=kiur');
@@ -76,6 +89,7 @@ test('a failed session becomes a Kordamine round that can be answered', async ({
   // card can be swapped out between the hit test and the click. Retry rather
   // than navigating directly, because following the card IS the evidence.
   for (let attempt = 0; attempt < 3; attempt += 1) {
+    await dismissPointsRecap(page);
     await remediationCard.click();
     try {
       await page.waitForURL(/\/kiur\/kordamine/, { timeout: 5_000 });

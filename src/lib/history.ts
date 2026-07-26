@@ -20,10 +20,23 @@ export function learnerLabel(category: string, learner?: string | null) {
   return isKirsiAttempt(category, learner) ? 'Kirsi' : 'Kiur';
 }
 
-// Estonian uses the partitive ("karikat") after a number, except the bare
-// nominative "karikas" after exactly 1.
+// Estonian takes the partitive after a number ("5 karikat") and the bare
+// nominative after exactly 1 ("1 karikas"). Zero takes the partitive too. Every
+// counted noun the child sees goes through one of these, so a live number can
+// never produce "1 karikat".
 export function trophyWord(count: number) {
   return count === 1 ? 'karikas' : 'karikat';
+}
+
+export function dayWord(count: number) {
+  return count === 1 ? 'päev' : 'päeva';
+}
+
+// Stars can be fractional, so the word follows the number as it is written, not
+// the raw value: formatStars(1.04) prints "1" and must read "täht", while 1,5
+// prints "1,5" and stays partitive. Takes the formatted string for that reason.
+export function starWord(formattedStars: string) {
+  return formattedStars === '1' ? 'täht' : 'tähte';
 }
 
 // Counts of finished exercise sessions ("attempts"), not of individual

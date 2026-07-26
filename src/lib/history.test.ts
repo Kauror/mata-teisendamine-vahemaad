@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exerciseWord, questionWord, subjectLabel, todayStandings, trophyWord } from '@/lib/history';
+import { dayWord, exerciseWord, questionWord, starWord, subjectLabel, todayStandings, trophyWord } from '@/lib/history';
 import { LEARNING_EXERCISE_SUBJECT_LABELS } from '@/lib/shared/types';
 
 // Estonian takes the nominative after exactly 1 and the partitive after every
@@ -11,6 +11,7 @@ describe('Estonian number words', () => {
     expect(exerciseWord(1)).toBe('harjutus');
     expect(questionWord(1)).toBe('ülesanne');
     expect(trophyWord(1)).toBe('karikas');
+    expect(dayWord(1)).toBe('päev');
   });
 
   it('uses the partitive for zero and for more than one', () => {
@@ -18,7 +19,17 @@ describe('Estonian number words', () => {
       expect(exerciseWord(count)).toBe('harjutust');
       expect(questionWord(count)).toBe('ülesannet');
       expect(trophyWord(count)).toBe('karikat');
+      expect(dayWord(count)).toBe('päeva');
     }
+  });
+
+  // Stars are the only fractional count, so the word follows the written
+  // number rather than the raw value.
+  it('picks the star word from the number as written', () => {
+    expect(starWord('1')).toBe('täht');
+    expect(starWord('0')).toBe('tähte');
+    expect(starWord('1,5')).toBe('tähte');
+    expect(starWord('12')).toBe('tähte');
   });
 });
 

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { todayDateString } from '@/lib/appDate';
 import { formatStars } from '@/lib/formatStars';
+import { dayWord, exerciseWord } from '@/lib/history';
 import { OfflineReadiness } from '@/app/components/offline/OfflineReadiness';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { ParentNoticePanel, ParentPasswordPanel } from '@/app/components/ParentAccountPanels';
@@ -838,7 +839,7 @@ export default function ParentHub() {
         <OfflineReadiness />
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Harjutuste kogu' summary={`${learningExercises.length} harjutust`} open={openSections.has('library')} onToggle={() => toggleSection('library')}>
+      <ParentAccordionSection title='Harjutuste kogu' summary={`${learningExercises.length} ${exerciseWord(learningExercises.length)}`} open={openSections.has('library')} onToggle={() => toggleSection('library')}>
       <section className='parent-card'>
         <p>Lapsele näidatakse päevas kuni 4 harjutust: kõik <strong>püsivad</strong> ja juhuslik valik <strong>rotatsioonist</strong>. Valik vahetub iga päev. Kordamine lisandub 5.-na, kui vaja.</p>
         <div className='parent-form parent-library-filters'>
@@ -1058,7 +1059,7 @@ export default function ParentHub() {
           {rewardRules.map((rule) => (
             <div key={rule.id} className={editingRewardId === rule.id ? 'stock-row editing' : 'stock-row'}>
               <div className='stock-info'>
-                <strong>{rule.thresholdDays} päeva seeria · +{formatStars(rule.rewardStars)} ⭐</strong>
+                <strong>{rule.thresholdDays} {dayWord(rule.thresholdDays)} seeria · +{formatStars(rule.rewardStars)} ⭐</strong>
                 <span>{REWARD_SCOPE_LABELS[rule.learnerScope]}{rule.enabled ? '' : ' · ⏸ peatatud'}</span>
               </div>
               <div className='stock-actions'>
@@ -1073,7 +1074,7 @@ export default function ParentHub() {
       </section>
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Ajaloo haldamine' summary={`${parentHistory.length} harjutust`} open={openSections.has('history')} onToggle={() => toggleSection('history')}>
+      <ParentAccordionSection title='Ajaloo haldamine' summary={`${parentHistory.length} ${exerciseWord(parentHistory.length)}`} open={openSections.has('history')} onToggle={() => toggleSection('history')}>
       <section className='parent-card'>
         <p>Peitmine eemaldab tulemuse laste ajaloovaatest, kuid ei muuda teenitud tähti, seeriat ega võistlustulemusi.</p>
         <div className='stock-list'>

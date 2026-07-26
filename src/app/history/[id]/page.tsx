@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
-import { compactTopicLabel, HELD_REWARD_MESSAGE, isHeldReward, isKirsiAttempt } from '@/lib/history';
+import { compactTopicLabel, dayWord, HELD_REWARD_MESSAGE, isHeldReward, isKirsiAttempt } from '@/lib/history';
 import { KIUR_LENGTH_TOPIC_ID } from '@/lib/kiurMathTopics';
 import { formatStars } from '@/lib/formatStars';
 import { getStudyReward } from '@/lib/learningPoints';
@@ -176,10 +176,10 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             <div className='result-meta-grid'>
               <span>Teenitud: +{formatStars(reward.awardedAmount)} ⭐</span>
               <span>Tähed kokku: {formatStars(reward.balanceAfter)} ⭐</span>
-              <span>Õpiseeria: {reward.streakLength} päeva</span>
+              <span>Õpiseeria: {reward.streakLength} {dayWord(reward.streakLength)}</span>
               {isRemediation && typeof remediationMetadata.resolvedCount === 'number' && <span>Parandatud: {remediationMetadata.resolvedCount}</span>}
               {reward.streakBonusAwarded && <span>Seeriaboonus: +{formatStars(reward.streakBonusAmount)} ⭐</span>}
-              {reward.streakRewards.map((streakReward) => <span key={streakReward.ruleId}>Auhind ({streakReward.thresholdDays} päeva): +{formatStars(streakReward.amount)} ⭐</span>)}
+              {reward.streakRewards.map((streakReward) => <span key={streakReward.ruleId}>Auhind ({streakReward.thresholdDays} {dayWord(streakReward.thresholdDays)}): +{formatStars(streakReward.amount)} ⭐</span>)}
               {reward.capReached && reward.awardedAmount === 0 && <span>Tänane õppimise punktipiir on täis.</span>}
             </div>
           )}
