@@ -72,7 +72,18 @@ test('a failed session becomes a Kordamine round that can be answered', async ({
   const remediationCard = page.getByRole('link', { name: /Kordamine/ });
   await expect(remediationCard).toBeVisible();
 
-  await remediationCard.click();
+  // The exercise grid re-renders from the cached catalogue in an effect, so the
+  // card can be swapped out between the hit test and the click. Retry rather
+  // than navigating directly, because following the card IS the evidence.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await remediationCard.click();
+    try {
+      await page.waitForURL(/\/kiur\/kordamine/, { timeout: 5_000 });
+      break;
+    } catch (error) {
+      if (attempt === 2) throw error;
+    }
+  }
   await expect(page).toHaveURL(/\/kiur\/kordamine/);
   await expect(page.getByText(`1 / ${REMEDIATION_QUESTION_COUNT}`)).toBeVisible();
 
