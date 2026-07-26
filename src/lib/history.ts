@@ -52,6 +52,18 @@ export function isHeldReward(status?: string | null): boolean {
 export const HELD_REWARD_MESSAGE = 'Tulemus on salvestatud. Tähed ootavad vanema kinnitust.';
 
 
+// Today's row out of the stored daily standings (/api/leaderboard). Kept pure
+// and separate from the fetch so the "which row is today, and what if there
+// isn't one" decision is testable: there is no row until the first attempt of
+// the day is recorded, and the board is ordered newest-first but the newest row
+// is not necessarily today's.
+export type DailyStandingsRow = { date: string; kiurCount: number; kirsiCount: number };
+
+export function todayStandings(days: DailyStandingsRow[] | undefined | null, today = todayDateString()) {
+  const row = days?.find((day) => day.date === today);
+  return { kiur: row?.kiurCount ?? 0, kirsi: row?.kirsiCount ?? 0 };
+}
+
 export function scorePercent(score: number, questionCount: number) {
   if (!Number.isFinite(score) || !Number.isFinite(questionCount) || questionCount <= 0) return 0;
   return Math.round((score / questionCount) * 100);

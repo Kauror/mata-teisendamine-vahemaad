@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exerciseWord, questionWord, subjectLabel, trophyWord } from '@/lib/history';
+import { exerciseWord, questionWord, subjectLabel, todayStandings, trophyWord } from '@/lib/history';
 import { LEARNING_EXERCISE_SUBJECT_LABELS } from '@/lib/shared/types';
 
 // Estonian takes the nominative after exactly 1 and the partitive after every
@@ -19,6 +19,29 @@ describe('Estonian number words', () => {
       expect(questionWord(count)).toBe('ülesannet');
       expect(trophyWord(count)).toBe('karikat');
     }
+  });
+});
+
+describe('todayStandings', () => {
+  // The board comes back newest-first, but "newest" is not automatically today:
+  // there is no row at all until the first attempt of the day is recorded.
+  const board = [
+    { date: '2026-07-25', kiurCount: 7, kirsiCount: 2 },
+    { date: '2026-07-24', kiurCount: 1, kirsiCount: 9 }
+  ];
+
+  it('reads the row for today, not the most recent one', () => {
+    expect(todayStandings(board, '2026-07-24')).toEqual({ kiur: 1, kirsi: 9 });
+  });
+
+  it('shows nobody ahead before the day has any attempts', () => {
+    expect(todayStandings(board, '2026-07-26')).toEqual({ kiur: 0, kirsi: 0 });
+    expect(todayStandings([], '2026-07-26')).toEqual({ kiur: 0, kirsi: 0 });
+  });
+
+  it('survives a board that never arrived', () => {
+    expect(todayStandings(undefined, '2026-07-26')).toEqual({ kiur: 0, kirsi: 0 });
+    expect(todayStandings(null, '2026-07-26')).toEqual({ kiur: 0, kirsi: 0 });
   });
 });
 

@@ -2,7 +2,15 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { compactTopicLabel, exerciseWord, isKirsiAttempt, isTodayIso, relativeDateTimeLabel, subjectLabel } from '@/lib/history';
+import {
+  compactTopicLabel,
+  exerciseWord,
+  isKirsiAttempt,
+  relativeDateTimeLabel,
+  subjectLabel,
+  todayStandings,
+  type DailyStandingsRow
+} from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import NoticeBoard from '@/app/components/NoticeBoard';
 import MetricTooltip from '@/app/components/MetricTooltip';
@@ -88,11 +96,25 @@ export default function Home() {
   const [streaks, setStreaks] = useState({ kiur: 0, kirsi: 0 });
   const [balances, setBalances] = useState({ kiur: 0, kirsi: 0 });
   const [trophies, setTrophies] = useState({ kiur: 0, kirsi: 0 });
+  const [today, setToday] = useState({ kiur: 0, kirsi: 0 });
 
   useEffect(() => {
     fetchHistoryPage<H>(new URLSearchParams({ limit: '50' }))
       .then((page) => setHistory(page.items))
       .catch(() => setHistory([]));
+  }, []);
+
+  // Today's standings come from the same stored row that decides the karikas
+  // (daily_leaderboard), not from a re-count of the history page. Counting here
+  // disagreed with the trophy: the history page carries no settlement or sprint
+  // qualification, so an attempt withheld for parent review or a sprint that
+  // missed its threshold still moved the number and could show the crown next
+  // to the wrong child — and past 50 attempts the page ran out of rows anyway.
+  useEffect(() => {
+    fetch('/api/leaderboard')
+      .then((response) => response.ok ? response.json() : null)
+      .then((board: { days?: DailyStandingsRow[] } | null) => setToday(todayStandings(board?.days)))
+      .catch(() => setToday({ kiur: 0, kirsi: 0 }));
   }, []);
 
   useEffect(() => {
@@ -116,12 +138,9 @@ export default function Home() {
     return { kiur, kirsi };
   }, [history]);
 
-  const kiurToday = useMemo(() => kiur.filter((attempt) => isTodayIso(attempt.createdAt)).length, [kiur]);
-  const kirsiToday = useMemo(() => kirsi.filter((attempt) => isTodayIso(attempt.createdAt)).length, [kirsi]);
-
   return (
     <main className='container dashboard'>
-      <TodayLeaderboard kiurCount={kiurToday} kirsiCount={kirsiToday} />
+      <TodayLeaderboard kiurCount={today.kiur} kirsiCount={today.kirsi} />
       <div className='children-list'>
         <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} balance={balances.kiur} trophies={trophies.kiur} />
         <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} balance={balances.kirsi} trophies={trophies.kirsi} />
