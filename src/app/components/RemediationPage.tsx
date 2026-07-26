@@ -5,32 +5,14 @@ import { useEffect, useRef, useState } from 'react';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 import PointsConfetti from '@/app/components/PointsConfetti';
 import { NamedShapeVisual } from '@/app/components/visuals/CircleVisual';
-import type { QuestionVisual } from '@/lib/types';
+import { SCIENCE_EYEBROW, ScienceDataPanel } from '@/app/components/science/ScienceTaskPresentation';
 import { formatStars } from '@/lib/formatStars';
 import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
+// Imported, not redeclared: a local copy of this contract is how the screen
+// silently falls behind the renderer types the server actually emits.
+import type { RemediationQuestion } from '@/lib/shared/remediationQuestion';
 
 type Learner = 'kiur' | 'kirsi';
-type RendererType = 'math_numeric' | 'math_multiple_choice' | 'counting_choice' | 'initial_sound' | 'word_choice' | 'word_picture_choice' | 'sprint_word_choice';
-
-type RemediationQuestion = {
-  sessionItemId: number;
-  mistakeId: number;
-  rendererType: RendererType;
-  promptText: string;
-  promptImage?: string;
-  promptEmoji?: string;
-  objectLabel?: string;
-  count?: number;
-  targetWord?: string;
-  readingText?: string;
-  correctAnswerLabel: string;
-  expectedUnit?: string;
-  clockHour?: number;
-  clockMinutes?: 0 | 15 | 30 | 45;
-  promptVisual?: QuestionVisual;
-  promptVisualKnownDegrees?: number;
-  choices?: string[];
-};
 
 type Answer = {
   sessionItemId: number;
@@ -61,7 +43,20 @@ function feedbackText(question: RemediationQuestion) {
 function promptEyebrow(question: RemediationQuestion) {
   if (question.rendererType === 'initial_sound') return 'Mis häälikuga algab sõna?';
   if (question.rendererType === 'word_picture_choice') return 'Vali õige sõna';
+  // The same wording the science runner uses, so the task reads the same here.
+  if (question.scienceTaskType) return SCIENCE_EYEBROW[question.scienceTaskType];
   return 'Vasta küsimusele';
+}
+
+function ScienceReviewMaterial({ question }: { question: RemediationQuestion }) {
+  if (question.rendererType !== 'science_choice') return null;
+  return (
+    <>
+      {question.scienceTitle ? <h2 className='science-title'>{question.scienceTitle}</h2> : null}
+      {question.scienceDiagram ? <div className='science-diagram'>{question.scienceDiagram}</div> : null}
+      {question.scienceData ? <ScienceDataPanel data={question.scienceData} /> : null}
+    </>
+  );
 }
 
 function feedbackHeading(question: RemediationQuestion, correct: boolean) {
@@ -212,6 +207,8 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
                 <article key={question.sessionItemId} className={answer?.isCorrect ? 'result-review-card correct' : 'result-review-card wrong'}>
                   <p className='result-question'>{i + 1}. {question.promptText || promptEyebrow(question)}</p>
                   {question.promptImage ? <div className='remediation-prompt-image'>{question.promptImage}</div> : null}
+                  {question.readingText ? <p className='remediation-reading-text'>{question.readingText}</p> : null}
+                  <ScienceReviewMaterial question={question} />
                   <CountingReviewGrid question={question} />
                   <ClockReviewVisual question={question} />
                   <ShapeReviewVisual question={question} />
@@ -253,6 +250,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
 
         <section className='question-card remediation-question-card'>
           <p className='question-eyebrow'>{promptEyebrow(current)}</p>
+          <ScienceReviewMaterial question={current} />
           {current.readingText ? <p className='remediation-reading-text'>{current.readingText}</p> : null}
           {current.promptImage ? <div className='remediation-prompt-image' aria-label='Pilt'>{current.promptImage}</div> : null}
           <CountingReviewGrid question={current} />

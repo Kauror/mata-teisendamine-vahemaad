@@ -215,6 +215,74 @@ describe('question visuals', () => {
   });
 });
 
+describe('Loodusõpetus mistakes', () => {
+  // Real dataset ids: the whole point is that the replay reads the task back
+  // from the dataset rather than trusting a copy stored with the answer.
+  const READING = 'SCI-READ-001';
+  const SORT = 'SCI-SORT-001';
+
+  function captureScience(questions: unknown[]) {
+    captureMistakesForAttempt({
+      attemptId: insertAttempt(),
+      learner: 'kiur',
+      subject: 'loodusopetus',
+      topic: 'segaharjutus',
+      category: 'Loodusõpetus',
+      questions
+    });
+  }
+
+  function savedScience(id: string, type: string, extra: Record<string, unknown> = {}) {
+    return {
+      id,
+      type,
+      question: 'salvestatud tekst, mida ei usaldata',
+      kind: 'choice',
+      correctAnswer: 0,
+      isCorrect: false,
+      userAnswer: 'See on külm kivipall',
+      correctAnswerText: 'vananenud koopia',
+      ...extra
+    };
+  }
+
+  it('captures a single-choice science mistake', () => {
+    seedUsablePool(11);
+    captureScience([savedScience(READING, 'reading_choice')]);
+    expect(getOpenRenderableMistakeCount('kiur')).toBe(12);
+
+    const question = startRemediationSession('kiur').questions.find((item) => item.scienceTaskId === READING);
+    expect(question?.rendererType).toBe('science_choice');
+    // Rebuilt from the dataset, not from the stale text stored with the answer.
+    expect(question?.scienceTitle).toBe('Päikese roll');
+    expect(question?.correctAnswerLabel).toBe('See annab valgust ja soojust');
+    expect(question?.readingText).toBeTruthy();
+    expect(question?.choices).toHaveLength(4);
+    expect(question?.choices).toContain('See annab valgust ja soojust');
+  });
+
+  it('leaves sort and match out of the pool', () => {
+    captureScience([
+      savedScience(SORT, 'sort', { userAnswer: 'Elus: koer', selectedGroups: { koer: 'Elus' } }),
+      savedScience('SCI-MATCH-001', 'match', { userAnswer: 'täht → põleb', selectedMatches: {} })
+    ]);
+    expect(getOpenRenderableMistakeCount('kiur')).toBe(0);
+  });
+
+  it('skips a task the dataset no longer has', () => {
+    seedUsablePool(11);
+    captureScience([savedScience(READING, 'reading_choice')]);
+    db.prepare("UPDATE mistake_pool SET promptSnapshotJson = replace(promptSnapshotJson, ?, 'SCI-READ-999') WHERE rendererType = 'science_choice'")
+      .run(READING);
+    expect(getOpenRenderableMistakeCount('kiur')).toBe(11);
+  });
+
+  it('ignores a saved answer whose type disagrees with the dataset', () => {
+    captureScience([savedScience(READING, 'sort')]);
+    expect(getOpenRenderableMistakeCount('kiur')).toBe(0);
+  });
+});
+
 describe('remediationAnswerMatches', () => {
   it('is the same forgiving comparison on both sides of the wire', () => {
     expect(remediationAnswerMatches(' Õige ', 'oige')).toBe(true);

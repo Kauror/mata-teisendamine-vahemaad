@@ -15,6 +15,21 @@ export function isScienceSessionSize(value: number): value is ScienceSessionSize
   return (SCIENCE_SESSION_SIZES as readonly number[]).includes(value);
 }
 
+const TASKS_BY_ID = new Map(LOODUSOPETUS_TASKS.map((task) => [task.id, task]));
+
+// The dataset is the contract for a science task: anything replaying a saved
+// answer (score verification, Kordamine) looks the task up by id here rather
+// than trusting a copy of the question that travelled with the answer.
+export function getScienceTaskById(id: string): ScienceTask | undefined {
+  return TASKS_BY_ID.get(id);
+}
+
+// Choice texts are written as sentences; the runner shows them without the
+// trailing full stop, so saved answers are stored that way too.
+export function cleanScienceAnswer(value: string) {
+  return value.replace(/\s*\.\s*$/, '').trim();
+}
+
 // Picks `count` unique tasks from the pool, shuffled by a stable seed so a given
 // seed always yields the same session (handy for retries and debugging).
 export function pickScienceSession(count: number, seed: number): ScienceTask[] {

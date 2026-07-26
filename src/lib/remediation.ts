@@ -3,31 +3,22 @@ import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
 import { KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { awardStudyPointsForAttempt, exerciseKeyForAttempt } from '@/lib/learningPoints';
+import { cleanScienceAnswer, getScienceTaskById } from '@/lib/loodusopetus/tasks';
+import { isChoiceTask, type ChoiceScienceTask } from '@/lib/loodusopetus/types';
 import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
+import {
+  isRemediationRendererType,
+  type RemediationQuestion,
+  type RemediationRendererType
+} from '@/lib/shared/remediationQuestion';
 import { Learner, nowIso } from '@/lib/tasks';
-import { isQuestionVisual, type QuestionVisual } from '@/lib/types';
+import { isQuestionVisual } from '@/lib/types';
+
+export { REMEDIATION_RENDERER_TYPES } from '@/lib/shared/remediationQuestion';
+export type { RemediationQuestion, RemediationRendererType } from '@/lib/shared/remediationQuestion';
 
 export const REMEDIATION_QUESTION_COUNT = 15;
 export const REMEDIATION_MIN_OPEN_MISTAKES = 10;
-
-// Every renderer this build can put on screen. A stored mistake whose type is
-// not in this list (written by a newer build, or a renderer since retired) is
-// skipped rather than trusted, so the pool can always be read by any version.
-export const REMEDIATION_RENDERER_TYPES = [
-  'math_numeric',
-  'math_multiple_choice',
-  'counting_choice',
-  'initial_sound',
-  'word_choice',
-  'word_picture_choice',
-  'sprint_word_choice'
-] as const;
-
-export type RemediationRendererType = (typeof REMEDIATION_RENDERER_TYPES)[number];
-
-function isRenderableType(value: string): value is RemediationRendererType {
-  return (REMEDIATION_RENDERER_TYPES as readonly string[]).includes(value);
-}
 
 type SavedQuestion = {
   id?: string;
@@ -59,28 +50,6 @@ type SavedQuestion = {
   clockMinutes?: 0 | 15 | 30 | 45;
   visual?: string;
   visualKnownDegrees?: number;
-};
-
-export type RemediationQuestion = {
-  sessionItemId: number;
-  mistakeId: number;
-  rendererType: RemediationRendererType;
-  promptText: string;
-  promptImage?: string;
-  promptEmoji?: string;
-  objectLabel?: string;
-  count?: number;
-  targetWord?: string;
-  readingText?: string;
-  correctAnswerLabel: string;
-  expectedUnit?: string;
-  clockHour?: number;
-  clockMinutes?: 0 | 15 | 30 | 45;
-  // "Milline sirglõik on raadius?" with options A/B/C is unanswerable without
-  // its drawing, so the drawing travels with the question.
-  promptVisual?: QuestionVisual;
-  promptVisualKnownDegrees?: number;
-  choices?: string[];
 };
 
 type PromptSnapshot = RemediationQuestion & {
@@ -221,21 +190,58 @@ function rendererFor(learner: Learner, subject: string, topic: string, question:
   if (learner === 'kirsi' && subject === 'lugemine' && topic === 'pilt-ja-sona') return 'word_picture_choice';
   if (learner === 'kiur' && subject === 'lugemine') return 'word_choice';
   if (learner === 'kiur' && subject === 'inglise-keel' && topic === 'sprint') return 'sprint_word_choice';
+  // Only the single-choice science task types. 'sort' and 'match' are answered
+  // by grouping items and pairing terms, which Kordamine has no control for, so
+  // they stay out of the pool rather than being flattened into a guess.
+  if (subject === 'loodusopetus') return scienceChoiceTask(question) ? 'science_choice' : null;
   return null;
 }
 
-function buildSnapshot(input: {
+// The saved science question carries the dataset task id, so the task itself is
+// the source of truth for the prompt, the choices and the right answer.
+function scienceChoiceTask(question: SavedQuestion): ChoiceScienceTask | null {
+  const task = question.id ? getScienceTaskById(question.id) : undefined;
+  if (!task || task.type !== question.type || !isChoiceTask(task)) return null;
+  return task;
+}
+
+type SnapshotInput = {
   learner: Learner;
   subject: string;
   topic: string;
   category: string;
   question: SavedQuestion;
   questionIndex: number;
-}): PromptSnapshot | null {
+};
+
+// The dataset id is the only field the replay trusts: the prompt, the diagram,
+// the options and the right answer are all read back from the dataset when the
+// session is built, so a snapshot can never disagree with the task it refers
+// to. The raw saved question is kept alongside for debugging, as elsewhere.
+function buildScienceSnapshot(input: SnapshotInput): PromptSnapshot | null {
+  const task = scienceChoiceTask(input.question);
+  const wrongAnswerLabel = input.question.userAnswer || input.question.selectedAnswer || '';
+  if (!task || !wrongAnswerLabel) return null;
+
+  return {
+    sessionItemId: 0,
+    mistakeId: 0,
+    rendererType: 'science_choice',
+    exerciseKey: exerciseKeyForAttempt(input.learner, input.category, input.topic),
+    promptText: `${task.title}: ${task.prompt}`,
+    correctAnswerLabel: cleanScienceAnswer(task.correctAnswerText),
+    wrongAnswerLabel,
+    scienceTaskId: task.id,
+    originalQuestionData: input.question
+  };
+}
+
+function buildSnapshot(input: SnapshotInput): PromptSnapshot | null {
   if (input.question.isCorrect !== false) return null;
   if (input.question.correctAnswers && input.question.correctAnswers.length > 1) return null;
   const rendererType = rendererFor(input.learner, input.subject, input.topic, input.question);
   if (!rendererType) return null;
+  if (rendererType === 'science_choice') return buildScienceSnapshot(input);
 
   const rawPromptText = input.question.question || '';
   const correctAnswerLabel = correctLabel(input.question);
@@ -283,7 +289,12 @@ function buildSnapshot(input: {
 }
 
 function mistakeKeyFor(snapshot: PromptSnapshot) {
-  return [snapshot.exerciseKey, snapshot.rendererType, normalize(snapshot.promptText), normalize(snapshot.promptImage), normalize(snapshot.targetWord), normalize(snapshot.correctAnswerLabel)].join('|');
+  const parts = [snapshot.exerciseKey, snapshot.rendererType, normalize(snapshot.promptText), normalize(snapshot.promptImage), normalize(snapshot.targetWord), normalize(snapshot.correctAnswerLabel)];
+  // Appended, never inserted: an extra trailing segment leaves the key of every
+  // renderer that does not use it byte-identical, so mistakes already open in
+  // the pool keep deduplicating against new captures instead of forking.
+  if (snapshot.scienceTaskId) parts.push(snapshot.scienceTaskId);
+  return parts.join('|');
 }
 
 export function captureMistakesForAttempt(input: {
@@ -341,7 +352,7 @@ function openRenderableMistakes(learner: Learner) {
     WHERE learner = ? AND status = 'open'
     ORDER BY wrongCount DESC, lastWrongAt DESC, id ASC
   `).all(learner) as MistakeRow[];
-  return rows.filter((row) => isRenderableType(row.rendererType) && questionForMistake(row, 0) !== null);
+  return rows.filter((row) => isRemediationRendererType(row.rendererType) && questionForMistake(row, 0) !== null);
 }
 
 export function getOpenRenderableMistakeCount(learner: Learner) {
@@ -371,11 +382,40 @@ function repairLegacyComparison(snapshot: PromptSnapshot) {
   snapshot.choices = ['<', '=', '>'];
 }
 
+// Rebuilt entirely from the dataset. If the task is gone, has stopped being a
+// choice task, or has two options that read the same (so a text answer could
+// not say which was picked), the mistake is skipped rather than guessed at.
+function scienceQuestionForSnapshot(snapshot: PromptSnapshot, mistakeId: number, sessionItemId: number, seed: number): RemediationQuestion | null {
+  const task = snapshot.scienceTaskId ? getScienceTaskById(snapshot.scienceTaskId) : undefined;
+  if (!task || !isChoiceTask(task)) return null;
+
+  const choices = task.choices.map((choice) => cleanScienceAnswer(choice.text));
+  const correctAnswerLabel = cleanScienceAnswer(task.correctAnswerText);
+  if (unique(choices).length !== choices.length) return null;
+  if (!choices.some((choice) => normalize(choice) === normalize(correctAnswerLabel))) return null;
+
+  return {
+    sessionItemId,
+    mistakeId,
+    rendererType: 'science_choice',
+    promptText: task.prompt,
+    scienceTitle: task.title,
+    scienceTaskId: task.id,
+    scienceTaskType: task.type,
+    scienceDiagram: task.type === 'visual_choice' ? task.diagram : task.type === 'data_evidence' ? task.diagram : undefined,
+    scienceData: task.type === 'data_evidence' ? task.data : undefined,
+    readingText: task.type === 'reading_choice' ? task.text : undefined,
+    correctAnswerLabel,
+    choices: shuffle(choices, seed)
+  };
+}
+
 function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0): RemediationQuestion | null {
   const snapshot = parseSnapshot(row.promptSnapshotJson);
   if (!snapshot) return null;
   repairLegacyComparison(snapshot);
   const seed = row.id * 997 + position * 37;
+  if (snapshot.rendererType === 'science_choice') return scienceQuestionForSnapshot(snapshot, row.id, sessionItemId, seed);
   const choices = snapshot.rendererType === 'math_numeric' ? undefined : choicesWithDistractors(snapshot, seed, snapshot.rendererType === 'initial_sound' ? 3 : 5);
   const original = snapshot.originalQuestionData ?? {};
   const promptText = snapshot.rendererType === 'initial_sound'

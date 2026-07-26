@@ -4,8 +4,9 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatElapsed } from '@/lib/validation';
 import { seededRng, shuffleWithRng } from '@/lib/random';
-import { isScienceSessionSize, pickScienceSession } from '@/lib/loodusopetus/tasks';
+import { cleanScienceAnswer as cleanAnswer, isScienceSessionSize, pickScienceSession } from '@/lib/loodusopetus/tasks';
 import { isChoiceTask, type ScienceData, type ScienceTaskType } from '@/lib/loodusopetus/types';
+import { SCIENCE_EYEBROW, ScienceDataPanel } from '@/app/components/science/ScienceTaskPresentation';
 import {
   createRunnerSession,
   ensureRunIdInCurrentUrl,
@@ -21,14 +22,6 @@ import type { CatalogueContract } from '@/lib/offline/api';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
 import { ROTATION_ALGORITHM_VERSION } from '@/lib/shared/types';
-
-const EYEBROW: Record<ScienceTaskType, string> = {
-  visual_choice: 'Vaata skeemi ja vali õige vastus',
-  reading_choice: 'Loe tekst ja vali õige vastus',
-  sort: 'Pane iga asi õigesse rühma',
-  match: 'Ühenda mõiste õige seletusega',
-  data_evidence: 'Vaata andmeid ja vali õige järeldus'
-};
 
 type SavedScienceQuestion = {
   id: string;
@@ -86,12 +79,6 @@ function shuffleStable<T>(values: T[], seedKey: string): T[] {
   return shuffleWithRng(seededRng(hashString(seedKey)), [...values]);
 }
 
-// Answers in the data are written as full sentences ending with a period; the
-// trailing dot is dropped when an answer is shown as a short label.
-function cleanAnswer(value: string) {
-  return value.replace(/\s*\.\s*$/, '').trim();
-}
-
 function correctGroupOfItem(groups: Record<string, string[]>, item: string) {
   for (const [group, items] of Object.entries(groups)) {
     if (items.includes(item)) return group;
@@ -105,43 +92,6 @@ function formatGrouping(groups: string[], itemsFor: (group: string) => string[])
 
 function formatPairs(terms: string[], definitionFor: (term: string) => string | undefined) {
   return terms.map((term) => `${cleanAnswer(term)} → ${cleanAnswer(definitionFor(term) ?? '') || '—'}`).join(' · ');
-}
-
-function ScienceDataPanel({ data }: { data: ScienceData }) {
-  return (
-    <div className='science-data'>
-      {data.diagram ? <div className='science-diagram'>{data.diagram}</div> : null}
-      {data.table?.length ? (
-        <div className='science-table-wrap'>
-          <table className='science-table'>
-            <tbody>
-              {data.table.map((rawRow, rowIndex) => (
-                <tr key={rowIndex}>
-                  {rawRow.map((cell, cellIndex) =>
-                    rowIndex === 0
-                      ? <th key={cellIndex}>{cell}</th>
-                      : <td key={cellIndex}>{cell}</td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-      {data.cards?.length ? (
-        <div className='science-data-cards'>
-          {data.cards.map((card, cardIndex) => (
-            <div key={cardIndex} className='science-data-card'>
-              <strong>{card[0]}</strong>
-              <span>{card.slice(1).join(' ')}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-      {data.setup ? <p className='science-info-box'>{data.setup}</p> : null}
-      {data.example ? <p className='science-info-box'>{data.example}</p> : null}
-    </div>
-  );
 }
 
 function ScienceTestContent() {
@@ -502,7 +452,7 @@ function ScienceTestContent() {
         </section>
 
         <section className='question-card'>
-          <p className='question-eyebrow'>{EYEBROW[current.type]}</p>
+          <p className='question-eyebrow'>{SCIENCE_EYEBROW[current.type]}</p>
           <h1 className='question-text science-title'>{current.title}</h1>
 
           {current.type === 'visual_choice' ? <div className='science-diagram'>{current.diagram}</div> : null}
