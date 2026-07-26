@@ -11,8 +11,18 @@ export const CATEGORIES = [
   'Kellaaeg'
 ] as const;
 
+// The generator's difficulty knob. There is no difficulty picker in the UI and
+// every runner sends 'Lihtne', so in practice only one value is ever used; the
+// sole remaining branch is in divisionQ (see the note there for why it is kept
+// rather than deleted). Any change to what a difficulty generates goes with a
+// GENERATOR_VERSION bump, because the server re-generates a session from its
+// stored seed to verify an uploaded score.
+//
+// Not to be confused with `attempts.difficulty`, which is a free-text runner
+// mode label ('Lihtne', 'Sprint', 'Tavaline', 'Loe ja vasta', 'segaharjutus')
+// required by the sync protocol and never shown to anyone. See
+// OfflineAttemptPayload in shared/types.
 export const DIFFICULTIES = ['Lihtne', 'Keskmine', 'Raske'] as const;
-export const QUESTION_COUNTS = [15] as const;
 
 export type Category = (typeof CATEGORIES)[number];
 export type Difficulty = (typeof DIFFICULTIES)[number];

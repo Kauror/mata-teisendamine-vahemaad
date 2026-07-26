@@ -25,6 +25,18 @@ function mixedPlan(rng: RNG, count: number, types: readonly TopicCategory[]) {
 function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
   const mk = () => {
     const divisor = rInt(rng, 2, 9);
+    // The only place difficulty changes what is generated. Note that 'Lihtne'
+    // resolves to the same (2, 16) an unbranched version would give, and /test
+    // is the only maths runner and always sends 'Lihtne' — so today this branch
+    // is inert and could be deleted without changing a single question.
+    //
+    // It is kept because the server re-generates a session from its stored seed
+    // to verify an uploaded score, and an offline device could still be holding
+    // an outbox attempt minted by an older build that had the difficulty picker.
+    // For such an attempt the range differs and deleting the branch would reject
+    // it. It is also the natural seam for a future adaptive difficulty.
+    // Guarded by kiurMath.test.ts; changing the ranges needs a GENERATOR_VERSION
+    // bump in shared/types.
     const quotient = rInt(rng, d === 'Lihtne' ? 2 : 4, d === 'Raske' ? 22 : 16);
     const dividend = divisor * quotient;
     if (dividend < 10 || dividend > 99) return mk();

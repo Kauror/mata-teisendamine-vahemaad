@@ -1,5 +1,8 @@
-import { QUESTION_COUNTS } from '@/lib/types';
-
+// The maths topics Kiur can be shown, and how each one's card looks. Fields
+// here are only what something actually reads: id, name, emoji, accent and
+// description feed the exercise card, defaultCategory seeds the catalogue
+// entry. An earlier version also carried per-topic difficulty, exercise-type
+// and question-count options for a picker screen that no longer exists.
 export const KIUR_MATH_TOPICS = [
   {
     id: 'mootuhikud-pikkused',
@@ -7,14 +10,7 @@ export const KIUR_MATH_TOPICS = [
     emoji: '📏',
     accent: 'teal',
     description: 'Pikkusühikud km, m, dm, cm ja mm ning nendega seotud ülesanded',
-    implemented: true,
-    hideExerciseTypeSelector: true,
-    defaultCategory: 'Segaharjutus' as const,
-    hideDifficultySelector: true,
-    defaultDifficulty: 'Lihtne' as const,
-    exerciseTypes: ['Segaharjutus'] as const,
-    difficulties: ['Lihtne'] as const,
-    questionCounts: QUESTION_COUNTS
+    defaultCategory: 'Segaharjutus' as const
   },
   {
     id: 'jagamine-kahekohaline-uhekohaline',
@@ -22,14 +18,7 @@ export const KIUR_MATH_TOPICS = [
     emoji: '➗',
     accent: 'blue',
     description: 'Kahekohalise arvu jagamine ühekohalise arvuga, jagamine osadeks ja kontrolltehted',
-    implemented: true,
-    hideExerciseTypeSelector: true,
-    defaultCategory: 'Segaharjutus' as const,
-    hideDifficultySelector: true,
-    defaultDifficulty: 'Lihtne' as const,
-    exerciseTypes: ['Segaharjutus'] as const,
-    difficulties: ['Lihtne'] as const,
-    questionCounts: QUESTION_COUNTS
+    defaultCategory: 'Segaharjutus' as const
   },
   {
     id: 'arvud-10000-piires',
@@ -37,14 +26,7 @@ export const KIUR_MATH_TOPICS = [
     emoji: '🔢',
     accent: 'purple',
     description: 'Liitmine, lahutamine, järguväärtus, ümardamine ja hinnangud 10 000 piires',
-    implemented: true,
-    hideExerciseTypeSelector: true,
-    defaultCategory: 'Segaharjutus' as const,
-    hideDifficultySelector: true,
-    defaultDifficulty: 'Lihtne' as const,
-    exerciseTypes: ['Segaharjutus'] as const,
-    difficulties: ['Lihtne'] as const,
-    questionCounts: QUESTION_COUNTS
+    defaultCategory: 'Segaharjutus' as const
   },
   {
     id: 'ring-ja-ringjoon',
@@ -52,14 +34,7 @@ export const KIUR_MATH_TOPICS = [
     emoji: '⭕',
     accent: 'violet',
     description: 'Ringi ja ringjoone mõisted, raadius, läbimõõt, kraadid ja võrdlemine',
-    implemented: true,
-    hideExerciseTypeSelector: true,
-    defaultCategory: 'Segaharjutus' as const,
-    hideDifficultySelector: true,
-    defaultDifficulty: 'Lihtne' as const,
-    exerciseTypes: ['Ring või ringjoon', 'Leia raadius', 'Leia läbimõõt', 'Läbimõõt raadiusest', 'Raadius läbimõõdust', 'Punkti asukoht', 'Sama keskpunkt', 'Võrdle raadiuseid', 'Ringi kraadid', 'Puuduv kraad', 'Segaharjutus'] as const,
-    difficulties: ['Lihtne'] as const,
-    questionCounts: QUESTION_COUNTS
+    defaultCategory: 'Segaharjutus' as const
   },
   {
     id: 'korrutamine',
@@ -67,14 +42,7 @@ export const KIUR_MATH_TOPICS = [
     emoji: '\u00d7',
     accent: 'orange',
     description: 'Korrutustabeli harjutamine teguritega 2 kuni 10',
-    implemented: true,
-    hideExerciseTypeSelector: true,
-    defaultCategory: 'Korrutamine' as const,
-    hideDifficultySelector: true,
-    defaultDifficulty: 'Lihtne' as const,
-    exerciseTypes: ['Korrutamine'] as const,
-    difficulties: ['Lihtne'] as const,
-    questionCounts: QUESTION_COUNTS
+    defaultCategory: 'Korrutamine' as const
   },
   {
     id: 'tekstulesanded',
@@ -82,28 +50,14 @@ export const KIUR_MATH_TOPICS = [
     emoji: 'Aa',
     accent: 'blue',
     description: 'Viie tekstülesande lahendamine rahulikus tempos',
-    implemented: true,
-    hideExerciseTypeSelector: true,
-    defaultCategory: 'Tekstülesanded' as const,
-    hideDifficultySelector: true,
-    defaultDifficulty: 'Lihtne' as const,
-    exerciseTypes: ['Tekstülesanded'] as const,
-    difficulties: ['Lihtne'] as const,
-    questionCounts: [5] as const
+    defaultCategory: 'Tekstülesanded' as const
   },
   {
     id: 'mustrid',
     name: 'Mustrid',
     emoji: '🧩',
     accent: 'purple',
-    implemented: true,
-    hideExerciseTypeSelector: true,
-    defaultCategory: 'Segaharjutus' as const,
-    hideDifficultySelector: true,
-    defaultDifficulty: 'Lihtne' as const,
-    exerciseTypes: ['Segaharjutus'] as const,
-    difficulties: ['Lihtne'] as const,
-    questionCounts: QUESTION_COUNTS
+    defaultCategory: 'Segaharjutus' as const
   }
 ] as const;
 
