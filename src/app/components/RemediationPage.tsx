@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 import PointsConfetti from '@/app/components/PointsConfetti';
+import { NamedShapeVisual } from '@/app/components/visuals/CircleVisual';
+import type { QuestionVisual } from '@/lib/types';
 import { formatStars } from '@/lib/formatStars';
 import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
 
@@ -25,6 +27,8 @@ type RemediationQuestion = {
   expectedUnit?: string;
   clockHour?: number;
   clockMinutes?: 0 | 15 | 30 | 45;
+  promptVisual?: QuestionVisual;
+  promptVisualKnownDegrees?: number;
   choices?: string[];
 };
 
@@ -71,6 +75,15 @@ function CountingReviewGrid({ question }: { question: RemediationQuestion }) {
   return (
     <div className='counting-object-grid' aria-label={`${question.count} ${question.objectLabel ?? 'asja'}`}>
       {Array.from({ length: question.count }, (_, index) => <span key={index}>{question.promptEmoji}</span>)}
+    </div>
+  );
+}
+
+function ShapeReviewVisual({ question }: { question: RemediationQuestion }) {
+  if (!question.promptVisual) return null;
+  return (
+    <div className='remediation-shape-visual'>
+      <NamedShapeVisual visual={question.promptVisual} knownDegrees={question.promptVisualKnownDegrees} />
     </div>
   );
 }
@@ -201,6 +214,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
                   {question.promptImage ? <div className='remediation-prompt-image'>{question.promptImage}</div> : null}
                   <CountingReviewGrid question={question} />
                   <ClockReviewVisual question={question} />
+                  <ShapeReviewVisual question={question} />
                   <div className='answer-review-grid'>
                     <p className='answer-line'><span>Sinu vastus:</span> <strong>{answer?.answer || '—'}</strong></p>
                     <p className='answer-line'><span>Õige vastus:</span> <strong>{question.correctAnswerLabel}</strong></p>
@@ -244,6 +258,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
           <CountingReviewGrid question={current} />
           {current.rendererType !== 'initial_sound' && current.rendererType !== 'word_picture_choice' ? <h1 className='question-text'>{current.promptText}</h1> : null}
           <ClockReviewVisual question={current} />
+          <ShapeReviewVisual question={current} />
           {current.rendererType === 'initial_sound' && current.targetWord ? (
             <div className='first-sound-hint-row'>
               {hintVisible || answered ? <strong className='first-sound-word'>Vihje: {current.targetWord}</strong> : <button type='button' className='settings-toggle' onClick={() => setHintVisible(true)}>Näita vihjet</button>}

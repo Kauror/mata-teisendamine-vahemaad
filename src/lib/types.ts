@@ -20,7 +20,19 @@ export type QuestionKind = 'numeric' | 'ordering' | 'choice' | 'text';
 
 export type OrderingCard = { id: string; label: string; valueMm: number };
 
-export type QuestionVisual = 'circle-full' | 'circle-half' | 'circle-quarter' | 'ring-outline' | 'ring-filled' | 'radius-demo' | 'diameter-demo' | 'point-position' | 'concentric-circles' | 'sector-missing' | 'place-value-blocks' | 'division-groups';
+export const QUESTION_VISUALS = [
+  'circle-full', 'circle-half', 'circle-quarter', 'ring-outline', 'ring-filled', 'radius-demo',
+  'diameter-demo', 'point-position', 'concentric-circles', 'sector-missing', 'place-value-blocks', 'division-groups'
+] as const;
+
+export type QuestionVisual = (typeof QUESTION_VISUALS)[number];
+
+// Questions like "Milline sirglõik on raadius?" mean nothing without their
+// drawing, so anything replaying a saved question has to be able to tell a
+// visual it can draw from one it cannot, rather than dropping it silently.
+export function isQuestionVisual(value: unknown): value is QuestionVisual {
+  return typeof value === 'string' && (QUESTION_VISUALS as readonly string[]).includes(value);
+}
 
 export type GeneratedQuestion = {
   id: string;

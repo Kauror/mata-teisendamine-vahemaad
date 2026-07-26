@@ -5,6 +5,7 @@ import { KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { awardStudyPointsForAttempt, exerciseKeyForAttempt } from '@/lib/learningPoints';
 import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
 import { Learner, nowIso } from '@/lib/tasks';
+import { isQuestionVisual, type QuestionVisual } from '@/lib/types';
 
 export const REMEDIATION_QUESTION_COUNT = 15;
 export const REMEDIATION_MIN_OPEN_MISTAKES = 10;
@@ -56,6 +57,8 @@ type SavedQuestion = {
   choices?: number[];
   clockHour?: number;
   clockMinutes?: 0 | 15 | 30 | 45;
+  visual?: string;
+  visualKnownDegrees?: number;
 };
 
 export type RemediationQuestion = {
@@ -73,6 +76,10 @@ export type RemediationQuestion = {
   expectedUnit?: string;
   clockHour?: number;
   clockMinutes?: 0 | 15 | 30 | 45;
+  // "Milline sirglõik on raadius?" with options A/B/C is unanswerable without
+  // its drawing, so the drawing travels with the question.
+  promptVisual?: QuestionVisual;
+  promptVisualKnownDegrees?: number;
   choices?: string[];
 };
 
@@ -268,6 +275,8 @@ function buildSnapshot(input: {
     expectedUnit: isKirsiMath ? undefined : input.question.expectedUnit,
     clockHour: input.question.type === 'clock' ? input.question.clockHour : undefined,
     clockMinutes: input.question.type === 'clock' ? input.question.clockMinutes : undefined,
+    promptVisual: isQuestionVisual(input.question.visual) ? input.question.visual : undefined,
+    promptVisualKnownDegrees: input.question.visualKnownDegrees,
     choices,
     originalQuestionData: input.question
   };
@@ -378,6 +387,12 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
     ? original.image ?? snapshot.promptImage
     : snapshot.promptImage;
   const expectedUnit = snapshot.exerciseKey.startsWith('kirsi.math.') ? undefined : snapshot.expectedUnit;
+  // The raw saved question has been stored in full since the first version of
+  // this module, so visuals recorded before promptVisual existed are recovered
+  // from there. A visual this build cannot draw makes the whole question
+  // unusable rather than a silently pictureless one — never guess.
+  const rawVisual = original.visual ?? snapshot.promptVisual;
+  if (rawVisual !== undefined && !isQuestionVisual(rawVisual)) return null;
   return {
     sessionItemId,
     mistakeId: row.id,
@@ -393,6 +408,8 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
     expectedUnit,
     clockHour: original.type === 'clock' ? original.clockHour ?? snapshot.clockHour : snapshot.clockHour,
     clockMinutes: original.type === 'clock' ? original.clockMinutes ?? snapshot.clockMinutes : snapshot.clockMinutes,
+    promptVisual: rawVisual,
+    promptVisualKnownDegrees: original.visualKnownDegrees ?? snapshot.promptVisualKnownDegrees,
     choices
   };
 }

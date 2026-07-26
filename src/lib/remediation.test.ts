@@ -141,6 +141,80 @@ describe('choice rendering', () => {
   });
 });
 
+describe('question visuals', () => {
+  const radiusQuestion = {
+    id: 'cr-1',
+    question: 'Milline sirglõik on raadius?',
+    kind: 'choice',
+    choiceOptions: ['A', 'B', 'C'],
+    correctAnswer: 0,
+    visual: 'radius-demo',
+    userAnswer: 'C',
+    isCorrect: false
+  };
+
+  it('replays the drawing a choice question is meaningless without', () => {
+    captureMath([...Array.from({ length: 11 }, (_, index) => numericMistake(index + 1)), radiusQuestion]);
+    const question = startRemediationSession('kiur').questions
+      .find((item) => item.promptText === 'Milline sirglõik on raadius?');
+    expect(question?.promptVisual).toBe('radius-demo');
+  });
+
+  it('carries the sector angle a question asks about', () => {
+    captureMath([
+      ...Array.from({ length: 11 }, (_, index) => numericMistake(index + 1)),
+      {
+        id: 'cm-1',
+        question: 'Ring on jagatud kaheks osaks. Värvitud osa on 90°. Kui suur on teine osa?',
+        correctAnswer: 270,
+        visual: 'sector-missing',
+        visualKnownDegrees: 90,
+        userAnswer: '180',
+        isCorrect: false
+      }
+    ]);
+    const question = startRemediationSession('kiur').questions.find((item) => item.promptVisual === 'sector-missing');
+    expect(question?.promptVisualKnownDegrees).toBe(90);
+  });
+
+  it('recovers a visual from a snapshot written before promptVisual existed', () => {
+    seedUsablePool(11);
+    // Exactly what buildSnapshot stored before this field was added: no
+    // top-level promptVisual, but the full raw question under
+    // originalQuestionData, which it has always kept.
+    insertRawMistake('legacy-visual', 'math_multiple_choice', JSON.stringify({
+      rendererType: 'math_multiple_choice',
+      exerciseKey: 'kiur.math.ring.segaharjutus',
+      promptText: 'Milline sirglõik on läbimõõt?',
+      correctAnswerLabel: 'B',
+      wrongAnswerLabel: 'A',
+      choices: ['A', 'B', 'C'],
+      originalQuestionData: { ...radiusQuestion, question: 'Milline sirglõik on läbimõõt?', visual: 'diameter-demo' }
+    }));
+
+    const question = startRemediationSession('kiur').questions
+      .find((item) => item.promptText === 'Milline sirglõik on läbimõõt?');
+    expect(question?.promptVisual).toBe('diameter-demo');
+  });
+
+  it('drops a question whose visual this build cannot draw rather than showing it blind', () => {
+    seedUsablePool(11);
+    insertRawMistake('unknown-visual', 'math_multiple_choice', JSON.stringify({
+      rendererType: 'math_multiple_choice',
+      exerciseKey: 'kiur.math.ring.segaharjutus',
+      promptText: 'Millist kujundit näed?',
+      correctAnswerLabel: 'A',
+      wrongAnswerLabel: 'B',
+      choices: ['A', 'B'],
+      originalQuestionData: { visual: 'hypercube-demo' }
+    }));
+
+    expect(getOpenRenderableMistakeCount('kiur')).toBe(11);
+    const session = startRemediationSession('kiur');
+    expect(session.questions.some((item) => item.promptText === 'Millist kujundit näed?')).toBe(false);
+  });
+});
+
 describe('remediationAnswerMatches', () => {
   it('is the same forgiving comparison on both sides of the wire', () => {
     expect(remediationAnswerMatches(' Õige ', 'oige')).toBe(true);
