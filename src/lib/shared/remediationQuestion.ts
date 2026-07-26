@@ -1,4 +1,5 @@
 import type { ScienceData, ScienceTaskType } from '@/lib/loodusopetus/types';
+import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
 import type { QuestionVisual } from '@/lib/types';
 
 // The question contract between the Kordamine builder (server, needs `db`) and
@@ -26,6 +27,13 @@ export function isRemediationRendererType(value: string): value is RemediationRe
   return (REMEDIATION_RENDERER_TYPES as readonly string[]).includes(value);
 }
 
+// The one place an answer is judged, so the screen's instant feedback and the
+// score the server saves can never disagree.
+export function isRemediationAnswerCorrect(question: RemediationQuestion, answer: unknown) {
+  const accepted = question.acceptedAnswerLabels?.length ? question.acceptedAnswerLabels : [question.correctAnswerLabel];
+  return accepted.some((label) => remediationAnswerMatches(answer, label));
+}
+
 export type RemediationQuestion = {
   sessionItemId: number;
   mistakeId: number;
@@ -38,6 +46,10 @@ export type RemediationQuestion = {
   targetWord?: string;
   readingText?: string;
   correctAnswerLabel: string;
+  // Some questions have several right answers ("Vali sobiv ühik vihiku laiuse
+  // mõõtmiseks" accepts mm, cm and dm). correctAnswerLabel stays the one shown
+  // as "the" answer; any of these is accepted. Absent means only that one is.
+  acceptedAnswerLabels?: string[];
   expectedUnit?: string;
   clockHour?: number;
   clockMinutes?: 0 | 15 | 30 | 45;

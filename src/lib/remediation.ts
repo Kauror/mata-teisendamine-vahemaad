@@ -5,8 +5,8 @@ import { KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { awardStudyPointsForAttempt, exerciseKeyForAttempt } from '@/lib/learningPoints';
 import { cleanScienceAnswer, getScienceTaskById } from '@/lib/loodusopetus/tasks';
 import { isChoiceTask, type ChoiceScienceTask } from '@/lib/loodusopetus/types';
-import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
 import {
+  isRemediationAnswerCorrect,
   isRemediationRendererType,
   type RemediationQuestion,
   type RemediationRendererType
@@ -143,16 +143,17 @@ function distractorsFor(type: RemediationRendererType) {
   return [];
 }
 
-// The correct answer must survive the cap. Without this, a question carrying
-// more options than `total` would silently render without its right answer.
+// Every answer that counts as right, plus what the child actually picked, must
+// survive the cap — otherwise a question with more options than `total` renders
+// without a right answer and cannot be answered at all.
 function choicesWithDistractors(snapshot: PromptSnapshot, seed: number, total = 5) {
-  const base = unique([...(snapshot.choices ?? []), snapshot.correctAnswerLabel, snapshot.wrongAnswerLabel]);
+  const required = unique([
+    ...(snapshot.acceptedAnswerLabels?.length ? snapshot.acceptedAnswerLabels : [snapshot.correctAnswerLabel]),
+    snapshot.wrongAnswerLabel
+  ]);
+  const base = unique([...required, ...(snapshot.choices ?? [])]);
   const fillers = distractorsFor(snapshot.rendererType).filter((choice) => !base.some((existing) => normalize(existing) === normalize(choice)));
-  const pool = unique([...base, ...fillers]);
-  const kept = pool.slice(0, total);
-  const correctIndex = pool.findIndex((choice) => normalize(choice) === normalize(snapshot.correctAnswerLabel));
-  if (kept.length > 0 && correctIndex >= kept.length) kept[kept.length - 1] = pool[correctIndex];
-  return shuffle(kept, seed);
+  return shuffle(unique([...base, ...fillers]).slice(0, Math.max(total, required.length)), seed);
 }
 
 // Comparison questions (e.g. "83 ___ 78") carry no choiceOptions; their
@@ -164,6 +165,15 @@ function comparisonSign(code: number): string {
 
 function isComparisonQuestion(question: { kind?: string; choiceOptions?: string[] }) {
   return question.kind === 'choice' && !question.choiceOptions?.length;
+}
+
+// Every option that counts as right. Most questions have exactly one; a few
+// list several indexes in correctAnswers ("Vali sobiv ühik" accepts mm, cm and
+// dm). These used to be dropped from the pool entirely.
+function acceptedLabels(question: SavedQuestion): string[] {
+  const options = question.choiceOptions;
+  if (!options?.length || !question.correctAnswers?.length) return [];
+  return unique(question.correctAnswers.map((index) => options[index]).filter((label): label is string => Boolean(label)));
 }
 
 function correctLabel(question: SavedQuestion) {
@@ -238,7 +248,6 @@ function buildScienceSnapshot(input: SnapshotInput): PromptSnapshot | null {
 
 function buildSnapshot(input: SnapshotInput): PromptSnapshot | null {
   if (input.question.isCorrect !== false) return null;
-  if (input.question.correctAnswers && input.question.correctAnswers.length > 1) return null;
   const rendererType = rendererFor(input.learner, input.subject, input.topic, input.question);
   if (!rendererType) return null;
   if (rendererType === 'science_choice') return buildScienceSnapshot(input);
@@ -254,6 +263,7 @@ function buildSnapshot(input: SnapshotInput): PromptSnapshot | null {
     : isComparisonQuestion(input.question)
     ? ['<', '=', '>']
     : unique([...(input.question.choiceOptions ?? []), correctAnswerLabel, wrongAnswerLabel]);
+  const accepted = acceptedLabels(input.question);
   const isKirsiMath = input.learner === 'kirsi' && input.subject === 'matemaatika';
   const promptText = rendererType === 'initial_sound'
     ? ''
@@ -277,6 +287,7 @@ function buildSnapshot(input: SnapshotInput): PromptSnapshot | null {
     targetWord: input.question.word,
     readingText: input.question.text,
     correctAnswerLabel,
+    acceptedAnswerLabels: accepted.length > 1 ? accepted : undefined,
     wrongAnswerLabel,
     expectedUnit: isKirsiMath ? undefined : input.question.expectedUnit,
     clockHour: input.question.type === 'clock' ? input.question.clockHour : undefined,
@@ -445,6 +456,7 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
     targetWord: original.word ?? snapshot.targetWord,
     readingText: original.text ?? snapshot.readingText,
     correctAnswerLabel: snapshot.correctAnswerLabel,
+    acceptedAnswerLabels: snapshot.acceptedAnswerLabels,
     expectedUnit,
     clockHour: original.type === 'clock' ? original.clockHour ?? snapshot.clockHour : snapshot.clockHour,
     clockMinutes: original.type === 'clock' ? original.clockMinutes ?? snapshot.clockMinutes : snapshot.clockMinutes,
@@ -538,7 +550,7 @@ export function submitRemediationSession(input: {
       const question = parseSnapshotSafeQuestion(item.renderedQuestionJson);
       if (!question) throw new Error('Küsimust ei saanud lugeda.');
       const childAnswer = answerMap.get(item.id) ?? '';
-      const isCorrect = remediationAnswerMatches(childAnswer, question.correctAnswerLabel);
+      const isCorrect = isRemediationAnswerCorrect(question, childAnswer);
       const current = latestByMistake.get(item.mistakeId) ?? { allCorrect: true, anyWrong: false };
       latestByMistake.set(item.mistakeId, { allCorrect: current.allCorrect && isCorrect, anyWrong: current.anyWrong || !isCorrect });
 

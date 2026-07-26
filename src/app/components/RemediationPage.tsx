@@ -7,10 +7,9 @@ import PointsConfetti from '@/app/components/PointsConfetti';
 import { NamedShapeVisual } from '@/app/components/visuals/CircleVisual';
 import { SCIENCE_EYEBROW, ScienceDataPanel } from '@/app/components/science/ScienceTaskPresentation';
 import { formatStars } from '@/lib/formatStars';
-import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
 // Imported, not redeclared: a local copy of this contract is how the screen
 // silently falls behind the renderer types the server actually emits.
-import type { RemediationQuestion } from '@/lib/shared/remediationQuestion';
+import { isRemediationAnswerCorrect, type RemediationQuestion } from '@/lib/shared/remediationQuestion';
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -134,7 +133,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
 
   const chooseAnswer = (answer: string) => {
     if (!current || answered) return;
-    const correct = remediationAnswerMatches(answer, current.correctAnswerLabel);
+    const correct = isRemediationAnswerCorrect(current, answer);
     setSelectedAnswer(answer);
     setAnswers((prev) => [...prev, { sessionItemId: current.sessionItemId, answer, isCorrect: correct }]);
     setShowFeedback(true);

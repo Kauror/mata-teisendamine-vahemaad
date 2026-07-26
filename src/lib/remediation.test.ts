@@ -7,6 +7,7 @@ import {
   startRemediationSession
 } from '@/lib/remediation';
 import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
+import { isRemediationAnswerCorrect } from '@/lib/shared/remediationQuestion';
 
 // Kordamine had no unit coverage at all. These tests pin the two properties the
 // screen depends on: every question it hands the child must be answerable, and a
@@ -212,6 +213,48 @@ describe('question visuals', () => {
     expect(getOpenRenderableMistakeCount('kiur')).toBe(11);
     const session = startRemediationSession('kiur');
     expect(session.questions.some((item) => item.promptText === 'Millist kujundit näed?')).toBe(false);
+  });
+});
+
+describe('questions with several right answers', () => {
+  // "Vali sobiv ühik vihiku laiuse mõõtmiseks" accepts mm, cm or dm. These were
+  // thrown away at capture time, so the child never got to revise them.
+  const unitQuestion = {
+    id: 'mu-1',
+    question: 'Vali sobiv ühik vihiku laiuse mõõtmiseks.',
+    kind: 'choice',
+    choiceOptions: ['km', 'm', 'dm', 'cm', 'mm'],
+    correctAnswer: 2,
+    correctAnswers: [2, 3, 4],
+    userAnswer: 'km',
+    isCorrect: false
+  };
+
+  function multiAnswerQuestion() {
+    captureMath([...Array.from({ length: 11 }, (_, index) => numericMistake(index + 1)), unitQuestion]);
+    return startRemediationSession('kiur').questions
+      .find((item) => item.promptText === 'Vali sobiv ühik vihiku laiuse mõõtmiseks.');
+  }
+
+  it('captures them and keeps every accepted answer on screen', () => {
+    const question = multiAnswerQuestion();
+    expect(question).toBeDefined();
+    expect(question?.acceptedAnswerLabels).toEqual(['dm', 'cm', 'mm']);
+    for (const label of ['dm', 'cm', 'mm']) expect(question?.choices).toContain(label);
+  });
+
+  it('accepts any of them and still rejects the wrong ones', () => {
+    const question = multiAnswerQuestion()!;
+    for (const answer of ['dm', 'cm', 'mm']) expect(isRemediationAnswerCorrect(question, answer)).toBe(true);
+    for (const answer of ['km', 'm', '']) expect(isRemediationAnswerCorrect(question, answer)).toBe(false);
+  });
+
+  it('accepts only the one answer when a question has just one', () => {
+    seedUsablePool();
+    const question = startRemediationSession('kiur').questions[0];
+    expect(question.acceptedAnswerLabels).toBeUndefined();
+    expect(isRemediationAnswerCorrect(question, question.correctAnswerLabel)).toBe(true);
+    expect(isRemediationAnswerCorrect(question, 'midagi muud')).toBe(false);
   });
 });
 
