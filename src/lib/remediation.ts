@@ -3,19 +3,30 @@ import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
 import { KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { awardStudyPointsForAttempt, exerciseKeyForAttempt } from '@/lib/learningPoints';
+import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
 import { Learner, nowIso } from '@/lib/tasks';
 
 export const REMEDIATION_QUESTION_COUNT = 15;
 export const REMEDIATION_MIN_OPEN_MISTAKES = 10;
 
-export type RemediationRendererType =
-  | 'math_numeric'
-  | 'math_multiple_choice'
-  | 'counting_choice'
-  | 'initial_sound'
-  | 'word_choice'
-  | 'word_picture_choice'
-  | 'sprint_word_choice';
+// Every renderer this build can put on screen. A stored mistake whose type is
+// not in this list (written by a newer build, or a renderer since retired) is
+// skipped rather than trusted, so the pool can always be read by any version.
+export const REMEDIATION_RENDERER_TYPES = [
+  'math_numeric',
+  'math_multiple_choice',
+  'counting_choice',
+  'initial_sound',
+  'word_choice',
+  'word_picture_choice',
+  'sprint_word_choice'
+] as const;
+
+export type RemediationRendererType = (typeof REMEDIATION_RENDERER_TYPES)[number];
+
+function isRenderableType(value: string): value is RemediationRendererType {
+  return (REMEDIATION_RENDERER_TYPES as readonly string[]).includes(value);
+}
 
 type SavedQuestion = {
   id?: string;
@@ -112,12 +123,11 @@ type SessionItemRow = {
   isCorrect: number | null;
 };
 
+// Key/dedup normalization (no decimal-comma folding, so "1,5" and "1.5" stay
+// distinct prompts). Answer comparison lives in the shared module below so the
+// browser and the server agree; see remediationAnswerMatches.
 function normalize(value: unknown) {
   return String(value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
-}
-
-function answerMatches(answer: string, correct: string) {
-  return normalize(answer).replace(',', '.') === normalize(correct).replace(',', '.');
 }
 
 function unique(values: string[]) {
@@ -157,10 +167,16 @@ function distractorsFor(type: RemediationRendererType) {
   return [];
 }
 
+// The correct answer must survive the cap. Without this, a question carrying
+// more options than `total` would silently render without its right answer.
 function choicesWithDistractors(snapshot: PromptSnapshot, seed: number, total = 5) {
   const base = unique([...(snapshot.choices ?? []), snapshot.correctAnswerLabel, snapshot.wrongAnswerLabel]);
   const fillers = distractorsFor(snapshot.rendererType).filter((choice) => !base.some((existing) => normalize(existing) === normalize(choice)));
-  return shuffle(unique([...base, ...fillers]).slice(0, total), seed);
+  const pool = unique([...base, ...fillers]);
+  const kept = pool.slice(0, total);
+  const correctIndex = pool.findIndex((choice) => normalize(choice) === normalize(snapshot.correctAnswerLabel));
+  if (kept.length > 0 && correctIndex >= kept.length) kept[kept.length - 1] = pool[correctIndex];
+  return shuffle(kept, seed);
 }
 
 // Comparison questions (e.g. "83 ___ 78") carry no choiceOptions; their
@@ -305,13 +321,22 @@ export function captureMistakesForAttempt(input: {
   }
 }
 
-export function getOpenRenderableMistakeCount(learner: Learner) {
-  const row = db.prepare(`
-    SELECT COUNT(*) as count
+// A mistake is only usable when this build knows its renderer type AND can
+// rebuild a complete question from the stored snapshot. Both the badge and the
+// session are built from this one list, so the count a child sees can never
+// promise more than the session can actually deliver.
+function openRenderableMistakes(learner: Learner) {
+  const rows = db.prepare(`
+    SELECT *
     FROM mistake_pool
-    WHERE learner = ? AND status = 'open' AND rendererType <> 'unknown'
-  `).get(learner) as { count: number } | undefined;
-  return row?.count ?? 0;
+    WHERE learner = ? AND status = 'open'
+    ORDER BY wrongCount DESC, lastWrongAt DESC, id ASC
+  `).all(learner) as MistakeRow[];
+  return rows.filter((row) => isRenderableType(row.rendererType) && questionForMistake(row, 0) !== null);
+}
+
+export function getOpenRenderableMistakeCount(learner: Learner) {
+  return openRenderableMistakes(learner).length;
 }
 
 function parseSnapshot(raw: string): PromptSnapshot | null {
@@ -372,17 +397,8 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
   };
 }
 
-function rowsForSession(learner: Learner) {
-  return db.prepare(`
-    SELECT *
-    FROM mistake_pool
-    WHERE learner = ? AND status = 'open' AND rendererType <> 'unknown'
-    ORDER BY wrongCount DESC, lastWrongAt DESC, id ASC
-  `).all(learner) as MistakeRow[];
-}
-
 export function startRemediationSession(learner: Learner) {
-  const openRows = rowsForSession(learner);
+  const openRows = openRenderableMistakes(learner);
   if (openRows.length < REMEDIATION_MIN_OPEN_MISTAKES) {
     throw new Error('Kordamine avaneb siis, kui kogunenud on 10 asja.');
   }
@@ -404,6 +420,7 @@ export function startRemediationSession(learner: Learner) {
     const questions: RemediationQuestion[] = [];
 
     selected.forEach((row, index) => {
+      // Unreachable: openRenderableMistakes() already proved every row renders.
       const question = questionForMistake(row, index);
       if (!question) throw new Error('Harjutust ei saanud alustada.');
       const item = db.prepare(`
@@ -461,7 +478,7 @@ export function submitRemediationSession(input: {
       const question = parseSnapshotSafeQuestion(item.renderedQuestionJson);
       if (!question) throw new Error('Küsimust ei saanud lugeda.');
       const childAnswer = answerMap.get(item.id) ?? '';
-      const isCorrect = answerMatches(childAnswer, question.correctAnswerLabel);
+      const isCorrect = remediationAnswerMatches(childAnswer, question.correctAnswerLabel);
       const current = latestByMistake.get(item.mistakeId) ?? { allCorrect: true, anyWrong: false };
       latestByMistake.set(item.mistakeId, { allCorrect: current.allCorrect && isCorrect, anyWrong: current.anyWrong || !isCorrect });
 

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 import PointsConfetti from '@/app/components/PointsConfetti';
 import { formatStars } from '@/lib/formatStars';
+import { remediationAnswerMatches } from '@/lib/shared/remediationAnswer';
 
 type Learner = 'kiur' | 'kirsi';
 type RendererType = 'math_numeric' | 'math_multiple_choice' | 'counting_choice' | 'initial_sound' | 'word_choice' | 'word_picture_choice' | 'sprint_word_choice';
@@ -44,14 +45,6 @@ type SubmitResult = {
     capReached: boolean;
   } | null;
 };
-
-function normalize(value: string) {
-  return value.trim().toLowerCase().replace(',', '.');
-}
-
-function isCorrect(answer: string, correct: string) {
-  return normalize(answer) === normalize(correct);
-}
 
 function feedbackText(question: RemediationQuestion) {
   if (question.rendererType === 'initial_sound' && question.targetWord) {
@@ -133,7 +126,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
 
   const chooseAnswer = (answer: string) => {
     if (!current || answered) return;
-    const correct = isCorrect(answer, current.correctAnswerLabel);
+    const correct = remediationAnswerMatches(answer, current.correctAnswerLabel);
     setSelectedAnswer(answer);
     setAnswers((prev) => [...prev, { sessionItemId: current.sessionItemId, answer, isCorrect: correct }]);
     setShowFeedback(true);
