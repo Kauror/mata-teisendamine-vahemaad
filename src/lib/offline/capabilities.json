@@ -20,7 +20,9 @@
     "/kiur/loodusopetus",
     "/kiur/loodusopetus/test",
     "/kiur/kordamine",
-    "/kirsi/kordamine"
+    "/kirsi/kordamine",
+    "/kiur/paarid",
+    "/kirsi/paarid"
   ],
   "publicAssets": [
     "/manifest.webmanifest",

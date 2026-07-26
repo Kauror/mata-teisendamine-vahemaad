@@ -2,6 +2,7 @@ import Link from 'next/link';
 import DailyTasksPanel from '@/app/components/DailyTasksPanel';
 import NoticeBoard from '@/app/components/NoticeBoard';
 import YesterdayPointsPopup from '@/app/components/YesterdayPointsPopup';
+import ChildAvatarEasterEgg from '@/app/components/ChildAvatarEasterEgg';
 import ChildExerciseGrid from '@/app/components/ChildExerciseGrid';
 import { ChildExerciseCard } from '@/lib/childExerciseCards';
 import { getYesterdayPointsSummary } from '@/lib/dailyPointsSummary';
@@ -35,10 +36,7 @@ export default function ChildHomeDashboard({
         <Link className='child-home-back' href='/'>← Rollivalik</Link>
 
         <header className='child-home-header'>
-          <span className='child-home-avatar' aria-hidden>{child.avatar}</span>
-          <div>
-            <h1>{child.name}</h1>
-          </div>
+          <ChildAvatarEasterEgg learner={child.learner} name={child.name} avatar={child.avatar} />
         </header>
 
         <DailyTasksPanel learner={child.learner} />
