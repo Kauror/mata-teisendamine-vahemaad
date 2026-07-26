@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PictureWordSprintBoard, { type PictureWordSprintBoardState } from '@/app/components/PictureWordSprintBoard';
+import PointsConfetti from '@/app/components/PointsConfetti';
 import { shuffle } from '@/lib/englishGame';
 import { fetchBestKirsiReadingSprintScore } from '@/lib/kirsiReadingHistory';
 import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS, KirsiReadingPair } from '@/lib/kirsiReadingPairs';
@@ -79,6 +80,7 @@ export default function KirsiPictureWordSprintPage() {
   const [started, setStarted] = useState(false);
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(0);
+  const [beatRecord, setBeatRecord] = useState(false);
   const [streak, setStreak] = useState(0);
   const [boardIndex, setBoardIndex] = useState(0);
   const [ended, setEnded] = useState(false);
@@ -191,8 +193,11 @@ export default function KirsiPictureWordSprintPage() {
     if (!ended || savedHistoryRef.current || exerciseActive !== true || !runId) return;
     savedHistoryRef.current = true;
 
-    if (score > best) {
+    // Compare before setBest overwrites it — the result screen renders after this
+    // effect, by which point `best` already equals the new score.
+    if (score > best && score > 0) {
       setBest(score);
+      setBeatRecord(true);
     }
 
     void (async () => {
@@ -364,10 +369,12 @@ export default function KirsiPictureWordSprintPage() {
   if (ended) {
     return (
       <main className='english-page sprint-result-page reading-page'>
+        {beatRecord ? <PointsConfetti /> : null}
         <section className='sprint-result-panel'>
           <header className='sprint-result-header'>
             <div className='sprint-result-emoji' aria-hidden>🖼️</div>
             <h1 className='sprint-result-title'>Tulemus</h1>
+            {beatRecord ? <p className='sprint-record-badge' role='status'><span aria-hidden>🏆</span> Uus rekord!</p> : null}
             <p className='sprint-result-subtitle'>Vaata õiget paari ja proovi soovi korral uuesti.</p>
           </header>
           <div className='sprint-result-stats-grid'>

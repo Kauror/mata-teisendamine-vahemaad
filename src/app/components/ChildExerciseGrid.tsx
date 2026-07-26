@@ -14,11 +14,13 @@ export default function ChildExerciseGrid({
   learner,
   initialExercises,
   remediationHref,
+  remediationCount,
   completedExerciseIds
 }: {
   learner: Learner;
   initialExercises: ChildExerciseCard[];
   remediationHref?: string;
+  remediationCount?: number;
   completedExerciseIds?: string[];
 }) {
   const [exercises, setExercises] = useState<ChildExerciseCard[]>(initialExercises);
@@ -50,6 +52,9 @@ export default function ChildExerciseGrid({
 
         {remediationHref ? (
           <Link className='child-exercise-card' data-accent='green' href={remediationHref}>
+            {/* The pool can hold more than one session's worth: a round is always
+                REMEDIATION_QUESTION_COUNT questions, this counts everything waiting. */}
+            {remediationCount ? <span className='exercise-count-marker' aria-label={`${remediationCount} ülesannet ootab kordamist`}>{remediationCount}</span> : null}
             <span className='child-exercise-icon' aria-hidden>↻</span>
             <span className='child-exercise-copy'>
               <strong>Kordamine</strong>

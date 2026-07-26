@@ -10,13 +10,15 @@ export const runtime = 'nodejs';
 export default function KiurPage() {
   const exercises = childExerciseCards('kiur', selectTodaysLearningExercises(getActiveLearningExercises('kiur'), 'kiur'));
   const completedExerciseIds = getCompletedExerciseIdsToday('kiur', exercises);
-  const remediationHref = getOpenRenderableMistakeCount('kiur') >= REMEDIATION_MIN_OPEN_MISTAKES ? '/kiur/kordamine' : undefined;
+  const openMistakeCount = getOpenRenderableMistakeCount('kiur');
+  const remediationHref = openMistakeCount >= REMEDIATION_MIN_OPEN_MISTAKES ? '/kiur/kordamine' : undefined;
 
   return (
     <ChildHomeDashboard
       child={{ learner: 'kiur', name: 'Kiur', avatar: '👦' }}
       exercises={exercises}
       remediationHref={remediationHref}
+      remediationCount={openMistakeCount}
       completedExerciseIds={completedExerciseIds}
     />
   );

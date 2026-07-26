@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
+import PointsConfetti from '@/app/components/PointsConfetti';
 import { formatStars } from '@/lib/formatStars';
 
 type Learner = 'kiur' | 'kirsi';
@@ -181,8 +182,10 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
 
   if (result) {
     const belowThreshold = result.score / result.questionCount < 0.5;
+    const isPerfect = result.questionCount > 0 && result.score === result.questionCount;
     return (
       <main className='result-page'>
+        {isPerfect ? <PointsConfetti /> : null}
         <section className='result-shell'>
           <section className='result-summary-card'>
             <h1>Kordamine</h1>

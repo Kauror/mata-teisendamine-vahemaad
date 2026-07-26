@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EnglishMatchingBoard, { type EnglishMatchingBoardState } from '@/app/components/EnglishMatchingBoard';
+import PointsConfetti from '@/app/components/PointsConfetti';
 import { ENGLISH_PACKS, shuffle } from '@/lib/englishGame';
 import { fetchBestEnglishSprintScore } from '@/lib/englishHistory';
 import type { EnglishVocabularyWord } from '@/lib/englishVocabulary';
@@ -67,6 +68,7 @@ export default function SprintPage() {
   const [wordPool, setWordPool] = useState<EnglishVocabularyWord[]>([]);
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(0);
+  const [beatRecord, setBeatRecord] = useState(false);
   const [streak, setStreak] = useState(0);
   const [boardSeed, setBoardSeed] = useState(1);
   const [ended, setEnded] = useState(false);
@@ -246,8 +248,11 @@ export default function SprintPage() {
     const finalMistakes = mistakesRef.current;
     const finalQuestionCount = finalPairs + finalMistakes;
 
-    if (finalScore > best) {
+    // Compare before setBest overwrites it — the result screen renders after this
+    // effect, by which point `best` already equals the new score.
+    if (finalScore > best && finalScore > 0) {
       setBest(finalScore);
+      setBeatRecord(true);
     }
 
     const questions = reviewItems;
@@ -327,10 +332,12 @@ export default function SprintPage() {
 
   if (ended) {
     return <main className='english-page sprint-result-page'>
+      {beatRecord ? <PointsConfetti /> : null}
       <section className='sprint-result-panel'>
         <header className='sprint-result-header'>
           <div className='sprint-result-emoji' aria-hidden>🔤</div>
           <h1 className='sprint-result-title'>Sprint lõppes</h1>
+          {beatRecord ? <p className='sprint-record-badge' role='status'><span aria-hidden>🏆</span> Uus rekord!</p> : null}
           <p className='sprint-result-subtitle'>Siin on selle sprinti kokkuvõte.</p>
         </header>
         <div className='sprint-result-stats-grid'>

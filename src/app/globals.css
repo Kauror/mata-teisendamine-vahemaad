@@ -199,7 +199,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .child-exercise-copy strong{font-size:21px;line-height:1.1}
 .child-exercise-copy small{color:#4b5f99;font-size:14px;font-weight:750;line-height:1.25}
 .done-today-marker{position:absolute;top:10px;right:10px;width:24px;height:24px;display:grid;place-items:center;border-radius:999px;background:#22c55e;color:#fff;font-size:15px;font-weight:900;line-height:1;box-shadow:0 6px 14px rgba(34,197,94,.28);pointer-events:none;z-index:1}
-@media (max-width:700px){.child-home-page{padding:8px}.child-home-shell{padding:12px;border-radius:20px;gap:12px}.child-home-header{gap:10px}.child-home-avatar{width:54px;height:54px;border-radius:18px;font-size:31px}.child-home-header p{font-size:16px}.child-exercise-grid{grid-template-columns:1fr;gap:8px}.child-exercise-card{min-height:66px;border-radius:16px;padding:10px 40px 10px 10px}.child-exercise-icon{width:42px;height:42px;border-radius:14px;font-size:25px}.child-exercise-copy strong{font-size:19px}.child-exercise-copy small{font-size:13px}.done-today-marker{top:8px;right:8px;width:22px;height:22px;font-size:14px}}
+.exercise-count-marker{position:absolute;top:10px;right:10px;min-width:24px;height:24px;padding:0 7px;display:grid;place-items:center;border-radius:999px;background:#22c55e;color:#fff;font-size:14px;font-weight:900;line-height:1;box-shadow:0 6px 14px rgba(34,197,94,.28);pointer-events:none;z-index:1}
+@media (max-width:700px){.child-home-page{padding:8px}.child-home-shell{padding:12px;border-radius:20px;gap:12px}.child-home-header{gap:10px}.child-home-avatar{width:54px;height:54px;border-radius:18px;font-size:31px}.child-home-header p{font-size:16px}.child-exercise-grid{grid-template-columns:1fr;gap:8px}.child-exercise-card{min-height:66px;border-radius:16px;padding:10px 40px 10px 10px}.child-exercise-icon{width:42px;height:42px;border-radius:14px;font-size:25px}.child-exercise-copy strong{font-size:19px}.child-exercise-copy small{font-size:13px}.done-today-marker{top:8px;right:8px;width:22px;height:22px;font-size:14px}.exercise-count-marker{top:8px;right:8px;min-width:22px;height:22px;padding:0 6px;font-size:13px}}
 
 .parent-page{min-height:100vh;padding:20px;background:radial-gradient(circle at top left,rgba(219,234,254,.9),transparent 32%),linear-gradient(180deg,#eef5ff,#f8fbff);color:#0b1b45}
 .parent-shell{width:min(1120px,100%);margin:0 auto;display:grid;gap:16px}
@@ -541,6 +542,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .sprint-result-emoji{font-size:40px;line-height:1}
 .sprint-result-title{margin:0;color:#0b1b45;font-size:clamp(30px,5vw,44px);font-weight:900;letter-spacing:-.03em}
 .sprint-result-subtitle{margin:0;color:#64748b;font-size:16px;font-weight:700}
+.sprint-record-badge{justify-self:center;display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:999px;background:#dcfce7;border:1px solid #86efac;color:#15803d;font-size:17px;font-weight:900;letter-spacing:-.01em;animation:sprint-record-pop 460ms cubic-bezier(.2,.72,.28,1) 120ms both}
+@keyframes sprint-record-pop{0%{opacity:0;transform:scale(.72)}60%{opacity:1;transform:scale(1.07)}100%{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.sprint-record-badge{animation:none}}
 .sprint-result-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .sprint-result-stat-card{border-radius:24px;border:1px solid #dbeafe;background:linear-gradient(180deg,#f8fbff,#eef5ff);padding:18px 20px;display:grid;gap:6px}
 .sprint-result-stat-label{margin:0;color:#64748b;font-size:14px;font-weight:800}
@@ -615,6 +619,11 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .points-recap-amount{font-size:17px;font-weight:900;color:#16a34a;white-space:nowrap}
 .points-recap .next-button{margin-top:4px}
 @media (max-width:640px){.points-recap-emoji{font-size:46px}.points-recap-total{font-size:34px}}
+.points-confetti{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:30}
+.points-confetti-piece{position:absolute;left:50%;top:50%;width:15px;height:21px;border-radius:3px;opacity:0;will-change:transform,opacity;animation:points-confetti-blast var(--dur) cubic-bezier(.1,.66,.24,1) var(--delay) forwards}
+.points-confetti-piece.is-round{width:13px;height:13px;border-radius:50%}
+@keyframes points-confetti-blast{0%{opacity:1;transform:translate3d(-50%,-50%,0) scale(.4) rotate(0)}45%{opacity:1;transform:translate3d(calc(-50% + var(--dx)),calc(-50% + var(--dy)),0) scale(1) rotate(calc(var(--rot) * .5))}80%{opacity:1;transform:translate3d(calc(-50% + var(--dx) * 1.08),calc(-50% + var(--dy) + var(--fall) * .42),0) scale(1) rotate(calc(var(--rot) * .8))}100%{opacity:0;transform:translate3d(calc(-50% + var(--dx) * 1.15),calc(-50% + var(--dy) + var(--fall)),0) scale(1) rotate(var(--rot))}}
+@media (prefers-reduced-motion:reduce){.points-confetti{display:none}}
 
 /* Achievements strip (child dashboard) */
 .achievement-strip{display:flex;flex-wrap:wrap;gap:10px}

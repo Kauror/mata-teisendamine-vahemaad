@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import PointsConfetti from '@/app/components/PointsConfetti';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { getConfirmedAttemptByClientId, getLocalAttempt } from '@/lib/offline/api';
 import type { LocalAttempt } from '@/lib/offline/records';
@@ -71,9 +72,12 @@ export default function LocalResultContent({ clientId }: { clientId: string | nu
 
   const questions = Array.isArray(attempt.questions) ? attempt.questions as ReviewQuestion[] : [];
   const ctx = reviewContext(attempt);
+  const isPerfect = attempt.questionCount > 0 && attempt.score === attempt.questionCount;
 
   return (
     <main className='container' style={{ display: 'grid', gap: 16 }}>
+      {/* Every question right — the only score that gets the cannon. */}
+      {isPerfect ? <PointsConfetti /> : null}
       <section className='question-card' style={{ display: 'grid', gap: 12, textAlign: 'center' }}>
         <div style={{ fontSize: 44 }} aria-hidden>{percent >= 50 ? '🎉' : '💪'}</div>
         <h1>Harjutus tehtud!</h1>

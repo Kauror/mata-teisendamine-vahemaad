@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import PointsConfetti from '@/app/components/PointsConfetti';
 import { formatStars } from '@/lib/formatStars';
 import type { Learner } from '@/lib/tasks';
 import type { YesterdayPointsSummary } from '@/lib/dailyPointsSummary';
@@ -43,6 +44,9 @@ export default function YesterdayPointsPopup({
 
   return (
     <div className='task-modal-backdrop' role='dialog' aria-modal='true' aria-labelledby='points-recap-title'>
+      {/* Only celebrate an actual haul — the "no stars" and "did not practise"
+          branches below stay quiet. */}
+      {summary.hasEarnings ? <PointsConfetti /> : null}
       <div className='task-modal points-recap'>
         {summary.hasEarnings ? (
           <>

@@ -10,13 +10,15 @@ export const runtime = 'nodejs';
 export default function KirsiPage() {
   const exercises = childExerciseCards('kirsi', selectTodaysLearningExercises(getActiveLearningExercises('kirsi'), 'kirsi'));
   const completedExerciseIds = getCompletedExerciseIdsToday('kirsi', exercises);
-  const remediationHref = getOpenRenderableMistakeCount('kirsi') >= REMEDIATION_MIN_OPEN_MISTAKES ? '/kirsi/kordamine' : undefined;
+  const openMistakeCount = getOpenRenderableMistakeCount('kirsi');
+  const remediationHref = openMistakeCount >= REMEDIATION_MIN_OPEN_MISTAKES ? '/kirsi/kordamine' : undefined;
 
   return (
     <ChildHomeDashboard
       child={{ learner: 'kirsi', name: 'Kirsi', avatar: '👧' }}
       exercises={exercises}
       remediationHref={remediationHref}
+      remediationCount={openMistakeCount}
       completedExerciseIds={completedExerciseIds}
     />
   );
