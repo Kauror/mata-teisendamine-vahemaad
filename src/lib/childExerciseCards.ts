@@ -49,22 +49,24 @@ export const FIXED_CHILD_EXERCISES: Readonly<Record<Learner, readonly ChildExerc
 // catalogue shape they hold (server rows or a cached offline catalogue).
 type CatalogueStatus = { id: string; childStatus: Record<Learner, LearningExerciseStatus | null> };
 
-// Fixed runners are added back after the daily rotation has already picked
-// today's cards, so an exercise that is always shown survives an empty or
-// not-yet-hydrated catalogue. It must not survive the parent switching it off:
-// `catalogue` is the full pool including hidden entries, and an explicit
-// 'hidden' status wins. Without a catalogue (offline, before first hydration)
-// the fixed card is kept, which is the case this fallback exists for.
+// Fixed runners are reconciled after the daily rotation has picked today's
+// cards. A permanent exercise is always added, a rotating exercise is kept only
+// when the rotation selected it, and a hidden/unavailable exercise is removed.
+// Without a catalogue (offline, before first hydration) the fixed card is kept,
+// which is the case this fallback exists for.
 export function mergeFixedChildExerciseCards(
   learner: Learner,
   cards: ChildExerciseCard[],
   catalogue: CatalogueStatus[] = []
 ): ChildExerciseCard[] {
   const merged = new Map(cards.map((card) => [card.id, card]));
-  const hidden = new Set(catalogue.filter((entry) => entry.childStatus[learner] === 'hidden').map((entry) => entry.id));
   for (const fixed of FIXED_CHILD_EXERCISES[learner]) {
-    if (hidden.has(fixed.id)) merged.delete(fixed.id);
-    else merged.set(fixed.id, fixed);
+    const catalogueEntry = catalogue.find((entry) => entry.id === fixed.id);
+    if (!catalogueEntry || catalogueEntry.childStatus[learner] === 'permanent') {
+      merged.set(fixed.id, fixed);
+    } else if (catalogueEntry.childStatus[learner] !== 'rotation') {
+      merged.delete(fixed.id);
+    }
   }
   return [...merged.values()];
 }

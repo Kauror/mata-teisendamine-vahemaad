@@ -48,6 +48,22 @@ describe('childExerciseCards fixed runners', () => {
     expect(ids(childExerciseCards('kiur', [entry('kiur.math.a', 'kiur', 'rotation')], catalogue))).toContain(SCIENCE_ID);
   });
 
+  it('does not add it as a fifth daily card when it is rotating but was not picked', () => {
+    const selected = [
+      entry('kiur.math.a', 'kiur', 'rotation'),
+      entry('kiur.math.b', 'kiur', 'rotation'),
+      entry('kiur.math.c', 'kiur', 'rotation'),
+      entry('kiur.math.d', 'kiur', 'rotation')
+    ];
+    const catalogue = [science('rotation'), ...selected];
+    expect(ids(childExerciseCards('kiur', selected, catalogue))).toEqual(selected.map((exercise) => exercise.id));
+  });
+
+  it('keeps it when the daily rotation selected it', () => {
+    const catalogue = [science('rotation'), entry('kiur.math.a', 'kiur', 'rotation')];
+    expect(ids(childExerciseCards('kiur', [science('rotation')], catalogue))).toEqual([SCIENCE_ID]);
+  });
+
   it('drops it once the parent hides it', () => {
     // The rotation already excludes a hidden exercise, so before this the card
     // was added straight back and the child got a fifth card that could only
