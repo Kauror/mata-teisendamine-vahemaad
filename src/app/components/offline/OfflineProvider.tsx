@@ -15,11 +15,13 @@ import {
   writeRunnerHeartbeat
 } from '@/lib/offline/runnerLiveness';
 
+export type OfflineSyncState = 'healthy' | 'offline' | 'retry_wait' | 'auth_blocked' | 'upgrade_required' | 'storage_error' | 'epoch_regression' | 'timeout' | 'unknown';
+
 type OfflineContextValue = {
   online: boolean; // server actually reachable (ping), not just navigator.onLine
   syncing: boolean;
   pendingCount: number;
-  syncState: 'healthy' | 'offline' | 'retry_wait' | 'auth_blocked' | 'upgrade_required' | 'storage_error' | 'epoch_regression' | 'timeout' | 'unknown';
+  syncState: OfflineSyncState;
   lastSyncAt: string | null;
   updateAvailable: boolean;
   updateBlocked: boolean;

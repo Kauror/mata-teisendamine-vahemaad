@@ -16,3 +16,4 @@ public/sw.js
 /.playwright/
 /e2e-prod/.auth/
 /.e2e-data/
+/.e2e-audit-data/

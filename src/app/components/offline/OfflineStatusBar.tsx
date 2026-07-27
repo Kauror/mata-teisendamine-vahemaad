@@ -1,43 +1,19 @@
 'use client';
 
 import { useOffline } from '@/app/components/offline/OfflineProvider';
+import { offlineStatusPresentation } from '@/app/components/offline/offlineStatusPresentation';
 
 // Compact, non-alarming status shown to children. Renders nothing when everything
 // is online and synced; never shows codes, exceptions or technical terms.
 export function OfflineStatusBar() {
   const { online, syncing, pendingCount, syncState } = useOffline();
-
-  if (online && !syncing && pendingCount === 0 && syncState === 'healthy') return null;
-
-  let label = '';
-  let tone: 'ok' | 'warn' | 'muted' = 'muted';
-  if (syncState === 'auth_blocked') {
-    label = 'Palun sisesta PIN uuesti, et tulemused saaks sünkroonida';
-    tone = 'warn';
-  } else if (syncState === 'upgrade_required') {
-    label = 'Rakendus vajab uuendamist enne sünkroonimist';
-    tone = 'warn';
-  } else if (syncState === 'storage_error') {
-    label = 'Seadme salvestus vajab tähelepanu';
-    tone = 'warn';
-  } else if (syncState === 'retry_wait' || syncState === 'timeout') {
-    label = 'Sünkroonimist proovitakse varsti uuesti';
-    tone = 'muted';
-  } else if (!online) {
-    label = 'Internetti pole';
-    tone = 'warn';
-  } else if (syncing) {
-    label = 'Sünkroonin…';
-    tone = 'muted';
-  } else if (pendingCount > 0) {
-    label = `${pendingCount} tulemust ootab sünkroonimist`;
-    tone = 'ok';
-  }
+  const presentation = offlineStatusPresentation({ online, syncing, pendingCount, syncState });
+  if (!presentation) return null;
 
   return (
-    <div className={`offline-status offline-status-${tone}`} role="status" aria-live="polite">
+    <div className={`offline-status offline-status-${presentation.tone}`} role="status" aria-live="polite">
       <span aria-hidden>{!online ? '📴' : syncing ? '🔄' : '☁️'}</span>
-      <span>{label}</span>
+      <span>{presentation.label}</span>
     </div>
   );
 }
