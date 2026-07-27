@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import PointsConfetti from '@/app/components/PointsConfetti';
+import { usePeekMode } from '@/app/components/usePeekMode';
 import { formatStars } from '@/lib/formatStars';
+import { mayRecordSeenMarker } from '@/lib/peekMode';
 import type { Learner } from '@/lib/tasks';
 import type { YesterdayPointsSummary } from '@/lib/dailyPointsSummary';
 
@@ -19,6 +21,7 @@ export default function YesterdayPointsPopup({
   summary: YesterdayPointsSummary;
 }) {
   const [open, setOpen] = useState(false);
+  const peekMode = usePeekMode();
 
   const storageKey = `harjutaja:points-recap:${learner}`;
 
@@ -32,10 +35,14 @@ export default function YesterdayPointsPopup({
   }, [storageKey, summary.date]);
 
   const close = () => {
-    try {
-      window.localStorage.setItem(storageKey, summary.date);
-    } catch {
-      // Ignore storage failures; closing still works for this visit.
+    // A peeking parent closes the recap without spending it, so the child still
+    // gets it the next time they open their page.
+    if (mayRecordSeenMarker(peekMode)) {
+      try {
+        window.localStorage.setItem(storageKey, summary.date);
+      } catch {
+        // Ignore storage failures; closing still works for this visit.
+      }
     }
     setOpen(false);
   };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { APP_ACCESS_COOKIE, PARENT_SESSION_COOKIE } from '@/lib/auth/constants';
 import { hasExactOrigin, verifySession } from '@/lib/auth/session';
+import { PARENT_PEEK_COOKIE, PARENT_PEEK_COOKIE_VALUE, PARENT_PEEK_MAX_AGE_SECONDS } from '@/lib/peekMode';
 
 function isPublicPath(pathname: string) {
   if (pathname === '/access' || pathname === '/api/access') return true;
@@ -12,6 +13,27 @@ function isPublicPath(pathname: string) {
 
 function isMutation(request: NextRequest) {
   return !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+}
+
+// Mirror "a parent is signed in on this browser" into a cookie the child pages
+// can read, so peeking at a child's screen never consumes their one-shot
+// notifications. See src/lib/peekMode.ts for why this is a cookie and not a
+// server-rendered prop. Only document navigations carry it: they are what the
+// child pages render from, and it keeps the flag off cacheable API responses.
+async function applyParentPeekCookie(request: NextRequest, response: NextResponse) {
+  if (request.method !== 'GET' || request.nextUrl.pathname.startsWith('/api/')) return response;
+  const parent = await verifySession(request.cookies.get(PARENT_SESSION_COOKIE)?.value, 'parent');
+  const alreadySet = request.cookies.get(PARENT_PEEK_COOKIE)?.value === PARENT_PEEK_COOKIE_VALUE;
+  if (!parent && !alreadySet) return response;
+  response.cookies.set(PARENT_PEEK_COOKIE, parent ? PARENT_PEEK_COOKIE_VALUE : '', {
+    // Readable from the page — it is a UI hint, never an authorisation decision.
+    httpOnly: false,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: parent ? PARENT_PEEK_MAX_AGE_SECONDS : 0
+  });
+  return response;
 }
 
 function requiresFamilyCsrf(pathname: string) {
@@ -49,7 +71,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.json({ code: 'csrf_invalid', message: 'Turvatunnus puudub või ei sobi.' }, { status: 403 });
     }
   }
-  return NextResponse.next();
+  return applyParentPeekCookie(req, NextResponse.next());
 }
 
 export const config = {

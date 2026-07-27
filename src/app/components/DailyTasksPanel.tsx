@@ -7,6 +7,9 @@ import { exerciseWord, trophyWord } from '@/lib/history';
 import { completeTaskOffline, getDailyTasksOffline, getDashboardSnapshot } from '@/lib/offline/api';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import MetricTooltip from '@/app/components/MetricTooltip';
+import { usePeekMode } from '@/app/components/usePeekMode';
+import { mayRecordSeenMarker } from '@/lib/peekMode';
+import { decideMilestoneNotice } from '@/lib/milestoneNotice';
 import { todayDateString } from '@/lib/appDate';
 import { achievementTooltip, starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
 
@@ -64,6 +67,7 @@ function learnerName(learner: Learner) {
 
 export default function DailyTasksPanel({ learner }: { learner: Learner }) {
   const { online } = useOffline();
+  const peekMode = usePeekMode();
   const [data, setData] = useState<ChildDashboard | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -177,20 +181,36 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
   const doneTasks = tasks.filter(isDone);
   const storeHref = learner === 'kiur' ? '/kiur/pood' : '/kirsi/pood';
 
+  const milestoneStorageKey = `exercise-milestone:${learner}`;
+
+  const recordMilestoneSeen = useCallback((milestoneId: string) => {
+    // Peeking never spends the notice — that is the whole point of peek mode.
+    if (!mayRecordSeenMarker(peekMode)) return;
+    try {
+      window.localStorage.setItem(milestoneStorageKey, milestoneId);
+    } catch {
+      // Ignore storage failures; the notice simply reappears next time.
+    }
+  }, [milestoneStorageKey, peekMode]);
+
   useEffect(() => {
     const milestone = achievements.find((achievement) => achievement.kind === 'exercise_milestone' && achievement.unlocked);
     if (!milestone) return;
-    const storageKey = `exercise-milestone:${learner}`;
-    const seenMilestone = window.localStorage.getItem(storageKey);
-    if (seenMilestone === null) {
-      window.localStorage.setItem(storageKey, milestone.id);
-      return;
+    let seenMilestoneId: string | null = null;
+    try {
+      seenMilestoneId = window.localStorage.getItem(milestoneStorageKey);
+    } catch {
+      // localStorage unavailable (private mode) — treat it as a first visit.
     }
-    if (seenMilestone !== milestone.id) {
-      window.localStorage.setItem(storageKey, milestone.id);
-      setMilestoneNotice(milestone);
-    }
-  }, [achievements, learner]);
+    const decision = decideMilestoneNotice({ seenMilestoneId, milestoneId: milestone.id, peekMode });
+    if (decision.recordNow) recordMilestoneSeen(milestone.id);
+    if (decision.show) setMilestoneNotice(milestone);
+  }, [achievements, milestoneStorageKey, peekMode, recordMilestoneSeen]);
+
+  const dismissMilestone = () => {
+    if (milestoneNotice) recordMilestoneSeen(milestoneNotice.id);
+    setMilestoneNotice(null);
+  };
 
   const renderTask = (task: ChildTask) => {
     const completed = task.status === 'completed';
@@ -237,7 +257,7 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
         <div className='achievement-notice' role='status'>
           <span aria-hidden>🎉</span>
           <strong>Saavutus: {milestoneNotice.title}!</strong>
-          <button type='button' aria-label='Sulge saavutuseteade' onClick={() => setMilestoneNotice(null)}>×</button>
+          <button type='button' aria-label='Sulge saavutuseteade' onClick={dismissMilestone}>×</button>
         </div>
       )}
 
