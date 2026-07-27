@@ -6,7 +6,6 @@ data
 *.sqlite
 *.sqlite-*
 npm-debug.log*
-e2e
 playwright-report
 test-results
 # RTM4-H01: keep runtime secrets out of the build context, the builder cache and
