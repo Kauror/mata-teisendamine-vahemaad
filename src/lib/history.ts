@@ -47,6 +47,15 @@ export function exerciseWord(count: number) {
   return count === 1 ? 'harjutus' : 'harjutust';
 }
 
+// What the tug-of-war bar says out loud. The bar itself only shows two numbers,
+// so this sentence is the whole story for anyone using a screen reader — it is
+// both the tooltip and the accessible name.
+export function todayStandingsSummary(kiur: number, kirsi: number) {
+  if (kiur === 0 && kirsi === 0) return 'Täna pole veel keegi harjutanud.';
+  const lead = kiur === kirsi ? 'Seis on viigis.' : kiur > kirsi ? 'Kiur juhib.' : 'Kirsi juhib.';
+  return `Täna on Kiur teinud ${kiur} ${exerciseWord(kiur)}, Kirsi ${kirsi} ${exerciseWord(kirsi)}. ${lead}`;
+}
+
 // Counts of individual questions, e.g. how many mistakes are waiting in the
 // remediation pool. One mistake_pool row is one question, not one session.
 export function questionWord(count: number) {

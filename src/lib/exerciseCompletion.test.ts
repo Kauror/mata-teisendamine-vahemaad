@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { childExerciseCards } from '@/lib/childExerciseCards';
-import { completedExerciseIdsFromAttempts } from '@/lib/exerciseCompletion';
+import { completedExerciseCountsFromAttempts, completedExerciseIdsFromAttempts } from '@/lib/exerciseCompletion';
 import type { CatalogueEntry, Learner, LearningExerciseStatus } from '@/lib/shared/types';
 
 function entry(id: string, learner: Learner, overrides: Partial<CatalogueEntry> = {}): CatalogueEntry {
@@ -132,5 +132,38 @@ describe('completedExerciseIdsFromAttempts', () => {
     }];
 
     expect([...completedExerciseIdsFromAttempts(attempts, 'kiur', kiurCards)]).toEqual(['kiur.math.mustrid']);
+  });
+});
+
+describe('completedExerciseCountsFromAttempts', () => {
+  it('counts repeats of the same exercise rather than collapsing them', () => {
+    const attempts = [1, 2, 3].map((n) => ({
+      id: n,
+      createdAt: TODAY,
+      learner: 'kirsi',
+      subject: 'matemaatika',
+      topic: 'arvutamine',
+      category: 'Arvutamine 10 piires',
+      exerciseId: 'kirsi.math.arvutamine.1'
+    }));
+
+    expect(completedExerciseCountsFromAttempts(attempts, 'kirsi', kirsiCards))
+      .toEqual({ 'kirsi.math.arvutamine.1': 3 });
+  });
+
+  it('keeps siblings apart while counting', () => {
+    const attempts = [
+      { id: 1, createdAt: TODAY, learner: 'kirsi', subject: 'matemaatika', topic: 'arvutamine', category: 'Arvutamine 10 piires', exerciseId: 'kirsi.math.arvutamine.1' },
+      { id: 2, createdAt: TODAY, learner: 'kirsi', subject: 'matemaatika', topic: 'arvutamine', category: 'Arvutamine 10 piires', exerciseId: 'kirsi.math.arvutamine.1' },
+      { id: 3, createdAt: TODAY, learner: 'kirsi', subject: 'matemaatika', topic: 'kellaaeg', category: 'Kellaaeg', exerciseId: 'kirsi.math.kellaaeg' }
+    ];
+
+    expect(completedExerciseCountsFromAttempts(attempts, 'kirsi', kirsiCards))
+      .toEqual({ 'kirsi.math.arvutamine.1': 2, 'kirsi.math.kellaaeg': 1 });
+  });
+
+  it('credits nothing for an attempt it cannot attribute', () => {
+    const attempts = [{ id: 1, createdAt: TODAY, learner: 'kirsi', subject: 'matemaatika', topic: 'arvutamine', category: '', exerciseId: null }];
+    expect(completedExerciseCountsFromAttempts(attempts, 'kirsi', kirsiCards)).toEqual({});
   });
 });

@@ -59,31 +59,49 @@ function cardsFinishedBy(attempt: CompletionAttempt, exercises: ChildExerciseCar
   return exercises.filter((exercise) => matchesFallback(attempt, exercise));
 }
 
+// How many times the child finished each card today. Repeats are counted, not
+// collapsed — doing the same exercise three times is three attempts, and the
+// card says so.
+export function completedExerciseCountsFromAttempts(
+  attempts: CompletionAttempt[],
+  learner: Learner,
+  exercises: ChildExerciseCard[]
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const relevantAttempts = attempts.filter((attempt) => attemptLearner(attempt) === learner && isTodayIso(attempt.createdAt));
+
+  for (const attempt of relevantAttempts) {
+    const finished = cardsFinishedBy(attempt, exercises);
+    // One attempt is one finished exercise, so it may only ever credit one card.
+    // When it cannot be pinned to a single card the honest answer is none:
+    // crediting every candidate gives the child exercises they never did and
+    // hands them the daily achievement after a single run.
+    if (finished.length === 1) counts[finished[0].id] = (counts[finished[0].id] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
 export function completedExerciseIdsFromAttempts(
   attempts: CompletionAttempt[],
   learner: Learner,
   exercises: ChildExerciseCard[]
 ) {
-  const completed = new Set<string>();
-  const relevantAttempts = attempts.filter((attempt) => attemptLearner(attempt) === learner && isTodayIso(attempt.createdAt));
-
-  for (const attempt of relevantAttempts) {
-    const finished = cardsFinishedBy(attempt, exercises);
-    // One attempt is one finished exercise, so it may only ever tick one box.
-    // When it cannot be pinned to a single card the honest answer is none:
-    // ticking every candidate credits the child with exercises they never did
-    // and hands them the daily achievement after a single run.
-    if (finished.length === 1) completed.add(finished[0].id);
-  }
-
-  return completed;
+  return new Set(Object.keys(completedExerciseCountsFromAttempts(attempts, learner, exercises)));
 }
 
-export function getCompletedExerciseIdsToday(learner: Learner, exercises: ChildExerciseCard[]) {
-  const attempts = db.prepare(`
+function todaysAttempts() {
+  return db.prepare(`
     SELECT id, createdAt, category, learner, subject, topic, exerciseId
     FROM attempts
     ORDER BY createdAt DESC
   `).all() as CompletionAttempt[];
-  return completedExerciseIdsFromAttempts(attempts, learner, exercises);
+}
+
+export function getCompletedExerciseIdsToday(learner: Learner, exercises: ChildExerciseCard[]) {
+  return completedExerciseIdsFromAttempts(todaysAttempts(), learner, exercises);
+}
+
+export function getCompletedExerciseCountsToday(learner: Learner, exercises: ChildExerciseCard[]) {
+  return completedExerciseCountsFromAttempts(todaysAttempts(), learner, exercises);
 }

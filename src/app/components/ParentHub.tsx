@@ -803,7 +803,7 @@ export default function ParentHub() {
           <div className='parent-adjust-block'>
             <h3>⭐ Tähed</h3>
             {(['kiur', 'kirsi'] as Learner[]).map((child) => (
-              <div key={child} className='parent-adjust-row'>
+              <div key={child} className='parent-adjust-row' data-accent={child === 'kiur' ? 'blue' : 'pink'}>
                 <span className='parent-adjust-name'>{learnerLabel(child)}</span>
                 <strong className='parent-adjust-value'>{formatStars(data?.balances[child] ?? 0)}</strong>
                 <div className='parent-stepper'>
@@ -816,7 +816,7 @@ export default function ParentHub() {
           <div className='parent-adjust-block'>
             <h3>🏆 Karikad</h3>
             {(['kiur', 'kirsi'] as Learner[]).map((child) => (
-              <div key={child} className='parent-adjust-row'>
+              <div key={child} className='parent-adjust-row' data-accent={child === 'kiur' ? 'blue' : 'pink'}>
                 <span className='parent-adjust-name'>{learnerLabel(child)}</span>
                 <strong className='parent-adjust-value'>{(child === 'kiur' ? monthlyPrize?.standing.kiurTrophies : monthlyPrize?.standing.kirsiTrophies) ?? 0}</strong>
                 <div className='parent-stepper'>
@@ -832,7 +832,7 @@ export default function ParentHub() {
             {(['kiur', 'kirsi'] as Learner[]).map((child) => {
               const state = streakFreezes?.[child];
               return (
-                <div key={child} className='parent-adjust-row'>
+                <div key={child} className='parent-adjust-row' data-accent={child === 'kiur' ? 'blue' : 'pink'}>
                   <span className='parent-adjust-name'>{learnerLabel(child)}</span>
                   <strong className='parent-adjust-value'>{state ? `${state.held}/${state.maxHeld}` : '–'}</strong>
                   <div className='parent-stepper'>
@@ -903,7 +903,7 @@ export default function ParentHub() {
             const rotationCount = list.filter((exercise) => exercise.childStatus[learner] === 'rotation').length;
             return (
               <div key={learner} className='learning-learner-group'>
-                <div className='learning-learner-head'>
+                <div className='learning-learner-head' data-accent={learner === 'kiur' ? 'blue' : 'pink'}>
                   <strong>{learnerLabel(learner)}</strong>
                   <span>{permanentCount} püsiv · {rotationCount} rotatsioonis</span>
                 </div>

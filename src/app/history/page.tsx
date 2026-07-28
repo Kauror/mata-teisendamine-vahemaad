@@ -284,7 +284,7 @@ export default function HistoryPage() {
                       return (
                         <div key={`${h.kind}-${h.id}`} className='history-row'>
                           <div className='history-card-main'>
-                            <div className='learner-cell'>{learner}</div>
+                            <div className='learner-cell' data-accent={learner === 'Kiur' ? 'blue' : 'pink'}>{learner}</div>
                             <div className='exercise-cell'>
                               <span>{title} · {time}</span>
                               {detailText && <span>{detailText}</span>}

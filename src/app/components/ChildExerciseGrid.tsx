@@ -16,16 +16,20 @@ export default function ChildExerciseGrid({
   initialExercises,
   remediationHref,
   remediationCount,
-  completedExerciseIds
+  completedExerciseIds,
+  completedExerciseCounts
 }: {
   learner: Learner;
   initialExercises: ChildExerciseCard[];
   remediationHref?: string;
   remediationCount?: number;
+  // Kept so an older caller still marks cards done; one id means one attempt.
   completedExerciseIds?: string[];
+  completedExerciseCounts?: Record<string, number>;
 }) {
   const [exercises, setExercises] = useState<ChildExerciseCard[]>(initialExercises);
-  const done = new Set(completedExerciseIds ?? []);
+  const doneCounts: Record<string, number> = completedExerciseCounts
+    ?? Object.fromEntries((completedExerciseIds ?? []).map((id) => [id, 1]));
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +46,15 @@ export default function ChildExerciseGrid({
       <div className='child-exercise-grid'>
         {exercises.map((exercise) => (
           <Link key={exercise.id} className='child-exercise-card' data-accent={exercise.accent} href={exercise.route}>
-            {done.has(exercise.id) ? <span className='done-today-marker' aria-label='Täna tehtud'>✓</span> : null}
+            {doneCounts[exercise.id] ? (
+              <span
+                className='done-today-marker'
+                aria-label={doneCounts[exercise.id] === 1 ? 'Täna tehtud 1 kord' : `Täna tehtud ${doneCounts[exercise.id]} korda`}
+              >
+                <span aria-hidden>✓</span>
+                {doneCounts[exercise.id] > 1 ? <span aria-hidden>{doneCounts[exercise.id]}×</span> : null}
+              </span>
+            ) : null}
             <span className='child-exercise-icon' aria-hidden>{exercise.emoji}</span>
             <span className='child-exercise-copy'>
               <strong>{exercise.title}</strong>

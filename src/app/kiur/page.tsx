@@ -1,6 +1,6 @@
 import ChildHomeDashboard from '@/app/components/ChildHomeDashboard';
 import { childExerciseCards } from '@/lib/childExerciseCards';
-import { getCompletedExerciseIdsToday } from '@/lib/exerciseCompletion';
+import { getCompletedExerciseCountsToday } from '@/lib/exerciseCompletion';
 import { getActiveLearningExercises, getLearningExerciseCatalog, selectTodaysLearningExercises } from '@/lib/learningExercises';
 import { getOpenRenderableMistakeCount, REMEDIATION_MIN_OPEN_MISTAKES } from '@/lib/remediation';
 
@@ -12,7 +12,7 @@ export default function KiurPage() {
   // parent hid stays hidden — getActiveLearningExercises already drops it.
   const catalogue = getLearningExerciseCatalog();
   const exercises = childExerciseCards('kiur', selectTodaysLearningExercises(getActiveLearningExercises('kiur'), 'kiur'), catalogue);
-  const completedExerciseIds = getCompletedExerciseIdsToday('kiur', exercises);
+  const completedExerciseCounts = getCompletedExerciseCountsToday('kiur', exercises);
   const openMistakeCount = getOpenRenderableMistakeCount('kiur');
   const remediationHref = openMistakeCount >= REMEDIATION_MIN_OPEN_MISTAKES ? '/kiur/kordamine' : undefined;
 
@@ -22,7 +22,7 @@ export default function KiurPage() {
       exercises={exercises}
       remediationHref={remediationHref}
       remediationCount={openMistakeCount}
-      completedExerciseIds={completedExerciseIds}
+      completedExerciseCounts={completedExerciseCounts}
     />
   );
 }

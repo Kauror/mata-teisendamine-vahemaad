@@ -20,22 +20,22 @@ export default function ChildHomeDashboard({
   exercises,
   remediationHref,
   remediationCount,
-  completedExerciseIds
+  completedExerciseCounts
 }: {
   child: ChildProfile;
   exercises: ChildExerciseCard[];
   remediationHref?: string;
   remediationCount?: number;
-  completedExerciseIds?: Set<string>;
+  completedExerciseCounts?: Record<string, number>;
 }) {
   const yesterdayPoints = getYesterdayPointsSummary(child.learner);
 
   return (
     <main className='container child-home-page'>
       <YesterdayPointsPopup learner={child.learner} childName={child.name} summary={yesterdayPoints} />
-      <section className='child-home-shell'>
+      <section className='child-home-shell' data-accent={child.learner === 'kiur' ? 'blue' : 'pink'}>
         <PeekModeBanner />
-        <Link className='child-home-back' href='/'>← Rollivalik</Link>
+        <Link className='child-home-back' href='/'>← Tagasi</Link>
 
         <header className='child-home-header'>
           <ChildAvatarEasterEgg learner={child.learner} name={child.name} avatar={child.avatar} />
@@ -48,7 +48,7 @@ export default function ChildHomeDashboard({
           initialExercises={exercises}
           remediationHref={remediationHref}
           remediationCount={remediationCount}
-          completedExerciseIds={completedExerciseIds ? [...completedExerciseIds] : []}
+          completedExerciseCounts={completedExerciseCounts ?? {}}
         />
 
         <NoticeBoard />

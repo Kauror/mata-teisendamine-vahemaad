@@ -9,6 +9,7 @@ import {
   relativeDateTimeLabel,
   subjectLabel,
   todayStandings,
+  todayStandingsSummary,
   type DailyStandingsRow
 } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
@@ -71,23 +72,53 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, bala
   );
 }
 
+// A tug-of-war bar: one shared strip split by today's counts. It replaces two
+// side-by-side cards and has to live in the same vertical space, so the numbers
+// sit on one line above a 10px strip.
 function TodayLeaderboard({ kiurCount, kirsiCount }: { kiurCount: number; kirsiCount: number }) {
+  const nobodyYet = kiurCount === 0 && kirsiCount === 0;
   const tie = kiurCount === kirsiCount;
-  const leader: 'kiur' | 'kirsi' | null = tie ? null : kiurCount > kirsiCount ? 'kiur' : 'kirsi';
+  const leader: 'kiur' | 'kirsi' | null = nobodyYet || tie ? null : kiurCount > kirsiCount ? 'kiur' : 'kirsi';
+  // A count of 0 would collapse its side entirely; the epsilon keeps the strip
+  // whole while still reading as "almost nothing". Before anyone has started,
+  // the two halves are even and grey rather than a 50/50 contest nobody entered.
+  const share = (count: number) => (nobodyYet ? 1 : Math.max(count, 0.001));
+  // The trophy is dimmed for whoever is behind. A draw leaves both bright; with
+  // nothing done yet there is nothing to celebrate, so both dim.
+  const dimmed = (side: 'kiur' | 'kirsi') => (nobodyYet ? true : leader !== null && leader !== side);
 
-  const child = (name: 'Kiur' | 'Kirsi', count: number, isLeader: boolean) => (
-    <div className='leaderboard-child' data-leader={isLeader}>
-      <span className='leaderboard-trophy' aria-hidden>{isLeader ? '🏆' : ''}</span>
-      <span className='leaderboard-name'>{name}</span>
-      <span className='leaderboard-count'>{count} {exerciseWord(count)}</span>
-    </div>
+  const count = (value: number) => (
+    // The number is what you see; the noun is still there for screen readers,
+    // which is also what keeps the wording guard in the audit spec honest.
+    <span className='leaderboard-count'>{value}<span className='sr-only'> {exerciseWord(value)}</span></span>
   );
 
   return (
-    <section className='today-leaderboard' aria-label='Täna harjutatud'>
-      {child('Kiur', kiurCount, leader === 'kiur')}
-      {child('Kirsi', kirsiCount, leader === 'kirsi')}
-    </section>
+    <MetricTooltip className='today-leaderboard' label={todayStandingsSummary(kiurCount, kirsiCount)}>
+      <span className='leaderboard-head'>
+        <span className='leaderboard-side' data-accent='blue'>
+          <span className='leaderboard-name'>Kiur</span>
+          {/* Trophy and number are one unit, held away from the name so it is
+              obvious which score the cup belongs to. */}
+          <span className='leaderboard-score'>
+            <span className='leaderboard-trophy' data-dim={dimmed('kiur')} aria-hidden>🏆</span>
+            {count(kiurCount)}
+          </span>
+        </span>
+        <span className='leaderboard-side leaderboard-side-end' data-accent='pink'>
+          <span className='leaderboard-score'>
+            <span className='leaderboard-trophy' data-dim={dimmed('kirsi')} aria-hidden>🏆</span>
+            {count(kirsiCount)}
+          </span>
+          <span className='leaderboard-name'>Kirsi</span>
+        </span>
+      </span>
+      <span className='leaderboard-bar' data-empty={nobodyYet} aria-hidden>
+        <span className='leaderboard-bar-kiur' style={{ flex: share(kiurCount) }} />
+        <span className='leaderboard-bar-gap' />
+        <span className='leaderboard-bar-kirsi' style={{ flex: share(kirsiCount) }} />
+      </span>
+    </MetricTooltip>
   );
 }
 

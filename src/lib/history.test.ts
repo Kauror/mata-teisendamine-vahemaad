@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayWord, exerciseWord, questionWord, starWord, subjectLabel, todayStandings, trophyWord } from '@/lib/history';
+import { dayWord, exerciseWord, questionWord, starWord, subjectLabel, todayStandings, todayStandingsSummary, trophyWord } from '@/lib/history';
 import { LEARNING_EXERCISE_SUBJECT_LABELS } from '@/lib/shared/types';
 
 // Estonian takes the nominative after exactly 1 and the partitive after every
@@ -71,5 +71,27 @@ describe('subjectLabel', () => {
     expect(subjectLabel(null)).toBe('Matemaatika');
     expect(subjectLabel(undefined)).toBe('Matemaatika');
     expect(subjectLabel('miski-muu')).toBe('miski-muu');
+  });
+});
+
+describe('todayStandingsSummary', () => {
+  it('names both children, their counts and who leads', () => {
+    expect(todayStandingsSummary(3, 2)).toBe('Täna on Kiur teinud 3 harjutust, Kirsi 2 harjutust. Kiur juhib.');
+    expect(todayStandingsSummary(1, 4)).toBe('Täna on Kiur teinud 1 harjutus, Kirsi 4 harjutust. Kirsi juhib.');
+  });
+
+  it('calls a draw a draw', () => {
+    expect(todayStandingsSummary(2, 2)).toBe('Täna on Kiur teinud 2 harjutust, Kirsi 2 harjutust. Seis on viigis.');
+  });
+
+  it('says nobody has started rather than reporting a 0-0 draw', () => {
+    expect(todayStandingsSummary(0, 0)).toBe('Täna pole veel keegi harjutanud.');
+  });
+
+  it('agrees with the number, and never says "ülesanne"', () => {
+    const summary = todayStandingsSummary(1, 0);
+    expect(summary).toContain('1 harjutus,');
+    expect(summary).toContain('0 harjutust');
+    expect(summary).not.toContain('ülesan');
   });
 });

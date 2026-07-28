@@ -171,7 +171,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
 
   return (
     <main className='store-page'>
-      <section className='store-shell'>
+      <section className='store-shell' data-accent={learner === 'kiur' ? 'blue' : 'pink'}>
         <Link className='practice-back-button' href={dashboardHref(learner)}>← Tagasi</Link>
         <header className='store-header'>
           <div>

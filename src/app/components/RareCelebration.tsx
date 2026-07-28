@@ -172,7 +172,7 @@ export default function RareCelebration({ kind }: { kind: RareCelebrationName })
             stroke={colour}
             strokeWidth='4.4'
             strokeLinecap='round'
-            style={vars({ '--delay': `${index * 90}ms` })}
+            style={vars({ '--delay': `${index * 160}ms` })}
           />
         ))}
       </svg>
