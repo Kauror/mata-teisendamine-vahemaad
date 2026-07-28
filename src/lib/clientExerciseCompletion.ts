@@ -24,7 +24,11 @@ export function completedTodayFromHistory(
     if (!isTodayIso(attempt.createdAt) || learnerForAttempt(attempt) !== learner) return false;
     if (attempt.exerciseId === exerciseId) return true;
     if (attempt.subject && attempt.subject !== fallback.subject) return false;
-    if (attempt.topic === fallback.topic) return true;
-    return Boolean(fallback.category && attempt.category === fallback.category);
+    // Topic alone does not identify an exercise: Kirsi's four calculation cards
+    // all sit on topic 'arvutamine' and are told apart only by category. Where a
+    // category is known it decides, so finishing one card cannot tick its
+    // siblings.
+    if (fallback.category) return attempt.category === fallback.category;
+    return attempt.topic === fallback.topic;
   });
 }
