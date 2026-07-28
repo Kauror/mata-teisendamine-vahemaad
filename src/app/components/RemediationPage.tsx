@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
-import PointsConfetti from '@/app/components/PointsConfetti';
+import Celebration from '@/app/components/Celebration';
 import { NamedShapeVisual } from '@/app/components/visuals/CircleVisual';
 import { SCIENCE_EYEBROW, ScienceDataPanel } from '@/app/components/science/ScienceTaskPresentation';
 import { formatStars } from '@/lib/formatStars';
@@ -255,7 +255,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
     const isPerfect = result.questionCount > 0 && result.score === result.questionCount;
     return (
       <main className='result-page'>
-        {isPerfect ? <PointsConfetti /> : null}
+        {isPerfect ? <Celebration /> : null}
         <section className='result-shell'>
           <section className='result-summary-card'>
             <h1>Kordamine</h1>

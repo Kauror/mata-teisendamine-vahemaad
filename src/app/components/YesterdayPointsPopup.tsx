@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import PointsConfetti from '@/app/components/PointsConfetti';
+import Celebration from '@/app/components/Celebration';
 import { usePeekMode } from '@/app/components/usePeekMode';
 import { formatStars } from '@/lib/formatStars';
 import { mayRecordSeenMarker } from '@/lib/peekMode';
@@ -53,7 +53,7 @@ export default function YesterdayPointsPopup({
     <div className='task-modal-backdrop' role='dialog' aria-modal='true' aria-labelledby='points-recap-title'>
       {/* Only celebrate an actual haul — the "no stars" and "did not practise"
           branches below stay quiet. */}
-      {summary.hasEarnings ? <PointsConfetti /> : null}
+      {summary.hasEarnings ? <Celebration /> : null}
       <div className='task-modal points-recap'>
         {summary.hasEarnings ? (
           <>

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EnglishMatchingBoard, { type EnglishMatchingBoardState } from '@/app/components/EnglishMatchingBoard';
-import PointsConfetti from '@/app/components/PointsConfetti';
+import Celebration from '@/app/components/Celebration';
 import { ENGLISH_PACKS, shuffle } from '@/lib/englishGame';
 import { fetchBestEnglishSprintScore } from '@/lib/englishHistory';
 import type { EnglishVocabularyWord } from '@/lib/englishVocabulary';
@@ -332,7 +332,7 @@ export default function SprintPage() {
 
   if (ended) {
     return <main className='english-page sprint-result-page'>
-      {beatRecord ? <PointsConfetti /> : null}
+      {beatRecord ? <Celebration /> : null}
       <section className='sprint-result-panel'>
         <header className='sprint-result-header'>
           <div className='sprint-result-emoji' aria-hidden>🔤</div>

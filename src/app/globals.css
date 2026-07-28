@@ -656,6 +656,54 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 @keyframes points-confetti-blast{0%{opacity:1;transform:translate3d(-50%,-50%,0) scale(.4) rotate(0)}45%{opacity:1;transform:translate3d(calc(-50% + var(--dx)),calc(-50% + var(--dy)),0) scale(1) rotate(calc(var(--rot) * .5))}80%{opacity:1;transform:translate3d(calc(-50% + var(--dx) * 1.08),calc(-50% + var(--dy) + var(--fall) * .42),0) scale(1) rotate(calc(var(--rot) * .8))}100%{opacity:0;transform:translate3d(calc(-50% + var(--dx) * 1.15),calc(-50% + var(--dy) + var(--fall)),0) scale(1) rotate(var(--rot))}}
 @media (prefers-reduced-motion:reduce){.points-confetti{display:none}}
 
+.celebration{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:30}
+.firework-spark{position:absolute;width:7px;height:7px;border-radius:50%;opacity:0;will-change:transform,opacity;
+  animation:firework-spark var(--dur) cubic-bezier(.12,.7,.3,1) var(--delay) forwards}
+@keyframes firework-spark{0%{opacity:1;transform:translate3d(0,0,0) scale(.3)}
+  55%{opacity:1;transform:translate3d(var(--dx),var(--dy),0) scale(1)}
+  100%{opacity:0;transform:translate3d(calc(var(--dx) * 1.06),calc(var(--dy) + var(--fall)),0) scale(.85)}}
+
+.meteor{position:absolute;width:var(--len);height:3px;border-radius:999px;opacity:0;
+  transform:rotate(23deg);transform-origin:100% 50%;will-change:transform,opacity;
+  background:linear-gradient(90deg,rgba(255,255,255,0),var(--tint));
+  animation:meteor-streak var(--dur) linear var(--delay) forwards}
+.meteor::after{content:'';position:absolute;right:-3px;top:50%;width:8px;height:8px;margin-top:-4px;
+  border-radius:50%;background:var(--tint)}
+@keyframes meteor-streak{0%{opacity:0;transform:translate3d(0,0,0) rotate(23deg)}
+  12%{opacity:1}
+  100%{opacity:0;transform:translate3d(120vw,51vw,0) rotate(23deg)}}
+
+.parade-lane{position:absolute;left:0;will-change:transform;
+  animation:parade-walk var(--dur) linear var(--delay) forwards;transform:translateX(-15vw)}
+.parade-animal{display:block;line-height:1;will-change:transform;
+  animation:parade-hop var(--hopdur) ease-in-out infinite}
+@keyframes parade-walk{to{transform:translateX(115vw)}}
+@keyframes parade-hop{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(var(--hop) * -1))}}
+
+.starrain-piece{position:absolute;top:-8%;line-height:1;opacity:0;will-change:transform,opacity;
+  animation:starrain-fall var(--dur) cubic-bezier(.3,.5,.6,1) var(--delay) forwards}
+@keyframes starrain-fall{0%{opacity:0;transform:translateY(0) rotate(0)}
+  8%{opacity:1}
+  72%{opacity:1;transform:translateY(84vh) rotate(var(--spin))}
+  84%{transform:translateY(calc(84vh - 26px)) rotate(var(--spin))}
+  100%{opacity:0;transform:translateY(84vh) rotate(var(--spin))}}
+
+.bubble{position:absolute;bottom:-12%;border-radius:50%;opacity:0;will-change:transform,opacity;
+  border:1.5px solid rgba(191,231,255,.95);background:rgba(224,242,254,.22);
+  box-shadow:inset -4px -4px 8px rgba(255,255,255,.5);
+  animation:bubble-rise var(--dur) ease-in var(--delay) forwards}
+@keyframes bubble-rise{0%{opacity:0;transform:translate3d(0,0,0) scale(.7)}
+  12%{opacity:1}
+  85%{opacity:1}
+  100%{opacity:0;transform:translate3d(var(--drift),-112vh,0) scale(1.05)}}
+
+.celebration-rainbow svg{position:absolute;inset:0;width:100%;height:100%}
+.celebration-rainbow path{stroke-dasharray:200;stroke-dashoffset:200;
+  animation:rainbow-draw 1.1s ease-out var(--delay) forwards,rainbow-fade 1s ease-in 2.6s forwards}
+@keyframes rainbow-draw{to{stroke-dashoffset:0}}
+@keyframes rainbow-fade{to{opacity:0}}
+
+@media (prefers-reduced-motion:reduce){.celebration{display:none}}
 
 /* Achievements strip (child dashboard) */
 .achievement-strip{display:flex;flex-wrap:wrap;gap:10px}

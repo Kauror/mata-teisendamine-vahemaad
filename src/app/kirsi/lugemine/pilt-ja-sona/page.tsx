@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PictureWordSprintBoard, { type PictureWordSprintBoardState } from '@/app/components/PictureWordSprintBoard';
-import PointsConfetti from '@/app/components/PointsConfetti';
+import Celebration from '@/app/components/Celebration';
 import { shuffle } from '@/lib/englishGame';
 import { fetchBestKirsiReadingSprintScore } from '@/lib/kirsiReadingHistory';
 import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS, KirsiReadingPair } from '@/lib/kirsiReadingPairs';
@@ -369,7 +369,7 @@ export default function KirsiPictureWordSprintPage() {
   if (ended) {
     return (
       <main className='english-page sprint-result-page reading-page'>
-        {beatRecord ? <PointsConfetti /> : null}
+        {beatRecord ? <Celebration /> : null}
         <section className='sprint-result-panel'>
           <header className='sprint-result-header'>
             <div className='sprint-result-emoji' aria-hidden>🖼️</div>
