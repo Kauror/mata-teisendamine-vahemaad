@@ -37,11 +37,13 @@ export default function ChildHomeDashboard({
         <PeekModeBanner />
         <Link className='child-home-back' href='/'>← Tagasi</Link>
 
-        <header className='child-home-header'>
-          <ChildAvatarEasterEgg learner={child.learner} name={child.name} avatar={child.avatar} />
-        </header>
-
-        <DailyTasksPanel learner={child.learner} />
+        {/* Identity, points, shop/history and achievements are one card now, and
+            the panel owns three of the four — so the header goes in as a slot
+            rather than sitting above as its own block. */}
+        <DailyTasksPanel
+          learner={child.learner}
+          identity={<ChildAvatarEasterEgg learner={child.learner} name={child.name} avatar={child.avatar} />}
+        />
 
         <ChildExerciseGrid
           learner={child.learner}

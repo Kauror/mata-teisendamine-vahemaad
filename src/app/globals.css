@@ -19,6 +19,43 @@
   --card-radius:22px;
   --page-bg:radial-gradient(circle at top left,rgba(219,234,254,.9),transparent 32%),linear-gradient(180deg,#eef4fb,#f9fbfd);
   --inner-bg:#f6f9ff;
+
+  /* The child's identity card: name, points, shop/history and achievements in
+     one block, one layout on every width. Sizes are deliberately small — the
+     44px floor is held by a transparent ::after bleed, never by the box. */
+  --identity-gap:10px;
+  --identity-avatar:44px;
+  --identity-avatar-radius:15px;
+  --identity-name:24px;
+  --identity-action:34px;
+  --identity-action-radius:12px;
+  /* 34px + 5px on each side = the 44px touch target. */
+  --identity-action-bleed:-5px;
+  --identity-action-store-bg:#eff6ff;
+  --identity-action-history-bg:#f6f7fb;
+  --identity-divider:rgba(30,64,175,.08);
+  --identity-pill-radius:12px;
+  --identity-pill-value:15px;
+  /* 28px tall pill + 8px each side = 44px. */
+  --identity-pill-bleed:-8px;
+  --pill-stars-bg:#fefce8;  --pill-stars-ink:#713f12;
+  --pill-streak-bg:#fff7ed; --pill-streak-ink:#7c2d12;
+  --pill-trophy-bg:#f5f3ff; --pill-trophy-ink:#5b21b6;
+  --pill-freeze-bg:#eff6ff; --pill-freeze-ink:#1e40af;
+
+  /* Achievements: a ring plus two short lines, three across one row. */
+  --achievement-ring:30px;
+  --achievement-ring-locked:#eef1f7;
+  --achievement-ring-unlocked:linear-gradient(180deg,#fde68a,#fbbf24);
+  --achievement-ring-shadow:0 1px 3px rgba(180,120,10,.3);
+  --achievement-title:11.5px;
+  --achievement-status:10.5px;
+  --achievement-ink:#0b1b45;
+  --achievement-ink-done:#b45309;
+  --achievement-ink-locked:#64748b;
+  --achievement-ink-locked-2:#94a3b8;
+  /* 30px ring + 7px each side = 44px. */
+  --achievement-bleed:-7px;
 }
 /* Subject accents. The card stays white and the icon tile carries the colour,
    so text keeps full contrast and the icon is what tells cards apart. */
@@ -128,14 +165,28 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .metric-tooltip-trigger:focus-visible{outline:3px solid #818cf8;outline-offset:3px}
 .metric-tooltip-content{position:absolute;z-index:80;left:50%;top:calc(100% + 9px);width:max-content;max-width:min(280px,calc(100vw - 28px));padding:8px 10px;border-radius:10px;background:#0b1b45;color:#fff!important;box-shadow:0 10px 28px rgba(11,27,69,.24);font-size:13px!important;font-weight:750!important;line-height:1.3;text-align:left;white-space:normal;opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,-4px);transition:opacity 120ms ease,transform 120ms ease,visibility 120ms ease}
 .metric-tooltip-content::before{content:'';position:absolute;left:50%;bottom:100%;border:6px solid transparent;border-bottom-color:#0b1b45;transform:translateX(-50%)}
-.metric-tooltip:hover .metric-tooltip-content,.metric-tooltip:focus-within .metric-tooltip-content{opacity:1;visibility:visible;transform:translate(-50%,0)}
+/* Touch first: the explanation belongs to a deliberate tap, which is what puts
+   focus on the trigger. Hover is left to real pointers — a phone hands the
+   hover state to whatever sits under the finger, so a scroll that starts on a
+   wide trigger like the leaderboard would otherwise open the tooltip on its
+   own, with nobody having asked for it. */
+.metric-tooltip:focus-within .metric-tooltip-content{opacity:1;visibility:visible;transform:translate(-50%,0)}
+@media (hover:hover) and (pointer:fine){
+  .metric-tooltip:hover .metric-tooltip-content{opacity:1;visibility:visible;transform:translate(-50%,0)}
+}
 @media (max-width:640px){
-  .child-overview .metric-tooltip:first-child .metric-tooltip-content,.daily-summary .metric-tooltip:first-child .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(3) .metric-tooltip-content{left:0;transform:translateY(-4px)}
-  .child-overview .metric-tooltip:first-child:hover .metric-tooltip-content,.child-overview .metric-tooltip:first-child:focus-within .metric-tooltip-content,.daily-summary .metric-tooltip:first-child:hover .metric-tooltip-content,.daily-summary .metric-tooltip:first-child:focus-within .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child:hover .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child:focus-within .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(3):hover .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(3):focus-within .metric-tooltip-content{transform:translateY(0)}
-  .child-overview .metric-tooltip:first-child .metric-tooltip-content::before,.daily-summary .metric-tooltip:first-child .metric-tooltip-content::before,.achievement-strip .metric-tooltip:first-child .metric-tooltip-content::before,.achievement-strip .metric-tooltip:nth-child(3) .metric-tooltip-content::before{left:22px}
-  .child-overview .metric-tooltip:nth-child(3) .metric-tooltip-content,.daily-summary .metric-tooltip:nth-child(3) .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(2) .metric-tooltip-content{right:0;left:auto;transform:translateY(-4px)}
-  .child-overview .metric-tooltip:nth-child(3):hover .metric-tooltip-content,.child-overview .metric-tooltip:nth-child(3):focus-within .metric-tooltip-content,.daily-summary .metric-tooltip:nth-child(3):hover .metric-tooltip-content,.daily-summary .metric-tooltip:nth-child(3):focus-within .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(2):hover .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(2):focus-within .metric-tooltip-content{transform:translateY(0)}
-  .child-overview .metric-tooltip:nth-child(3) .metric-tooltip-content::before,.daily-summary .metric-tooltip:nth-child(3) .metric-tooltip-content::before,.achievement-strip .metric-tooltip:nth-child(2) .metric-tooltip-content::before{right:22px;left:auto;transform:none}
+  .child-overview .metric-tooltip:first-child .metric-tooltip-content,.daily-summary .metric-tooltip:first-child .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child .metric-tooltip-content{left:0;transform:translateY(-4px)}
+  .child-overview .metric-tooltip:first-child:focus-within .metric-tooltip-content,.daily-summary .metric-tooltip:first-child:focus-within .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child:focus-within .metric-tooltip-content{transform:translateY(0)}
+  @media (hover:hover) and (pointer:fine){
+    .child-overview .metric-tooltip:first-child:hover .metric-tooltip-content,.daily-summary .metric-tooltip:first-child:hover .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child:hover .metric-tooltip-content{transform:translateY(0)}
+  }
+  .child-overview .metric-tooltip:first-child .metric-tooltip-content::before,.daily-summary .metric-tooltip:first-child .metric-tooltip-content::before,.achievement-strip .metric-tooltip:first-child .metric-tooltip-content::before{left:22px}
+  .child-overview .metric-tooltip:nth-child(3) .metric-tooltip-content,.daily-summary .metric-tooltip:nth-child(3) .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(3) .metric-tooltip-content{right:0;left:auto;transform:translateY(-4px)}
+  .child-overview .metric-tooltip:nth-child(3):focus-within .metric-tooltip-content,.daily-summary .metric-tooltip:nth-child(3):focus-within .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(3):focus-within .metric-tooltip-content{transform:translateY(0)}
+  @media (hover:hover) and (pointer:fine){
+    .child-overview .metric-tooltip:nth-child(3):hover .metric-tooltip-content,.daily-summary .metric-tooltip:nth-child(3):hover .metric-tooltip-content,.achievement-strip .metric-tooltip:nth-child(3):hover .metric-tooltip-content{transform:translateY(0)}
+  }
+  .child-overview .metric-tooltip:nth-child(3) .metric-tooltip-content::before,.daily-summary .metric-tooltip:nth-child(3) .metric-tooltip-content::before,.achievement-strip .metric-tooltip:nth-child(3) .metric-tooltip-content::before{right:22px;left:auto;transform:none}
 }
 .streak-badge{margin:0;display:inline-flex;align-items:center;gap:5px;min-height:26px;padding:3px 9px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12px;font-weight:850;line-height:1}
 .streak-badge strong{font-size:14px;color:#7c2d12}
@@ -166,11 +217,15 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .exercise-row{margin:0;font-size:13.5px;color:#33416f;word-break:break-word;line-height:1.25}
 .recent-empty{margin:0;color:#64748b;font-size:14px;line-height:1.25}
 .card-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:2px;flex-wrap:wrap}
-.subject-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:0 13px;border:0;border-radius:12px;background:linear-gradient(180deg,#3b82f6 0%,#2563eb 100%);color:#fff;font-size:14px;font-weight:800;letter-spacing:-.01em;cursor:pointer;text-decoration:none;box-shadow:0 5px 12px rgba(37,99,235,.22);transition:transform 160ms ease,box-shadow 160ms ease,opacity 160ms ease}
-.subject-button:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(37,99,235,.3)}
+/* Deliberately compact: the card around it is set in 12–13px, so the button
+   only has to be the firmest thing on the card, not the biggest. The 44px
+   floor is a tap target, not a style choice — it stays even as the type,
+   padding and shadow come down. */
+.subject-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 12px;border:0;border-radius:10px;background:linear-gradient(180deg,#3b82f6 0%,#2563eb 100%);color:#fff;font-size:13px;font-weight:800;letter-spacing:-.01em;cursor:pointer;text-decoration:none;box-shadow:0 3px 8px rgba(37,99,235,.18);transition:transform 160ms ease,box-shadow 160ms ease,opacity 160ms ease}
+.subject-button:hover{transform:translateY(-2px);box-shadow:0 7px 16px rgba(37,99,235,.26)}
 .subject-button:focus{outline:3px solid #99a8ff;outline-offset:2px}
 .subject-button:active{transform:translateY(0)}
-.child-dashboard-card[data-accent="pink"] .subject-button{background:linear-gradient(180deg,#ec4899 0%,#db2777 100%);box-shadow:0 12px 26px rgba(219,39,119,.24)}
+.child-dashboard-card[data-accent="pink"] .subject-button{background:linear-gradient(180deg,#ec4899 0%,#db2777 100%);box-shadow:0 3px 8px rgba(219,39,119,.18)}
 .history-link{min-height:44px;display:inline-flex;align-items:center;gap:8px;color:#2563eb;font-size:17px;font-weight:650;text-decoration:none;border-bottom:1px dashed currentColor}
 .child-dashboard-card[data-accent="pink"] .history-link{color:#db2777}
 .noticeboard{background:#fffdf5;border:1px solid #fef0c7;border-radius:12px;padding:9px 12px}
@@ -179,7 +234,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .dashboard-footer-links{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:2px}
 .dashboard-version{margin:0;text-align:center;color:#cbd5e1;font-size:12px;font-weight:700}
 .dashboard-history-link{width:fit-content;min-height:44px;margin:2px auto 0;display:inline-flex;align-items:center;color:#2563eb;font-size:16px;font-weight:800;text-decoration:none;border-bottom:1px dashed currentColor}
-@media (max-width:560px){.dashboard{padding:8px}.children-list{gap:8px}.child-dashboard-card{border-radius:16px;padding:10px;gap:7px}.child-profile{gap:9px}.child-avatar{width:46px;height:46px;border-radius:16px;font-size:27px;box-shadow:inset 0 0 0 3px #fff}.child-name{font-size:21px}.last-practiced{font-size:13px}.today-practiced{font-size:13px}.streak-badge{min-height:32px;font-size:13px}.card-actions{margin-top:0}.subject-button{width:fit-content;min-height:44px;border-radius:12px;padding:0 13px;gap:7px;font-size:14px;box-shadow:0 4px 10px rgba(37,99,235,.18)}.child-dashboard-card[data-accent="pink"] .subject-button{box-shadow:0 4px 10px rgba(219,39,119,.16)}.history-link{justify-content:center}.dashboard-footer-links{gap:12px}}
+@media (max-width:560px){.dashboard{padding:8px}.children-list{gap:8px}.child-dashboard-card{border-radius:16px;padding:10px;gap:7px}.child-profile{gap:9px}.child-avatar{width:46px;height:46px;border-radius:16px;font-size:27px;box-shadow:inset 0 0 0 3px #fff}.child-name{font-size:21px}.last-practiced{font-size:13px}.today-practiced{font-size:13px}.streak-badge{min-height:32px;font-size:13px}.card-actions{margin-top:0}.subject-button{width:fit-content;min-height:44px;border-radius:10px;padding:0 12px;gap:6px;font-size:13px;box-shadow:0 2px 7px rgba(37,99,235,.15)}.child-dashboard-card[data-accent="pink"] .subject-button{box-shadow:0 2px 7px rgba(219,39,119,.14)}.history-link{justify-content:center}.dashboard-footer-links{gap:12px}}
 
 
 .subject-flow-page{max-width:900px}
@@ -196,14 +251,32 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 @media (max-width:700px){.subject-grid{grid-template-columns:1fr}.subject-grid-single{grid-template-columns:1fr}.subject-flow-shell{padding:14px}.page-title{font-size:30px}.subject-card{min-height:60px;padding:8px 12px}.subject-icon{width:38px;height:38px;border-radius:12px;font-size:23px}.subject-name{font-size:21px}}
 
 .daily-panel{display:grid;gap:8px}
-.daily-summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 14px;border-radius:18px;background:#f8fbff;border:1px solid #dfe8f6}
-/* The pills read as a compact row, but each one is still a comfortable tap
-   target: the visible height is 28px and an invisible ::after extends the hit
-   area to 44px. Horizontally it grows by only 2px, so a tap can never land on
-   the neighbouring metric. */
-.daily-summary-metric{position:relative;min-height:28px;padding:0;border:0;border-radius:0;background:transparent;color:#64748b;font-weight:800}
-.daily-summary-metric::after{content:'';position:absolute;inset:-8px -2px}
-.daily-summary a{color:#2563eb;font-weight:850;text-decoration:none;border-bottom:1px dashed currentColor}
+
+/* One card holding identity, points, shop/history and achievements. Same
+   structure at every width — the sizes below are not overridden per breakpoint. */
+.child-identity-card{background:#fff;border:var(--card-border);border-radius:var(--card-radius);padding:12px;display:grid;gap:var(--identity-gap);box-shadow:var(--card-shadow)}
+.child-identity-card .child-home-header{display:flex;align-items:center;gap:var(--identity-gap);padding:0}
+.child-home-name{flex:1;min-width:0}
+.identity-divider{height:1px;background:var(--identity-divider)}
+
+/* 34px square, 44px tap target via the transparent bleed. */
+.identity-action{position:relative;flex:0 0 auto;width:var(--identity-action);height:var(--identity-action);display:grid;place-items:center;border-radius:var(--identity-action-radius);font-size:16px;text-decoration:none;-webkit-tap-highlight-color:transparent}
+.identity-action::after{content:'';position:absolute;inset:var(--identity-action-bleed)}
+.identity-action:focus-visible{outline:3px solid #818cf8;outline-offset:2px}
+.identity-action[aria-label="Pood"]{background:var(--identity-action-store-bg)}
+.identity-action[aria-label="Ajalugu"]{background:var(--identity-action-history-bg)}
+
+/* Three equal pills on one line. Each is a tooltip button, so the 44px floor
+   applies here too and is held by the ::after bleed, not by the pill height. */
+.daily-summary{display:flex;align-items:center;gap:6px}
+.daily-summary-metric{position:relative;flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;min-height:28px;padding:4px;line-height:1.15;border:0;border-radius:var(--identity-pill-radius);font-size:12px;font-weight:800}
+.daily-summary-metric::after{content:'';position:absolute;inset:var(--identity-pill-bleed) 0}
+.daily-summary-metric strong{font-size:var(--identity-pill-value);font-weight:900}
+.daily-summary .metric-tooltip{flex:1;min-width:0}
+.daily-summary .metric-tooltip:nth-child(1) .daily-summary-metric{background:var(--pill-stars-bg);color:var(--pill-stars-ink)}
+.daily-summary .metric-tooltip:nth-child(2) .daily-summary-metric{background:var(--pill-streak-bg);color:var(--pill-streak-ink)}
+.daily-summary .metric-tooltip:nth-child(3) .daily-summary-metric{background:var(--pill-trophy-bg);color:var(--pill-trophy-ink)}
+.daily-summary .metric-tooltip:nth-child(4) .daily-summary-metric{background:var(--pill-freeze-bg);color:var(--pill-freeze-ink)}
 .monthly-celebration{display:flex;align-items:center;gap:13px;padding:13px 16px;border-radius:18px;background:linear-gradient(120deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;box-shadow:0 10px 26px rgba(202,138,4,.14)}
 .monthly-celebration-trophy{font-size:34px;line-height:1;flex-shrink:0;filter:drop-shadow(0 2px 4px rgba(202,138,4,.3))}
 .monthly-celebration-text{display:grid;gap:2px;min-width:0}
@@ -246,12 +319,14 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .peek-banner button{min-height:36px;padding:0 12px;border-radius:999px;background:#e0e7ff;color:#3730a3;font-size:13px;font-weight:850;cursor:pointer}
 .peek-banner-off{background:#fff7ed;border-color:#fdba74;color:#9a3412}
 .peek-banner-off button{background:#ffedd5;color:#9a3412}
-.child-home-header{display:flex;align-items:center;gap:14px;padding:4px 4px 2px}
-.child-home-avatar{width:66px;height:66px;display:grid;place-items:center;border-radius:22px;background:linear-gradient(180deg,var(--learner-soft,#eff6ff),var(--learner-soft-2,#dbeafe));font-size:38px;box-shadow:inset 0 0 0 6px #fff;border:0;padding:0;flex:0 0 auto;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 120ms ease}
+.child-home-header{display:flex;align-items:center;gap:var(--identity-gap);padding:0}
+/* The avatar is still the five-tap easter egg, so it stays a real button and
+   its own box already clears 44px. */
+.child-home-avatar{width:var(--identity-avatar);height:var(--identity-avatar);display:grid;place-items:center;border-radius:var(--identity-avatar-radius);background:linear-gradient(180deg,var(--learner-soft,#eff6ff),var(--learner-soft-2,#dbeafe));font-size:26px;box-shadow:inset 0 0 0 3px #fff;border:0;padding:0;flex:0 0 auto;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 120ms ease}
 .child-home-avatar:active{transform:scale(.94)}
-.child-home-egg-hint{margin:3px 0 0;color:#b6c2d9;font-size:13px;font-weight:750;letter-spacing:.01em}
-.child-home-header h1{margin:0;font-size:clamp(34px,7vw,48px);line-height:1;font-weight:900;color:var(--learner,#0b1b45)}
-.child-home-header p{margin:5px 0 0;color:#4b5f99;font-size:19px;font-weight:850}
+.child-home-egg-hint{margin:2px 0 0;color:#b6c2d9;font-size:12px;font-weight:750;letter-spacing:.01em}
+.child-home-header h1{margin:0;font-size:var(--identity-name);line-height:1.05;font-weight:900;color:var(--learner,#0b1b45);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.child-home-header p{margin:2px 0 0;color:#4b5f99;font-size:14px;font-weight:850}
 .child-exercise-section{display:grid;gap:10px}
 .child-exercise-section h2{margin:0;font-size:24px;line-height:1.1;color:#0b1b45}
 .child-exercise-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -263,7 +338,10 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .child-exercise-copy small{color:#4b5f99;font-size:14px;font-weight:750;line-height:1.25}
 .done-today-marker,.exercise-count-marker{position:absolute;top:50%;right:12px;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:26px;height:26px;padding:0 9px;border-radius:999px;background:var(--marker-bg);border:1px solid var(--marker-border);color:var(--marker-ink);font-size:13px;font-weight:900;line-height:1;pointer-events:none;z-index:1}
 
-@media (max-width:700px){.child-home-page{padding:8px}.child-home-shell{padding:12px;border-radius:20px;gap:12px}.child-home-header{gap:10px}.child-home-avatar{width:54px;height:54px;border-radius:18px;font-size:31px}.child-home-header p{font-size:16px}.child-exercise-grid{grid-template-columns:1fr;gap:8px}.child-exercise-card{min-height:66px;border-radius:16px;padding:10px 58px 10px 10px}.child-exercise-icon{width:42px;height:42px;border-radius:14px;font-size:25px}.child-exercise-copy strong{font-size:19px}.child-exercise-copy small{font-size:13px}.done-today-marker,.exercise-count-marker{right:10px;min-width:24px;height:24px;padding:0 8px;font-size:12.5px}}
+/* The identity card is deliberately absent here: it is one layout at every
+   width, so the header, the avatar and the achievements are not re-sized per
+   breakpoint any more. */
+@media (max-width:700px){.child-home-page{padding:8px}.child-home-shell{padding:12px;border-radius:20px;gap:12px}.child-exercise-grid{grid-template-columns:1fr;gap:8px}.child-exercise-card{min-height:66px;border-radius:16px;padding:10px 58px 10px 10px}.child-exercise-icon{width:42px;height:42px;border-radius:14px;font-size:25px}.child-exercise-copy strong{font-size:19px}.child-exercise-copy small{font-size:13px}.done-today-marker,.exercise-count-marker{right:10px;min-width:24px;height:24px;padding:0 8px;font-size:12.5px}}
 
 .parent-page{min-height:100vh;padding:20px;background:var(--page-bg);color:#0b1b45}
 .parent-shell{width:min(1120px,100%);margin:0 auto;display:grid;gap:16px}
@@ -755,15 +833,25 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 @media (prefers-reduced-motion:reduce){.celebration{display:none}}
 
 /* Achievements strip (child dashboard) */
-.achievement-strip{display:flex;flex-wrap:wrap;gap:10px}
-.achievement-badge{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;border:1px solid #e2eafc;background:#f8fbff;color:inherit;min-width:0;text-align:left}
-.achievement-badge.unlocked{background:#fffbeb;border-color:#fde68a}
-.achievement-badge.locked{opacity:.7}
-.achievement-emoji{font-size:24px;line-height:1;flex:0 0 auto}
-.achievement-text{display:flex;flex-direction:column;line-height:1.15}
-.achievement-text strong{font-size:14px;font-weight:850;color:#0b1b45}
-.achievement-text small{font-size:12px;font-weight:700;color:#64748b}
-.achievement-badge.unlocked .achievement-text small{color:#b45309}
+/* Three badges share one row and never wrap — wrapping is what cost the screen
+   height in the first place. Past three, the row scrolls sideways instead. */
+.achievement-strip{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
+.achievement-strip::-webkit-scrollbar{display:none}
+/* min-height is set down to the ring on purpose: the app-wide 44px button floor
+   would otherwise make the badge 44px tall, and here the 44px is the job of the
+   ::after bleed, not of the box. */
+.achievement-badge{position:relative;flex:1 1 0;min-width:84px;min-height:var(--achievement-ring);scroll-snap-align:start;display:flex;align-items:center;gap:6px;padding:0;border:0;border-radius:0;background:transparent;color:inherit;text-align:left}
+/* 30px ring, 44px tap target. */
+.achievement-badge::after{content:'';position:absolute;inset:var(--achievement-bleed) 0}
+.achievement-emoji{width:var(--achievement-ring);height:var(--achievement-ring);flex:0 0 auto;display:grid;place-items:center;border-radius:999px;background:var(--achievement-ring-locked);font-size:14px;line-height:1}
+.achievement-badge.unlocked .achievement-emoji{background:var(--achievement-ring-unlocked);box-shadow:var(--achievement-ring-shadow);font-size:15px}
+/* Grey is what says locked, now that the padlock is gone. */
+.achievement-badge.locked .achievement-emoji{filter:grayscale(1);opacity:.65}
+.achievement-text{display:grid;min-width:0;line-height:1.2}
+.achievement-text strong{font-size:var(--achievement-title);font-weight:800;color:var(--achievement-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.achievement-text small{font-size:var(--achievement-status);font-weight:800;color:var(--achievement-ink-locked-2)}
+.achievement-badge.locked .achievement-text strong{color:var(--achievement-ink-locked)}
+.achievement-badge.unlocked .achievement-text small{color:var(--achievement-ink-done)}
 .freeze-used-notice{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:14px;background:#eff6ff;border:1px solid #93c5fd;color:#1e40af;font-size:14px;font-weight:800}
 .freeze-used-notice span[aria-hidden]{font-size:20px;line-height:1;flex-shrink:0}
 .freeze-used-text{display:grid;gap:1px;min-width:0}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { achievementTooltip, starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
+import { achievementLabel, achievementTooltip, starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
 
 describe('metric tooltips', () => {
   it('uses the approved points and progress wording', () => {
@@ -29,5 +29,27 @@ describe('metric tooltips', () => {
     // Rounds to "1,5", so it stays partitive; 1.04 prints "1" and must not.
     expect(starsTooltip(1.5)).toBe('Sul on 1,5 tähte.');
     expect(starsTooltip(1.04)).toBe('Sul on 1 täht.');
+  });
+
+  // The identity card shortens "Täiuslik nädal" to "Nädal" and drops the 🔒,
+  // so a screen reader has to hear the full title and the lock state instead.
+  describe('achievementLabel', () => {
+    it('names the achievement, its progress and its lock state before the count', () => {
+      expect(achievementLabel({
+        kind: 'weekly', title: 'Täiuslik nädal', unlocked: false, current: 1, target: 7, tooltipCount: 3
+      })).toBe('Täiuslik nädal, 1/7, veel lukus. Sellel nädalal oled teinud 3 harjutust.');
+    });
+
+    it('says tehtud once the achievement is unlocked', () => {
+      expect(achievementLabel({
+        kind: 'exercise_milestone', title: '50 harjutust', unlocked: true, current: 50, target: 50, tooltipCount: 63
+      })).toBe('50 harjutust, 50/50, tehtud. Sul on seni tehtud 63 harjutust.');
+    });
+
+    it('keeps the singular agreement of the count it wraps', () => {
+      expect(achievementLabel({
+        kind: 'daily', title: 'Täna', unlocked: false, current: 0, target: 4, tooltipCount: 1
+      })).toBe('Täna, 0/4, veel lukus. Täna oled teinud 1 harjutus.');
+    });
   });
 });

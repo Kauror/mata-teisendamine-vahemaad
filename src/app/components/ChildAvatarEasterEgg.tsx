@@ -50,7 +50,7 @@ export default function ChildAvatarEasterEgg({
       <button type='button' className='child-home-avatar' onClick={tap} aria-label={name}>
         <span aria-hidden>{avatar}</span>
       </button>
-      <div>
+      <div className='child-home-name'>
         <h1>{name}</h1>
         {taps >= TAPS_BEFORE_HINT ? <p className='child-home-egg-hint' aria-hidden>Veel {remaining}</p> : null}
       </div>

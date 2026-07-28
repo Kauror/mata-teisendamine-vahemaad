@@ -12,7 +12,14 @@ import { usePeekMode } from '@/app/components/usePeekMode';
 import { mayRecordSeenMarker } from '@/lib/peekMode';
 import { decideMilestoneNotice } from '@/lib/milestoneNotice';
 import { todayDateString } from '@/lib/appDate';
-import { achievementTooltip, starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
+import { achievementLabel, starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
+
+// Display-only shortening. The stored title stays "Täiuslik nädal" — only the
+// badge caption shrinks, because three captions have to share one row without
+// wrapping. The full title is still what the accessible name and the tooltip
+// say (see achievementLabel). Keyed by kind, not by the title text: a reworded
+// title would otherwise silently stop being shortened and wrap the row again.
+const SHORT_ACHIEVEMENT_TITLES: Partial<Record<Achievement['kind'], string>> = { weekly: 'Nädal' };
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -78,7 +85,12 @@ function learnerName(learner: Learner) {
   return learner === 'kiur' ? 'Kiuri' : 'Kirsi';
 }
 
-export default function DailyTasksPanel({ learner }: { learner: Learner }) {
+// `identity` is the child's avatar and name, handed in by the page rather than
+// built here: the points, the shop/history buttons and the achievements all
+// belong to one identity card, and the panel is the only component that holds
+// the other three. Passing the slot in keeps the child's name and avatar owned
+// by the page and out of this component's data model.
+export default function DailyTasksPanel({ learner, identity }: { learner: Learner; identity?: React.ReactNode }) {
   const { online } = useOffline();
   const peekMode = usePeekMode();
   const [data, setData] = useState<ChildDashboard | null>(null);
@@ -272,18 +284,48 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
         </div>
       )}
 
-      <div className='daily-summary'>
-        <MetricTooltip className='daily-summary-metric' label={starsTooltip(balance)}>⭐ {formatStars(balance)}</MetricTooltip>
-        <MetricTooltip className='daily-summary-metric' label={streakTooltip(data?.streak ?? 0)}>🔥 {data?.streak ?? 0}</MetricTooltip>
-        <MetricTooltip className='daily-summary-metric' label={trophiesTooltip(trophies)}>🏆 {trophies}</MetricTooltip>
-        {streakFreeze && streakFreeze.held > 0 && (
-          <MetricTooltip
-            className='daily-summary-metric'
-            label={`Sul on ${streakFreeze.held} ${freezeWord(streakFreeze.held)}. Kui üks päev jääb harjutamata, kasutatakse see automaatselt ära ja õpiseeria jääb alles.`}
-          >❄️ {streakFreeze.held}</MetricTooltip>
+      <div className='child-identity-card'>
+        <div className='child-home-header'>
+          {identity}
+          {/* The captions are gone, so the label has to live on the control. */}
+          <Link className='identity-action' href={storeHref} aria-label='Pood' title='Pood'><span aria-hidden>🛒</span></Link>
+          <Link className='identity-action' href='/history' aria-label='Ajalugu' title='Ajalugu'><span aria-hidden>📜</span></Link>
+        </div>
+
+        <div className='daily-summary'>
+          <MetricTooltip className='daily-summary-metric' label={starsTooltip(balance)}>⭐ <strong>{formatStars(balance)}</strong></MetricTooltip>
+          <MetricTooltip className='daily-summary-metric' label={streakTooltip(data?.streak ?? 0)}>🔥 <strong>{data?.streak ?? 0}</strong></MetricTooltip>
+          <MetricTooltip className='daily-summary-metric' label={trophiesTooltip(trophies)}>🏆 <strong>{trophies}</strong></MetricTooltip>
+          {streakFreeze && streakFreeze.held > 0 && (
+            <MetricTooltip
+              className='daily-summary-metric'
+              label={`Sul on ${streakFreeze.held} ${freezeWord(streakFreeze.held)}. Kui üks päev jääb harjutamata, kasutatakse see automaatselt ära ja õpiseeria jääb alles.`}
+            >❄️ <strong>{streakFreeze.held}</strong></MetricTooltip>
+          )}
+        </div>
+
+        {achievements.length > 0 && (
+          <>
+            <div className='identity-divider' aria-hidden />
+            <div className='achievement-strip' aria-label='Saavutused'>
+              {achievements.map((achievement) => (
+                <MetricTooltip
+                  key={achievement.id}
+                  className={achievement.unlocked ? 'achievement-badge unlocked' : 'achievement-badge locked'}
+                  label={achievementLabel(achievement)}
+                >
+                  {/* No padlock: grey is what says locked, and the accessible
+                      name spells it out for anyone who cannot see the grey. */}
+                  <span className='achievement-emoji' aria-hidden>{achievement.emoji}</span>
+                  <span className='achievement-text'>
+                    <strong>{SHORT_ACHIEVEMENT_TITLES[achievement.kind] ?? achievement.title}</strong>
+                    <small>{achievement.unlocked ? 'Tehtud!' : `${achievement.current}/${achievement.target}`}</small>
+                  </span>
+                </MetricTooltip>
+              ))}
+            </div>
+          </>
         )}
-        <Link href={storeHref}>🛒 Pood</Link>
-        <Link href='/history'>📄 Ajalugu</Link>
       </div>
 
       {milestoneNotice && (
@@ -291,24 +333,6 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
           <span aria-hidden>🎉</span>
           <strong>Saavutus: {milestoneNotice.title}!</strong>
           <button type='button' aria-label='Sulge saavutuseteade' onClick={dismissMilestone}>×</button>
-        </div>
-      )}
-
-      {achievements.length > 0 && (
-        <div className='achievement-strip' aria-label='Saavutused'>
-          {achievements.map((achievement) => (
-            <MetricTooltip
-              key={achievement.id}
-              className={achievement.unlocked ? 'achievement-badge unlocked' : 'achievement-badge locked'}
-              label={achievementTooltip(achievement.kind, achievement.tooltipCount)}
-            >
-              <span className='achievement-emoji' aria-hidden>{achievement.unlocked ? achievement.emoji : '🔒'}</span>
-              <span className='achievement-text'>
-                <strong>{achievement.title}</strong>
-                <small>{achievement.unlocked ? 'Tehtud!' : `${achievement.current}/${achievement.target}`}</small>
-              </span>
-            </MetricTooltip>
-          ))}
         </div>
       )}
 

@@ -47,9 +47,53 @@ test('dashboard metrics explain their live values on focus and tap', async ({ pa
   await navigateStable(page, '/kiur');
   const achievements = page.locator('.achievement-badge');
   await expect(achievements).toHaveCount(3);
-  await expect(achievements.nth(0)).toHaveAccessibleName(/^Sul on seni tehtud \d+ (harjutus|harjutust)\.$/);
-  await expect(achievements.nth(1)).toHaveAccessibleName(/^Täna oled teinud \d+ (harjutus|harjutust)\.$/);
-  await expect(achievements.nth(2)).toHaveAccessibleName(/^Sellel nädalal oled teinud \d+ (harjutus|harjutust)\.$/);
+  // The badge caption is now a shortened title, a bare "1/7" and no padlock, so
+  // the accessible name has to carry the full title and the lock state itself
+  // on top of the live count it always carried.
+  await expect(achievements.nth(0)).toHaveAccessibleName(/^\d+ harjutust, \d+\/\d+, (tehtud|veel lukus)\. Sul on seni tehtud \d+ (harjutus|harjutust)\.$/);
+  await expect(achievements.nth(1)).toHaveAccessibleName(/^Täna, \d+\/\d+, (tehtud|veel lukus)\. Täna oled teinud \d+ (harjutus|harjutust)\.$/);
+  await expect(achievements.nth(2)).toHaveAccessibleName(/^Täiuslik nädal, \d+\/\d+, (tehtud|veel lukus)\. Sellel nädalal oled teinud \d+ (harjutus|harjutust)\.$/);
+});
+
+test('the child identity card keeps one row of achievements and 44px targets', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await navigateStable(page, '/kiur');
+  await expect(page.locator('.achievement-badge')).toHaveCount(3);
+
+  // Identity, points, shop/history and achievements are one card.
+  const card = page.locator('.child-identity-card');
+  await expect(card.locator('.child-home-avatar')).toHaveCount(1);
+  await expect(card.locator('.daily-summary-metric')).not.toHaveCount(0);
+  await expect(card.locator('.achievement-badge')).toHaveCount(3);
+
+  // The saving comes from the achievements sharing a single row; wrapping would
+  // give it straight back.
+  const tops = await page.locator('.achievement-badge').evaluateAll(
+    (nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().top))
+  );
+  expect(new Set(tops).size).toBe(1);
+
+  // Every control in the card is small on purpose, so each one is checked
+  // against the 44px floor including its transparent bleed.
+  const targets = page.locator('.identity-action, .daily-summary-metric, .achievement-badge, .child-home-avatar');
+  const boxes = await targets.evaluateAll((nodes) => nodes.map((node) => {
+    const after = getComputedStyle(node, '::after');
+    const bleed = (side: string) => {
+      const value = parseFloat(after.getPropertyValue(side));
+      return Number.isFinite(value) ? Math.max(-value, 0) : 0;
+    };
+    const rect = node.getBoundingClientRect();
+    return {
+      tag: node.className,
+      height: rect.height + bleed('top') + bleed('bottom'),
+      width: rect.width + bleed('left') + bleed('right')
+    };
+  }));
+  expect(boxes.length).toBeGreaterThan(0);
+  for (const box of boxes) {
+    expect(box.height, `${box.tag} height`).toBeGreaterThanOrEqual(44);
+    expect(box.width, `${box.tag} width`).toBeGreaterThanOrEqual(44);
+  }
 });
 
 test('child-specific history selects the child and contains no destructive controls', async ({ page }) => {
