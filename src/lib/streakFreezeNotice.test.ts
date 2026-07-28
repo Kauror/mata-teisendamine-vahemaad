@@ -16,17 +16,22 @@ describe('streakFreezeNotice', () => {
 
   it('names the missed day, the rescue and what is left', () => {
     const notice = streakFreezeNotice({ coveredDays: 1, held: 1 });
-    expect(notice?.headline).toBe('Eile jäi harjutamata, aga külmutus kasutati — õpiseeria on alles.');
-    expect(notice?.detail).toBe('Järel on veel 1 külmutus.');
+    expect(notice?.headline).toBe('Eile jäi vahele, kasutasid ära külmutuse.');
+    expect(notice?.detail).toBe('Sul on järgi veel 1 külmutus.');
+  });
+
+  it('agrees with the number when more than one is left', () => {
+    expect(streakFreezeNotice({ coveredDays: 1, held: 2 })?.detail)
+      .toBe('Sul on järgi veel 2 külmutust.');
   });
 
   it('tells the child when they have run out, and where to get another', () => {
     expect(streakFreezeNotice({ coveredDays: 1, held: 0 })?.detail)
-      .toBe('Rohkem külmutusi ei ole — uue saad poest.');
+      .toBe('Külmutused on otsas, osta poest uus.');
   });
 
   it('handles two days in one go', () => {
     const notice = streakFreezeNotice({ coveredDays: 2, held: 0 });
-    expect(notice?.headline).toBe('2 päeva jäi harjutamata, aga külmutused kasutati — õpiseeria on alles.');
+    expect(notice?.headline).toBe('2 päeva jäi vahele, kasutasid ära külmutused.');
   });
 });

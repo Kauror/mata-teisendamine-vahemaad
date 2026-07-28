@@ -8,13 +8,13 @@ export function freezeWord(count: number) {
 }
 
 function missedDaysLabel(count: number) {
-  return count === 1 ? 'Eile jäi harjutamata' : `${count} päeva jäi harjutamata`;
+  return count === 1 ? 'Eile jäi vahele' : `${count} päeva jäi vahele`;
 }
 
 function remainingLabel(held: number) {
   return held === 0
-    ? 'Rohkem külmutusi ei ole — uue saad poest.'
-    : `Järel on veel ${held} ${freezeWord(held)}.`;
+    ? 'Külmutused on otsas, osta poest uus.'
+    : `Sul on järgi veel ${held} ${freezeWord(held)}.`;
 }
 
 export type StreakFreezeNotice = { headline: string; detail: string };
@@ -23,9 +23,9 @@ export type StreakFreezeNotice = { headline: string; detail: string };
 // what remains afterwards. Returns null when there is nothing to announce.
 export function streakFreezeNotice(input: { coveredDays: number; held: number }): StreakFreezeNotice | null {
   if (input.coveredDays <= 0) return null;
-  const used = input.coveredDays === 1 ? 'külmutus kasutati' : 'külmutused kasutati';
+  const used = input.coveredDays === 1 ? 'külmutuse' : 'külmutused';
   return {
-    headline: `${missedDaysLabel(input.coveredDays)}, aga ${used} — õpiseeria on alles.`,
+    headline: `${missedDaysLabel(input.coveredDays)}, kasutasid ära ${used}.`,
     detail: remainingLabel(input.held)
   };
 }
