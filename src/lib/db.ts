@@ -784,6 +784,38 @@ function addAttemptStatsWindowIndex(connection: DatabaseConnection) {
   connection.exec('CREATE INDEX IF NOT EXISTS idx_attempts_created_at ON attempts(createdAt)');
 }
 
+// "Külmutus": a child buys one ahead of time and a single missed day spends it,
+// so one bad day does not reset a long study streak. A freeze is stored rather
+// than folded into the streak number because the streak itself is derived from
+// study history on every read — this table is the record of the exception.
+function addStreakFreezes(connection: DatabaseConnection) {
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS streak_freezes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      learner TEXT NOT NULL,
+      source TEXT NOT NULL,
+      priceStars REAL NOT NULL DEFAULT 0,
+      ledgerEntryId INTEGER,
+      acquiredAt TEXT NOT NULL,
+      consumedAt TEXT,
+      coveredDate TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (ledgerEntryId) REFERENCES point_ledger(id)
+    )
+  `);
+  // Settlement is lazy and runs on every dashboard read, so it must be safe to
+  // repeat: a day can only ever be covered once.
+  connection.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_streak_freeze_covered_date
+      ON streak_freezes(learner, coveredDate) WHERE coveredDate IS NOT NULL
+  `);
+  connection.exec(`
+    CREATE INDEX IF NOT EXISTS idx_streak_freeze_held
+      ON streak_freezes(learner, consumedAt)
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -826,6 +858,12 @@ const migrations: Migration[] = [
     name: 'attempt_stats_window_index',
     checksumSource: 'attempt_stats_window_index:v1:2026-07-13',
     up: addAttemptStatsWindowIndex
+  },
+  {
+    id: 8,
+    name: 'streak_freezes',
+    checksumSource: 'streak_freezes:v1:2026-07-28',
+    up: addStreakFreezes
   }
 ];
 

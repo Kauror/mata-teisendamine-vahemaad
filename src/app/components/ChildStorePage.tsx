@@ -30,10 +30,19 @@ type Purchase = {
   balanceAfterPurchase: number;
 };
 
+type StreakFreezeState = {
+  held: number;
+  maxHeld: number;
+  price: number;
+  canBuy: boolean;
+  blockedReason: string | null;
+};
+
 type StoreData = {
   balance: number;
   items: StoreItem[];
   purchases: Purchase[];
+  streakFreeze: StreakFreezeState;
 };
 
 function childName(learner: Learner) {
@@ -61,6 +70,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
   const [confirmGift, setConfirmGift] = useState(false);
   const [giftSuccess, setGiftSuccess] = useState<{ amount: number; balanceAfter: number } | null>(null);
   const [giftBusy, setGiftBusy] = useState(false);
+  const [freezeBusy, setFreezeBusy] = useState(false);
 
   const load = useCallback(() => {
     setError('');
@@ -101,6 +111,30 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
     }
   };
 
+  const buyFreeze = async () => {
+    if (!online) {
+      setError('Ostu ei saadetud. Ostu tegemiseks taasta internetiühendus.');
+      return;
+    }
+    setFreezeBusy(true);
+    setError('');
+    try {
+      const res = await fetch('/api/store/freeze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ learner })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || 'Ostu ei saanud teha.');
+      setSuccess({ title: 'Külmutus ❄️', price: freeze?.price ?? 0, balanceAfter: body.balance });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ostu ei saanud teha.');
+    } finally {
+      setFreezeBusy(false);
+    }
+  };
+
   const sendGift = async () => {
     if (!online) {
       setConfirmGift(false);
@@ -130,6 +164,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
   };
 
   const balance = data?.balance ?? 0;
+  const freeze = data?.streakFreeze ?? null;
   const recipientName = childName(recipient);
   const giftValue = Math.floor(Number(giftAmount)) || 0;
   const canGift = giftValue >= 1 && giftValue <= balance;
@@ -149,6 +184,22 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
         <Link className='history-link' href='/history'>📄 Ajalugu</Link>
         {!online && <p className='offline-warning' role='status'>Poe andmed võivad olla viimase sünkroonimise seisuga. Ostmine ja kinkimine on võrguühenduseta keelatud.</p>}
         {error && <p className='error'>{error}</p>}
+
+        {freeze && (
+          <article className={freeze.canBuy ? 'freeze-card' : 'freeze-card disabled'}>
+            <div className='freeze-card-text'>
+              <h2><span aria-hidden>❄️</span> Külmutus</h2>
+              <p>Hoiab su õpiseeria alles, kui üks päev jääb harjutamata. Osta enne, kui vaja läheb.</p>
+              <div className='freeze-card-meta'>
+                <span>Hind: {freeze.price} ⭐</span>
+                <span>Sul on: {freeze.held}/{freeze.maxHeld}</span>
+              </div>
+            </div>
+            <button type='button' disabled={!online || !freeze.canBuy || freezeBusy} onClick={buyFreeze}>
+              {!online ? 'Vajab internetiühendust' : freeze.canBuy ? 'Osta külmutus' : freeze.blockedReason}
+            </button>
+          </article>
+        )}
 
         <section className='store-grid'>
           {(data?.items ?? []).map((item) => (

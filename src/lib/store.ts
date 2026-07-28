@@ -1,5 +1,6 @@
 import db from '@/lib/db';
 import { formatStars } from '@/lib/formatStars';
+import { getStreakFreezeState } from '@/lib/streakFreeze';
 import { getBalance, getBalances, isoToAppDate, Learner, nowIso, todayDateString } from '@/lib/tasks';
 
 export type StoreVisibility = 'kiur' | 'kirsi' | 'both';
@@ -184,7 +185,9 @@ export function getChildStore(learner: Learner, date = todayDateString()) {
   const balance = getBalance(learner);
   const items = activeChildItems(learner, date).map((item) => itemState(item, learner, balance, date));
   const purchases = db.prepare('SELECT * FROM store_purchases WHERE learner = ? ORDER BY purchasedAt DESC LIMIT 10').all(learner) as StorePurchase[];
-  return { learner, balance, items, purchases };
+  // The freeze is a built-in item rather than a parent-authored row: it carries
+  // behaviour, so it must not be renameable or deletable from the parent area.
+  return { learner, balance, items, purchases, streakFreeze: getStreakFreezeState(learner, date) };
 }
 
 export function createStoreItem(input: {

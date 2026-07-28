@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
 import { exerciseWord, trophyWord } from '@/lib/history';
+import { freezeWord, streakFreezeNotice } from '@/lib/streakFreezeNotice';
 import { completeTaskOffline, getDailyTasksOffline, getDashboardSnapshot } from '@/lib/offline/api';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import MetricTooltip from '@/app/components/MetricTooltip';
@@ -51,6 +52,17 @@ type Achievement = {
   tooltipCount: number;
 };
 
+type StreakFreezeState = {
+  held: number;
+  maxHeld: number;
+  price: number;
+  canBuy: boolean;
+  blockedReason: string | null;
+  // Days a freeze is currently standing in for, newest first. Time-boxed by the
+  // server, so simply viewing the page never uses the message up.
+  recentlyCovered: string[];
+};
+
 type ChildDashboard = {
   learner: Learner;
   balance: number;
@@ -59,6 +71,7 @@ type ChildDashboard = {
   tasks: ChildTask[];
   monthlyCelebration: MonthlyCelebration | null;
   achievements: Achievement[];
+  streakFreeze?: StreakFreezeState;
 };
 
 function learnerName(learner: Learner) {
@@ -174,6 +187,10 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
   const balance = data?.balance ?? 0;
   const trophies = data?.trophies ?? 0;
   const celebration = data?.monthlyCelebration ?? null;
+  const streakFreeze = data?.streakFreeze ?? null;
+  const freezeNotice = streakFreeze
+    ? streakFreezeNotice({ coveredDays: streakFreeze.recentlyCovered.length, held: streakFreeze.held })
+    : null;
   const achievements = useMemo(() => data?.achievements ?? [], [data]);
   const tasks = data?.tasks ?? [];
   const isDone = (task: ChildTask) => task.status === 'completed' || task.status === 'locked';
@@ -245,10 +262,26 @@ export default function DailyTasksPanel({ learner }: { learner: Learner }) {
           </div>
         </div>
       )}
+      {freezeNotice && (
+        <div className='freeze-used-notice' role='status'>
+          <span aria-hidden>❄️</span>
+          <span className='freeze-used-text'>
+            <strong>{freezeNotice.headline}</strong>
+            <small>{freezeNotice.detail}</small>
+          </span>
+        </div>
+      )}
+
       <div className='daily-summary'>
         <MetricTooltip className='daily-summary-metric' label={starsTooltip(balance)}>⭐ {formatStars(balance)}</MetricTooltip>
         <MetricTooltip className='daily-summary-metric' label={streakTooltip(data?.streak ?? 0)}>🔥 {data?.streak ?? 0}</MetricTooltip>
         <MetricTooltip className='daily-summary-metric' label={trophiesTooltip(trophies)}>🏆 {trophies}</MetricTooltip>
+        {streakFreeze && streakFreeze.held > 0 && (
+          <MetricTooltip
+            className='daily-summary-metric'
+            label={`Sul on ${streakFreeze.held} ${freezeWord(streakFreeze.held)}. Kui üks päev jääb harjutamata, kasutatakse see automaatselt ära ja õpiseeria jääb alles.`}
+          >❄️ {streakFreeze.held}</MetricTooltip>
+        )}
         <Link href={storeHref}>🛒 Pood</Link>
         <Link href='/history'>📄 Ajalugu</Link>
       </div>

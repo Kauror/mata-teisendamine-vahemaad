@@ -3,6 +3,8 @@ import { addAppDays, appDateRange, isoToAppDate, startOfAppWeek } from '@/lib/ap
 import { isKirsiAttempt } from '@/lib/history';
 import { awardLearningStreakRewards, AwardedStreakReward, getStreakRewardsForAttempt } from '@/lib/rewardRules';
 import { sprintAttemptQualifies } from '@/lib/sprintReward';
+import { frozenDates } from '@/lib/streakFreeze';
+import { studyDates } from '@/lib/studyDays';
 import { getBalance, Learner, nowIso, todayDateString } from '@/lib/tasks';
 import { ensureCurrentRewardPolicy } from '@/lib/server/rewards/policy';
 
@@ -200,17 +202,12 @@ function decayCountToday(learner: Learner, exerciseKey: string, date: string) {
   return rows.filter((row) => isoToAppDate(row.createdAt) === date).length;
 }
 
-function studyDates(learner: Learner) {
-  const rows = db.prepare('SELECT createdAt FROM study_attempt_rewards WHERE learner = ?').all(learner) as Array<{ createdAt: string }>;
-  return new Set(rows.map((row) => isoToAppDate(row.createdAt)).filter((day): day is string => day !== null));
-}
-
-function countLearningStreakFrom(dates: Set<string>, startDate: string) {
+function countLearningStreakFrom(dates: Set<string>, startDate: string, frozen: Set<string> = new Set()) {
   const cursor = new Date(`${startDate}T12:00:00Z`);
   let streak = 0;
   while (true) {
     const day = cursor.toISOString().slice(0, 10);
-    if (!dates.has(day)) break;
+    if (!dates.has(day) && !frozen.has(day)) break;
     streak += 1;
     cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
@@ -244,14 +241,20 @@ export function getLearningDaysThisWeek(learner: Learner, today = todayDateStrin
   return appDateRange(startOfAppWeek(today), today).filter((day) => dates.has(day)).length;
 }
 
+// The streak the child is shown. This is the ONLY streak that counts frozen
+// days: getCurrentLearningStreak (which decides the streak bonus and the
+// parent's streak rewards), getLongestLearningStreak and getLearningDaysThisWeek
+// all stay freeze-free, so a bought freeze can never buy stars, a personal
+// record or the perfect-week achievement.
 export function getActiveLearningStreak(learner: Learner, today = todayDateString()) {
   const dates = studyDates(learner);
-  const todayStreak = countLearningStreakFrom(dates, today);
+  const frozen = frozenDates(learner);
+  const todayStreak = countLearningStreakFrom(dates, today, frozen);
   if (todayStreak > 0) return todayStreak;
 
   const yesterday = new Date(`${today}T12:00:00Z`);
   yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  return countLearningStreakFrom(dates, yesterday.toISOString().slice(0, 10));
+  return countLearningStreakFrom(dates, yesterday.toISOString().slice(0, 10), frozen);
 }
 
 function hadStudyAttemptBeforeToday(learner: Learner, date: string, attemptId: number) {

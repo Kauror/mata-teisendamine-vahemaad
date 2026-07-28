@@ -30,6 +30,7 @@ type PendingApproval = { assignmentId: number; learner: Learner; title: string; 
 type HeldReward = { id: number; learner: Learner; completionDate: string | null; score: number; questionCount: number; exerciseId: string | null; status: 'withheld' | 'needs_review'; reviewReasonCode: string | null };
 type OfflineTaskReview = { clientActionId: string; learner: Learner; taskDate: string; title: string; points: number; completedAt: string | null; reasonCode: string | null };
 type ParentHistoryAttempt = { id: number; createdAt: string; learner: Learner | null; category: string; score: number; questionCount: number };
+type StreakFreezeState = { held: number; maxHeld: number; price: number; canBuy: boolean; blockedReason: string | null; recentlyCovered: string[] };
 type Dashboard = {
   balances: Record<Learner, number>;
   templates: Template[];
@@ -257,6 +258,7 @@ export default function ParentHub() {
   const [heldRewards, setHeldRewards] = useState<HeldReward[]>([]);
   const [offlineTaskReviews, setOfflineTaskReviews] = useState<OfflineTaskReview[]>([]);
   const [parentHistory, setParentHistory] = useState<ParentHistoryAttempt[]>([]);
+  const [streakFreezes, setStreakFreezes] = useState<Record<Learner, StreakFreezeState> | null>(null);
   const [historyConfirmId, setHistoryConfirmId] = useState<number | null>(null);
   const [confirmHideAllHistory, setConfirmHideAllHistory] = useState(false);
   const [monthlyPrizeInput, setMonthlyPrizeInput] = useState(10);
@@ -287,9 +289,10 @@ export default function ParentHub() {
       fetch('/api/parent/weekly-digest').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/held-rewards').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/task-reviews').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/parent/history').then((res) => (res.ok ? res.json() : Promise.reject()))
+      fetch('/api/parent/history').then((res) => (res.ok ? res.json() : Promise.reject())),
+      fetch('/api/parent/streak-freeze').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, monthlyPrizeData, weeklyDigestData, heldRewardData, taskReviewData, historyData]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, monthlyPrizeData, weeklyDigestData, heldRewardData, taskReviewData, historyData, freezeData]) => {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
@@ -301,6 +304,7 @@ export default function ParentHub() {
         setHeldRewards(Array.isArray(heldRewardData?.held) ? heldRewardData.held : []);
         setOfflineTaskReviews(Array.isArray(taskReviewData?.reviews) ? taskReviewData.reviews : []);
         setParentHistory(Array.isArray(historyData?.items) ? historyData.items : []);
+        setStreakFreezes(freezeData as Record<Learner, StreakFreezeState>);
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
   };
@@ -502,6 +506,25 @@ export default function ParentHub() {
     setNotice(direction > 0
       ? `${learnerLabel(learner)} sai +${magnitude} ${config.addNoun}.`
       : `${learnerLabel(learner)} ${config.removeVerb} ${magnitude} võrra.`);
+    load();
+  };
+
+  // Hands a child a freeze for a day that genuinely was not their fault -
+  // illness, travel. Free to the child, and still capped by the hold limit.
+  const grantStreakFreeze = async (learner: Learner) => {
+    setError('');
+    setNotice('');
+    const res = await fetch('/api/parent/streak-freeze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ learner })
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.message || 'Külmutust ei saanud anda.');
+      return;
+    }
+    setNotice(`${learnerLabel(learner)} sai ühe külmutuse.`);
     load();
   };
 
@@ -802,6 +825,28 @@ export default function ParentHub() {
                 </div>
               </div>
             ))}
+          </div>
+          <div className='parent-adjust-block'>
+            <h3>❄️ Külmutused</h3>
+            <p className='parent-adjust-hint'>Üks vahele jäänud päev ei katkesta õpiseeriat. Laps ostab ise {streakFreezes?.kiur.price ?? 10} tähe eest — anna tasuta siis, kui päev jäi ära haiguse või reisi tõttu.</p>
+            {(['kiur', 'kirsi'] as Learner[]).map((child) => {
+              const state = streakFreezes?.[child];
+              return (
+                <div key={child} className='parent-adjust-row'>
+                  <span className='parent-adjust-name'>{learnerLabel(child)}</span>
+                  <strong className='parent-adjust-value'>{state ? `${state.held}/${state.maxHeld}` : '–'}</strong>
+                  <div className='parent-stepper'>
+                    <button
+                      type='button'
+                      className='parent-step-plus'
+                      disabled={!state || state.held >= state.maxHeld}
+                      aria-label={`Anna ${learnerLabel(child)}le tasuta külmutus`}
+                      onClick={() => grantStreakFreeze(child)}
+                    >+</button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
