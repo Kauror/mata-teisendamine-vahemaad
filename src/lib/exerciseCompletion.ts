@@ -1,6 +1,8 @@
 import db from '@/lib/db';
+import { previousAppDate, todayDateString } from '@/lib/appDate';
+import { attemptLearner } from '@/lib/attemptLearner';
 import { ChildExerciseCard } from '@/lib/childExerciseCards';
-import { isKirsiAttempt, isTodayIso } from '@/lib/history';
+import { isTodayIso } from '@/lib/history';
 import { Learner } from '@/lib/tasks';
 
 type CompletionAttempt = {
@@ -12,11 +14,6 @@ type CompletionAttempt = {
   topic?: string | null;
   exerciseId?: string | null;
 };
-
-function attemptLearner(attempt: CompletionAttempt): Learner {
-  if (attempt.learner === 'kirsi' || attempt.learner === 'kiur') return attempt.learner;
-  return isKirsiAttempt(attempt.category, attempt.learner) ? 'kirsi' : 'kiur';
-}
 
 // Ordered most specific first. `learner:subject:topic` is deliberately last:
 // it does NOT identify an exercise on its own, because Kirsi's four calculation
@@ -91,11 +88,17 @@ export function completedExerciseIdsFromAttempts(
 }
 
 function todaysAttempts() {
+  // isTodayIso does the exact "is this today in Tallinn" filtering; the SQL
+  // cutoff only keeps the scan from covering the whole table. Starting at
+  // yesterday's UTC midnight over-fetches a few hours of rows regardless of
+  // DST, which the JS filter then discards.
+  const cutoff = `${previousAppDate(todayDateString())}T00:00:00`;
   return db.prepare(`
     SELECT id, createdAt, category, learner, subject, topic, exerciseId
     FROM attempts
+    WHERE createdAt >= ?
     ORDER BY createdAt DESC
-  `).all() as CompletionAttempt[];
+  `).all(cutoff) as CompletionAttempt[];
 }
 
 export function getCompletedExerciseIdsToday(learner: Learner, exercises: ChildExerciseCard[]) {

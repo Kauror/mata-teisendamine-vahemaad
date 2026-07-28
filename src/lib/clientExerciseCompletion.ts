@@ -1,4 +1,5 @@
-import { isKirsiAttempt, isTodayIso } from '@/lib/history';
+import { attemptLearner } from '@/lib/attemptLearner';
+import { isTodayIso } from '@/lib/history';
 
 export type ClientCompletionAttempt = {
   createdAt: string;
@@ -9,11 +10,6 @@ export type ClientCompletionAttempt = {
   exerciseId?: string | null;
 };
 
-function learnerForAttempt(attempt: ClientCompletionAttempt) {
-  if (attempt.learner === 'kiur' || attempt.learner === 'kirsi') return attempt.learner;
-  return isKirsiAttempt(attempt.category, attempt.learner) ? 'kirsi' : 'kiur';
-}
-
 export function completedTodayFromHistory(
   attempts: ClientCompletionAttempt[],
   learner: 'kiur' | 'kirsi',
@@ -21,7 +17,7 @@ export function completedTodayFromHistory(
   fallback: { subject: string; topic: string; category?: string }
 ) {
   return attempts.some((attempt) => {
-    if (!isTodayIso(attempt.createdAt) || learnerForAttempt(attempt) !== learner) return false;
+    if (!isTodayIso(attempt.createdAt) || attemptLearner(attempt) !== learner) return false;
     if (attempt.exerciseId === exerciseId) return true;
     if (attempt.subject && attempt.subject !== fallback.subject) return false;
     // Topic alone does not identify an exercise: Kirsi's four calculation cards

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
 import { exerciseWord, trophyWord } from '@/lib/history';
 import { freezeWord, streakFreezeNotice } from '@/lib/streakFreezeNotice';
@@ -90,7 +90,7 @@ function learnerName(learner: Learner) {
 // belong to one identity card, and the panel is the only component that holds
 // the other three. Passing the slot in keeps the child's name and avatar owned
 // by the page and out of this component's data model.
-export default function DailyTasksPanel({ learner, identity }: { learner: Learner; identity?: React.ReactNode }) {
+export default function DailyTasksPanel({ learner, identity }: { learner: Learner; identity: React.ReactNode }) {
   const { online } = useOffline();
   const peekMode = usePeekMode();
   const [data, setData] = useState<ChildDashboard | null>(null);
@@ -107,7 +107,12 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
   // The row the child just ticked, kept rendered a moment longer so it can be
   // seen travelling into the bar rather than simply vanishing.
   const [leavingId, setLeavingId] = useState<number | null>(null);
+  const leaveTimer = useRef<number | null>(null);
   const doneListId = useId();
+
+  useEffect(() => () => {
+    if (leaveTimer.current !== null) window.clearTimeout(leaveTimer.current);
+  }, []);
 
   const load = useCallback(() => {
     setError('');
@@ -209,7 +214,8 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
         load();
       } else {
         setLeavingId(completedId);
-        window.setTimeout(() => {
+        leaveTimer.current = window.setTimeout(() => {
+          leaveTimer.current = null;
           setLeavingId(null);
           load();
         }, 240);
@@ -233,6 +239,9 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
   const isDone = (task: ChildTask) => task.status === 'completed' || task.status === 'locked';
   const activeTasks = tasks.filter((task) => !isDone(task));
   const doneTasks = tasks.filter(isDone);
+  // A locked task was completed by the sibling, so its stars are theirs — the
+  // bar only claims the points this child actually earned.
+  const earnedPoints = doneTasks.reduce((sum, task) => (task.status === 'completed' ? sum + task.points : sum), 0);
   const storeHref = learner === 'kiur' ? '/kiur/pood' : '/kirsi/pood';
 
   const milestoneStorageKey = `exercise-milestone:${learner}`;
@@ -422,7 +431,7 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
                 >
                   <span className='daily-done-check' aria-hidden>✓</span>
                   <span className='daily-done-label'>
-                    Tehtud tegevused ({doneTasks.length}) · +{doneTasks.reduce((sum, task) => sum + task.points, 0)} ⭐
+                    Tehtud tegevused ({doneTasks.length}){earnedPoints > 0 && <> · +{earnedPoints} ⭐</>}
                   </span>
                   <span className='daily-done-caret' aria-hidden>▾</span>
                 </button>
