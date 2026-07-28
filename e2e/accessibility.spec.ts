@@ -96,6 +96,41 @@ test('the child identity card keeps one row of achievements and 44px targets', a
   }
 });
 
+test('an achievement tooltip is actually painted, not clipped by its own row', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await navigateStable(page, '/kiur');
+  const badges = page.locator('.achievement-badge');
+  await expect(badges).toHaveCount(3);
+
+  // Every badge, because only the strip's overflow decides this and a
+  // regression would take all three at once.
+  for (let index = 0; index < 3; index += 1) {
+    await badges.nth(index).focus();
+    // toBeVisible() and computed visibility both pass on a tooltip that an
+    // ancestor's overflow has clipped out of sight, and elementFromPoint is no
+    // use because the tooltip is pointer-events:none. So intersect the tooltip
+    // against every clipping ancestor and see how much of it survives.
+    await expect.poll(async () => page.evaluate((nth) => {
+      const tip = document.querySelectorAll('.achievement-strip .metric-tooltip-content')[nth] as HTMLElement;
+      if (!tip) return -1;
+      if (getComputedStyle(tip).opacity !== '1') return -2;
+      const rect = tip.getBoundingClientRect();
+      const box = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+      for (let node = tip.parentElement; node; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (style.overflowX === 'visible' && style.overflowY === 'visible') continue;
+        const clip = node.getBoundingClientRect();
+        box.left = Math.max(box.left, clip.left);
+        box.top = Math.max(box.top, clip.top);
+        box.right = Math.min(box.right, clip.right);
+        box.bottom = Math.min(box.bottom, clip.bottom);
+      }
+      const visible = Math.max(0, box.right - box.left) * Math.max(0, box.bottom - box.top);
+      return Math.round((visible / (rect.width * rect.height)) * 100);
+    }, index), { timeout: 5_000 }).toBeGreaterThan(95);
+  }
+});
+
 test('child-specific history selects the child and contains no destructive controls', async ({ page }) => {
   await navigateStable(page, '/history?child=kiur');
   await expect(page).toHaveURL(/\/history\?child=kiur$/);

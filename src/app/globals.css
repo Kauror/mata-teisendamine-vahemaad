@@ -56,6 +56,17 @@
   --achievement-ink-locked-2:#94a3b8;
   /* 30px ring + 7px each side = 44px. */
   --achievement-bleed:-7px;
+
+  /* Daily tasks: one card, rows separated by a hairline rather than boxed. */
+  --daily-line:rgba(30,64,175,.07);
+  --daily-title-size:16px;
+  --daily-row-size:13.5px;
+  --daily-row-pad:8px;
+  --daily-check:24px;
+  --daily-check-border:#bfd0ee;
+  --daily-reward-bg:#fefce8; --daily-reward-ink:#854d0e;
+  --daily-progress-bg:#f0fdf4; --daily-progress-ink:#15803d;
+  --daily-done-bg:#f7fbf8; --daily-done-ink:#15803d;
 }
 /* Subject accents. The card stays white and the icon tile carries the colour,
    so text keeps full contrast and the icon is what tells cards apart. */
@@ -285,31 +296,52 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .monthly-celebration-prize{font-weight:900!important;color:#a16207!important}
 .monthly-standing{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 12px;border-radius:14px;background:#fffbeb;border:1px solid #fde68a}
 .monthly-standing span{font-weight:750;color:#92741a;font-size:13px}.monthly-standing strong{font-weight:900;color:#854d0e}
-.daily-task-card{padding:9px 14px;border-radius:20px;background:#fff;border:1px solid #dfe8f6;display:grid;gap:7px}
-.daily-task-card h2{margin:0;font-size:19px;font-weight:900;color:#0b1b45}
-.daily-task-card p{margin:0;color:#64748b;font-weight:750}
-.daily-task-list{display:grid;gap:8px}
-.daily-task-row{width:100%;min-height:54px;padding:10px 12px;border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;color:#0b1b45;display:grid;grid-template-columns:30px 1fr auto auto;align-items:center;gap:10px;text-align:left;font-size:16px;font-weight:850}
-.daily-task-row.completed{background:#dcfce7;border-color:#86efac;text-decoration:line-through}
-.daily-task-row.locked{background:#f1f5f9;border-color:#dbe3ff;color:#64748b}
-.daily-check{width:28px;height:28px;border-radius:10px;border:2px solid #bfdbfe;background:#fff;display:grid;place-items:center;font-weight:900;color:#15803d}
-.daily-title{overflow-wrap:anywhere}.daily-task-row small{font-size:13px;color:#64748b;text-decoration:none}
-.daily-all-done{margin:0;color:#15803d!important;font-weight:850!important}
-.daily-task-row.pending{background:#fffbeb;border-color:#fde68a}
-.daily-task-row.pending .daily-check{color:#b45309;border-color:#fcd34d;background:#fffbeb}
-.daily-task-row.pending small{color:#b45309!important}
+/* One card, rows separated by a hairline. The old boxed rows are gone rather
+   than overridden: their background and border are what made the block tall and
+   made it read as a form instead of as the rest of the app. */
+.daily-task-card{padding:12px;border-radius:var(--card-radius);background:#fff;border:var(--card-border);box-shadow:var(--card-shadow);display:grid;gap:0}
+.daily-task-head{display:flex;align-items:center;gap:8px;padding-bottom:9px}
+.daily-task-card h2{margin:0;font-size:var(--daily-title-size);font-weight:900;color:#0b1b45;flex:1}
+.daily-progress-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:var(--daily-progress-bg);color:var(--daily-progress-ink);font-size:11.5px;font-weight:900}
+.daily-task-card p{margin:0;padding:6px 2px 0;color:#64748b;font-weight:750}
+.daily-task-list{display:grid;gap:0}
+/* The whole row is the control, so the 44px floor is met by the row itself. */
+.daily-task-row{width:100%;min-height:44px;padding:var(--daily-row-pad) 2px;border:0;border-top:1px solid var(--daily-line);border-radius:0;background:transparent;color:#0b1b45;display:flex;align-items:center;gap:10px;text-align:left;font-size:var(--daily-row-size);font-weight:800;flex-wrap:wrap;transition:opacity 200ms ease,transform 200ms ease}
+.daily-check{width:var(--daily-check);height:var(--daily-check);flex:none;border-radius:8px;border:2px solid var(--daily-check-border);background:#fff;display:grid;place-items:center;font-weight:900;color:var(--daily-done-ink)}
+.daily-title{flex:1;min-width:0;overflow-wrap:anywhere;line-height:1.25}
+.daily-reward{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;background:var(--daily-reward-bg);color:var(--daily-reward-ink);font-size:11.5px;font-weight:900;white-space:nowrap}
+.daily-task-row small{width:100%;font-size:12.5px;color:#64748b;text-decoration:none;font-weight:750}
+.daily-all-done{margin:0;padding:10px 2px 0!important;color:var(--daily-done-ink)!important;font-weight:850!important}
+.daily-task-row.pending .daily-check{color:var(--daily-reward-ink);border-color:#fcd34d;background:#fffbeb}
+.daily-task-row.pending small{color:var(--daily-reward-ink)!important}
+.daily-task-row.pending .daily-reward{background:#fffbeb}
 .daily-approval-hint{margin:0;color:#b45309;font-weight:850}
-.daily-done-accordion{border:1px solid #dfe8f6;border-radius:16px;background:#f8fbff;overflow:hidden}
-.daily-done-accordion>summary{cursor:pointer;list-style:none;padding:10px 12px;font-size:15px;font-weight:850;color:#4b5f99;display:flex;align-items:center;gap:8px}
-.daily-done-accordion>summary::-webkit-details-marker{display:none}
-.daily-done-accordion>summary::before{content:'▸';font-size:13px;transition:transform 160ms ease}
-.daily-done-accordion[open]>summary::before{transform:rotate(90deg)}
-.daily-done-accordion .daily-task-list{padding:0 12px 12px}
+/* The row travels into the bar instead of blinking out of existence. */
+.daily-task-row.leaving{opacity:0;transform:translateY(14px) scale(.97)}
+@media (prefers-reduced-motion:reduce){.daily-task-row{transition:none}.daily-task-row.leaving{opacity:1;transform:none}}
+
+/* Done work: one full-bleed bar at the foot of the card. The negative margins
+   cancel the card's padding so it reaches the edges and can carry the card's
+   own bottom radius. */
+.daily-done{margin:2px -12px -12px;background:var(--daily-done-bg);border-radius:0 0 var(--card-radius) var(--card-radius);overflow:hidden}
+.daily-done-bar{width:100%;min-height:44px;display:flex;align-items:center;gap:9px;padding:9px 12px;border:0;border-top:1px solid var(--daily-line);border-radius:0;background:transparent;text-align:left;cursor:pointer}
+.daily-done-check{width:20px;height:20px;flex:none;display:grid;place-items:center;border-radius:7px;background:#22c55e;color:#fff;font-size:12px;font-weight:900}
+.daily-done-label{flex:1;min-width:0;font-size:12.5px;font-weight:800;color:var(--daily-done-ink)}
+.daily-done-caret{font-size:12px;font-weight:900;color:var(--daily-done-ink);transition:transform 160ms ease}
+.daily-done-bar[aria-expanded="true"] .daily-done-caret{transform:rotate(180deg)}
+@media (prefers-reduced-motion:reduce){.daily-done-caret{transition:none}}
+.daily-done-list{padding:0 12px 10px}
+.daily-done-list .daily-task-row{color:#64748b}
+.daily-done-list .daily-title{text-decoration:line-through}
+.daily-done-list .daily-reward{background:#dcfce7;color:var(--daily-done-ink)}
+.daily-done-list .daily-check{border-color:#86efac;color:var(--daily-done-ink)}
 .task-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.28);display:grid;place-items:center;padding:18px;z-index:20}
 .task-modal{width:min(420px,100%);padding:22px;border-radius:24px;background:#fff;display:grid;gap:12px;text-align:center;border:var(--card-border);box-shadow:var(--card-shadow)}
 .task-modal h2,.task-modal p{margin:0}.task-modal h2{font-size:26px;color:#0b1b45}.task-modal p{font-size:20px;font-weight:900;color:#0b1b45}.task-modal strong{font-size:24px}
 .task-modal-actions{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
-@media (max-width:640px){.daily-task-row{grid-template-columns:30px 1fr auto}.daily-task-row small{grid-column:2/-1}.task-modal-actions{grid-template-columns:1fr}}
+/* The task rows had two grid layouts here; they are one flex row at every width
+   now, so only the modal keeps a mobile rule. */
+@media (max-width:640px){.task-modal-actions{grid-template-columns:1fr}}
 
 .child-home-page{max-width:940px}
 .child-home-shell{background:rgba(255,255,255,.96);border-radius:26px;padding:18px;display:grid;gap:16px;border:var(--card-border);box-shadow:var(--card-shadow)}
@@ -834,8 +866,14 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 
 /* Achievements strip (child dashboard) */
 /* Three badges share one row and never wrap — wrapping is what cost the screen
-   height in the first place. Past three, the row scrolls sideways instead. */
-.achievement-strip{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
+   height in the first place. Past three, the row scrolls sideways instead.
+   The scroll is switched on only when there is a fourth badge, because
+   overflow-x:auto forces overflow-y to compute to auto as well, and the strip
+   is 30px tall: the tooltip renders below the badge and would be clipped away
+   by its own container. With the three achievements the app actually has, the
+   strip stays unclipped and the tooltips show. */
+.achievement-strip{display:flex;flex-wrap:nowrap;align-items:center;gap:8px}
+.achievement-strip:has(.metric-tooltip:nth-child(4)){overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
 .achievement-strip::-webkit-scrollbar{display:none}
 /* min-height is set down to the ring on purpose: the app-wide 44px button floor
    would otherwise make the badge 44px tall, and here the 44px is the job of the

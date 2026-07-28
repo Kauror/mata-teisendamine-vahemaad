@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
 import { exerciseWord, trophyWord } from '@/lib/history';
 import { freezeWord, streakFreezeNotice } from '@/lib/streakFreezeNotice';
@@ -100,6 +100,14 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
   const [bonusOpen, setBonusOpen] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [milestoneNotice, setMilestoneNotice] = useState<Achievement | null>(null);
+  // Done tasks live behind a collapsed bar. Collapsed is the default, and the
+  // child's own choice is remembered per child — read after mount, because
+  // localStorage on the server would desync the first render.
+  const [doneOpen, setDoneOpen] = useState(false);
+  // The row the child just ticked, kept rendered a moment longer so it can be
+  // seen travelling into the bar rather than simply vanishing.
+  const [leavingId, setLeavingId] = useState<number | null>(null);
+  const doneListId = useId();
 
   const load = useCallback(() => {
     setError('');
@@ -187,8 +195,25 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
       if (body.pending) setNotice('Saadetud vanemale kinnitamiseks.');
       else setNotice('');
       if (body.dailyBonus?.awarded) setBonusOpen(true);
+      const completedId = confirmTask.assignmentId;
       setConfirmTask(null);
-      load();
+      // Let the row be seen travelling into the done bar before the refetch
+      // removes it. Reduced motion skips straight to the new state.
+      let reduced = true;
+      try {
+        reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      } catch {
+        // matchMedia unavailable — treat as reduced and skip the animation.
+      }
+      if (reduced) {
+        load();
+      } else {
+        setLeavingId(completedId);
+        window.setTimeout(() => {
+          setLeavingId(null);
+          load();
+        }, 240);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Tegevust ei saanud märkida.');
     } finally {
@@ -211,6 +236,27 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
   const storeHref = learner === 'kiur' ? '/kiur/pood' : '/kirsi/pood';
 
   const milestoneStorageKey = `exercise-milestone:${learner}`;
+  const doneOpenStorageKey = `daily-done-open:${learner}`;
+
+  useEffect(() => {
+    try {
+      setDoneOpen(window.localStorage.getItem(doneOpenStorageKey) === '1');
+    } catch {
+      // localStorage unavailable (private mode) — stay collapsed.
+    }
+  }, [doneOpenStorageKey]);
+
+  const toggleDone = () => {
+    setDoneOpen((open) => {
+      const next = !open;
+      try {
+        window.localStorage.setItem(doneOpenStorageKey, next ? '1' : '0');
+      } catch {
+        // Ignore storage failures; the choice simply does not survive a reload.
+      }
+      return next;
+    });
+  };
 
   const recordMilestoneSeen = useCallback((milestoneId: string) => {
     // Peeking never spends the notice — that is the whole point of peek mode.
@@ -249,13 +295,17 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
       <button
         type='button'
         key={task.assignmentId}
-        className={completed ? 'daily-task-row completed' : locked ? 'daily-task-row locked' : pending ? 'daily-task-row pending' : 'daily-task-row'}
+        className={[
+          'daily-task-row',
+          completed ? 'completed' : locked ? 'locked' : pending ? 'pending' : '',
+          leavingId === task.assignmentId ? 'leaving' : ''
+        ].filter(Boolean).join(' ')}
         disabled={completed || locked || pending || busyId === task.assignmentId}
         onClick={() => setConfirmTask(task)}
       >
-        <span className='daily-check'>{completed ? '✓' : pending ? '⏳' : locked ? '-' : ''}</span>
+        <span className='daily-check' aria-hidden>{completed ? '✓' : pending ? '⏳' : locked ? '-' : ''}</span>
         <span className='daily-title'>{task.title}</span>
-        <strong>+{task.points} ⭐</strong>
+        <span className='daily-reward'>+{task.points} ⭐</span>
         {pending && <small>Ootab vanema kinnitust</small>}
         {locked && <small>Tehtud {task.completedBy ? learnerName(task.completedBy) : 'teise lapse'} poolt</small>}
       </button>
@@ -337,7 +387,12 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
       )}
 
       <div className='daily-task-card'>
-        <h2>Päevased tegevused</h2>
+        <div className='daily-task-head'>
+          <h2>Päevased tegevused</h2>
+          {tasks.length > 0 && (
+            <span className='daily-progress-pill'>{doneTasks.length}/{tasks.length} ✓</span>
+          )}
+        </div>
         {error && <p className='error'>{error}</p>}
         {notice && <p className='ok'>{notice}</p>}
         {!data ? (
@@ -354,13 +409,27 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
             {activeTasks.length === 0 && (
               <p className='daily-all-done'>Kõik tänased tegevused on tehtud! 🎉</p>
             )}
+            {/* Done work leaves the list entirely and sits behind one bar at the
+                foot of the card — with nothing done, there is no bar at all. */}
             {doneTasks.length > 0 && (
-              <details className='daily-done-accordion'>
-                <summary>Tehtud tegevused ({doneTasks.length})</summary>
-                <div className='daily-task-list'>
+              <div className='daily-done'>
+                <button
+                  type='button'
+                  className='daily-done-bar'
+                  aria-expanded={doneOpen}
+                  aria-controls={doneListId}
+                  onClick={toggleDone}
+                >
+                  <span className='daily-done-check' aria-hidden>✓</span>
+                  <span className='daily-done-label'>
+                    Tehtud tegevused ({doneTasks.length}) · +{doneTasks.reduce((sum, task) => sum + task.points, 0)} ⭐
+                  </span>
+                  <span className='daily-done-caret' aria-hidden>▾</span>
+                </button>
+                <div id={doneListId} role='group' aria-label='Tehtud tegevused' className='daily-task-list daily-done-list' hidden={!doneOpen}>
                   {doneTasks.map(renderTask)}
                 </div>
-              </details>
+              </div>
             )}
           </>
         )}

@@ -132,6 +132,21 @@ When a redesign makes old `@media (max-width:560|640|700|720px)` rules obsolete,
 - When restructuring a flex/wrap row into a single row, re-check any
   `:nth-child()` edge-alignment rules — the child that used to be first on the
   second row is now the last on the only row.
+- **Never put `overflow-x:auto` on a short row that contains a `MetricTooltip`.**
+  Once one axis is non-`visible`, the other computes to `auto` too, so a 30px
+  row clips away the tooltip that renders below it. `.achievement-strip` gates
+  its scrolling behind `:has(.metric-tooltip:nth-child(4))` for exactly this
+  reason. The same applies to any future strip built the same way.
+- **Overflow clipping is invisible to the obvious assertions.** Playwright's
+  `toBeVisible()`, and `getComputedStyle().visibility`, both pass on a tooltip
+  that an ancestor has clipped out of sight. `document.elementFromPoint` is no
+  help either, because `.metric-tooltip-content` is `pointer-events:none` and
+  hit-testing skips it — that produces a test which fails identically whether
+  the bug is present or not. To test it, intersect the element's rect against
+  every ancestor whose overflow is not `visible` and assert how much survives
+  (see "an achievement tooltip is actually painted" in
+  `e2e/accessibility.spec.ts`). Always confirm such a test fails against the
+  unfixed CSS before trusting it.
 - `e2e/accessibility.spec.ts` asserts accessible-name *shapes* by regex. If a
   label changes, rewrite the regex to match the new shape — do not loosen it to
   `.*`.
