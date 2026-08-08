@@ -194,7 +194,17 @@ jobs:
       - name: Verified-startup log must confirm database verification
         run: docker compose logs 2>&1 | grep -q "Database startup verification passed"
       - name: Application must have no published host port
-        run: test "$(docker inspect --format '{{json .HostConfig.PortBindings}}' pikkuste-harjutaja)" = "null"
+        run: |
+          BINDINGS=$(docker inspect --format '{{json .HostConfig.PortBindings}}' pikkuste-harjutaja)
+          echo "PortBindings: $BINDINGS"
+          # "Nothing is published" reaches us as either null or {} depending on
+          # which side built the map, and this asserted the literal text "null".
+          # Count the entries instead, which says what the step actually means
+          # and reads both spellings the same way. A real published port still
+          # fails, and now prints itself on the way out.
+          COUNT=$(node -e "const v=JSON.parse(process.argv[1]||'null');process.stdout.write(String(v?Object.keys(v).length:0))" "$BINDINGS")
+          echo "published host ports: $COUNT"
+          test "$COUNT" = "0" || { echo "the app must not publish a host port; traffic belongs on the edge network only"; exit 1; }
       - name: Tunnel-style probe reaches the app only over the named network
         run: docker run --rm --network pikkuste-harjutaja-edge node:22.22.3-alpine3.23@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 node -e "fetch('http://pikkuste-harjutaja:3000/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       - name: Mounted data survives container replacement
