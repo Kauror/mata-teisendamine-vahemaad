@@ -163,6 +163,22 @@ jobs:
           test "$RESOLVED" = "$EXPECTED" || { echo "PIN hash was mangled by compose interpolation"; exit 1; }
           test "$RESOLVED_PARENT" = "$EXPECTED_PARENT" || { echo "Parent hash was mangled by compose interpolation"; exit 1; }
           docker compose --profile tunnel config >/dev/null
+      - name: The mounted data directory must be writable by the image's user
+        run: |
+          # The image creates /data owned by `node` and drops to that user, but
+          # the bind mount lays a host directory over the top of it, and a host
+          # directory the daemon invents belongs to root -- so the runtime user
+          # cannot open the database and the container dies with "unable to open
+          # database file". An operator making a real data directory gives it the
+          # right owner; CI has to say so itself.
+          #
+          # Mode rather than ownership because two different users need this
+          # directory: the container writes the database as uid 1000, and the
+          # audit step later reads it back from the host as the runner. It lives
+          # for the length of one job on a throwaway machine.
+          mkdir -p data
+          chmod 777 data
+          ls -ld data
       - name: Start via compose (verified startup must pass)
         run: docker compose up -d
       - name: Wait for the container to report healthy
