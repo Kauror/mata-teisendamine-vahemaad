@@ -97,6 +97,11 @@
 [data-accent="pink"]{--learner:var(--learner-kirsi);--learner-soft:var(--learner-kirsi-soft);--learner-soft-2:var(--learner-kirsi-soft-2)}
 
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--body-bg);color:#1d2a52}
+/* The browser hides [hidden] from its own stylesheet, which any author rule
+   setting `display` beats — a class as plain as `.daily-task-list{display:grid}`
+   is enough to keep a hidden element on screen. `!important` is what makes the
+   attribute win, so `hidden` can be trusted to hide anywhere in the app. */
+[hidden]{display:none!important}
 
 /* Headings and names carry the display face; body copy stays on the system
    stack, which keeps long text fast to read and the download small. */
