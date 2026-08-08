@@ -29,7 +29,13 @@ function AnnotatedClock() {
   }) as unknown as Array<[number, number]>;
   const labels = [12, 3, 6, 9];
   return (
-    <svg className='study-svg study-svg-clock-annotated' viewBox='0 0 300 236' role='img' aria-label='Kell 3:00 — pikk seier näitab minuteid, lühike seier tundi'>
+    // The box is 320 wide for the sake of one word. "Lühike seier" starts at
+    // x=208 and its width is whatever the viewer's sans-serif makes it: ~82
+    // units in Segoe UI, ~96 in DejaVu Sans. At 300 the label fitted on Windows
+    // and hung ~4 units off the right edge on Linux, so the overflow only ever
+    // showed up in CI. 320 leaves room for ~112 units. Do not trim it back to
+    // fit the font on your own machine.
+    <svg className='study-svg study-svg-clock-annotated' viewBox='0 0 320 236' role='img' aria-label='Kell 3:00 — pikk seier näitab minuteid, lühike seier tundi'>
       <circle cx={cx} cy={cy} r={r} fill='#f8fbff' stroke={BLUE} strokeWidth='5' />
       {labels.map((num, index) => (
         <text key={num} x={numbers[index][0]} y={numbers[index][1]} fontSize='16' fontWeight='800' fill={INK} textAnchor='middle' dominantBaseline='central'>{num}</text>

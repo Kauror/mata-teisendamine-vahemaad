@@ -73,6 +73,13 @@ function openMistakeCount(page: Page) {
 test.beforeEach(async ({ page }) => authenticateFamilyWithCatalogue(page));
 
 test('a failed session becomes a Kordamine round that can be answered', async ({ page }) => {
+  // Triples the 30s default. This test answers 15 questions wrong, waits up to
+  // 20s for the attempt to reach the server, then answers 15 more — about 75
+  // interactions, with the poll alone able to eat two thirds of the standard
+  // budget. Chromium finished inside it; WebKit ran out mid-round, and failed
+  // at a later line each retry, which is what running out of time looks like
+  // rather than a stuck element.
+  test.slow();
   await navigateStable(page, runnerUrl());
   await failEveryQuestion(page);
 
