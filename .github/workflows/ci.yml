@@ -138,11 +138,28 @@ jobs:
       - name: docker compose config must keep the hash byte-for-byte intact
         run: |
           docker compose config
-          RESOLVED=$(docker compose config --format json | node -e "const fs=require('fs');let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const c=JSON.parse(s);process.stdout.write(c.services.app.environment.APP_ACCESS_PIN_HASH||'')})")
+          # `docker compose config` prints a literal '$' as '$$', so that its own
+          # output stays a valid compose file when fed back in. Both hashes are
+          # made of '$'-separated fields, so the printed form never equalled the
+          # .env form and this check could not pass as written -- it has failed
+          # identically on every run that reached it. Undo the doubling before
+          # comparing.
+          #
+          # This does not soften the guard. What it watches for is compose
+          # expanding $v / $N / $p as variables, which deletes the '$' and the
+          # name after it; that damage does not come back when '$$' is undoubled,
+          # so a genuinely mangled hash still fails here.
+          resolved_env() {
+            docker compose config --format json \
+              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const c=JSON.parse(s);process.stdout.write(c.services.app.environment['$1']||'')})" \
+              | sed 's/\$\$/$/g'
+          }
+          RESOLVED=$(resolved_env APP_ACCESS_PIN_HASH)
           EXPECTED=$(grep -oP "(?<=APP_ACCESS_PIN_HASH=').*(?=')" .env)
-          RESOLVED_PARENT=$(docker compose config --format json | node -e "const fs=require('fs');let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const c=JSON.parse(s);process.stdout.write(c.services.app.environment.PARENT_PASSWORD_HASH||'')})")
+          RESOLVED_PARENT=$(resolved_env PARENT_PASSWORD_HASH)
           EXPECTED_PARENT=$(grep -oP "(?<=PARENT_PASSWORD_HASH=').*(?=')" .env)
           echo "resolved: $RESOLVED"
+          echo "expected: $EXPECTED"
           test "$RESOLVED" = "$EXPECTED" || { echo "PIN hash was mangled by compose interpolation"; exit 1; }
           test "$RESOLVED_PARENT" = "$EXPECTED_PARENT" || { echo "Parent hash was mangled by compose interpolation"; exit 1; }
           docker compose --profile tunnel config >/dev/null
