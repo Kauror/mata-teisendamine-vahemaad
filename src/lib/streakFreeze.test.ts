@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import db from '@/lib/db';
 import { addAppDays } from '@/lib/appDate';
 import {
@@ -20,6 +20,31 @@ import {
 
 const TODAY = '2026-07-28';
 const learner = 'kirsi' as const;
+
+// The code under test stamps `acquiredAt` from the real wall clock, while these
+// tests reason in fixed dates: a freeze only covers days on or after the day it
+// was acquired, so the two notions of "today" have to be the same one. Pinning
+// the clock is what makes that true. Without it the file passed only on the one
+// day TODAY names — written on 2026-07-28, red from the 29th, and unnoticed
+// until the next push eleven days later.
+//
+// This pins the clock to TODAY; it does not make TODAY itself free. The date
+// stays load-bearing because it is a Tuesday: the perfect-week test below needs
+// study days to fall in the week before this one, and asserts that premise
+// rather than trusting it. Moving TODAY means moving it to another Tuesday and
+// updating that assertion with it.
+//
+// Midday UTC lands on TODAY in Europe/Tallinn (see APP_TIME_ZONE) on either
+// side of the DST switch, so the pin holds whatever the season and whatever
+// timezone the machine running the suite is in.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(`${TODAY}T09:00:00.000Z`));
+});
+
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 let nextAttemptId = 1;
 
