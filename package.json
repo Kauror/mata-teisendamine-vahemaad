@@ -24,7 +24,8 @@
     "reward:v2": "tsx scripts/reward-v2.ts",
     "leaderboard:rebuild": "tsx scripts/rebuild-leaderboard.ts",
     "auth:hash": "tsx scripts/hash-secret.ts",
-    "validate:science": "node scripts/validate-loodusopetus.mjs"
+    "validate:science": "node scripts/validate-loodusopetus.mjs",
+    "rewards:approve-held": "tsx scripts/approve-held-rewards.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

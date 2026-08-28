@@ -207,6 +207,85 @@ describe('protocol-v2 attempt writes', () => {
     expect(stored).toEqual({ score: 1, questionCount: 1 });
   });
 
+  // Regression: an unchanged exercise pool keeps its catalogue version, so the
+  // grant row was written once and never touched again while the catalogue
+  // window kept rolling forward. Thirty days later every ordinary attempt was
+  // held as `completion_after_grant`, which also emptied that child's day on the
+  // daily leaderboard.
+  it('re-extends the grant of a device that keeps syncing an unchanged catalogue', () => {
+    runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor() });
+    const original = db.prepare('SELECT issuedAt, validUntil FROM catalogue_grants WHERE learner = ?').get('kiur') as { issuedAt: string; validUntil: string };
+    db.prepare('UPDATE catalogue_grants SET validUntil = ? WHERE learner = ?')
+      .run(new Date(Date.now() - 2 * 86_400_000).toISOString(), 'kiur');
+
+    const pull = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor() });
+    const served = pull.pull.catalogueGrants?.kiur;
+    const stored = db.prepare('SELECT issuedAt, validUntil FROM catalogue_grants WHERE learner = ?').get('kiur') as { issuedAt: string; validUntil: string };
+
+    // The row the server validates against is the contract the device was handed.
+    expect(stored.validUntil).toBe(served?.validUntil);
+    expect(stored.validUntil).toBe(pull.pull.catalogues?.kiur?.validUntil);
+    expect(new Date(stored.validUntil).getTime()).toBeGreaterThan(Date.now());
+    // Only the window moves; when this catalogue version first appeared does not.
+    expect(stored.issuedAt).toBe(original.issuedAt);
+  });
+
+  it('settles an attempt made after the original grant window instead of holding it', () => {
+    runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor() });
+    db.prepare('UPDATE catalogue_grants SET validUntil = ? WHERE learner = ?')
+      .run(new Date(Date.now() - 2 * 86_400_000).toISOString(), 'kiur');
+
+    const pull = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor() });
+    const catalogue = pull.pull.catalogues!.kiur!;
+    const grant = pull.pull.catalogueGrants!.kiur!;
+    const entry = catalogue.entries.find((candidate) => candidate.id === 'kiur.math.mootuhikud-pikkused')!;
+    const generated = generateKiurMathSession(entry.topic, entry.category, 'Lihtne', 1, 7);
+    const completedAt = new Date(Date.now() - 60_000).toISOString();
+
+    const response = runSyncPushV2({
+      protocolVersion: 2,
+      phase: 'push',
+      pushKind: 'attempts',
+      device: device(),
+      cursor: cursor(),
+      pending: {
+        attempts: [{
+          clientAttemptId: '018f47f6-9f2c-7b9a-8a2e-0123456789ab',
+          deviceId,
+          learner: 'kiur',
+          subject: entry.subject,
+          topic: entry.topic,
+          category: entry.category,
+          difficulty: 'Lihtne',
+          exerciseId: entry.id,
+          catalogueVersion: catalogue.version,
+          rewardPolicyVersion: grant.rewardPolicyVersion,
+          generatorVersion: grant.generatorVersion,
+          runnerVersion: 'math-v1',
+          rotationVersion: grant.rotationVersion,
+          startedAt: completedAt,
+          rawDeviceCompletedAt: completedAt,
+          completedAt,
+          clientCorrectedCompletedAt: completedAt,
+          clientTimeZone: 'Europe/Tallinn',
+          clientUtcOffsetMinutes: 180,
+          questionCount: 1,
+          score: 1,
+          elapsedSeconds: 60,
+          seed: 7,
+          runnerId: 'math',
+          questionIds: generated.map((question) => question.id),
+          questions: generated.map((question) => ({ ...question, userAnswer: answerFor(question), isCorrect: true }))
+        }]
+      }
+    });
+
+    expect(response.attemptResults[0]).toMatchObject({ status: 'created' });
+    const stored = db.prepare('SELECT rewardSettlementStatus, reviewReasonCode FROM attempts WHERE clientAttemptId = ?')
+      .get('018f47f6-9f2c-7b9a-8a2e-0123456789ab');
+    expect(stored).toEqual({ rewardSettlementStatus: 'eligible', reviewReasonCode: null });
+  });
+
   it('never materializes a hidden attempt through normal or changed-attempt pulls', () => {
     db.prepare(`INSERT INTO attempts (createdAt, completedAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, clientAttemptId, protocolVersion, rewardSettlementStatus, deletedAt)
       VALUES (?, ?, 'x', 'x', 1, 1, 1, '[]', 'kiur', 'matemaatika', ?, 2, 'eligible', ?)`)

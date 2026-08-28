@@ -129,6 +129,20 @@ export type CatalogueGrantContract = {
   validUntil: string;
 };
 
+// The grant a device is handed on sync must be the grant the server later
+// validates its attempts against. The row is therefore refreshed to whatever is
+// being served, not written once and left behind: `issuedAt` and `createdAt` are
+// the only frozen fields, because they record when this catalogue version first
+// became available rather than what the contract currently says.
+//
+// A stale row is not a cosmetic drift. `validUntil` is copied from the rolling
+// catalogue window, which `getCurrentCatalogue` pushes to now + CATALOGUE_VALID_DAYS
+// on every serve. Leaving the grant on its first value meant that a child whose
+// exercise pool had not changed for that long had every attempt held for parent
+// review as `completion_after_grant`, which also removed the day from the daily
+// leaderboard. `rewardPolicyVersion` and the runner contract have the same shape
+// of failure with a harder landing: the device stamps attempts with the version
+// it was served, so a frozen row rejects them outright as `metadata_mismatch`.
 export function grantCatalogueContract(input: Omit<CatalogueGrantContract, 'rewardPolicyVersion'> & { rewardPolicyVersion?: string }) {
   const rewardPolicyVersion = input.rewardPolicyVersion ?? ensureCurrentRewardPolicy().version;
   const now = new Date().toISOString();
@@ -137,7 +151,13 @@ export function grantCatalogueContract(input: Omit<CatalogueGrantContract, 'rewa
       learner, catalogueVersion, deviceId, rewardPolicyVersion, generatorVersion,
       runnerVersion, runnerContractsJson, rotationVersion, issuedAt, validUntil, createdAt
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(learner, catalogueVersion, deviceId) DO NOTHING
+    ON CONFLICT(learner, catalogueVersion, deviceId) DO UPDATE SET
+      rewardPolicyVersion = excluded.rewardPolicyVersion,
+      generatorVersion = excluded.generatorVersion,
+      runnerVersion = excluded.runnerVersion,
+      runnerContractsJson = excluded.runnerContractsJson,
+      rotationVersion = excluded.rotationVersion,
+      validUntil = excluded.validUntil
   `).run(
     input.learner,
     input.catalogueVersion,
