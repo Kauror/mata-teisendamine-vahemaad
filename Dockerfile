@@ -25,6 +25,17 @@ RUN npm run build
 FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+# The base image is digest-pinned, so it also pins whatever Alpine packages it
+# was built with -- including OpenSSL, which node links against on Alpine. When
+# an advisory lands, the upstream node image is rebuilt on its own schedule, and
+# until it is, a newer digest carries the same vulnerable package: at the time of
+# writing node:22-alpine3.23 had moved to 22.23.2 and still shipped
+# libcrypto3 3.5.7-r0 against CVE-2026-14456. Take the security fix from Alpine
+# directly instead of waiting. Deliberately named packages rather than a blanket
+# `apk upgrade`, so this cannot quietly move anything else out from under the
+# pinned digest, and it lives in the runner stage because that is the image that
+# ships and the one the vulnerability gate scans.
+RUN apk upgrade --no-cache libcrypto3 libssl3
 # npm, Corepack and Yarn are build tools and are not used by the runtime entry
 # point. Removing them keeps their transitive packages out of the production
 # image and reduces both its attack surface and vulnerability noise.
