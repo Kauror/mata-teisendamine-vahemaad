@@ -88,6 +88,9 @@ const STATIC_LEARNING_EXERCISES: LearningExerciseCatalogEntry[] = [
     sortOrder: 305
   },
   {
+    id: 'kiur.english.units', title: 'Inglise keele sõnavara', learnerScope: ['kiur'], subject: 'inglise-keel', topic: 'sonavara', category: 'Inglise keel - sõnavara', routePath: '/kiur/inglise-keel', sortOrder: 499
+  },
+  {
     id: 'kiur.english.sprint',
     title: 'Sprint',
     learnerScope: ['kiur'],
