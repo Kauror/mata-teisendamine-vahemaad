@@ -104,7 +104,10 @@ export type SessionView = {
     neededRetry: number;
     remainingCards: number;
     completed: boolean;
-    card: { wordId: string; estonian: string; english: string; pronunciation: string; revealed: boolean } | null;
+    // `sequence` counts the assessments made so far, so it differs for every
+    // card shown — including the same word coming straight back as the last
+    // card in the deck.
+    card: { wordId: string; sequence: number; estonian: string; english: string; pronunciation: string; revealed: boolean } | null;
   };
   test?: {
     phase: TestState['phase'];
@@ -201,7 +204,7 @@ export function buildSessionView(row: SessionRow): SessionView {
       study: {
         ...studySummary(state),
         completed: state.completed,
-        card: word ? { wordId: word.id, estonian: word.estonian, english: word.english, pronunciation: word.pronunciation, revealed: state.revealed } : null
+        card: word ? { wordId: word.id, sequence: state.swipes, estonian: word.estonian, english: word.english, pronunciation: word.pronunciation, revealed: state.revealed } : null
       }
     };
   }

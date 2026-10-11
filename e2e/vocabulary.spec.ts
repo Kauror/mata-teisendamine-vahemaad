@@ -150,8 +150,17 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   await page.mouse.up();
   await expect(card).toHaveAttribute('data-flipped', 'false');
 
-  // The missed card comes back; this time it is known.
+  // The missed card comes back as the last card. "Ei teadnud" again brings the
+  // same card straight back — it must still be answerable (this used to lock
+  // both buttons until a reload).
   await card.click();
+  await expect(card).toHaveAttribute('data-flipped', 'true');
+  await unknown.click();
+  await expect(card).toHaveAttribute('data-flipped', 'false');
+  await card.click();
+  await expect(card).toHaveAttribute('data-flipped', 'true');
+  await expect(known).toBeEnabled();
+  await expect(unknown).toBeEnabled();
   await known.click();
   await expect(page.getByRole('heading', { name: 'Õppimine lõpetatud' })).toBeVisible();
   await expect(page.getByText('Esimesel korral teadsid:')).toContainText('2/3');

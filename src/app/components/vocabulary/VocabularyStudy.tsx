@@ -21,9 +21,10 @@ export default function VocabularyStudy({ unitId }: { unitId: string }) {
   const drag = useRef<Drag | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const card = view?.study?.card ?? null;
-  // Changes when the next card arrives (even the same word coming back), not
-  // when a card is merely revealed, so each new card animates in once.
-  const cardKey = card ? `${card.wordId}:${view?.study?.knownCount}:${view?.study?.remainingCards}` : 'none';
+  // Changes when the next card arrives — even the same word coming straight
+  // back as the last card after "Ei teadnud" — but not when a card is merely
+  // revealed, so each new card animates in once and gets its own assessment.
+  const cardKey = card ? `${card.wordId}:${card.sequence}` : 'none';
 
   // A resumed session may already have the answer revealed.
   useEffect(() => {
