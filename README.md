@@ -15,7 +15,8 @@ harjutusi ja päevategevusi.
 **Kiur**
 - Matemaatika: mõõtühikud (pikkused), kahekohalise arvu jagamine, arvud 10000
   piires, ring ja ringjoon, korrutamine, mustrid, tekstülesanded
-- Inglise keel: sõnasprint
+- Inglise keel: õpiku sõnavara õppetükkide kaupa (kaardid → kirjutamistest,
+  vt [docs/english-vocabulary.md](docs/english-vocabulary.md)) ja sõnasprint
 - Lugemine: loe ja vasta
 - Loodusõpetus: segaharjutus (140 ülesannet – pildid, lugemine, sobitamine,
   järjestamine ja andmed)
@@ -45,8 +46,9 @@ harjutusi ja päevategevusi.
 ## Vanema ala (`/vanem`)
 
 Päevategevuste haldus ja kinnitamine, pood, tähtede ja karikate käsitsi muutmine,
-harjutuste nähtavuse seaded, auhinnareeglid, teadetetahvel, kuu auhinna määramine
-ja parooli vahetus.
+harjutuste nähtavuse seaded, auhinnareeglid, teadetetahvel, kuu auhinna määramine,
+parooli vahetus ning inglise keele sõnavara (Exceli import, õppetükkide
+avaldamine ja avamine, edenemine sõna kaupa).
 
 ## Tehnoloogiad
 
