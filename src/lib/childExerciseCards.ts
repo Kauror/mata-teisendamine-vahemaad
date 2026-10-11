@@ -23,6 +23,7 @@ export type ChildExerciseCard = {
 // offline hydration and readiness all see the same inventory.
 export const FIXED_CHILD_EXERCISES: Readonly<Record<Learner, readonly ChildExerciseCard[]>> = {
   kiur: [
+    { id: 'kiur.english.units', childId: 'kiur', title: 'Inglise keele sõnavara', description: 'Õpi sõnu õppetükkide kaupa ja tee test.', emoji: '🔤', accent: 'pink', route: '/kiur/inglise-keel', enabled: true, legacySubject: 'inglise-keel', legacyTopic: 'sonavara', legacyCategory: 'Inglise keel - sõnavara', completionKeys: ['kiur.english.units'] },
     {
       id: 'kiur.science.loodusopetus',
       childId: 'kiur',
