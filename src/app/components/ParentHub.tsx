@@ -9,6 +9,7 @@ import { dayWord, exerciseWord } from '@/lib/history';
 import { OfflineReadiness } from '@/app/components/offline/OfflineReadiness';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { ParentNoticePanel, ParentPasswordPanel } from '@/app/components/ParentAccountPanels';
+import ParentEnglishVocabulary from '@/app/components/ParentEnglishVocabulary';
 import { csrfHeaders } from '@/lib/auth/client';
 import { LEARNING_EXERCISE_SUBJECT_LABELS, type LearningExerciseStatus, type LearningExerciseSubject } from '@/lib/shared/types';
 
@@ -117,7 +118,7 @@ type MonthlyPrize = { prizeStars: number; standing: MonthlyStanding };
 type WeeklyChildDigest = { exercises: number; accuracyPercent: number; starsEarned: number; trophies: number; streak: number };
 type WeeklyDigest = { from: string; to: string; learners: Record<Learner, WeeklyChildDigest> };
 
-type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards' | 'history';
+type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'vocabulary' | 'password' | 'rewards' | 'history';
 
 function ParentAccordionSection({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
   return (
@@ -942,6 +943,10 @@ export default function ParentHub() {
           })}
         </div>
       </section>
+      </ParentAccordionSection>
+
+      <ParentAccordionSection title='Inglise keele sõnavara' summary='Õppetükid, import ja edenemine' open={openSections.has('vocabulary')} onToggle={() => toggleSection('vocabulary')}>
+        <ParentEnglishVocabulary setNotice={setNotice} setError={setError} />
       </ParentAccordionSection>
 
       <ParentAccordionSection title='Tegevused' summary={editingTaskId ? 'Muudad tegevust' : `${data?.templates?.length ?? 0} tegevust`} open={openSections.has('tasks')} onToggle={() => toggleSection('tasks')}>

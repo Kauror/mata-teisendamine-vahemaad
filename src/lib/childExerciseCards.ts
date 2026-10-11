@@ -82,6 +82,7 @@ const KIRSI_EXERCISE_META: Record<string, Pick<ChildExerciseCard, 'emoji' | 'acc
 
 const STATIC_EXERCISE_META: Record<string, Pick<ChildExerciseCard, 'emoji' | 'accent' | 'description'> & { route?: string }> = {
   'kiur.english.sprint': { emoji: '🔤', accent: 'pink', description: 'Harjuta inglise keele sõnu.', route: '/kiur/inglise-keel/sprint' },
+  'kiur.english.vocabulary': { emoji: '📚', accent: 'blue', description: 'Õpi õpiku sõnad kaartidega ja tee test.', route: '/kiur/inglise-keel' },
   'kiur.reading.loe-ja-vasta': { emoji: '📖', accent: 'green', description: 'Loe tekst läbi ja vasta küsimusele.', route: '/kiur/lugemine' },
   'kirsi.reading.pilt-ja-sona': { emoji: '🖼️', accent: 'pink', description: 'Ühenda pilt õige sõnaga.', route: '/kirsi/lugemine/pilt-ja-sona' },
   'kirsi.reading.esimene-haalik': { emoji: '🔤', accent: 'violet', description: 'Leia sõna esimene häälik.', route: '/kirsi/lugemine/esimene-haalik' }

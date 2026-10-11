@@ -6,12 +6,13 @@ describe('offline capability manifest', () => {
   it('maps every offline runner to a cached route and includes the static result shell', () => {
     expect(validateOfflineCapabilityManifest()).toEqual([]);
     expect(OFFLINE_CAPABILITY_MANIFEST.shellRoutes).toContain('/tulemus');
-    // Remediation is deliberately online-only (it needs a live server session),
-    // so it is the one runner excluded from the offline-start promise (RTM-004).
+    // Remediation and the English vocabulary units are deliberately online-only
+    // (both run server-authoritative sessions), so they are the runners excluded
+    // from the offline-start promise (RTM-004).
     const online = OFFLINE_CAPABILITY_MANIFEST.runners.filter((runner) => !runner.offlineStart);
-    expect(online.map((runner) => runner.id)).toEqual(['remediation']);
+    expect(online.map((runner) => runner.id).sort()).toEqual(['kiur.english.vocabulary', 'remediation']);
     // Every other runner still promises offline start, and its route is cached.
-    expect(OFFLINE_CAPABILITY_MANIFEST.runners.filter((runner) => runner.id !== 'remediation').every((runner) => runner.offlineStart)).toBe(true);
+    expect(OFFLINE_CAPABILITY_MANIFEST.runners.filter((runner) => !['remediation', 'kiur.english.vocabulary'].includes(runner.id)).every((runner) => runner.offlineStart)).toBe(true);
   });
 
   it('keeps fixed science when catalogue hydration supplies no rotating cards', () => {
