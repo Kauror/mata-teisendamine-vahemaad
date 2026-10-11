@@ -157,11 +157,23 @@ function awardVocabularyTest(unitId:string,sessionId:string,state:VocabularyStat
   // A completed test is credited ONCE with the last full-round score.
   // Use the canonical v2 ledger / daily limits / streak projection, never mint
   // stars by updating balances in a separate engine.
+  if(!isoToAppDate(now))throw new Error('Harjutuse kuupäev on vigane.');
   const policy=ensureCurrentRewardPolicy();
-  const questions=state.words.map(word=>({
-    id:word.id,question:word.estonian,userAnswer:'',correctAnswer:0,correctAnswerText:word.english,
-    isCorrect:true,kind:'text',vocabularyId:word.id
-  }));
+  const finalRound=db.prepare(`SELECT wordId,correct,answer FROM english_word_events
+    WHERE sessionId=? AND kind='test-full' AND roundNo=? ORDER BY id`).all(sessionId,state.round) as Array<{wordId:string;correct:number;answer:string}>;
+  if(finalRound.length!==state.words.length || finalRound.filter(row=>row.correct===1).length!==state.lastTestScore) {
+    throw new Error('Testi viimase ringi vastuseid ei õnnestunud kontrollida.');
+  }
+  const byWord=new Map(finalRound.map(item=>[item.wordId,item]));
+  const questions=state.words.map(word=>{
+    const result=byWord.get(word.id);
+    if(!result)throw new Error('Sõna tulemus puudub.');
+    return {
+      id:word.id,question:word.estonian,userAnswer:result.answer,
+      correctAnswer:0,correctAnswerText:word.english,isCorrect:result.correct===1,
+      kind:'text',vocabularyId:word.id
+    };
+  });
   const inserted=db.prepare(`INSERT INTO attempts(
     createdAt,category,difficulty,questionCount,score,elapsedSeconds,questions,
     learner,subject,topic,exerciseId,clientAttemptId,completedAt,
