@@ -9,6 +9,7 @@ describe('exerciseKeyForAttempt', () => {
   it('matches the catalogue id for every fixed exercise', () => {
     expect(exerciseKeyForAttempt('kiur', 'Loodusõpetus', 'segaharjutus')).toBe('kiur.science.loodusopetus');
     expect(exerciseKeyForAttempt('kiur', 'Inglise keel - sprint', 'sprint')).toBe('kiur.english.sprint');
+    expect(exerciseKeyForAttempt('kiur', 'Inglise keel - sõnavara', 'sonavara')).toBe('kiur.english.vocabulary');
     expect(exerciseKeyForAttempt('kiur', 'Lugemine - loe ja vasta', 'loe-ja-vasta')).toBe('kiur.reading.loe-ja-vasta');
     expect(exerciseKeyForAttempt('kirsi', 'Lugemine - pilt ja sõna', 'pilt-ja-sona')).toBe('kirsi.reading.pilt-ja-sona');
     expect(exerciseKeyForAttempt('kirsi', 'Lugemine - esimene häälik', 'esimene-haalik')).toBe('kirsi.reading.esimene-haalik');

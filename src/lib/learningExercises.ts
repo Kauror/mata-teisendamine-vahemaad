@@ -98,6 +98,16 @@ const STATIC_LEARNING_EXERCISES: LearningExerciseCatalogEntry[] = [
     sortOrder: 500
   },
   {
+    id: 'kiur.english.vocabulary',
+    title: 'Sõnavara',
+    learnerScope: ['kiur'],
+    subject: 'inglise-keel',
+    topic: 'sonavara',
+    category: 'Inglise keel - sõnavara',
+    routePath: '/kiur/inglise-keel',
+    sortOrder: 501
+  },
+  {
     id: 'kiur.reading.loe-ja-vasta',
     title: 'Loe ja vasta',
     learnerScope: ['kiur'],
@@ -138,6 +148,15 @@ const STATIC_LEARNING_EXERCISES: LearningExerciseCatalogEntry[] = [
     sortOrder: 701
   }
 ];
+
+// The status an exercise gets the first time it appears in the catalogue; the
+// parent's later choice is never overwritten. Sõnavara starts hidden: it is
+// empty until the parent imports and publishes textbook units, and an empty
+// card would take one of the child's daily rotation slots.
+const DEFAULT_STATUS: Record<string, LearningExerciseStatus> = {
+  'kiur.science.loodusopetus': 'permanent',
+  'kiur.english.vocabulary': 'hidden'
+};
 
 function parseLearnerScope(value: string): Learner[] {
   try {
@@ -197,7 +216,7 @@ export function syncLearningExerciseCatalog() {
           INSERT INTO child_learning_exercise_settings (exerciseId, learner, status, updatedAt)
           VALUES (?, ?, ?, ?)
           ON CONFLICT(exerciseId, learner) DO NOTHING
-        `).run(exercise.id, learner, exercise.id === 'kiur.science.loodusopetus' ? 'permanent' : 'rotation', updatedAt);
+        `).run(exercise.id, learner, DEFAULT_STATUS[exercise.id] ?? 'rotation', updatedAt);
       }
     }
   });

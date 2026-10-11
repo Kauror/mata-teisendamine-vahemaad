@@ -816,6 +816,178 @@ function addStreakFreezes(connection: DatabaseConnection) {
   `);
 }
 
+// English vocabulary units ("Sõnavara"): textbook units imported by the parent,
+// a study → test progression per unit, resumable sessions and per-word
+// statistics. Purely additive — no existing table is touched. The canonical
+// learning attempt a passed test produces still goes into `attempts`, so
+// history, stars, streaks and the leaderboard need no special case.
+//
+// Words are never deleted: a removed word is retired (`retiredAt`) so its
+// events and statistics keep pointing at a real row, and each content change is
+// kept in english_vocab_word_revisions. Sessions copy the words they use into
+// `stateJson`, so editing a unit never changes a session already in progress.
+function addEnglishVocabulary(connection: DatabaseConnection) {
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS english_vocab_units (
+      id TEXT PRIMARY KEY,
+      unitNumber INTEGER NOT NULL UNIQUE CHECK (unitNumber BETWEEN 1 AND 999),
+      title TEXT NOT NULL,
+      published INTEGER NOT NULL DEFAULT 0 CHECK (published IN (0, 1)),
+      contentVersion INTEGER NOT NULL DEFAULT 1,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS english_vocab_words (
+      id TEXT PRIMARY KEY,
+      unitId TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      estonian TEXT NOT NULL,
+      english TEXT NOT NULL,
+      pronunciation TEXT NOT NULL DEFAULT '',
+      acceptedAnswersJson TEXT NOT NULL DEFAULT '[]',
+      revision INTEGER NOT NULL DEFAULT 1,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      retiredAt TEXT,
+      FOREIGN KEY (unitId) REFERENCES english_vocab_units(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_english_vocab_words_unit
+      ON english_vocab_words(unitId, retiredAt, position);
+
+    CREATE TABLE IF NOT EXISTS english_vocab_word_revisions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wordId TEXT NOT NULL,
+      revision INTEGER NOT NULL,
+      changeKind TEXT NOT NULL,
+      source TEXT NOT NULL,
+      estonian TEXT NOT NULL,
+      english TEXT NOT NULL,
+      pronunciation TEXT NOT NULL,
+      acceptedAnswersJson TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      UNIQUE (wordId, revision),
+      FOREIGN KEY (wordId) REFERENCES english_vocab_words(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS english_vocab_progress (
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi')),
+      unitId TEXT NOT NULL,
+      manualUnlock INTEGER NOT NULL DEFAULT 0 CHECK (manualUnlock IN (0, 1)),
+      manualUnlockUpdatedAt TEXT,
+      studyCompletedAt TEXT,
+      studyFirstKnown INTEGER,
+      studyTotal INTEGER,
+      studyCompletions INTEGER NOT NULL DEFAULT 0,
+      testPassedAt TEXT,
+      passedScore INTEGER,
+      passedTotal INTEGER,
+      passedRound INTEGER,
+      passedSessionId TEXT,
+      passedAttemptId INTEGER,
+      testPasses INTEGER NOT NULL DEFAULT 0,
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (learner, unitId),
+      FOREIGN KEY (unitId) REFERENCES english_vocab_units(id),
+      FOREIGN KEY (passedAttemptId) REFERENCES attempts(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS english_vocab_sessions (
+      id TEXT PRIMARY KEY,
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi')),
+      unitId TEXT,
+      scopeKey TEXT NOT NULL,
+      mode TEXT NOT NULL CHECK (mode IN ('study', 'test', 'practice')),
+      status TEXT NOT NULL CHECK (status IN ('active', 'completed')),
+      unitContentVersion INTEGER,
+      stateJson TEXT NOT NULL,
+      revision INTEGER NOT NULL DEFAULT 0,
+      lastActionId TEXT,
+      attemptId INTEGER,
+      startedAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      completedAt TEXT,
+      FOREIGN KEY (unitId) REFERENCES english_vocab_units(id),
+      FOREIGN KEY (attemptId) REFERENCES attempts(id)
+    );
+    -- At most one session in progress per child, unit and mode: "Jätka" always
+    -- means one specific session, and two tabs cannot fork a unit's progress.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_english_vocab_sessions_active
+      ON english_vocab_sessions(learner, scopeKey, mode) WHERE status = 'active';
+    CREATE INDEX IF NOT EXISTS idx_english_vocab_sessions_unit
+      ON english_vocab_sessions(learner, unitId, mode, status);
+
+    CREATE TABLE IF NOT EXISTS english_vocab_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sessionId TEXT NOT NULL,
+      learner TEXT NOT NULL,
+      unitId TEXT,
+      wordId TEXT NOT NULL,
+      phase TEXT NOT NULL CHECK (phase IN ('study', 'full', 'correction', 'practice')),
+      roundNumber INTEGER NOT NULL,
+      correct INTEGER NOT NULL CHECK (correct IN (0, 1)),
+      answer TEXT,
+      expected TEXT NOT NULL,
+      firstEncounter INTEGER NOT NULL DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (sessionId) REFERENCES english_vocab_sessions(id),
+      FOREIGN KEY (wordId) REFERENCES english_vocab_words(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_english_vocab_events_session ON english_vocab_events(sessionId, id);
+    CREATE INDEX IF NOT EXISTS idx_english_vocab_events_word ON english_vocab_events(learner, wordId, phase);
+
+    CREATE TABLE IF NOT EXISTS english_vocab_test_rounds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sessionId TEXT NOT NULL,
+      learner TEXT NOT NULL,
+      unitId TEXT NOT NULL,
+      roundNumber INTEGER NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('full', 'correction')),
+      total INTEGER NOT NULL,
+      correct INTEGER NOT NULL,
+      wrongWordIdsJson TEXT NOT NULL,
+      answerCount INTEGER NOT NULL,
+      passed INTEGER NOT NULL DEFAULT 0 CHECK (passed IN (0, 1)),
+      completedAt TEXT NOT NULL,
+      UNIQUE (sessionId, kind, roundNumber),
+      FOREIGN KEY (sessionId) REFERENCES english_vocab_sessions(id),
+      FOREIGN KEY (unitId) REFERENCES english_vocab_units(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_english_vocab_rounds_unit ON english_vocab_test_rounds(learner, unitId, kind, id);
+
+    CREATE TABLE IF NOT EXISTS english_vocab_word_stats (
+      learner TEXT NOT NULL,
+      wordId TEXT NOT NULL,
+      studyCorrect INTEGER NOT NULL DEFAULT 0,
+      studyWrong INTEGER NOT NULL DEFAULT 0,
+      testCorrect INTEGER NOT NULL DEFAULT 0,
+      testWrong INTEGER NOT NULL DEFAULT 0,
+      correctionCorrect INTEGER NOT NULL DEFAULT 0,
+      correctionWrong INTEGER NOT NULL DEFAULT 0,
+      practiceCorrect INTEGER NOT NULL DEFAULT 0,
+      practiceWrong INTEGER NOT NULL DEFAULT 0,
+      needsPractice INTEGER NOT NULL DEFAULT 0 CHECK (needsPractice IN (0, 1)),
+      recoveryStreak INTEGER NOT NULL DEFAULT 0,
+      lastResult TEXT,
+      lastPhase TEXT,
+      lastAttemptAt TEXT,
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (learner, wordId),
+      FOREIGN KEY (wordId) REFERENCES english_vocab_words(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_english_vocab_word_stats_weak ON english_vocab_word_stats(learner, needsPractice);
+
+    CREATE TABLE IF NOT EXISTS english_vocab_imports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fileName TEXT,
+      mode TEXT NOT NULL,
+      planHash TEXT NOT NULL,
+      summaryJson TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    );
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -864,6 +1036,12 @@ const migrations: Migration[] = [
     name: 'streak_freezes',
     checksumSource: 'streak_freezes:v1:2026-07-28',
     up: addStreakFreezes
+  },
+  {
+    id: 9,
+    name: 'english_vocabulary',
+    checksumSource: 'english_vocabulary:v1:2026-10-11',
+    up: addEnglishVocabulary
   }
 ];
 
