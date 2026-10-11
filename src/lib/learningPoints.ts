@@ -267,7 +267,7 @@ export function awardStudyPointsForAttempt(attemptId: number): StudyReward | nul
   if (existing) return existing;
 
   const attempt = db.prepare('SELECT id, createdAt, category, questionCount, score, learner, subject, topic FROM attempts WHERE id = ?').get(attemptId) as AttemptRow | undefined;
-  if (!attempt || (attempt.subject === 'inglise-keel' && attempt.topic !== 'sprint')) return null;
+  if (!attempt || (attempt.subject === 'inglise-keel' && attempt.topic !== 'sprint' && attempt.topic !== 'sonavara')) return null;
   const learner = parseLearner(attempt);
   if (!learner || attempt.questionCount <= 0) return null;
 
