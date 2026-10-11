@@ -816,6 +816,82 @@ function addStreakFreezes(connection: DatabaseConnection) {
   `);
 }
 
+// Vocabulary data is isolated from the existing sprint catalogue. Historical
+// sessions are kept immutable when parent word lists are later edited.
+function addEnglishVocabularyUnits(connection: DatabaseConnection) {
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS english_units (
+      id TEXT PRIMARY KEY,
+      unitNumber INTEGER NOT NULL UNIQUE CHECK(unitNumber BETWEEN 1 AND 999),
+      title TEXT NOT NULL,
+      published INTEGER NOT NULL DEFAULT 0 CHECK(published IN (0, 1)),
+      manuallyUnlocked INTEGER NOT NULL DEFAULT 0 CHECK(manuallyUnlocked IN (0, 1)),
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS english_unit_words (
+      id TEXT PRIMARY KEY,
+      unitId TEXT NOT NULL REFERENCES english_units(id) ON DELETE RESTRICT,
+      position INTEGER NOT NULL,
+      estonian TEXT NOT NULL,
+      english TEXT NOT NULL,
+      pronunciation TEXT NOT NULL DEFAULT '',
+      acceptedJson TEXT NOT NULL DEFAULT '[]',
+      UNIQUE(unitId, position)
+    );
+    CREATE INDEX IF NOT EXISTS idx_english_words_unit ON english_unit_words(unitId, position);
+    CREATE TABLE IF NOT EXISTS english_unit_progress (
+      learner TEXT NOT NULL CHECK(learner IN ('kiur', 'kirsi')),
+      unitId TEXT NOT NULL REFERENCES english_units(id),
+      studyCompletedAt TEXT,
+      testPassedAt TEXT,
+      studyFirstKnown INTEGER,
+      firstTestScore INTEGER,
+      firstTestTotal INTEGER,
+      lastTestScore INTEGER,
+      lastTestTotal INTEGER,
+      testRuns INTEGER NOT NULL DEFAULT 0,
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (learner, unitId)
+    );
+    CREATE TABLE IF NOT EXISTS english_unit_sessions (
+      id TEXT PRIMARY KEY,
+      learner TEXT NOT NULL CHECK(learner IN ('kiur', 'kirsi')),
+      unitId TEXT NOT NULL REFERENCES english_units(id),
+      mode TEXT NOT NULL CHECK(mode IN ('study', 'test', 'weak')),
+      stateJson TEXT NOT NULL,
+      revision INTEGER NOT NULL DEFAULT 0,
+      startedAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      completedAt TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_english_session_resume
+      ON english_unit_sessions(learner, unitId, mode, completedAt, startedAt);
+    CREATE TABLE IF NOT EXISTS english_word_stats (
+      learner TEXT NOT NULL CHECK(learner IN ('kiur', 'kirsi')),
+      wordId TEXT NOT NULL REFERENCES english_unit_words(id),
+      studyCorrect INTEGER NOT NULL DEFAULT 0,
+      studyWrong INTEGER NOT NULL DEFAULT 0,
+      testCorrect INTEGER NOT NULL DEFAULT 0,
+      testWrong INTEGER NOT NULL DEFAULT 0,
+      needsPractice INTEGER NOT NULL DEFAULT 0,
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (learner, wordId)
+    );
+    CREATE TABLE IF NOT EXISTS english_word_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sessionId TEXT NOT NULL REFERENCES english_unit_sessions(id),
+      wordId TEXT NOT NULL REFERENCES english_unit_words(id),
+      kind TEXT NOT NULL,
+      roundNo INTEGER NOT NULL,
+      correct INTEGER NOT NULL,
+      answer TEXT,
+      createdAt TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_english_word_events_session ON english_word_events(sessionId, roundNo, kind);
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -864,6 +940,12 @@ const migrations: Migration[] = [
     name: 'streak_freezes',
     checksumSource: 'streak_freezes:v1:2026-07-28',
     up: addStreakFreezes
+  },
+  {
+    id: 9,
+    name: 'english_vocabulary_units',
+    checksumSource: 'english_vocabulary_units:v1:2026-10-11',
+    up: addEnglishVocabularyUnits
   }
 ];
 
