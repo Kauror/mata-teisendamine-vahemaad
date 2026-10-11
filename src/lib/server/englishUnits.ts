@@ -27,9 +27,10 @@ function progress(id: string): ProgressRow | undefined {
 }
 function accessible(row: UnitRow): boolean {
   if (!row.published) return false;
-  if (row.manuallyUnlocked || row.unitNumber === 1) return true;
+  if (row.manuallyUnlocked) return true;
   const previous = db.prepare('SELECT id FROM english_units WHERE published = 1 AND unitNumber < ? ORDER BY unitNumber DESC LIMIT 1').get(row.unitNumber) as {id:string} | undefined;
-  return Boolean(previous && progress(previous.id)?.testPassedAt);
+  // The first published book unit may be Unit 7, not necessarily Unit 1.
+  return !previous || Boolean(progress(previous.id)?.testPassedAt);
 }
 export function listEnglishUnits(parent = false) {
   const rows = db.prepare('SELECT * FROM english_units ORDER BY unitNumber').all() as UnitRow[];
