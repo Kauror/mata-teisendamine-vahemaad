@@ -69,7 +69,7 @@ export default function EnglishVocabularyPage(){
     {!state.completed&&<><div className='vocab-counter'><span>{state.cursor+1} / {state.queue.length}</span><span>{state.mode==='test'?`${state.roundCorrect} õigesti selles ringis`:`${state.mastered.length} / ${state.words.length} teatud`}</span></div><div className='vocab-progress-track'><span style={{width:`${state.queue.length?100*state.cursor/state.queue.length:0}%`}}/></div></>}
     {word&&state.mode!=='test'&&<div className='vocab-deck'>
       <div className={'vocab-flashcard'+(state.revealed?' is-revealed':'')} onPointerDown={onDown} onPointerUp={onUp}>
-       <button type='button' className='vocab-card-face' disabled={busy||state.revealed} onClick={()=>void act({action:'reveal'})} aria-label='Näita ingliskeelset sõna'>
+       <button type='button' className='vocab-card-face' disabled={busy} onClick={()=>{if(!state.revealed)void act({action:'reveal'});}} aria-label='Näita ingliskeelset sõna'>
         <span className='vocab-card-label'>EESTI KEELES</span><strong>{word.estonian}</strong>
         {state.revealed?<><span className='vocab-card-label'>INGLISE KEELES</span><strong className='vocab-english'>{word.english}</strong>{word.pronunciation&&<span className='vocab-pronunciation'>{word.pronunciation}</span>}</>:<small>Puuduta kaarti, et vastust näha</small>}
        </button>
