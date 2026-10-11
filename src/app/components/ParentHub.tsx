@@ -3,6 +3,7 @@
 import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import ParentEnglishUnits from '@/app/components/ParentEnglishUnits';
 import { todayDateString } from '@/lib/appDate';
 import { formatStars } from '@/lib/formatStars';
 import { dayWord, exerciseWord } from '@/lib/history';
@@ -117,7 +118,7 @@ type MonthlyPrize = { prizeStars: number; standing: MonthlyStanding };
 type WeeklyChildDigest = { exercises: number; accuracyPercent: number; starsEarned: number; trophies: number; streak: number };
 type WeeklyDigest = { from: string; to: string; learners: Record<Learner, WeeklyChildDigest> };
 
-type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards' | 'history';
+type ParentSectionId = 'english' | 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'password' | 'rewards' | 'history';
 
 function ParentAccordionSection({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
   return (
@@ -884,6 +885,9 @@ export default function ParentHub() {
         <OfflineReadiness />
       </ParentAccordionSection>
 
+      <ParentAccordionSection title='Inglise keele sõnavara' summary='Õppetükid, sõnad ja edenemine' open={openSections.has('english')} onToggle={() => toggleSection('english')}>
+        <ParentEnglishUnits />
+      </ParentAccordionSection>
       <ParentAccordionSection title='Harjutuste kogu' summary={`${learningExercises.length} ${exerciseWord(learningExercises.length)}`} open={openSections.has('library')} onToggle={() => toggleSection('library')}>
       <section className='parent-card'>
         <p>Lapsele näidatakse päevas kuni 4 harjutust: kõik <strong>püsivad</strong> ja juhuslik valik <strong>rotatsioonist</strong>. Valik vahetub iga päev. Kordamine lisandub 5.-na, kui vaja.</p>
