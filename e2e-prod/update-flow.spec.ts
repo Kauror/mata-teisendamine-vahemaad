@@ -10,11 +10,28 @@ import { test, expect, type Page } from '../e2e/test';
 
 const SW_FILE = path.resolve('public/sw.js');
 
+// The new id has exactly the old one's length: the production server may
+// serve a public file with the size it saw at startup, and a longer file
+// would arrive truncated.
 function deploy(original: string, suffix: string) {
   const match = original.match(/const BUILD_ID = '([^']+)';/);
   if (!match) throw new Error('BUILD_ID not found in public/sw.js');
-  fs.writeFileSync(SW_FILE, original.replace(match[0], `const BUILD_ID = '${match[1]}-${suffix}';`));
-  return `${match[1]}-${suffix}`;
+  const id = `${match[1].slice(0, -suffix.length)}${suffix}`;
+  fs.writeFileSync(SW_FILE, original.replace(match[0], `const BUILD_ID = '${id}';`));
+  return id;
+}
+
+// Ask the browser to look for a new worker; a check that races the file
+// write simply runs again.
+async function checkForUpdate(page: Page) {
+  await expect.poll(() => page.evaluate(async () => {
+    try {
+      await (await navigator.serviceWorker.getRegistration())!.update();
+      return true;
+    } catch {
+      return false;
+    }
+  }), { timeout: 30_000 }).toBe(true);
 }
 
 async function controlled(page: Page) {
@@ -52,7 +69,7 @@ test('one update lands on the newest build, all tabs follow and the notice does 
 
     // Deployment 1: the open app finds it and offers it.
     deploy(original, 'v2');
-    await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())!.update(); });
+    await checkForUpdate(page);
     const notice = page.locator('.offline-update-notice');
     await expect(notice).toContainText('Uus versioon on saadaval', { timeout: 60_000 });
 
@@ -69,7 +86,7 @@ test('one update lands on the newest build, all tabs follow and the notice does 
     await expect.poll(() => second.evaluate(() => (window as unknown as { __beforeUpdate?: boolean }).__beforeUpdate === true), { timeout: 30_000 }).toBe(false);
 
     // No second prompt after the reload, even after an explicit check.
-    await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())!.update(); });
+    await checkForUpdate(page);
     await page.waitForTimeout(3000);
     await expect(page.locator('.offline-update-notice')).toHaveCount(0);
     await expect(second.locator('.offline-update-notice')).toHaveCount(0);
