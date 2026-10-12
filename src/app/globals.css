@@ -79,6 +79,9 @@
   --celebration-ink-soft:#92741a;
   --celebration-prize-ink:#a16207;
 
+  /* History: earlier months fold into one row each. */
+  --history-month-bg:#eef4ff; --history-month-border:#c7d7fe;
+
   /* English vocabulary (Sõnavara): one big flashcard, two answer directions. */
   --vocab-card-min-height:300px;
   --vocab-card-radius:28px;
@@ -493,6 +496,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .date-group-toggle{width:100%;min-height:54px;margin:0 0 8px;padding:10px 14px;border-radius:16px;background:#fff;color:#0b1b45;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;border:var(--card-border);box-shadow:var(--card-shadow)}
 .date-group-toggle::after{content:'+';width:28px;height:28px;border-radius:999px;background:#eff6ff;color:#2563eb;display:grid;place-items:center;font-size:20px;font-weight:900;flex:0 0 auto}
 .date-group-toggle[aria-expanded="true"]::after{content:'-'}
+/* An earlier month: one tinted row that holds its days when opened. */
+.month-group-toggle{background:var(--history-month-bg);border-color:var(--history-month-border)}
+.month-group-days{display:grid;gap:10px;padding:2px 0 8px 14px;border-left:3px solid var(--history-month-border);margin-left:6px}
 .date-group-toggle span{font-size:19px;font-weight:900;letter-spacing:0;line-height:1.15}
 .date-group-toggle strong{color:#64748b;font-size:14px;font-weight:800;line-height:1.25;text-align:right}
 .history-list-compact{display:grid;gap:8px}

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { dayWord, exerciseWord, questionWord, starWord, subjectLabel, todayStandings, todayStandingsSummary, trophyWord } from '@/lib/history';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { dayWord, exerciseWord, groupHistoryByMonth, questionWord, starWord, subjectLabel, todayStandings, todayStandingsSummary, trophyWord } from '@/lib/history';
 import { LEARNING_EXERCISE_SUBJECT_LABELS } from '@/lib/shared/types';
 
 // Estonian takes the nominative after exactly 1 and the partitive after every
@@ -93,5 +93,38 @@ describe('todayStandingsSummary', () => {
     expect(summary).toContain('1 harjutus,');
     expect(summary).toContain('0 harjutust');
     expect(summary).not.toContain('ülesan');
+  });
+});
+
+describe('history month groups', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('keeps the current month by day and folds earlier months into one group each', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-12T09:00:00Z'));
+    const items = ['2026-10-12T08:00:00Z', '2026-10-11T08:00:00Z', '2026-10-04T08:00:00Z', '2026-09-29T08:00:00Z', '2026-09-25T08:00:00Z', '2026-08-28T08:00:00Z'];
+    const { recentDays, months } = groupHistoryByMonth(items, (item) => item, '2026-10-12');
+    expect([...recentDays.keys()]).toEqual(['Täna', 'Eile', '4.10.2026']);
+    expect(months.map((month) => [month.label, month.items.length, [...month.days.keys()]])).toEqual([
+      ['September 2026', 2, ['29.9.2026', '25.9.2026']],
+      ['August 2026', 1, ['28.8.2026']]
+    ]);
+  });
+
+  it('keeps "Eile" at the top on the first day of a month', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-01T09:00:00Z'));
+    const { recentDays, months } = groupHistoryByMonth(['2026-10-01T08:00:00Z', '2026-09-30T08:00:00Z', '2026-09-20T08:00:00Z'], (item) => item, '2026-10-01');
+    expect([...recentDays.keys()]).toEqual(['Täna', 'Eile']);
+    expect(months.map((month) => month.items.length)).toEqual([1]);
+  });
+
+  it('uses the app time zone for the month boundary', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-12T09:00:00Z'));
+    // 22:30 UTC on 30 September is already 1 October in Tallinn.
+    const { recentDays, months } = groupHistoryByMonth(['2026-09-30T22:30:00Z'], (item) => item, '2026-10-12');
+    expect([...recentDays.keys()]).toEqual(['1.10.2026']);
+    expect(months).toEqual([]);
   });
 });

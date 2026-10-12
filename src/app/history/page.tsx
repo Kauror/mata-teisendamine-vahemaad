@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatElapsed } from '@/lib/validation';
-import { compactTopicLabel, dayLabel, HELD_REWARD_MESSAGE, isHeldReward, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, dayLabel, groupHistoryByMonth, HELD_REWARD_MESSAGE, isHeldReward, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import { getMergedExerciseHistory } from '@/lib/offline/api';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
@@ -106,15 +106,6 @@ function taskMeta(raw: string | null) {
   }
 }
 
-function groupHistoryByDay(items: HistoryItem[]) {
-  const groups = new Map<string, HistoryItem[]>();
-  for (const item of items) {
-    const day = dayLabel(itemDate(item));
-    groups.set(day, [...(groups.get(day) ?? []), item]);
-  }
-  return groups;
-}
-
 export default function HistoryPage() {
   const { online } = useOffline();
   const todayKey = dayLabel(new Date().toISOString());
@@ -206,16 +197,74 @@ export default function HistoryPage() {
     });
   }, [history, taskHistory, storeHistory, childFilter, subjectFilter]);
 
-  const groups = useMemo(() => groupHistoryByDay(filtered), [filtered]);
+  // The current month day by day; each earlier month folded into one group
+  // (closed until opened), so long histories stay short.
+  const { recentDays, months } = useMemo(() => groupHistoryByMonth(filtered, itemDate), [filtered]);
+  const [openMonths, setOpenMonths] = useState<Set<string>>(() => new Set());
 
-  const toggleDay = (day: string) => {
-    setOpenDays((current) => {
+  const toggle = (setter: typeof setOpenDays, key: string) => {
+    setter((current) => {
       const next = new Set(current);
-      if (next.has(day)) next.delete(day);
-      else next.add(day);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
+  const toggleDay = (day: string) => toggle(setOpenDays, day);
+  const toggleMonth = (month: string) => toggle(setOpenMonths, month);
+
+  function renderRow(h: HistoryItem) {
+      const isExercise = h.kind === 'exercise';
+      const learner = isExercise ? learnerLabel(h.category, h.learner) : h.learner === 'kiur' ? 'Kiur' : 'Kirsi';
+      const time = new Date(itemDate(h)).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
+      const meta = h.kind === 'task' ? taskMeta(h.metadataJson) : {};
+      const firstCompleter = h.kind === 'task' && (h.assignmentModeSnapshot === 'first_completer' || meta.assignmentMode === 'first_completer');
+      const exercise = isExercise ? compactTopicLabel(h.topic, h.category) || h.category : '';
+      const percent = isExercise ? scorePercent(h.score, h.questionCount) : null;
+      const elapsed = isExercise && typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub';
+      const title = h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? h.titleSnapshot : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
+      const scoreText = h.kind === 'task' ? `${h.amount > 0 ? '+' : ''}${h.amount} ⭐` : h.kind === 'store' ? `-${h.priceSnapshot} ⭐` : `${h.score}/${h.questionCount} · ${percent}% · ${elapsed}`;
+      const isPending = isExercise && (h as ExerciseHistory).pending === true;
+      const isHeld = isExercise && isHeldReward((h as ExerciseHistory).rewardSettlementStatus);
+      const localStatus = isExercise ? (h as ExerciseHistory).localStatus : undefined;
+      const detailText = localStatus === 'rejected' ? 'Sünkroonimine lükati tagasi — vajab parandust või uuendust.' : localStatus === 'needs_review' ? 'Tulemus ootab vanema ülevaatust.' : isPending ? 'Ootab sünkroonimist' : isHeld ? HELD_REWARD_MESSAGE : h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
+
+      return (
+        <div key={`${h.kind}-${h.id}`} className='history-row'>
+          <div className='history-card-main'>
+            <div className='learner-cell' data-accent={learner === 'Kiur' ? 'blue' : 'pink'}>{learner}</div>
+            <div className='exercise-cell'>
+              <span>{title} · {time}</span>
+              {detailText && <span>{detailText}</span>}
+            </div>
+            <div className='meta-cell'>{scoreText}</div>
+          </div>
+          <div className='row-actions'>
+            {isExercise && (isPending
+              ? <Link className='view-button' href={`/tulemus?clientId=${encodeURIComponent((h as ExerciseHistory).clientAttemptId ?? '')}`}>Vaata</Link>
+              : <Link className='view-button' href={`/history/offline?id=${h.id}`}>Vaata</Link>)}
+          </div>
+        </div>
+      );
+  }
+
+  const summary = (items: HistoryItem[]) => {
+    const groupAvg = avgPercent(items.filter((item): item is ExerciseHistory => item.kind === 'exercise'));
+    return `${items.length} kirjet · Keskmine ${groupAvg === null ? '—' : `${groupAvg}%`} · ⭐ ${formatStars(earnedStars(items))}`;
+  };
+
+  const renderDays = (days: Map<string, HistoryItem[]>) => Array.from(days.entries()).map(([day, items]) => {
+    const isOpen = openDays.has(day);
+    return (
+      <div key={day} className='date-group'>
+        <button type='button' className='date-group-toggle' aria-expanded={isOpen} onClick={() => toggleDay(day)}>
+          <span>{day}</span>
+          <strong>{summary(items)}</strong>
+        </button>
+        {isOpen && <div className='history-list-compact'>{items.map(renderRow)}</div>}
+      </div>
+    );
+  });
 
   return (
     <main className='history-page'>
@@ -254,52 +303,16 @@ export default function HistoryPage() {
           <p>Selle valikuga tulemusi ei ole.</p>
         ) : (
           <section className='history-groups'>
-            {Array.from(groups.entries()).map(([day, items]) => {
-              const groupAvg = avgPercent(items.filter((item): item is ExerciseHistory => item.kind === 'exercise'));
-              const groupStars = earnedStars(items);
-              const isOpen = openDays.has(day);
+            {renderDays(recentDays)}
+            {months.map((month) => {
+              const isOpen = openMonths.has(month.key);
               return (
-                <div key={day} className='date-group'>
-                  <button type='button' className='date-group-toggle' aria-expanded={isOpen} onClick={() => toggleDay(day)}>
-                    <span>{day}</span>
-                    <strong>{items.length} kirjet · Keskmine {groupAvg === null ? '—' : `${groupAvg}%`} · ⭐ {formatStars(groupStars)}</strong>
+                <div key={month.key} className='date-group month-group'>
+                  <button type='button' className='date-group-toggle month-group-toggle' aria-expanded={isOpen} onClick={() => toggleMonth(month.key)}>
+                    <span>{month.label}</span>
+                    <strong>{summary(month.items)}</strong>
                   </button>
-                  {isOpen && <div className='history-list-compact'>
-                    {items.map((h) => {
-                      const isExercise = h.kind === 'exercise';
-                      const learner = isExercise ? learnerLabel(h.category, h.learner) : h.learner === 'kiur' ? 'Kiur' : 'Kirsi';
-                      const time = new Date(itemDate(h)).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
-                      const meta = h.kind === 'task' ? taskMeta(h.metadataJson) : {};
-                      const firstCompleter = h.kind === 'task' && (h.assignmentModeSnapshot === 'first_completer' || meta.assignmentMode === 'first_completer');
-                      const exercise = isExercise ? compactTopicLabel(h.topic, h.category) || h.category : '';
-                      const percent = isExercise ? scorePercent(h.score, h.questionCount) : null;
-                      const elapsed = isExercise && typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub';
-                      const title = h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? h.titleSnapshot : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
-                      const scoreText = h.kind === 'task' ? `${h.amount > 0 ? '+' : ''}${h.amount} ⭐` : h.kind === 'store' ? `-${h.priceSnapshot} ⭐` : `${h.score}/${h.questionCount} · ${percent}% · ${elapsed}`;
-                      const isPending = isExercise && (h as ExerciseHistory).pending === true;
-                      const isHeld = isExercise && isHeldReward((h as ExerciseHistory).rewardSettlementStatus);
-                      const localStatus = isExercise ? (h as ExerciseHistory).localStatus : undefined;
-                      const detailText = localStatus === 'rejected' ? 'Sünkroonimine lükati tagasi — vajab parandust või uuendust.' : localStatus === 'needs_review' ? 'Tulemus ootab vanema ülevaatust.' : isPending ? 'Ootab sünkroonimist' : isHeld ? HELD_REWARD_MESSAGE : h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
-
-                      return (
-                        <div key={`${h.kind}-${h.id}`} className='history-row'>
-                          <div className='history-card-main'>
-                            <div className='learner-cell' data-accent={learner === 'Kiur' ? 'blue' : 'pink'}>{learner}</div>
-                            <div className='exercise-cell'>
-                              <span>{title} · {time}</span>
-                              {detailText && <span>{detailText}</span>}
-                            </div>
-                            <div className='meta-cell'>{scoreText}</div>
-                          </div>
-                          <div className='row-actions'>
-                            {isExercise && (isPending
-                              ? <Link className='view-button' href={`/tulemus?clientId=${encodeURIComponent((h as ExerciseHistory).clientAttemptId ?? '')}`}>Vaata</Link>
-                              : <Link className='view-button' href={`/history/offline?id=${h.id}`}>Vaata</Link>)}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>}
+                  {isOpen && <div className='month-group-days'>{renderDays(month.days)}</div>}
                 </div>
               );
             })}

@@ -147,6 +147,39 @@ export function dayLabel(createdAt: string) {
   return new Date(createdAt).toLocaleDateString('et-EE', { timeZone: APP_TIME_ZONE });
 }
 
+// "September 2026" for an app-date month key "2026-09".
+export function monthLabel(monthKey: string) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const label = new Date(Date.UTC(year, month - 1, 15)).toLocaleDateString('et-EE', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+export type HistoryMonthGroup<T> = { key: string; label: string; items: T[]; days: Map<string, T[]> };
+
+// The history page shows the current month day by day; each earlier month is
+// one group of its own (collapsed on the page) holding its days. "Täna" and
+// "Eile" always stay at the top level, even on the first day of a month.
+// Items must already be sorted newest first.
+export function groupHistoryByMonth<T>(items: T[], dateOf: (item: T) => string, today = todayDateString()) {
+  const currentMonth = today.slice(0, 7);
+  const recentDays = new Map<string, T[]>();
+  const months = new Map<string, HistoryMonthGroup<T>>();
+  for (const item of items) {
+    const iso = dateOf(item);
+    const day = dayLabel(iso);
+    const month = (isoToAppDate(iso) ?? iso.slice(0, 10)).slice(0, 7);
+    if (month === currentMonth || day === 'Täna' || day === 'Eile') {
+      recentDays.set(day, [...(recentDays.get(day) ?? []), item]);
+      continue;
+    }
+    const group = months.get(month) ?? { key: month, label: monthLabel(month), items: [], days: new Map<string, T[]>() };
+    group.items.push(item);
+    group.days.set(day, [...(group.days.get(day) ?? []), item]);
+    months.set(month, group);
+  }
+  return { recentDays, months: [...months.values()] };
+}
+
 export function groupAttemptsByDay<T extends AttemptLike>(items: T[]) {
   const map = new Map<string, T[]>();
   items.forEach((item) => {
