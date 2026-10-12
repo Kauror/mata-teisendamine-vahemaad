@@ -303,7 +303,10 @@ export default function ParentHub() {
         setData(dashboard);
         setStore(storeDashboard);
         setLearningSettings(settings);
-        setLearningExercises((exerciseDashboard as LearningExerciseDashboard).exercises);
+        // A body that could not be read must not replace the list with
+        // `undefined` — that crashed the whole parent page.
+        const exercises = (exerciseDashboard as Partial<LearningExerciseDashboard> | null)?.exercises;
+        if (Array.isArray(exercises)) setLearningExercises(exercises);
         setRewardRules(Array.isArray(rewardData?.rules) ? rewardData.rules : []);
         setMonthlyPrize(monthlyPrizeData as MonthlyPrize);
         setMonthlyPrizeInput((monthlyPrizeData as MonthlyPrize)?.prizeStars ?? 10);
@@ -384,7 +387,13 @@ export default function ParentHub() {
       setError(body.message || 'Harjutust ei saanud muuta.');
       return;
     }
-    setLearningExercises((body as LearningExerciseDashboard).exercises);
+    // The change is saved even if its response body was cut off; keep the
+    // list on screen and refresh it rather than crashing on `undefined`.
+    const exercises = (body as Partial<LearningExerciseDashboard>).exercises;
+    if (Array.isArray(exercises)) setLearningExercises(exercises);
+    else void globalThis.fetch('/api/parent/learning-exercises').then((r) => r.ok ? r.json() : null).then((fresh: Partial<LearningExerciseDashboard> | null) => {
+      if (Array.isArray(fresh?.exercises)) setLearningExercises(fresh.exercises);
+    }).catch(() => {});
     setNotice(status === 'permanent' ? 'Harjutus on nüüd püsiv.' : status === 'rotation' ? 'Harjutus on rotatsioonis.' : 'Harjutus peideti lapse vaatest.');
   };
 
