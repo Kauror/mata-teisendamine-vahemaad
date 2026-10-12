@@ -19,12 +19,12 @@ export function OfflineStatusBar() {
 }
 
 export function UpdateAvailableNotice() {
-  const { updateAvailable, updateBlocked, applyUpdate } = useOffline();
+  const { updateAvailable, updateBlocked, updating, applyUpdate } = useOffline();
   if (!updateAvailable) return null;
   return (
     <div className="offline-update-notice" role="status">
       <span>{updateBlocked ? 'Uuendus ootab harjutuse lõpetamist.' : 'Uus versioon on saadaval.'}</span>
-      <button type="button" disabled={updateBlocked} onClick={() => { void applyUpdate(); }}>Uuenda</button>
+      <button type="button" disabled={updateBlocked || updating} onClick={() => { void applyUpdate(); }}>{updating ? 'Uuendan…' : 'Uuenda'}</button>
     </div>
   );
 }
