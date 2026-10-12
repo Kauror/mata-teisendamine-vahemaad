@@ -181,8 +181,6 @@ export default function VocabularyStudy({ unitId }: { unitId: string }) {
           <div className='vocab-card-inner'>
             <div className='vocab-card-face vocab-card-front' aria-hidden={flipped}>
               <p className='vocab-card-word' lang='et'>{card?.estonian}</p>
-              <p className='vocab-card-hint'>Mõtle ingliskeelne sõna.</p>
-              <p className='vocab-card-hint'>Puuduta kaarti, et vastust näha.</p>
             </div>
             <div className='vocab-card-face vocab-card-back' aria-hidden={!flipped} aria-live='polite'>
               <p className='vocab-card-source' lang='et'>{card?.estonian}</p>
@@ -203,7 +201,6 @@ export default function VocabularyStudy({ unitId }: { unitId: string }) {
           Teadsin <span aria-hidden>→</span>
         </button>
       </div>
-      <p className='vocab-keyboard-hint'>{flipped ? 'Libista kaarti paremale või vasakule. Klaviatuuril: nooled.' : 'Klaviatuuril: tühik pöörab kaardi.'}</p>
     </VocabularyShell>
   );
 }

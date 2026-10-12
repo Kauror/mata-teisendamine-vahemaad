@@ -115,7 +115,7 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   await navigateStable(page, `/kiur/inglise-keel/${firstId}/opi`);
   const known = page.getByRole('button', { name: /Teadsin/ });
   const unknown = page.getByRole('button', { name: /Ei teadnud/ });
-  await expect(page.getByText('Mõtle ingliskeelne sõna.')).toBeVisible();
+  await expect(page.locator('.vocab-card[data-flipped="false"] .vocab-card-front .vocab-card-word')).toBeVisible();
   await expect(known).toBeDisabled();
 
   // Card 1: tap, then "Ei teadnud".
@@ -129,7 +129,7 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   // The session survives a reload: same place, nothing lost.
   await expect(page).toHaveURL(/session=vs_/u);
   await page.reload();
-  await expect(page.getByText('Mõtle ingliskeelne sõna.')).toBeVisible();
+  await expect(page.locator('.vocab-card[data-flipped="false"] .vocab-card-front .vocab-card-word')).toBeVisible();
 
   // The connection drops while turning a card: the error offers a retry, and
   // the retry really continues once the connection is back.

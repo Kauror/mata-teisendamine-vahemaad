@@ -1083,7 +1083,6 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .vocab-card[data-direction="unknown"] .vocab-card-back{border-color:var(--vocab-unknown-border)}
 .vocab-card-word{margin:0;font-family:var(--font-display);font-size:var(--vocab-card-word-size);font-weight:900;line-height:1.1;color:var(--vocab-ink);overflow-wrap:anywhere}
 .vocab-card-source{margin:0;color:var(--vocab-text-soft);font-size:19px;font-weight:750}
-.vocab-card-hint{margin:0;color:var(--vocab-muted);font-size:16px;font-weight:700}
 .vocab-card-pronunciation{margin:0;color:var(--vocab-accent-ink);font-size:22px;font-weight:650}
 .vocab-swipe-label{position:absolute;top:16px;padding:6px 12px;border-radius:12px;font-size:16px;font-weight:900;pointer-events:none}
 .vocab-swipe-known{left:16px;background:var(--vocab-known-bg);color:var(--vocab-known-ink);opacity:var(--vocab-lean-known,0)}
