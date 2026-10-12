@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { csrfHeaders } from '@/lib/auth/client';
 import type { ParentUnitSummary, ParentWordDetail } from '@/lib/server/vocabulary/overview';
 import type { ImportCell, ImportMapping, ImportMode, ImportPlan, ImportTable } from '@/lib/vocabulary/importPlan';
@@ -36,7 +36,7 @@ function scoreLabel(score: { correct: number; total: number; percent: number } |
   return score ? `${score.correct}/${score.total} (${score.percent}%)` : '–';
 }
 
-type ParsedSheet = { name: string; rows: ImportTable; suggestedMapping: ImportMapping };
+type ParsedSheet = { name: string; rows: ImportTable; error?: string | null; suggestedMapping: ImportMapping };
 type Preview = { plan: ImportPlan; planHash: string };
 
 const MAPPING_FIELDS: Array<{ key: 'english' | 'estonian' | 'pronunciation' | 'accepted' | 'unit' | 'title'; label: string; required?: boolean }> = [
@@ -66,21 +66,35 @@ function VocabularyImport({ onImported, setNotice, setError }: { onImported: () 
   const [mode, setMode] = useState<ImportMode>('merge');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
+  // Every change to the sheet, mapping or mode invalidates a preview — even
+  // one still on its way, so a late answer for old settings is ignored.
+  const previewTicket = useRef(0);
 
   const sheet = sheets[sheetIndex];
   const columnCount = useMemo(() => Math.min(30, Math.max(0, ...(sheet?.rows ?? []).slice(0, 200).map((row) => row.length))), [sheet]);
   const headerCells: ImportCell[] = mapping?.headerRow !== null && mapping?.headerRow !== undefined ? sheet?.rows[mapping.headerRow] ?? [] : [];
 
-  const chooseSheet = (index: number, list = sheets) => {
-    setSheetIndex(index);
-    setMapping(list[index]?.suggestedMapping ?? null);
+  const resetPreview = () => {
+    previewTicket.current += 1;
     setPreview(null);
   };
 
+  const updateMapping = (next: ImportMapping) => {
+    setMapping(next);
+    resetPreview();
+  };
+
+  const chooseSheet = (index: number, list = sheets) => {
+    setSheetIndex(index);
+    setMapping(list[index]?.suggestedMapping ?? null);
+    resetPreview();
+  };
+
   const readFile = async (file: File | undefined) => {
-    setPreview(null);
-    setSheets([]);
+    // A cancelled file dialog keeps whatever was loaded before.
     if (!file) return;
+    resetPreview();
+    setSheets([]);
     setBusy(true);
     try {
       const body = await request<{ sheets: ParsedSheet[] }>('/api/parent/english-vocabulary/import/parse', {
@@ -90,8 +104,12 @@ function VocabularyImport({ onImported, setNotice, setError }: { onImported: () 
       });
       setFileName(file.name);
       setSheets(body.sheets);
-      // Prefer the sheet whose layout was recognised and that holds the most rows.
-      const best = body.sheets.reduce((bestIndex, candidate, index) => candidate.rows.length > (body.sheets[bestIndex]?.rows.length ?? 0) ? index : bestIndex, 0);
+      // Prefer the readable sheet that holds the most rows.
+      const best = body.sheets.reduce((bestIndex, candidate, index) => {
+        if (candidate.error) return bestIndex;
+        const current = body.sheets[bestIndex];
+        return !current || current.error || candidate.rows.length > current.rows.length ? index : bestIndex;
+      }, 0);
       chooseSheet(best, body.sheets);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Faili ei saanud lugeda.');
@@ -102,17 +120,26 @@ function VocabularyImport({ onImported, setNotice, setError }: { onImported: () 
 
   const setColumn = (key: typeof MAPPING_FIELDS[number]['key'], value: string) => {
     if (!mapping) return;
-    setMapping({ ...mapping, [key]: value === '' ? null : Number(value) });
-    setPreview(null);
+    updateMapping({ ...mapping, [key]: value === '' ? null : Number(value) });
+  };
+
+  // Only rows up to the last one with content are sent.
+  const rowsToSend = () => {
+    const rows = sheet?.rows ?? [];
+    let last = rows.length - 1;
+    while (last >= 0 && !(rows[last] ?? []).some((cell) => cell.v.trim())) last -= 1;
+    return rows.slice(0, last + 1).map((row) => row ?? []);
   };
 
   const check = async () => {
     if (!sheet || !mapping) return;
+    const ticket = ++previewTicket.current;
     setBusy(true);
     try {
-      setPreview(await request<Preview>('/api/parent/english-vocabulary/import/preview', json('POST', { rows: sheet.rows, mapping, mode })));
+      const result = await request<Preview>('/api/parent/english-vocabulary/import/preview', json('POST', { rows: rowsToSend(), mapping, mode }));
+      if (ticket === previewTicket.current) setPreview(result);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Eelvaadet ei saanud teha.');
+      if (ticket === previewTicket.current) setError(error instanceof Error ? error.message : 'Eelvaadet ei saanud teha.');
     } finally {
       setBusy(false);
     }
@@ -122,15 +149,15 @@ function VocabularyImport({ onImported, setNotice, setError }: { onImported: () 
     if (!sheet || !mapping || !preview) return;
     setBusy(true);
     try {
-      await request('/api/parent/english-vocabulary/import/commit', json('POST', { rows: sheet.rows, mapping, mode, planHash: preview.planHash, fileName }));
-      setNotice('Sõnad imporditud. Õppetükid on avaldamata — avalda need, kui oled valmis.');
+      await request('/api/parent/english-vocabulary/import/commit', json('POST', { rows: rowsToSend(), mapping, mode, planHash: preview.planHash, fileName }));
+      setNotice('Sõnad imporditud. Uued õppetükid on avaldamata — avalda need, kui oled valmis.');
       setSheets([]);
-      setPreview(null);
+      resetPreview();
       setFileName('');
       onImported();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Importimine ebaõnnestus.');
-      setPreview(null);
+      resetPreview();
     } finally {
       setBusy(false);
     }
@@ -143,19 +170,31 @@ function VocabularyImport({ onImported, setNotice, setError }: { onImported: () 
     <section className='parent-card'>
       <h3>Impordi sõnad failist</h3>
       <p>Excel (.xlsx), CSV või tabeldusmärgiga tekst. Fail loetakse, kontrollitakse ja näidatakse enne salvestamist eelvaatena. Midagi ei avaldata automaatselt.</p>
-      <label className='parent-form'><span>Fail</span><input type='file' accept='.xlsx,.csv,.tsv,.txt' disabled={busy} onChange={(event) => void readFile(event.target.files?.[0])} /></label>
+      <label className='parent-form'><span>Fail</span><input
+        type='file'
+        accept='.xlsx,.csv,.tsv,.txt'
+        disabled={busy}
+        onChange={(event) => {
+          // Cleared after reading, so choosing the same (corrected) file again
+          // is seen as a change.
+          const input = event.currentTarget;
+          void readFile(input.files?.[0]).finally(() => { input.value = ''; });
+        }}
+      /></label>
+      {fileName && sheets.length ? <p>Loetud fail: <strong>{fileName}</strong></p> : null}
 
       {sheet && mapping ? (
-        <div className='parent-form'>
+        <fieldset className='parent-form vocab-import-form' disabled={busy}>
           {sheets.length > 1 ? (
             <label><span>Leht</span>
               <select value={sheetIndex} onChange={(event) => chooseSheet(Number(event.target.value))}>
-                {sheets.map((item, index) => <option key={`${item.name}-${index}`} value={index}>{item.name} ({item.rows.length} rida)</option>)}
+                {sheets.map((item, index) => <option key={`${item.name}-${index}`} value={index} disabled={Boolean(item.error)}>{item.name} {item.error ? '(ei saa lugeda)' : `(${item.rows.length} rida)`}</option>)}
               </select>
             </label>
           ) : null}
+          {mapping.defaultUnit ? <p>Lehe nime järgi kuuluvad sõnad õppetükki <strong>Unit {mapping.defaultUnit}</strong>, kui failis pole teisiti märgitud.</p> : null}
           <label><span>Päiserida</span>
-            <select value={mapping.headerRow ?? ''} onChange={(event) => { setMapping({ ...mapping, headerRow: event.target.value === '' ? null : Number(event.target.value) }); setPreview(null); }}>
+            <select value={mapping.headerRow ?? ''} onChange={(event) => updateMapping({ ...mapping, headerRow: event.target.value === '' ? null : Number(event.target.value) })}>
               <option value=''>Päiserida puudub</option>
               {sheet.rows.slice(0, 20).map((row, index) => <option key={index} value={index}>Rida {index + 1}: {row.map((cell) => cell.v).filter(Boolean).join(' · ').slice(0, 60) || '(tühi)'}</option>)}
             </select>
@@ -172,16 +211,16 @@ function VocabularyImport({ onImported, setNotice, setError }: { onImported: () 
               </label>
             ))}
           </div>
-          <label className='parent-checkbox'><input type='checkbox' checked={mapping.unitHeaderRows} onChange={(event) => { setMapping({ ...mapping, unitHeaderRows: event.target.checked }); setPreview(null); }} /> Õppetükke alustavad pealkirjaread (nt „UNIT 3 | Thank you“)</label>
+          <label className='parent-checkbox'><input type='checkbox' checked={mapping.unitHeaderRows} onChange={(event) => updateMapping({ ...mapping, unitHeaderRows: event.target.checked })} /> Õppetükke alustavad pealkirjaread (nt „UNIT 3 | Thank you“)</label>
           <fieldset className='parent-form'>
             <legend>Olemasolevad õppetükid</legend>
-            <label className='parent-checkbox'><input type='radio' name='vocab-import-mode' checked={mode === 'merge'} onChange={() => { setMode('merge'); setPreview(null); }} /> Lisa ja uuenda (midagi ei eemaldata)</label>
-            <label className='parent-checkbox'><input type='radio' name='vocab-import-mode' checked={mode === 'replace'} onChange={() => { setMode('replace'); setPreview(null); }} /> Asenda õppetüki sõnad failis olevatega (puuduvad sõnad peidetakse, ajalugu jääb alles)</label>
+            <label className='parent-checkbox'><input type='radio' name='vocab-import-mode' checked={mode === 'merge'} onChange={() => { setMode('merge'); resetPreview(); }} /> Lisa ja uuenda (midagi ei eemaldata)</label>
+            <label className='parent-checkbox'><input type='radio' name='vocab-import-mode' checked={mode === 'replace'} onChange={() => { setMode('replace'); resetPreview(); }} /> Asenda õppetüki sõnad failis olevatega (puuduvad sõnad peidetakse, ajalugu jääb alles)</label>
           </fieldset>
           <div className='parent-action-row'>
-            <button type='button' disabled={busy} onClick={() => void check()}>Kontrolli</button>
+            <button type='button' onClick={() => void check()}>{busy ? 'Kontrollin…' : 'Kontrolli'}</button>
           </div>
-        </div>
+        </fieldset>
       ) : null}
 
       {preview ? (
@@ -401,7 +440,7 @@ function UnitRow({ unit, onChanged, setError, setNotice }: { unit: ParentUnitSum
       <div className='vocab-admin-actions'>
         <button type='button' className='view-button' disabled={!unit.published && unit.wordCount === 0} onClick={() => void patch({ published: !unit.published }, unit.published ? 'Õppetükk peidetud.' : 'Õppetükk avaldatud.')}>{unit.published ? 'Peida lapse eest' : 'Avalda'}</button>
         <button type='button' className='filter-chip' onClick={() => void patch({ manualUnlock: !unit.manualUnlock }, unit.manualUnlock ? 'Käsitsi avamine eemaldatud.' : 'Õppetükk avatud käsitsi.')}>{unit.manualUnlock ? 'Eemalda käsitsi avamine' : 'Ava käsitsi'}</button>
-        <button type='button' className='filter-chip' onClick={() => setEditing(!editing)}>Muuda</button>
+        <button type='button' className='filter-chip' onClick={() => { if (!editing) { setTitle(unit.title); setUnitNumber(String(unit.unitNumber)); } setEditing(!editing); }}>Muuda</button>
         <button type='button' className='filter-chip' aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Peida sõnad' : 'Sõnad ja statistika'}</button>
         {!unit.hasHistory ? <button type='button' className='delete-button' onClick={() => void remove()}>Kustuta</button> : null}
       </div>

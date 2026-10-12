@@ -39,14 +39,14 @@ function AnswerForm({ estonian, feedback, busy, onAnswer, onContinue }: {
 }) {
   const [answer, setAnswer] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const continueRef = useRef<HTMLButtonElement | null>(null);
 
+  // Focus never leaves the answer field: during feedback it is read-only and
+  // Enter (or "Edasi") continues. Moving focus to a button would close the
+  // on-screen keyboard on iPhone/iPad, and iOS does not reopen it for a
+  // focus() that does not come from a tap.
   useEffect(() => {
-    if (feedback) continueRef.current?.focus();
-    else {
-      setAnswer('');
-      inputRef.current?.focus();
-    }
+    if (!feedback) setAnswer('');
+    inputRef.current?.focus();
   }, [feedback, estonian]);
 
   const submit = (event: FormEvent) => {
@@ -78,15 +78,15 @@ function AnswerForm({ estonian, feedback, busy, onAnswer, onContinue }: {
       />
       {feedback ? <Feedback feedback={feedback} /> : null}
       {feedback
-        ? <button ref={continueRef} type='submit' className='next-button' disabled={busy}>Edasi</button>
+        ? <button type='submit' className='next-button' disabled={busy}>Edasi</button>
         : <button type='submit' className='start-button' disabled={busy || !answer.trim()}>Kontrolli</button>}
     </form>
   );
 }
 
 export function VocabularyTest({ unitId }: { unitId: string }) {
-  const { view, error, busy, send, retry } = useVocabSession({ unitId, mode: 'test' });
-  if (error) return <VocabularyShell title='Test'><VocabularyProblem error={error} onRetry={retry} /></VocabularyShell>;
+  const { view, error, busy, send, retry, retrying } = useVocabSession({ unitId, mode: 'test' });
+  if (error) return <VocabularyShell title='Test'><VocabularyProblem error={error} onRetry={retry} retrying={retrying} /></VocabularyShell>;
   if (!view?.test) return <VocabularyShell title='Test'><p className='vocab-loading'>Laadin testi…</p></VocabularyShell>;
 
   const test = view.test;
@@ -102,6 +102,11 @@ export function VocabularyTest({ unitId }: { unitId: string }) {
           {test.firstRound && test.round > 1 ? <p>Esimesel korral: {test.firstRound.correct}/{test.firstRound.total}. Läbisid {test.round}. katsega.</p> : null}
           {view.nextUnit ? <p>{view.nextUnit.label} on nüüd avatud.</p> : null}
         </div>
+        {test.counted === false ? (
+          <div className='vocab-reward'>
+            <p>Täna on selle õppetüki test juba arvesse läinud. See kord oli harjutamiseks — tähti ja võistluse punkti see ei too.</p>
+          </div>
+        ) : null}
         {view.reward ? (
           <div className='vocab-reward' data-held={view.reward.held}>
             {view.reward.held
@@ -172,9 +177,9 @@ export function VocabularyTest({ unitId }: { unitId: string }) {
 }
 
 export function VocabularyPractice({ unitId }: { unitId: string | null }) {
-  const { view, error, busy, send, retry } = useVocabSession({ unitId, mode: 'practice' });
+  const { view, error, busy, send, retry, retrying } = useVocabSession({ unitId, mode: 'practice' });
   const title = 'Korda eksitud sõnu';
-  if (error) return <VocabularyShell title={title}><VocabularyProblem error={error} onRetry={retry} /></VocabularyShell>;
+  if (error) return <VocabularyShell title={title}><VocabularyProblem error={error} onRetry={retry} retrying={retrying} /></VocabularyShell>;
   if (!view?.practice) return <VocabularyShell title={title}><p className='vocab-loading'>Laadin sõnu…</p></VocabularyShell>;
   const practice = view.practice;
 
@@ -182,8 +187,8 @@ export function VocabularyPractice({ unitId }: { unitId: string | null }) {
     return (
       <VocabularyShell eyebrow={view.unit?.label} title='Kordamine tehtud!'>
         <div className='vocab-summary' role='status'>
-          <p className='vocab-summary-big'>Esimesel katsel õigesti: <strong>{practice.firstTryCorrect}/{practice.total}</strong></p>
-          <p>Kõik {practice.total} sõna said lõpuks õigesti kirjutatud.</p>
+          {practice.total > 0 ? <p className='vocab-summary-big'>Esimesel katsel õigesti: <strong>{practice.firstTryCorrect}/{practice.total}</strong></p> : null}
+          <p>{practice.total === 0 ? 'Kordamist vajavaid sõnu enam ei ole.' : practice.total === 1 ? 'Sõna sai lõpuks õigesti kirjutatud.' : `Kõik ${practice.total} sõna said lõpuks õigesti kirjutatud.`}</p>
         </div>
         <div className='vocab-actions'>
           <Link className='start-button vocab-start-link' href={VOCAB_HOME_ROUTE}>Tagasi õppetükkide juurde</Link>

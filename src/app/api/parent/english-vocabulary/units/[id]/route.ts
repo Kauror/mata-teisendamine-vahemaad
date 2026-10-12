@@ -3,7 +3,7 @@ import { hasParentSession } from '@/lib/parentAuth';
 import { VOCAB_LEARNER } from '@/lib/vocabulary/constants';
 import { vocabErrorResponse } from '@/lib/server/vocabulary/http';
 import { getParentUnitWords } from '@/lib/server/vocabulary/overview';
-import { deleteUnit, getUnit, setManualUnlock, updateUnit, VocabNotFoundError } from '@/lib/server/vocabulary/units';
+import { deleteUnit, getUnit, patchUnit, VocabNotFoundError } from '@/lib/server/vocabulary/units';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -26,14 +26,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json().catch(() => ({})) as { unitNumber?: unknown; title?: unknown; published?: unknown; manualUnlock?: unknown };
   try {
-    if (body.manualUnlock !== undefined) {
-      if (typeof body.manualUnlock !== 'boolean') return NextResponse.json({ message: 'Avamise väärtus on vigane.' }, { status: 400 });
-      setManualUnlock(VOCAB_LEARNER, id, body.manualUnlock);
-    }
-    if (body.unitNumber !== undefined || body.title !== undefined || body.published !== undefined) {
-      updateUnit(id, { unitNumber: body.unitNumber, title: body.title, published: body.published });
-    }
-    return NextResponse.json({ unit: getUnit(id) });
+    return NextResponse.json({ unit: patchUnit(VOCAB_LEARNER, id, body) });
   } catch (error) {
     return vocabErrorResponse(error);
   }

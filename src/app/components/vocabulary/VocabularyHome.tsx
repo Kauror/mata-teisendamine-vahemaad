@@ -12,12 +12,13 @@ const STATUS_LABEL: Record<ChildUnitCard['status'], string> = {
   new: 'Uus',
   studying: '📖 Õppimine pooleli',
   study_done: '✏️ Test ootab',
+  new_words: '📖 Uued sõnad',
   testing: '✏️ Test pooleli',
   passed: '✓ Läbitud'
 };
 
 function lockExplanation(card: ChildUnitCard) {
-  if (card.previousUnitLabel) return `Avaneb, kui ${card.previousUnitLabel} test on läbitud.`;
+  if (card.previousUnitLabel) return `Avaneb, kui eelmise õppetüki (${card.previousUnitLabel}) test on läbitud.`;
   return 'See õppetükk avaneb hiljem.';
 }
 
@@ -27,6 +28,7 @@ function UnitCard({ card }: { card: ChildUnitCard }) {
   if (card.status === 'new') actions.push({ href: `${base}/opi`, label: 'Alusta õppimist', primary: true });
   if (card.status === 'studying') actions.push({ href: `${base}/opi`, label: 'Jätka õppimist', primary: true });
   if (card.status === 'study_done') actions.push({ href: `${base}/test`, label: 'Tee test', primary: true }, { href: `${base}/opi`, label: card.activeStudySessionId ? 'Jätka õppimist' : 'Õpi uuesti' });
+  if (card.status === 'new_words') actions.push({ href: `${base}/opi`, label: card.activeStudySessionId ? 'Jätka õppimist' : 'Õpi uued sõnad', primary: true });
   if (card.status === 'testing') actions.push({ href: `${base}/test`, label: 'Jätka testi', primary: true }, { href: `${base}/opi`, label: card.activeStudySessionId ? 'Jätka õppimist' : 'Õpi uuesti' });
   if (card.status === 'passed') {
     actions.push(
@@ -49,6 +51,7 @@ function UnitCard({ card }: { card: ChildUnitCard }) {
         {card.weakCount > 0 ? <> · {card.weakCount} sõna vajab kordamist</> : null}
       </p>
       {card.status === 'locked' ? <p className='vocab-unit-lock'>{lockExplanation(card)}</p> : null}
+      {card.status === 'new_words' ? <p className='vocab-unit-lock'>{card.newWordsCount === 1 ? 'Õppetükki on lisandunud 1 uus sõna. Õpi see enne testi kaartidega läbi.' : `Õppetükki on lisandunud ${card.newWordsCount} uut sõna. Õpi need enne testi kaartidega läbi.`}</p> : null}
       {actions.length > 0 ? (
         <div className='vocab-unit-actions'>
           {actions.map((action) => (

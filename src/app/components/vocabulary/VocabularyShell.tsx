@@ -30,11 +30,11 @@ export function VocabularyShell({ title, eyebrow, children, backHref = VOCAB_HOM
   );
 }
 
-export function VocabularyProblem({ error, onRetry }: { error: VocabSessionError; onRetry: () => void }) {
+export function VocabularyProblem({ error, onRetry, retrying = false }: { error: VocabSessionError; onRetry: () => void; retrying?: boolean }) {
   return (
     <div className='vocab-problem' role='alert'>
       <p>{error.message}</p>
-      {error.retryable ? <button type='button' className='start-button' onClick={onRetry}>Proovi uuesti</button> : null}
+      {error.retryable ? <button type='button' className='start-button' disabled={retrying} onClick={onRetry}>{retrying ? 'Proovin…' : 'Proovi uuesti'}</button> : null}
       <Link className='vocab-secondary-button' href={VOCAB_HOME_ROUTE}>Tagasi õppetükkide juurde</Link>
     </div>
   );

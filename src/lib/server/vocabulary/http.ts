@@ -25,14 +25,16 @@ const MAX_CELL_LENGTH = 2000;
 // The import table comes back from the browser for preview and commit, so it
 // is re-validated here as untrusted input.
 export function parseImportTable(value: unknown): ImportTable {
-  if (!Array.isArray(value) || value.length > IMPORT_LIMITS.maxRows) throw new VocabValidationError('Tabel on vigane või liiga suur.');
+  if (!Array.isArray(value) || value.length > IMPORT_LIMITS.maxTableRows) throw new VocabValidationError('Tabel on vigane või liiga suur.');
   return value.map((row) => {
     if (!Array.isArray(row) || row.length > IMPORT_LIMITS.maxColumns) throw new VocabValidationError('Tabeli rida on vigane.');
     return row.map((cell): ImportCell => {
       const record = cell as { v?: unknown; t?: unknown } | null;
-      const text = typeof record?.v === 'string' ? record.v : '';
+      // Long cells are cut, not refused: an unused notes column must not block
+      // the import, and a cut word in a mapped column still fails the word
+      // length check with its row number.
+      const text = typeof record?.v === 'string' ? record.v.slice(0, MAX_CELL_LENGTH) : '';
       const type = CELL_TYPES.has(record?.t as ImportCellType) ? record!.t as ImportCellType : 'empty';
-      if (text.length > MAX_CELL_LENGTH) throw new VocabValidationError('Tabeli lahter on liiga pikk.');
       return { v: text, t: text ? type : 'empty' };
     });
   });
@@ -60,8 +62,16 @@ export function parseImportMapping(value: unknown): ImportMapping {
     accepted: column(raw.accepted, false),
     unit: column(raw.unit, false),
     title: column(raw.title, false),
-    unitHeaderRows: raw.unitHeaderRows === true
+    unitHeaderRows: raw.unitHeaderRows === true,
+    defaultUnit: parseDefaultUnit(raw.defaultUnit)
   };
+}
+
+function parseDefaultUnit(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < IMPORT_LIMITS.minUnitNumber || number > IMPORT_LIMITS.maxUnitNumber) throw new VocabValidationError('Vaikimisi õppetükk on vigane.');
+  return number;
 }
 
 export function parseImportMode(value: unknown): ImportMode {

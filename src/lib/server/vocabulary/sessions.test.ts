@@ -226,8 +226,9 @@ describe('vocabulary sessions', () => {
     expect(after.passedSessionId).toBe(before.passedSessionId);
     expect(after.studyCompletedAt).toBe(before.studyCompletedAt);
     expect(after).toMatchObject({ testPasses: 2, studyCompletions: 2 });
-    // The repeat is its own attempt, decayed by the existing rules (1 → 0.9).
-    expect((db.prepare("SELECT SUM(amount) AS total FROM point_ledger WHERE source = 'reward_v2'").get() as { total: number }).total).toBeCloseTo(1.9);
+    // A repeat on the same day is practice: no second attempt, no more stars.
+    expect(db.prepare("SELECT COUNT(*) AS count FROM attempts WHERE topic = 'sonavara'").get()).toEqual({ count: 1 });
+    expect((db.prepare("SELECT SUM(amount) AS total FROM point_ledger WHERE source = 'reward_v2'").get() as { total: number }).total).toBeCloseTo(1);
   });
 
   it('lets the parent unlock a unit by hand and withholds stars if the exercise was hidden mid-test', () => {

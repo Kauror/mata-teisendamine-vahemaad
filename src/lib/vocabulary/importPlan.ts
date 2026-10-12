@@ -16,7 +16,8 @@
 //   - A word whose spelling changed is a different word: it is added as new.
 //     In "replace" mode the old spelling is retired — hidden from new sessions,
 //     but its history, statistics and any session in progress are untouched.
-//   - "merge" mode never retires anything.
+//   - "merge" mode never retires anything, and leaves words that are not in the
+//     file where they are whenever their position is still free.
 //   - Running sessions are unaffected either way, because every session works
 //     from its own copy of the words.
 //   - Any error blocks the whole import. Nothing is half-imported.
@@ -39,6 +40,9 @@ export type ImportMapping = {
   title: number | null;
   // Recognise section rows such as "UNIT 3 | Thank you" that start each unit.
   unitHeaderRows: boolean;
+  // The unit for rows before any section row, e.g. from a sheet named
+  // "Unit 3". Optional so older callers stay valid.
+  defaultUnit?: number | null;
 };
 
 export type ImportMode = 'merge' | 'replace';
@@ -65,10 +69,19 @@ export type ParsedImport = {
   issues: ImportIssue[];
   emptyRows: number;
   sectionRows: number;
+  // Which optional columns the file actually has. A column that is not in the
+  // file leaves the stored value alone (a file without accepted answers must
+  // not erase the ones added in the app). Optional for older callers: absent
+  // means "present", the previous behaviour.
+  fields?: { pronunciation: boolean; accepted: boolean };
 };
 
 export const IMPORT_LIMITS = {
+  // Data rows (words, section rows and rejected rows). Empty rows and the
+  // header do not count.
   maxRows: 5000,
+  // Rows a table may span, empty rows included.
+  maxTableRows: 20000,
   maxColumns: 30,
   maxUnits: 100,
   maxWordLength: 200,
@@ -79,18 +92,25 @@ export const IMPORT_LIMITS = {
   maxUnitNumber: 999
 } as const;
 
-const UNIT_SECTION = /^\s*(?:unit|õppetükk|peatükk)\s*(\d{1,3})\s*(?:[|:.\-–—]\s*(.*?))?\s*$/iu;
-const UNIT_VALUE = /^\s*(?:unit|õppetükk|peatükk)?\s*(\d{1,3})(?:\.0+)?\s*$/iu;
+const UNIT_WORD = /^\s*(?:unit|õppetükk|peatükk)\s*(\d+)(.*)$/iu;
+const UNIT_VALUE = /^\s*(?:unit|õppetükk|peatükk)?\s*0*(\d{1,3})(?:\.0+)?\s*$/iu;
 const CONTROL_CHARACTERS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u;
 const MULTI_FORM = /\s\/\s|;|,|\(|\.\.\.|…/u;
+// Characters that are invisible on screen but make a word impossible to type:
+// soft hyphen, zero-width space/joiners, word joiner and byte-order mark.
+const INVISIBLE = new RegExp(`[${[0x00ad, 0x200b, 0x200c, 0x200d, 0x2060, 0xfeff].map((code) => String.fromCharCode(code)).join('')}]`, 'gu');
 
 function cellAt(row: ImportCell[] | undefined, index: number | null): ImportCell {
   if (index === null || !row) return { v: '', t: 'empty' };
   return row[index] ?? { v: '', t: 'empty' };
 }
 
+export function stripInvisible(value: string) {
+  return value.replace(INVISIBLE, '');
+}
+
 function collapse(value: string) {
-  return value.normalize('NFC').replace(/\s+/gu, ' ').trim();
+  return stripInvisible(value.normalize('NFC')).replace(/\s+/gu, ' ').trim();
 }
 
 export function wordKey(estonian: string, english: string) {
@@ -104,10 +124,21 @@ function parseUnitValue(cell: ImportCell): number | null {
   return Number(match[1]);
 }
 
-export function parseUnitSection(value: string): { unitNumber: number; title: string } | null {
-  const match = value.match(UNIT_SECTION);
+export type UnitSection = { unitNumber: number; title: string } | { ambiguous: true; text: string };
+
+// A row that starts a unit: "UNIT 3 | Thank you", "Unit 3: Zoo", "Unit 03",
+// "Unit 3 Animals", "Unit 3 / Animals", "Unit 3 (Animals)", "Unit 7, Food".
+// A range or a decimal ("UNIT 3 – 4 Review", "unit 3.5") is ambiguous and is
+// reported rather than guessed.
+export function parseUnitSection(value: string): UnitSection | null {
+  const match = collapse(value).match(UNIT_WORD);
   if (!match) return null;
-  return { unitNumber: Number(match[1]), title: collapse(match[2] ?? '') };
+  const digits = match[1];
+  const rest = match[2];
+  if (/^\s*[.,]\d/u.test(rest) || /^\s*[-–—]\s*\d/u.test(rest)) return { ambiguous: true, text: collapse(value) };
+  let title = rest.replace(/^\s*[|:.\-–—,/]+\s*/u, '').trim();
+  if (/^\(.*\)$/u.test(title)) title = title.slice(1, -1).trim();
+  return { unitNumber: Number(digits), title };
 }
 
 function validUnitNumber(value: number) {
@@ -118,7 +149,9 @@ function parseAccepted(raw: string, row: number, english: string, issues: Import
   const text = raw.trim();
   if (!text) return [];
   let entries: string[];
-  if (text.startsWith('[')) {
+  // A JSON list when it looks like one — bracketed end to end, or quoted
+  // ('["dogs"' is a broken list). "[the] cat" is an ordinary answer.
+  if (text.startsWith('[') && (text.endsWith(']') || text.includes('"'))) {
     try {
       const parsed = JSON.parse(text) as unknown;
       if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== 'string')) throw new Error('not a string array');
@@ -184,6 +217,17 @@ function isEmptyRow(row: ImportCell[] | undefined) {
   return !row || row.every((cell) => cell.t === 'empty' || !cell.v.trim());
 }
 
+// The section a row starts, if any: the first text cell of a row whose word
+// columns are otherwise empty.
+function sectionOf(row: ImportCell[] | undefined, mapping: ImportMapping): UnitSection | null {
+  if (!row) return null;
+  const english = cellAt(row, mapping.english).v.trim();
+  const estonian = cellAt(row, mapping.estonian).v.trim();
+  if (english && estonian) return null;
+  const candidate = row.find((cell) => cell.t === 's' && cell.v.trim());
+  return candidate ? parseUnitSection(candidate.v) : null;
+}
+
 export function parseImportRows(table: ImportTable, mapping: ImportMapping): ParsedImport {
   const issues: ImportIssue[] = [];
   const rows: ParsedImportRow[] = [];
@@ -198,37 +242,71 @@ export function parseImportRows(table: ImportTable, mapping: ImportMapping): Par
   if (mapping.english === mapping.estonian) {
     return { rows, unitTitles, issues: [{ row: 0, severity: 'error', message: 'Eesti- ja ingliskeelne sõna peavad olema eri veergudes.' }], emptyRows, sectionRows };
   }
-  if (mapping.unit === null && !mapping.unitHeaderRows) {
+  const defaultUnit = mapping.defaultUnit != null && validUnitNumber(mapping.defaultUnit) ? mapping.defaultUnit : null;
+  if (mapping.unit === null && !mapping.unitHeaderRows && defaultUnit === null) {
     return { rows, unitTitles, issues: [{ row: 0, severity: 'error', message: 'Vali õppetüki veerg või luba õppetüki pealkirjaread („UNIT 3 | …“).' }], emptyRows, sectionRows };
   }
-  if (table.length > IMPORT_LIMITS.maxRows) {
-    return { rows, unitTitles, issues: [{ row: 0, severity: 'error', message: `Failis on rohkem kui ${IMPORT_LIMITS.maxRows} rida.` }], emptyRows, sectionRows };
+  if (table.length > IMPORT_LIMITS.maxTableRows) {
+    return { rows, unitTitles, issues: [{ row: 0, severity: 'error', message: `Tabelis on rohkem kui ${IMPORT_LIMITS.maxTableRows} rida.` }], emptyRows, sectionRows };
   }
 
   const start = mapping.headerRow === null ? 0 : mapping.headerRow + 1;
-  let sectionUnit: number | null = null;
+  let sectionUnit: number | null = defaultUnit;
+  const setTitle = (unitNumber: number, title: string, row: number) => {
+    const clean = title.slice(0, IMPORT_LIMITS.maxTitleLength);
+    if (!clean) return;
+    // The first title wins, from a section row or a title column alike.
+    if (unitTitles[unitNumber] && unitTitles[unitNumber] !== clean) {
+      issues.push({ row, severity: 'warning', message: `Unit ${unitNumber} pealkiri on mitmel kujul; kasutatakse „${unitTitles[unitNumber]}“.` });
+      return;
+    }
+    unitTitles[unitNumber] = clean;
+  };
+  const sectionStarts = new Map<number, number>();
+
+  // A unit heading above the header row (one sheet per unit) still applies.
+  if (mapping.unitHeaderRows) {
+    for (let index = 0; index < start && index < table.length; index += 1) {
+      const section = sectionOf(table[index], mapping);
+      if (section && 'unitNumber' in section && validUnitNumber(section.unitNumber)) {
+        sectionUnit = section.unitNumber;
+        sectionRows += 1;
+        sectionStarts.set(section.unitNumber, index + 1);
+        setTitle(section.unitNumber, section.title, index + 1);
+      }
+    }
+  }
+
   const seen = new Map<string, number>();
+  let dataRows = 0;
 
   for (let index = start; index < table.length; index += 1) {
     const row = table[index];
     const rowNumber = index + 1;
     if (isEmptyRow(row)) { emptyRows += 1; continue; }
+    dataRows += 1;
+    if (dataRows > IMPORT_LIMITS.maxRows) {
+      issues.push({ row: rowNumber, severity: 'error', message: `Failis on rohkem kui ${IMPORT_LIMITS.maxRows} andmerida.` });
+      break;
+    }
 
-    const englishCell = cellAt(row, mapping.english);
-    const estonianCell = cellAt(row, mapping.estonian);
-
-    if (mapping.unitHeaderRows && !estonianCell.v.trim()) {
-      const candidate = [englishCell, ...row].find((cell) => cell.t === 's' && cell.v.trim());
-      const section = candidate ? parseUnitSection(candidate.v) : null;
+    if (mapping.unitHeaderRows) {
+      const section = sectionOf(row, mapping);
       if (section) {
         sectionRows += 1;
+        if ('ambiguous' in section) {
+          issues.push({ row: rowNumber, severity: 'error', message: `Õppetüki pealkirjarida „${section.text}“ on mitmeti mõistetav. Kirjuta üks number, nt „UNIT 3 | Pealkiri“.` });
+          sectionUnit = null;
+          continue;
+        }
         if (!validUnitNumber(section.unitNumber)) {
           issues.push({ row: rowNumber, severity: 'error', message: `Õppetüki number ${section.unitNumber} ei ole lubatud (1–${IMPORT_LIMITS.maxUnitNumber}).` });
           sectionUnit = null;
           continue;
         }
         sectionUnit = section.unitNumber;
-        if (section.title) unitTitles[section.unitNumber] = section.title.slice(0, IMPORT_LIMITS.maxTitleLength);
+        sectionStarts.set(section.unitNumber, rowNumber);
+        setTitle(section.unitNumber, section.title, rowNumber);
         continue;
       }
     }
@@ -253,16 +331,16 @@ export function parseImportRows(table: ImportTable, mapping: ImportMapping): Par
       continue;
     }
 
-    const english = textField(englishCell, 'Ingliskeelne sõna', rowNumber, issues);
-    const estonian = textField(estonianCell, 'Eestikeelne sõna', rowNumber, issues);
+    const english = textField(cellAt(row, mapping.english), 'Ingliskeelne sõna', rowNumber, issues);
+    const estonian = textField(cellAt(row, mapping.estonian), 'Eestikeelne sõna', rowNumber, issues);
     if (english === null || estonian === null) continue;
     if (!english) { issues.push({ row: rowNumber, severity: 'error', message: 'Ingliskeelne sõna puudub.' }); continue; }
     if (!estonian) { issues.push({ row: rowNumber, severity: 'error', message: 'Eestikeelne sõna puudub.' }); continue; }
 
     const pronunciationCell = cellAt(row, mapping.pronunciation);
     // Kept exactly as written (brackets, IPA symbols, stress marks), apart from
-    // surrounding spaces. Never generated.
-    const pronunciation = pronunciationCell.t === 'empty' ? '' : pronunciationCell.v.normalize('NFC').trim();
+    // surrounding spaces and invisible characters. Never generated.
+    const pronunciation = pronunciationCell.t === 'empty' ? '' : stripInvisible(pronunciationCell.v.normalize('NFC')).trim();
     if (pronunciation.length > IMPORT_LIMITS.maxPronunciationLength) {
       issues.push({ row: rowNumber, severity: 'error', message: `Hääldus on pikem kui ${IMPORT_LIMITS.maxPronunciationLength} märki.` });
       continue;
@@ -275,10 +353,7 @@ export function parseImportRows(table: ImportTable, mapping: ImportMapping): Par
     const acceptedAnswers = parseAccepted(cellAt(row, mapping.accepted).v, rowNumber, english, issues);
     if (acceptedAnswers === null) continue;
 
-    if (mapping.title !== null) {
-      const title = collapse(cellAt(row, mapping.title).v);
-      if (title && !unitTitles[unitNumber]) unitTitles[unitNumber] = title.slice(0, IMPORT_LIMITS.maxTitleLength);
-    }
+    if (mapping.title !== null) setTitle(unitNumber, collapse(cellAt(row, mapping.title).v), rowNumber);
 
     const key = `${unitNumber}␟${wordKey(estonian, english)}`;
     const duplicateOf = seen.get(key);
@@ -299,6 +374,9 @@ export function parseImportRows(table: ImportTable, mapping: ImportMapping): Par
   }
 
   const unitNumbers = new Set(rows.map((row) => row.unitNumber));
+  for (const [unitNumber, row] of sectionStarts) {
+    if (!unitNumbers.has(unitNumber)) issues.push({ row, severity: 'warning', message: `Unit ${unitNumber} pealkirjarea all pole ühtegi sõna; seda õppetükki ei looda.` });
+  }
   if (unitNumbers.size > IMPORT_LIMITS.maxUnits) {
     issues.push({ row: 0, severity: 'error', message: `Failis on rohkem kui ${IMPORT_LIMITS.maxUnits} õppetükki.` });
   }
@@ -323,7 +401,7 @@ export function parseImportRows(table: ImportTable, mapping: ImportMapping): Par
     issues.push({ row: 0, severity: 'error', message: 'Failist ei leitud ühtegi sõna.' });
   }
 
-  return { rows, unitTitles, issues, emptyRows, sectionRows };
+  return { rows, unitTitles, issues, emptyRows, sectionRows, fields: { pronunciation: mapping.pronunciation !== null, accepted: mapping.accepted !== null } };
 }
 
 /* --------------------------------------------------------------- diffing */
@@ -358,7 +436,7 @@ export type PlannedWordChange =
   | { kind: 'updated'; row: number; position: number; wordId: string; values: WordValues; hasHistory: boolean }
   | { kind: 'unchanged'; row: number; position: number; wordId: string }
   | { kind: 'restored'; row: number; position: number; wordId: string; values: WordValues }
-  | { kind: 'kept'; position: number; wordId: string }
+  | { kind: 'kept'; position: number; wordId: string; moved: boolean }
   | { kind: 'retired'; wordId: string; hasHistory: boolean; english: string };
 
 export type PlannedUnitCounts = Record<PlannedWordChange['kind'], number>;
@@ -389,6 +467,12 @@ function sameList(left: readonly string[], right: readonly string[]) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
+// Several stored words can share a key (added by hand before duplicates were
+// refused). The one with history is the one an import continues.
+function preferHistory(words: ExistingWord[]) {
+  return [...words].sort((left, right) => Number(right.hasHistory) - Number(left.hasHistory) || left.position - right.position);
+}
+
 export function planImport(parsed: ParsedImport, existingUnits: readonly ExistingUnit[], mode: ImportMode): ImportPlan {
   const issues = [...parsed.issues];
   const byNumber = new Map(existingUnits.map((unit) => [unit.unitNumber, unit]));
@@ -398,10 +482,12 @@ export function planImport(parsed: ParsedImport, existingUnits: readonly Existin
   for (const unitNumber of unitNumbers) {
     const existing = byNumber.get(unitNumber) ?? null;
     const importRows = parsed.rows.filter((row) => row.unitNumber === unitNumber);
-    const active = new Map<string, ExistingWord>();
-    const retired = new Map<string, ExistingWord>();
+    const active = new Map<string, ExistingWord[]>();
+    const retired = new Map<string, ExistingWord[]>();
     for (const word of existing?.words ?? []) {
-      (word.retired ? retired : active).set(wordKey(word.estonian, word.english), word);
+      const target = word.retired ? retired : active;
+      const key = wordKey(word.estonian, word.english);
+      target.set(key, [...(target.get(key) ?? []), word]);
     }
     const changes: PlannedWordChange[] = [];
     const matched = new Set<string>();
@@ -409,8 +495,15 @@ export function planImport(parsed: ParsedImport, existingUnits: readonly Existin
     importRows.forEach((row, index) => {
       const position = index + 1;
       const key = wordKey(row.estonian, row.english);
-      const values: WordValues = { estonian: row.estonian, english: row.english, pronunciation: row.pronunciation, acceptedAnswers: row.acceptedAnswers };
-      const current = active.get(key);
+      const current = preferHistory(active.get(key) ?? [])[0];
+      const old = current ? undefined : preferHistory(retired.get(key) ?? [])[0];
+      const stored = current ?? old;
+      const values: WordValues = {
+        estonian: row.estonian,
+        english: row.english,
+        pronunciation: stored && parsed.fields?.pronunciation === false ? stored.pronunciation : row.pronunciation,
+        acceptedAnswers: stored && parsed.fields?.accepted === false ? stored.acceptedAnswers : row.acceptedAnswers
+      };
       if (current) {
         matched.add(current.id);
         const same = current.estonian === values.estonian && current.english === values.english &&
@@ -420,7 +513,6 @@ export function planImport(parsed: ParsedImport, existingUnits: readonly Existin
           : { kind: 'updated', row: row.row, position, wordId: current.id, values, hasHistory: current.hasHistory });
         return;
       }
-      const old = retired.get(key);
       if (old) {
         changes.push({ kind: 'restored', row: row.row, position, wordId: old.id, values });
         return;
@@ -428,15 +520,23 @@ export function planImport(parsed: ParsedImport, existingUnits: readonly Existin
       changes.push({ kind: 'new', row: row.row, position, values });
     });
 
-    let position = importRows.length;
-    const leftovers = [...active.values()].filter((word) => !matched.has(word.id)).sort((left, right) => left.position - right.position);
+    // Words not in the file (and duplicates of a word that is): retired in
+    // replace mode, kept in merge mode — in place when their position is free.
+    const leftovers = [...active.values()].flat().filter((word) => !matched.has(word.id)).sort((left, right) => left.position - right.position);
+    const taken = new Set(changes.map((change) => 'position' in change ? change.position : 0));
+    let nextFree = importRows.length;
     for (const word of leftovers) {
       if (mode === 'replace') {
         changes.push({ kind: 'retired', wordId: word.id, hasHistory: word.hasHistory, english: word.english });
-      } else {
-        position += 1;
-        changes.push({ kind: 'kept', position, wordId: word.id });
+        continue;
       }
+      let position = word.position;
+      if (position <= importRows.length || taken.has(position)) {
+        do { nextFree += 1; } while (taken.has(nextFree));
+        position = nextFree;
+      }
+      taken.add(position);
+      changes.push({ kind: 'kept', position, wordId: word.id, moved: position !== word.position });
     }
     const withHistory = changes.filter((change) => change.kind === 'retired' && change.hasHistory).length;
     if (withHistory > 0) {
@@ -491,12 +591,14 @@ const HEADER_PATTERNS: Array<[keyof Pick<ImportMapping, 'english' | 'estonian' |
 ];
 
 // A best guess the parent can change in the mapping form. Looks for a header
-// row in the first rows, then for "UNIT n | …" section rows.
-export function suggestImportMapping(table: ImportTable): ImportMapping {
-  const mapping: ImportMapping = { headerRow: null, english: 0, estonian: 1, pronunciation: null, accepted: null, unit: null, title: null, unitHeaderRows: false };
+// row in the first rows, then for "UNIT n | …" section rows anywhere (also
+// above the header, as in one-sheet-per-unit workbooks), and finally for a
+// sheet named after a unit.
+export function suggestImportMapping(table: ImportTable, sheetName = ''): ImportMapping {
+  const mapping: ImportMapping = { headerRow: null, english: 0, estonian: 1, pronunciation: null, accepted: null, unit: null, title: null, unitHeaderRows: false, defaultUnit: null };
   for (let index = 0; index < Math.min(table.length, 15); index += 1) {
     const found: Partial<ImportMapping> = {};
-    table[index].forEach((cell, column) => {
+    (table[index] ?? []).forEach((cell, column) => {
       const text = cell.v.trim();
       if (!text || cell.t !== 's') return;
       for (const [field, pattern] of HEADER_PATTERNS) {
@@ -509,8 +611,13 @@ export function suggestImportMapping(table: ImportTable): ImportMapping {
     }
   }
   if (mapping.unit === null) {
-    const start = mapping.headerRow === null ? 0 : mapping.headerRow + 1;
-    mapping.unitHeaderRows = table.slice(start).some((row) => row.some((cell) => cell.t === 's' && parseUnitSection(cell.v) !== null));
+    mapping.unitHeaderRows = table.some((row, index) => index !== mapping.headerRow && (row ?? []).some((cell) => {
+      if (cell.t !== 's') return false;
+      const section = parseUnitSection(cell.v);
+      return section !== null && 'unitNumber' in section;
+    }));
+    const fromName = parseUnitSection(sheetName);
+    if (fromName && 'unitNumber' in fromName && validUnitNumber(fromName.unitNumber)) mapping.defaultUnit = fromName.unitNumber;
   }
   return mapping;
 }

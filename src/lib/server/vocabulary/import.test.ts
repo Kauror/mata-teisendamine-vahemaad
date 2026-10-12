@@ -56,7 +56,9 @@ describe('spreadsheet reader', () => {
     expect(() => readSpreadsheet(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), 'old.xls')).toThrow(/xls/u);
     expect(() => readSpreadsheet(Buffer.alloc(0))).toThrow(SpreadsheetError);
     expect(() => readSpreadsheet(Buffer.alloc(6 * 1024 * 1024, 65))).toThrow(/5 MB/u);
-    expect(() => readSpreadsheet(Buffer.from([0x61, 0xff, 0xfe, 0x62]))).toThrow(/UTF-8/u);
+    // Not UTF-8: read as the Windows Baltic code page Estonian Excel uses
+    // ("CSV (comma delimited)"), so õ/ä/ö/ü survive.
+    expect(readSpreadsheet(Buffer.from([0x6b, 0xf5, 0x3b, 0x6d, 0xe4])).sheets[0].rows[0].map((cell) => cell.v)).toEqual(['kõ', 'mä']);
   });
 });
 

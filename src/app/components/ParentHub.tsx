@@ -120,14 +120,20 @@ type WeeklyDigest = { from: string; to: string; learners: Record<Learner, Weekly
 
 type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'vocabulary' | 'password' | 'rewards' | 'history';
 
-function ParentAccordionSection({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
+// `keepMounted`: once opened, the content stays mounted (just hidden) when the
+// section is closed, so work in progress — such as a half-done import — is
+// not thrown away by collapsing it.
+function ParentAccordionSection({ title, summary, open, onToggle, children, keepMounted = false }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode; keepMounted?: boolean }) {
+  const [opened, setOpened] = useState(open);
+  useEffect(() => { if (open) setOpened(true); }, [open]);
+  const mounted = open || (keepMounted && opened);
   return (
     <section className='parent-accordion-section'>
       <button type='button' className='parent-accordion-toggle' aria-expanded={open} onClick={onToggle}>
         <span>{title}</span>
         <strong>{summary}</strong>
       </button>
-      {open && <div className='parent-accordion-content'>{children}</div>}
+      {mounted && <div className='parent-accordion-content' hidden={!open}>{children}</div>}
     </section>
   );
 }
@@ -945,7 +951,7 @@ export default function ParentHub() {
       </section>
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Inglise keele sõnavara' summary='Õppetükid, import ja edenemine' open={openSections.has('vocabulary')} onToggle={() => toggleSection('vocabulary')}>
+      <ParentAccordionSection title='Inglise keele sõnavara' summary='Õppetükid, import ja edenemine' open={openSections.has('vocabulary')} onToggle={() => toggleSection('vocabulary')} keepMounted>
         <ParentEnglishVocabulary setNotice={setNotice} setError={setError} />
       </ParentAccordionSection>
 

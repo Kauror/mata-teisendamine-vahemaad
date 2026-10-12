@@ -16,6 +16,8 @@ import {
   currentPracticeWord,
   currentStudyWord,
   currentTestWord,
+  practiceTotal,
+  prunePractice,
   studySummary,
   VocabRuleError,
   type PracticeState,
@@ -43,6 +45,9 @@ import {
   activeWords,
   ensureProgressRow,
   getUnit,
+  progressRows,
+  studiedWordIds,
+  unstudiedWordIds,
   listUnits,
   toSnapshot,
   unitAccessFor,
@@ -103,6 +108,8 @@ export type SessionView = {
     firstKnown: number;
     neededRetry: number;
     remainingCards: number;
+    // 'new' when only the words added since the last study are studied.
+    scope: 'all' | 'new';
     completed: boolean;
     // `sequence` counts the assessments made so far, so it differs for every
     // card shown — including the same word coming straight back as the last
@@ -120,6 +127,7 @@ export type SessionView = {
     feedback: TypedFeedback | null;
     lastRound: { round: number; correct: number; total: number; percent: number; wrongCount: number; passed: boolean } | null;
     firstRound: { correct: number; total: number; percent: number } | null;
+    counted: boolean | null;
   };
   practice?: {
     total: number;
@@ -203,6 +211,7 @@ export function buildSessionView(row: SessionRow): SessionView {
       ...base,
       study: {
         ...studySummary(state),
+        scope: state.scope ?? 'all',
         completed: state.completed,
         card: word ? { wordId: word.id, sequence: state.swipes, estonian: word.estonian, english: word.english, pronunciation: word.pronunciation, revealed: state.revealed } : null
       }
@@ -226,7 +235,10 @@ export function buildSessionView(row: SessionRow): SessionView {
         prompt: typedPrompt(currentTestWord(state)),
         feedback: state.feedback,
         lastRound: last ? { round: last.round, correct: last.correct, total: last.total, percent: displayPercent(last.correct, last.total), wrongCount: last.wrongWordIds.length, passed: last.passed } : null,
-        firstRound: first ? { correct: first.correct, total: first.total, percent: displayPercent(first.correct, first.total) } : null
+        firstRound: first ? { correct: first.correct, total: first.total, percent: displayPercent(first.correct, first.total) } : null,
+        // A passed test counts (stars, history, the daily contest) once per unit
+        // per day; a repeat on the same day is practice.
+        counted: state.phase === 'passed' ? row.attemptId !== null : null
       }
     };
   }
@@ -234,7 +246,7 @@ export function buildSessionView(row: SessionRow): SessionView {
   return {
     ...base,
     practice: {
-      total: state.words.length,
+      total: practiceTotal(state),
       masteredCount: state.mastered.length,
       firstTryCorrect: state.firstTryCorrect.length,
       position: Math.min(state.cursor + 1, state.queue.length),
@@ -246,14 +258,27 @@ export function buildSessionView(row: SessionRow): SessionView {
   };
 }
 
+// Reading a session is subject to the same rules as acting in it: the
+// exercise must be enabled and a study or test unit must still be open.
 export function getSessionView(learner: Learner, sessionId: string): SessionView {
-  return buildSessionView(loadSession(learner, sessionId));
+  assertVocabularyEnabled(learner);
+  const row = loadSession(learner, sessionId);
+  if (row.unitId && row.mode !== 'practice') assertUnitAccess(learner, row.unitId, false);
+  return buildSessionView(row);
 }
 
 /* ------------------------------------------------------------- start */
 
+function unitsWithActiveTest(learner: Learner): Set<string> {
+  const rows = db.prepare("SELECT unitId FROM english_vocab_sessions WHERE learner = ? AND mode = 'test' AND status = 'active' AND unitId IS NOT NULL").all(learner) as Array<{ unitId: string }>;
+  return new Set(rows.map((row) => row.unitId));
+}
+
+// Words to practise: weak, not retired, in an open unit, and not in a unit
+// whose test is under way — those wait until the test is over.
 function weakWordRows(learner: Learner, unitId: string | null): WordRow[] {
   const access = unitAccessFor(learner);
+  const testing = unitsWithActiveTest(learner);
   const rows = db.prepare(`
     SELECT w.* FROM english_vocab_word_stats s
     JOIN english_vocab_words w ON w.id = s.wordId
@@ -261,7 +286,34 @@ function weakWordRows(learner: Learner, unitId: string | null): WordRow[] {
     WHERE s.learner = ? AND s.needsPractice = 1 AND w.retiredAt IS NULL
     ORDER BY u.unitNumber ASC, w.position ASC
   `).all(learner) as WordRow[];
-  return rows.filter((row) => (unitId === null || row.unitId === unitId) && access.get(row.unitId)?.accessible);
+  return rows.filter((row) => (unitId === null || row.unitId === unitId) && access.get(row.unitId)?.accessible && !testing.has(row.unitId));
+}
+
+// Brings a practice session in line with the current words: words that
+// recovered, were retired or became unavailable are dropped. Returns the
+// row as stored afterwards.
+function refreshPractice(row: SessionRow, actionId: string | null): SessionRow {
+  const state = parseState(row);
+  if (state.kind !== 'practice' || row.status !== 'active') return row;
+  const keep = new Set(weakWordRows(row.learner, row.unitId).map((word) => word.id));
+  const pruned = prunePractice(state, keep);
+  if (pruned === state) return row;
+  const now = nowIso();
+  db.prepare(`
+    UPDATE english_vocab_sessions
+    SET stateJson = ?, revision = revision + 1, lastActionId = COALESCE(?, lastActionId), status = ?, completedAt = ?, updatedAt = ?
+    WHERE id = ? AND revision = ?
+  `).run(JSON.stringify(pruned), actionId, pruned.completed ? 'completed' : 'active', pruned.completed ? now : null, now, row.id, row.revision);
+  return loadSession(row.learner, row.id);
+}
+
+// Has a passed test of this unit already counted today?
+function testCountedOn(learner: Learner, unitId: string, completionDate: string) {
+  return Boolean(db.prepare(`
+    SELECT 1 FROM english_vocab_sessions s JOIN attempts a ON a.id = s.attemptId
+    WHERE s.learner = ? AND s.unitId = ? AND s.mode = 'test' AND a.completionDate = ?
+    LIMIT 1
+  `).get(learner, unitId, completionDate));
 }
 
 export function weakWordCounts(learner: Learner): Map<string, number> {
@@ -291,9 +343,12 @@ export function startOrResumeSession(learner: Learner, input: { unitId: string |
   const scopeKey = unitId ?? '*';
 
   return db.transaction(() => {
-    const existing = db.prepare("SELECT * FROM english_vocab_sessions WHERE learner = ? AND scopeKey = ? AND mode = ? AND status = 'active'").get(learner, scopeKey, mode) as SessionRow | undefined;
-    if (existing) {
-      if (existing.unitId) assertUnitAccess(learner, existing.unitId, existing.mode === 'test');
+    const found = db.prepare("SELECT * FROM english_vocab_sessions WHERE learner = ? AND scopeKey = ? AND mode = ? AND status = 'active'").get(learner, scopeKey, mode) as SessionRow | undefined;
+    // A practice session is refreshed first; if nothing is left to practise
+    // it closes, and a fresh one (if any words remain) starts below.
+    const existing = found && found.mode === 'practice' ? refreshPractice(found, null) : found;
+    if (existing && existing.status === 'active') {
+      if (existing.unitId && existing.mode !== 'practice') assertUnitAccess(learner, existing.unitId, false);
       return buildSessionView(existing);
     }
 
@@ -307,11 +362,21 @@ export function startOrResumeSession(learner: Learner, input: { unitId: string |
     const id = `vs_${randomUUID()}`;
     const seed = seedFor(id);
     let state: EngineState;
-    if (mode === 'study') state = createStudyState(activeWords(unitId!).map(toSnapshot), seed);
-    else if (mode === 'test') state = createTestState(activeWords(unitId!).map(toSnapshot), seed);
+    if (mode === 'study') {
+      const words = activeWords(unitId!);
+      // A unit studied before the parent added words, and not passed yet:
+      // study just the new words, after which the test opens again.
+      const fresh = new Set(unstudiedWordIds(progressRows(learner).get(unitId!), words.map((word) => word.id)));
+      state = fresh.size > 0
+        ? createStudyState(words.filter((word) => fresh.has(word.id)).map(toSnapshot), seed, 'new')
+        : createStudyState(words.map(toSnapshot), seed, 'all');
+    } else if (mode === 'test') state = createTestState(activeWords(unitId!).map(toSnapshot), seed);
     else {
       const words = weakWordRows(learner, unitId);
-      if (words.length === 0) throw new VocabRuleError('Praegu ei ole ühtegi sõna, mida korrata.');
+      if (words.length === 0) {
+        if (unitId && unitsWithActiveTest(learner).has(unitId)) throw new VocabRuleError('Selle õppetüki eksitud sõnu saab korrata pärast testi.');
+        throw new VocabRuleError('Praegu ei ole ühtegi sõna, mida korrata.');
+      }
       state = createPracticeState(words.map(toSnapshot), seed);
     }
 
@@ -443,6 +508,15 @@ function insertPassedTestAttempt(row: SessionRow, state: TestState, now: string)
 function completeStudy(row: SessionRow, state: StudyState, now: string) {
   const summary = studySummary(state);
   ensureProgressRow(row.learner, row.unitId!);
+  const progress = progressRows(row.learner).get(row.unitId!);
+  const studied = [...new Set([...studiedWordIds(progress), ...state.words.map((word) => word.id)])].sort();
+  db.prepare('UPDATE english_vocab_progress SET studiedWordIdsJson = ? WHERE learner = ? AND unitId = ?').run(JSON.stringify(studied), row.learner, row.unitId);
+  // Studying only the newly added words does not replace the record of the
+  // first full study.
+  if (state.scope === 'new') {
+    db.prepare('UPDATE english_vocab_progress SET updatedAt = ? WHERE learner = ? AND unitId = ?').run(now, row.learner, row.unitId);
+    return;
+  }
   // The first completion is the record; later study rounds only add to the
   // count and never overwrite it.
   db.prepare(`
@@ -460,7 +534,10 @@ function completeTest(row: SessionRow, state: TestState, now: string) {
   const unit = getUnit(row.unitId!);
   if (!unit) throw new VocabNotFoundError('Õppetükki ei leitud.');
   const passing = state.rounds.at(-1)!;
-  const attemptId = insertPassedTestAttempt(row, state, now);
+  // Once per unit per day: a repeat pass on the same day is practice and
+  // creates no attempt (no stars, no history row, no contest count).
+  const completionDate = isoToAppDate(now) ?? now.slice(0, 10);
+  const attemptId = testCountedOn(row.learner, unit.id, completionDate) ? null : insertPassedTestAttempt(row, state, now);
   ensureProgressRow(row.learner, unit.id);
   // The original pass is never overwritten by a later repeat.
   db.prepare(`
@@ -490,7 +567,18 @@ export function applySessionAction(learner: Learner, sessionId: string, input: {
     if (row.lastActionId === actionId) return buildSessionView(row);
     if (row.status !== 'active') throw new VocabStaleError('See harjutuskord on juba lõpetatud.', buildSessionView(row));
     if (row.revision !== revision) throw new VocabStaleError('Harjutus jätkus teises aknas.', buildSessionView(row));
-    if (row.unitId) assertUnitAccess(learner, row.unitId, row.mode === 'test');
+    // A test already under way may finish even if words were added meanwhile
+    // (it works from its own copy); the unit itself must still be open.
+    if (row.unitId && row.mode !== 'practice') assertUnitAccess(learner, row.unitId, false);
+    if (row.mode === 'practice') {
+      const refreshed = refreshPractice(row, null);
+      if (refreshed.status !== 'active') return buildSessionView(refreshed);
+      if (refreshed.revision !== row.revision) {
+        // Words dropped out before this action: continue from the new state.
+        row.stateJson = refreshed.stateJson;
+        row.revision = refreshed.revision;
+      }
+    }
 
     const state = parseState(row);
     const action = parseAction(row.mode, input.action);

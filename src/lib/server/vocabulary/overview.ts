@@ -6,18 +6,20 @@ import { displayPercent } from '@/lib/vocabulary/threshold';
 import type { UnitAccessReason } from '@/lib/vocabulary/unlock';
 import {
   activeWordCounts,
+  activeWordIdsByUnit,
   allWords,
   listUnits,
   parseAccepted,
   progressRows,
-  unitAccessFor
+  unitAccessFor,
+  unstudiedWordIds
 } from '@/lib/server/vocabulary/units';
 import { activeSessionIds, weakWordCounts } from '@/lib/server/vocabulary/sessions';
 
 // Read models for the two screens: the child's unit list and the parent's
 // administration and statistics. Neither writes anything.
 
-export type ChildUnitStatus = 'locked' | 'new' | 'studying' | 'study_done' | 'testing' | 'passed';
+export type ChildUnitStatus = 'locked' | 'new' | 'studying' | 'study_done' | 'new_words' | 'testing' | 'passed';
 
 export type ChildUnitCard = {
   id: string;
@@ -34,6 +36,8 @@ export type ChildUnitCard = {
   activeTestSessionId: string | null;
   activePracticeSessionId: string | null;
   weakCount: number;
+  // Words added after the unit was studied; studied before the test reopens.
+  newWordsCount: number;
 };
 
 export type ChildVocabularyHome = {
@@ -49,7 +53,8 @@ export function getChildVocabularyHome(learner: Learner): ChildVocabularyHome {
   const units = listUnits();
   const counts = activeWordCounts();
   const progress = progressRows(learner);
-  const access = unitAccessFor(learner, units, counts, progress);
+  const wordIds = activeWordIdsByUnit();
+  const access = unitAccessFor(learner, units, counts, progress, wordIds);
   const sessions = activeSessionIds(learner);
   const weak = weakWordCounts(learner);
   const byNumber = new Map(units.map((unit) => [unit.unitNumber, unit]));
@@ -68,6 +73,7 @@ export function getChildVocabularyHome(learner: Learner): ChildVocabularyHome {
       if (!unitAccess.accessible) status = 'locked';
       else if (row?.testPassedAt) status = 'passed';
       else if (activeTestSessionId) status = 'testing';
+      else if (row?.studyCompletedAt && unstudiedWordIds(row, wordIds.get(unit.id) ?? []).length > 0) status = 'new_words';
       else if (row?.studyCompletedAt) status = 'study_done';
       else if (activeStudySessionId) status = 'studying';
       else status = 'new';
@@ -86,7 +92,8 @@ export function getChildVocabularyHome(learner: Learner): ChildVocabularyHome {
         activeStudySessionId,
         activeTestSessionId,
         activePracticeSessionId: session('practice'),
-        weakCount: unitAccess.accessible ? weak.get(unit.id) ?? 0 : 0
+        weakCount: unitAccess.accessible ? weak.get(unit.id) ?? 0 : 0,
+        newWordsCount: unitAccess.accessible ? unstudiedWordIds(row, wordIds.get(unit.id) ?? []).length : 0
       };
     });
 

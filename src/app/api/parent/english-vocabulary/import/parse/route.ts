@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const file = readSpreadsheet(buffer, fileName);
     return NextResponse.json({
       format: file.format,
-      sheets: file.sheets.map((sheet) => ({ name: sheet.name, rows: sheet.rows, suggestedMapping: suggestImportMapping(sheet.rows) }))
+      sheets: file.sheets.map((sheet) => ({ name: sheet.name, rows: sheet.rows, error: sheet.error ?? null, suggestedMapping: suggestImportMapping(sheet.rows, sheet.name) }))
     });
   } catch (error) {
     return vocabErrorResponse(error);

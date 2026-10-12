@@ -14,9 +14,14 @@ export type AnswerTarget = {
 const APOSTROPHES = /[‘’‛ʼʹ´`′]/g;
 const TRAILING_SENTENCE_PUNCTUATION = /[.!?…]+$/u;
 
+// Invisible characters (soft hyphen, zero-width space/joiners, word joiner,
+// byte-order mark) never count as part of an answer on either side.
+const INVISIBLE = new RegExp(`[${[0x00ad, 0x200b, 0x200c, 0x200d, 0x2060, 0xfeff].map((code) => String.fromCharCode(code)).join('')}]`, 'gu');
+
 export function normalizeAnswer(value: string): string {
   return value
     .normalize('NFC')
+    .replace(INVISIBLE, '')
     .replace(APOSTROPHES, "'")
     .replace(/\s+/gu, ' ')
     .trim()

@@ -988,6 +988,28 @@ function addEnglishVocabulary(connection: DatabaseConnection) {
   `);
 }
 
+// The words a child has studied in each unit. A test that has not been passed
+// yet stays closed until every current word has been studied, so words the
+// parent adds later are studied before they are tested. Backfilled from
+// completed study sessions: every word in one got at least one swipe event.
+function addEnglishVocabularyStudiedWords(connection: DatabaseConnection) {
+  addColumn(connection, 'english_vocab_progress', 'studiedWordIdsJson', 'TEXT');
+  const rows = connection.prepare(`
+    SELECT p.learner, p.unitId FROM english_vocab_progress p WHERE p.studyCompletedAt IS NOT NULL
+  `).all() as Array<{ learner: string; unitId: string }>;
+  const words = connection.prepare(`
+    SELECT DISTINCT e.wordId FROM english_vocab_events e
+    JOIN english_vocab_sessions s ON s.id = e.sessionId
+    WHERE s.learner = ? AND s.unitId = ? AND s.mode = 'study' AND s.status = 'completed' AND e.phase = 'study'
+    ORDER BY e.wordId
+  `);
+  const update = connection.prepare('UPDATE english_vocab_progress SET studiedWordIdsJson = ? WHERE learner = ? AND unitId = ?');
+  for (const row of rows) {
+    const ids = (words.all(row.learner, row.unitId) as Array<{ wordId: string }>).map((item) => item.wordId);
+    update.run(JSON.stringify(ids), row.learner, row.unitId);
+  }
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -1042,6 +1064,12 @@ const migrations: Migration[] = [
     name: 'english_vocabulary',
     checksumSource: 'english_vocabulary:v1:2026-10-11',
     up: addEnglishVocabulary
+  },
+  {
+    id: 10,
+    name: 'english_vocabulary_studied_words',
+    checksumSource: 'english_vocabulary_studied_words:v1:2026-10-12',
+    up: addEnglishVocabularyStudiedWords
   }
 ];
 

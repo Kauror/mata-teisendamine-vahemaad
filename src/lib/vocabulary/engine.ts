@@ -61,15 +61,20 @@ export type StudyState = {
   wrongSwipes: Record<string, number>;
   swipes: number;
   completed: boolean;
+  // 'new': only the words added to the unit after it was last studied, which
+  // must be studied before the (not yet passed) test opens again. Absent in
+  // sessions created before this existed, which means 'all'.
+  scope?: 'all' | 'new';
 };
 
 export type StudyAction = { type: 'reveal' } | { type: 'grade'; known: boolean };
 
-export function createStudyState(words: VocabWordSnapshot[], seed: number): StudyState {
+export function createStudyState(words: VocabWordSnapshot[], seed: number, scope: 'all' | 'new' = 'all'): StudyState {
   assertWords(words);
   return {
     kind: 'study',
     version: 1,
+    scope,
     seed,
     words: words.map((word) => ({ ...word, acceptedAnswers: [...word.acceptedAnswers] })),
     queue: shuffled(words.map((word) => word.id), seed, 0),
@@ -317,7 +322,31 @@ export type PracticeState = {
   firstTryCorrect: string[];
   answers: number;
   completed: boolean;
+  // Words taken out of this session because they stopped needing practice or
+  // became unavailable (retired, unpublished, locked). Absent in older sessions.
+  dropped?: string[];
 };
+
+// Removes words that should no longer be practised from what is still to
+// come. The word on screen with its feedback stays; everything after it is
+// filtered. If nothing is left, the session is complete.
+export function prunePractice(state: PracticeState, keep: ReadonlySet<string>): PracticeState {
+  if (state.completed) return state;
+  const protectedCount = state.feedback ? state.cursor + 1 : state.cursor;
+  const head = state.queue.slice(0, protectedCount);
+  const tail = state.queue.slice(protectedCount).filter((id) => keep.has(id));
+  const queue = [...head, ...tail];
+  const dropped = [...new Set([...(state.dropped ?? []), ...state.words
+    .filter((word) => !keep.has(word.id) && !state.mastered.includes(word.id) && !queue.slice(state.cursor).includes(word.id))
+    .map((word) => word.id)])];
+  const unchanged = queue.length === state.queue.length && dropped.length === (state.dropped ?? []).length;
+  if (unchanged) return state;
+  return { ...state, queue, dropped, completed: !state.feedback && state.cursor >= queue.length };
+}
+
+export function practiceTotal(state: PracticeState) {
+  return state.words.length - (state.dropped ?? []).length;
+}
 
 export function createPracticeState(words: VocabWordSnapshot[], seed: number): PracticeState {
   assertWords(words);

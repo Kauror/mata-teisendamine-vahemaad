@@ -77,6 +77,10 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   await expect(page.getByLabel(/Õppetükke alustavad pealkirjaread/)).toBeChecked();
   await page.getByRole('button', { name: 'Kontrolli' }).click();
   await expect(page.getByRole('cell', { name: new RegExp(`^Unit ${first} — Animals`) })).toBeVisible();
+  // Collapsing the section keeps the import in progress.
+  await page.getByRole('button', { name: /Inglise keele sõnavara/ }).click();
+  await page.getByRole('button', { name: /Inglise keele sõnavara/ }).click();
+  await expect(page.getByRole('cell', { name: new RegExp(`^Unit ${first} — Animals`) })).toBeVisible();
   await page.getByRole('button', { name: 'Impordi' }).click();
   await expect(unitRow(page, first)).toBeVisible();
   await expect(unitRow(page, first).getByText('Avaldamata')).toBeVisible();
@@ -100,7 +104,7 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   const secondCard = page.locator('.vocab-unit-card').filter({ hasText: `Unit ${first + 1} — School` });
   await expect(firstCard.getByText('3 sõna')).toBeVisible();
   await expect(secondCard.getByText('🔒 Lukus')).toBeVisible();
-  await expect(secondCard.getByText(`Avaneb, kui Unit ${first} — Animals test on läbitud.`)).toBeVisible();
+  await expect(secondCard.getByText(`Avaneb, kui eelmise õppetüki (Unit ${first} — Animals) test on läbitud.`)).toBeVisible();
   await expect(page.getByRole('link', { name: /Sprint/ })).toHaveAttribute('href', '/kiur/inglise-keel/sprint');
 
   // A locked unit cannot be opened by URL either.
@@ -126,6 +130,16 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   await expect(page).toHaveURL(/session=vs_/u);
   await page.reload();
   await expect(page.getByText('Mõtle ingliskeelne sõna.')).toBeVisible();
+
+  // The connection drops while turning a card: the error offers a retry, and
+  // the retry really continues once the connection is back.
+  await page.context().setOffline(true);
+  await card.click();
+  await expect(page.locator('.vocab-problem')).toContainText('internetiühendust', { timeout: 15_000 });
+  await page.context().setOffline(false);
+  await page.getByRole('button', { name: 'Proovi uuesti' }).click();
+  await expect(card).toBeVisible();
+  await expect(page.locator('.vocab-problem')).toHaveCount(0);
 
   // Card 2: the keyboard.
   await page.locator('body').click({ position: { x: 5, y: 5 } });
@@ -181,6 +195,8 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
     await input.fill(`  ${englishFor(await promptText(page)).toUpperCase()} `);
     await input.press('Enter');
     await expect(page.getByText('✓ Õige')).toBeVisible();
+    // Focus stays in the answer field (keeps the phone keyboard open); Enter continues.
+    await expect(input).toBeFocused();
     await page.keyboard.press('Enter');
   }
   await expect(page.getByRole('heading', { name: '2/3 õigesti' })).toBeVisible();

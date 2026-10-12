@@ -89,8 +89,19 @@ export function useVocabSession(start: { unitId: string | null; mode: VocabMode 
     void load();
   }, [load]);
 
+  // Set when an action fails. Actions still waiting in the queue were based on
+  // a state the server may never have reached, so they are dropped rather
+  // than sent; "Proovi uuesti" reloads the server's state and clears it.
+  const failed = useRef(false);
+
+  const fail = useCallback((next: VocabSessionError) => {
+    failed.current = true;
+    setError(next);
+  }, []);
+
   const send = useCallback((action: SessionActionInput): Promise<SessionView | null> => {
     const run = async (): Promise<SessionView | null> => {
+      if (failed.current) return null;
       const current = viewRef.current;
       if (!current || current.status !== 'active') return current;
       const actionId = newActionId();
@@ -112,14 +123,16 @@ export function useVocabSession(start: { unitId: string | null; mode: VocabMode 
               adopt(body.session);
               return body.session;
             }
-            setError({ message: body.message ?? 'Vastust ei saanud salvestada.', retryable: response.status >= 500 });
+            // Anything else: show it, and let "Proovi uuesti" resync from the
+            // server — only a closed or missing exercise cannot be retried.
+            fail({ message: body.message ?? 'Vastust ei saanud salvestada.', retryable: response.status !== 403 && response.status !== 404 });
             return null;
           } catch {
             // Lost in transit: the same actionId is safe to send again.
             await new Promise((resolve) => window.setTimeout(resolve, 400 * (attempt + 1)));
           }
         }
-        setError({ message: OFFLINE_MESSAGE, retryable: true });
+        fail({ message: OFFLINE_MESSAGE, retryable: true });
         return null;
       } finally {
         setBusy(false);
@@ -128,18 +141,41 @@ export function useVocabSession(start: { unitId: string | null; mode: VocabMode 
     const next = queue.current.then(run, run);
     queue.current = next.catch(() => null);
     return next;
-  }, [adopt]);
+  }, [adopt, fail]);
+
+  // The error stays on screen until the server's state is back, so nothing
+  // can be tapped against a session that has not been resynced yet.
+  const [retrying, setRetrying] = useState(false);
 
   const retry = useCallback(() => {
-    setError(null);
-    if (!viewRef.current) void load();
-    else void fetch(`/api/english/sessions/${encodeURIComponent(viewRef.current.id)}`, { cache: 'no-store' })
-      .then(async (response) => {
-        if (!response.ok) throw new Error();
-        adopt(await response.json() as SessionView);
-      })
-      .catch(() => setError({ message: OFFLINE_MESSAGE, retryable: true }));
+    // Let anything still queued drain (it is skipped while `failed` is set),
+    // then start again from the server's state.
+    const resync = async () => {
+      setRetrying(true);
+      try {
+        await queue.current;
+        if (!viewRef.current) {
+          failed.current = false;
+          await load();
+          return;
+        }
+        const response = await fetch(`/api/english/sessions/${encodeURIComponent(viewRef.current.id)}`, { cache: 'no-store' });
+        const body = await readJson(response) as SessionView & ErrorBody;
+        if (!response.ok) {
+          setError({ message: body.message ?? OFFLINE_MESSAGE, retryable: response.status !== 403 && response.status !== 404 });
+          return;
+        }
+        failed.current = false;
+        adopt(body);
+        setError(null);
+      } catch {
+        setError({ message: OFFLINE_MESSAGE, retryable: true });
+      } finally {
+        setRetrying(false);
+      }
+    };
+    void resync();
   }, [adopt, load]);
 
-  return { view, error, busy, send, retry };
+  return { view, error, busy, send, retry, retrying };
 }
