@@ -7,7 +7,7 @@ import {
 } from './helpers';
 
 const ROUTES = [
-  { name: 'home', path: '/', visible: /Ava harjutused/ },
+  { name: 'home', path: '/', visible: /Harjutused/ },
   { name: 'Kiur dashboard', path: '/kiur', visible: /Harjutused/ },
   { name: 'Kirsi dashboard', path: '/kirsi', visible: /Harjutused/ },
   { name: 'history', path: '/history?child=kiur', visible: /Ajalugu/ },

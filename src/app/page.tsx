@@ -14,6 +14,7 @@ import {
 } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import NoticeBoard from '@/app/components/NoticeBoard';
+import SchoolNowCard from '@/app/components/SchoolNowCard';
 import MetricTooltip from '@/app/components/MetricTooltip';
 import { fetchHistoryPage } from '@/lib/historyClient';
 import { APP_VERSION } from '@/lib/shared/types';
@@ -36,15 +37,16 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, bala
 
   return (
     <section className='child-dashboard-card' data-accent={accent} aria-labelledby={`${learner}-dashboard-name`}>
+      {/* The badges sit beside the name rather than on a row of their own,
+          which keeps both cards short enough to see together. */}
       <div className='child-profile'>
         <div className='child-avatar' aria-hidden>{avatar}</div>
         <h2 className='child-name' id={`${learner}-dashboard-name`}>{name}</h2>
-      </div>
-
-      <div className='child-overview'>
-        <MetricTooltip className='streak-badge' label={streakTooltip(streak)}><span aria-hidden>🔥</span><strong>{streak}</strong></MetricTooltip>
-        <MetricTooltip className='stars-badge' label={starsTooltip(balance)}><span aria-hidden>⭐</span><strong>{formatStars(balance)}</strong></MetricTooltip>
-        <MetricTooltip className='trophy-badge' label={trophiesTooltip(trophies)}><span aria-hidden>🏆</span><strong>{trophies}</strong></MetricTooltip>
+        <div className='child-overview'>
+          <MetricTooltip className='streak-badge' label={streakTooltip(streak)}><span aria-hidden>🔥</span><strong>{streak}</strong></MetricTooltip>
+          <MetricTooltip className='stars-badge' label={starsTooltip(balance)}><span aria-hidden>⭐</span><strong>{formatStars(balance)}</strong></MetricTooltip>
+          <MetricTooltip className='trophy-badge' label={trophiesTooltip(trophies)}><span aria-hidden>🏆</span><strong>{trophies}</strong></MetricTooltip>
+        </div>
       </div>
 
       <div className='recent-panel'>
@@ -66,7 +68,8 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, bala
       </div>
 
       <div className='card-actions'>
-        <Link className='subject-button' href={href}>Ava harjutused</Link>
+        <Link className='subject-button' href={href}>Harjutused</Link>
+        <Link className='timetable-button' href={`${href}/tunniplaan`}><span aria-hidden>📅</span> Tunniplaan</Link>
       </div>
     </section>
   );
@@ -172,6 +175,7 @@ export default function Home() {
   return (
     <main className='container dashboard'>
       <TodayLeaderboard kiurCount={today.kiur} kirsiCount={today.kirsi} />
+      <SchoolNowCard />
       <div className='children-list'>
         <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} balance={balances.kiur} trophies={trophies.kiur} />
         <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} balance={balances.kirsi} trophies={trophies.kirsi} />

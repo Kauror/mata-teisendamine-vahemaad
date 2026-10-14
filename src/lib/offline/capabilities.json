@@ -23,7 +23,9 @@
     "/kiur/kordamine",
     "/kirsi/kordamine",
     "/kiur/paarid",
-    "/kirsi/paarid"
+    "/kirsi/paarid",
+    "/kiur/tunniplaan",
+    "/kirsi/tunniplaan"
   ],
   "publicAssets": [
     "/manifest.webmanifest",

@@ -347,6 +347,7 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
         <div className='child-home-header'>
           {identity}
           {/* The captions are gone, so the label has to live on the control. */}
+          <Link className='identity-action' href={`/${learner}/tunniplaan`} aria-label='Tunniplaan' title='Tunniplaan'><span aria-hidden>📅</span></Link>
           <Link className='identity-action' href={storeHref} aria-label='Pood' title='Pood'><span aria-hidden>🛒</span></Link>
           <Link className='identity-action' href='/history' aria-label='Ajalugu' title='Ajalugu'><span aria-hidden>📜</span></Link>
         </div>

@@ -8,7 +8,7 @@ test('dashboard has semantic independent links with keyboard focus and mobile to
   await expect(page.locator('.child-dashboard-card [role="button"]')).toHaveCount(0);
   await expect(page.locator('a button, button a, a a, button button')).toHaveCount(0);
 
-  const primary = page.getByRole('link', { name: 'Ava harjutused' }).first();
+  const primary = page.getByRole('link', { name: 'Harjutused', exact: true }).first();
   await primary.focus();
   await expect(primary).toBeFocused();
   expect(await primary.evaluate((node) => getComputedStyle(node).outlineStyle)).not.toBe('none');
@@ -17,7 +17,7 @@ test('dashboard has semantic independent links with keyboard focus and mobile to
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  const primaryBox = await page.getByRole('link', { name: 'Ava harjutused' }).first().boundingBox();
+  const primaryBox = await page.getByRole('link', { name: 'Harjutused', exact: true }).first().boundingBox();
   const historyBox = await page.getByRole('link', { name: 'Ajalugu', exact: true }).boundingBox();
   expect(primaryBox?.height).toBeGreaterThanOrEqual(44);
   expect(historyBox?.height).toBeGreaterThanOrEqual(44);
