@@ -29,9 +29,23 @@ function validResponse(response, expectedPath, kind) {
   return expectedPath.startsWith('/_next/static/') && (type.includes('javascript') || type.includes('css'));
 }
 
+// HTML references build-specific hashed chunks, so a shell is only usable by
+// the worker of the build that rendered it. The server stamps every page with
+// X-App-Build-Id (src/middleware.ts).
+const BUILD_ID_HEADER = 'x-app-build-id';
+
+function shellBuildId(response) {
+  return response.headers.get(BUILD_ID_HEADER);
+}
+
 async function fetchRequired(cache, path, kind) {
   const response = await fetch(path, { credentials: 'same-origin', cache: 'reload', redirect: 'follow' });
   if (!validResponse(response, path, kind)) throw new Error('Required offline resource failed validation: ' + path);
+  // A deploy during install would otherwise store another build's HTML. A
+  // missing header (a server built without an id) keeps the old behaviour.
+  if (kind === 'shell' && shellBuildId(response) !== null && shellBuildId(response) !== BUILD_ID) {
+    throw new Error('Offline shell belongs to another build: ' + path);
+  }
   await cache.put(path, response.clone());
 }
 
@@ -128,21 +142,33 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
+      let response;
       try {
-        const response = await fetch(request);
-        if (ALLOWED_SHELL_PATHS.has(url.pathname) && validResponse(response, url.pathname, 'shell')) {
-          const shellCache = await caches.open(SHELL_CACHE);
-          await shellCache.put(url.pathname, response.clone());
+        response = await fetch(request);
+      } catch {
+        response = null;
+      }
+      if (response) {
+        // Refresh the shell only with HTML from this worker's own build: while
+        // a new worker waits, the server already renders the new build, whose
+        // chunks this worker's static cache does not hold (no hydration
+        // offline). The copy is stored in the background so the page streams.
+        if (
+          ALLOWED_SHELL_PATHS.has(url.pathname) &&
+          validResponse(response, url.pathname, 'shell') &&
+          shellBuildId(response) === BUILD_ID
+        ) {
+          const copy = response.clone();
+          event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.put(url.pathname, copy)).catch(() => {}));
         }
         return response;
-      } catch {
-        const shellCache = await caches.open(SHELL_CACHE);
-        if (ALLOWED_SHELL_PATHS.has(url.pathname)) {
-          const cached = await shellCache.match(url.pathname);
-          if (cached) return cached;
-        }
-        return (await shellCache.match('/offline')) || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
       }
+      const shellCache = await caches.open(SHELL_CACHE);
+      if (ALLOWED_SHELL_PATHS.has(url.pathname)) {
+        const cached = await shellCache.match(url.pathname);
+        if (cached) return cached;
+      }
+      return (await shellCache.match('/offline')) || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
     })());
     return;
   }

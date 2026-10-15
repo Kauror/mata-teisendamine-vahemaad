@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { middleware } from '@/middleware';
 import { issueSession } from '@/lib/auth/session';
@@ -60,5 +60,26 @@ describe('parent mutation middleware', () => {
     }));
     expect(response.status).toBe(200);
     expect(response.headers.get('x-middleware-next')).toBe('1');
+  });
+});
+
+describe('build id on pages (OFF-03)', () => {
+  async function get(path: string) {
+    const family = await issueSession('family', { maxAgeSeconds: 60 });
+    return middleware(new NextRequest(`https://example.test${path}`, { headers: { cookie: `${APP_ACCESS_COOKIE}=${family.token}` } }));
+  }
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('stamps authenticated page responses with the build id the worker compares against', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_BUILD_ID', 'build-b');
+    expect((await get('/kiur')).headers.get('x-app-build-id')).toBe('build-b');
+  });
+
+  it('leaves API responses and builds without an id unstamped', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_BUILD_ID', 'build-b');
+    expect((await get('/api/history')).headers.get('x-app-build-id')).toBeNull();
+    vi.stubEnv('NEXT_PUBLIC_APP_BUILD_ID', '');
+    expect((await get('/kiur')).headers.get('x-app-build-id')).toBeNull();
   });
 });
