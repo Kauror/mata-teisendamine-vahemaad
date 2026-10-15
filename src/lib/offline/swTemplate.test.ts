@@ -29,9 +29,21 @@ function page(pathname: string, buildId: string | null, body = `<html>${buildId}
   return response;
 }
 
-function loadWorker(fetchImpl: (input: string) => Promise<Response>) {
+function asset(pathname: string, type: string, body = `body of ${pathname}`) {
+  const response = new Response(body, { headers: { 'Content-Type': type } });
+  Object.defineProperty(response, 'url', { value: ORIGIN + pathname });
+  return response;
+}
+
+type WorkerOptions = {
+  precache?: string[];
+  publicAssets?: string[];
+  stores?: Map<string, FakeCache>;
+};
+
+function loadWorker(fetchImpl: (input: string) => Promise<Response>, options: WorkerOptions = {}) {
   const listeners: Record<string, (event: unknown) => void> = {};
-  const stores = new Map<string, FakeCache>();
+  const stores = options.stores ?? new Map<string, FakeCache>();
   const caches = {
     async open(name: string) {
       if (!stores.has(name)) stores.set(name, new FakeCache());
@@ -46,15 +58,16 @@ function loadWorker(fetchImpl: (input: string) => Promise<Response>) {
     clients: { claim: async () => {} },
     skipWaiting: () => {}
   };
-  const manifest = { manifestVersion: 5, shellRoutes: ['/kiur', '/offline'], publicAssets: [] };
+  const manifest = { manifestVersion: 5, shellRoutes: ['/kiur', '/offline'], publicAssets: options.publicAssets ?? [] };
   const source = fs.readFileSync(path.join(process.cwd(), 'scripts', 'sw-template.js'), 'utf8')
     .replace('__BUILD_ID__', BUILD)
-    .replace('__PRECACHE__', '[]')
+    .replace('__PRECACHE__', JSON.stringify(options.precache ?? []))
     .replace('__CAPABILITY_MANIFEST__', JSON.stringify(manifest));
   // Navigations pass the request object; install passes a path string.
   const fetchMock = vi.fn((input: string | { url: string }) => fetchImpl(typeof input === 'string' ? input : input.url));
   new Function('self', 'caches', 'fetch', source)(self, caches, fetchMock);
   const shell = () => caches.open(`harjutaja-shell-${BUILD}`);
+  const staticCache = () => caches.open(`harjutaja-static-${BUILD}`);
 
   function navigate(pathname: string) {
     let responded: Promise<Response> | null = null;
@@ -73,7 +86,7 @@ function loadWorker(fetchImpl: (input: string) => Promise<Response>) {
     return done! as Promise<unknown>;
   }
 
-  return { navigate, install, shell, fetchMock };
+  return { navigate, install, shell, staticCache, fetchMock };
 }
 
 describe('service worker navigation caching (OFF-03, OFF-08)', () => {
@@ -136,5 +149,88 @@ describe('service worker install (OFF-03)', () => {
     const cache = await worker.shell();
     expect(cache.entries.has('/kiur')).toBe(true);
     expect(cache.entries.has('/__offline-cache-complete__')).toBe(true);
+  });
+});
+
+describe('service worker install fetching (OFF-10)', () => {
+  const CHUNKS = Array.from({ length: 12 }, (_, i) => `/_next/static/chunks/${i}-abc.js`);
+
+  function serve(url: string) {
+    const pathname = new URL(url, ORIGIN).pathname;
+    if (pathname.startsWith('/_next/static/')) return asset(pathname, 'application/javascript');
+    if (pathname.endsWith('.png')) return asset(pathname, 'image/png');
+    return page(pathname, BUILD);
+  }
+
+  function previousBuildStores(entries: Record<string, Response>) {
+    const old = new FakeCache();
+    for (const [key, response] of Object.entries(entries)) old.entries.set(key, response);
+    return new Map([['harjutaja-static-build-a', old]]);
+  }
+
+  it('keeps at most five requests in flight, and more than one', async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const worker = loadWorker(async (url) => {
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      inFlight--;
+      return serve(url);
+    }, { precache: CHUNKS, publicAssets: ['/web-app-manifest-192x192.png'] });
+
+    await worker.install();
+
+    expect(peak).toBe(5);
+    expect(worker.fetchMock).toHaveBeenCalledTimes(CHUNKS.length + 1 + 2);
+    const cache = await worker.staticCache();
+    for (const chunk of CHUNKS) expect(cache.entries.has(chunk)).toBe(true);
+    expect((await worker.shell()).entries.has('/__offline-cache-complete__')).toBe(true);
+  });
+
+  it('copies hashed static files from an earlier build instead of downloading them', async () => {
+    const stores = previousBuildStores({
+      [CHUNKS[0]]: asset(CHUNKS[0], 'application/javascript', 'old-build-copy'),
+      // Public assets are not content-hashed: always fetched fresh.
+      '/web-app-manifest-192x192.png': asset('/web-app-manifest-192x192.png', 'image/png', 'stale-icon')
+    });
+    const worker = loadWorker(async (url) => serve(url), {
+      precache: CHUNKS.slice(0, 2),
+      publicAssets: ['/web-app-manifest-192x192.png'],
+      stores
+    });
+
+    await worker.install();
+
+    const fetched = worker.fetchMock.mock.calls.map(([input]) => input);
+    expect(fetched).not.toContain(CHUNKS[0]);
+    expect(fetched).toContain(CHUNKS[1]);
+    expect(fetched).toContain('/web-app-manifest-192x192.png');
+    const cache = await worker.staticCache();
+    expect(await cache.entries.get(CHUNKS[0])?.text()).toBe('old-build-copy');
+    expect(await cache.entries.get('/web-app-manifest-192x192.png')?.text()).toBe('body of /web-app-manifest-192x192.png');
+    expect((await worker.shell()).entries.has('/__offline-cache-complete__')).toBe(true);
+  });
+
+  it('downloads again when the earlier copy fails validation', async () => {
+    const stores = previousBuildStores({ [CHUNKS[0]]: asset(CHUNKS[0], 'text/html', '<html>login</html>') });
+    const worker = loadWorker(async (url) => serve(url), { precache: [CHUNKS[0]], stores });
+
+    await worker.install();
+
+    expect(worker.fetchMock.mock.calls.map(([input]) => input)).toContain(CHUNKS[0]);
+    expect(await (await worker.staticCache()).entries.get(CHUNKS[0])?.text()).toBe(`body of ${CHUNKS[0]}`);
+  });
+
+  it('stays all-or-nothing: one invalid response fails the install and writes no marker', async () => {
+    const worker = loadWorker(async (url) => {
+      if (url === CHUNKS[3]) return asset(CHUNKS[3], 'text/html', 'redirected to /access');
+      return serve(url);
+    }, { precache: CHUNKS });
+
+    await expect(worker.install()).rejects.toThrow(`Required offline resource failed validation: ${CHUNKS[3]}`);
+    expect((await worker.shell()).entries.has('/__offline-cache-complete__')).toBe(false);
+    // Lanes stop taking new work once a task has failed.
+    expect(worker.fetchMock.mock.calls.length).toBeLessThan(CHUNKS.length + 2);
   });
 });
