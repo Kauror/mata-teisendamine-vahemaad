@@ -4,8 +4,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatElapsed } from '@/lib/validation';
 import { seededRng, shuffleWithRng } from '@/lib/random';
-import { cleanScienceAnswer as cleanAnswer, isScienceSessionSize, pickScienceSession } from '@/lib/loodusopetus/tasks';
-import { isChoiceTask, type ScienceData, type ScienceTaskType } from '@/lib/loodusopetus/types';
+import { cleanScienceAnswer as cleanAnswer, isScienceSessionSize } from '@/lib/loodusopetus/session';
+import { isChoiceTask, type ScienceData, type ScienceTask, type ScienceTaskType } from '@/lib/loodusopetus/types';
 import { SCIENCE_EYEBROW, ScienceDataPanel } from '@/app/components/science/ScienceTaskPresentation';
 import {
   createRunnerSession,
@@ -66,7 +66,7 @@ type ScienceDisplayOrder = Record<string, {
   groups?: string[];
 }>;
 
-type ScienceSession = RunnerSessionV3<ReturnType<typeof pickScienceSession>[number], SavedScienceQuestion, ScienceRunnerState, null>;
+type ScienceSession = RunnerSessionV3<ScienceTask, SavedScienceQuestion, ScienceRunnerState, null>;
 
 function hashString(value: string) {
   let hash = 0;
@@ -103,7 +103,7 @@ function ScienceTestContent() {
   const seed = Number(params.get('seed')) || 1;
 
   const [runId, setRunId] = useState<string | null>(null);
-  const [session, setSession] = useState<ReturnType<typeof pickScienceSession>>([]);
+  const [session, setSession] = useState<ScienceTask[]>([]);
   const [displayOrder, setDisplayOrder] = useState<ScienceDisplayOrder>({});
 
   const [index, setIndex] = useState(0);
@@ -127,7 +127,7 @@ function ScienceTestContent() {
     void (async () => {
       const id = ensureRunIdInCurrentUrl();
       setRunId(id);
-      const existing = await loadRunnerSession<ReturnType<typeof pickScienceSession>[number], SavedScienceQuestion, ScienceRunnerState, null>(id);
+      const existing = await loadRunnerSession<ScienceTask, SavedScienceQuestion, ScienceRunnerState, null>(id);
       if (cancelled) return;
       if (existing) {
         if (existing.runnerId !== 'kiur-science') throw new Error('See salvestatud jooks kuulub teisele harjutusele.');
@@ -135,7 +135,7 @@ function ScienceTestContent() {
         const state = existing.runnerState;
         seedRef.current = existing.seed ?? seed;
         setStartedAt(existing.startedAt);
-        setSession(existing.questions as ReturnType<typeof pickScienceSession>);
+        setSession(existing.questions);
         setDisplayOrder((existing.optionOrder ?? {}) as ScienceDisplayOrder);
         setIndex(existing.currentIndex);
         setChoiceSel(state.choiceSel);
@@ -151,7 +151,9 @@ function ScienceTestContent() {
         window.location.replace(`/tulemus?clientId=${encodeURIComponent(id)}`);
         return;
       }
-      const questions = pickScienceSession(count, seed);
+      // The task pool loads only for a new run (a precached chunk offline).
+      const { pickRunnerScienceSession } = await import('@/lib/loodusopetus/runnerTasks');
+      const questions = pickRunnerScienceSession(count, seed);
       const order: ScienceDisplayOrder = {};
       for (const task of questions) {
         order[task.id] = {
@@ -165,7 +167,7 @@ function ScienceTestContent() {
       const capability = getOfflineRunnerCapability('kiur-science');
       if (!contract || !capability) throw new Error('Ühenda seade internetiga, et loodusõpetus enne võrguühenduseta kasutamist ette valmistada.');
       const beganAt = new Date().toISOString();
-      await createRunnerSession<ReturnType<typeof pickScienceSession>[number], SavedScienceQuestion, ScienceRunnerState, null>({
+      await createRunnerSession<ScienceTask, SavedScienceQuestion, ScienceRunnerState, null>({
         runId: id,
         learner: 'kiur',
         runnerId: 'kiur-science',

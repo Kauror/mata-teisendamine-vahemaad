@@ -1,19 +1,13 @@
 import rawDataset from '@/data/kiurLoodusopetusTasks.json';
-import { seededRng, shuffleWithRng } from '@/lib/random';
 import { isChoiceTask, type ScienceDataset, type ScienceTask } from './types';
+import { pickScienceSessionFrom } from './session';
+
+export { SCIENCE_SESSION_SIZES, cleanScienceAnswer, isScienceSessionSize, type ScienceSessionSize } from './session';
 
 const dataset = rawDataset as unknown as ScienceDataset;
 
 export const LOODUSOPETUS_METADATA = dataset.metadata;
 export const LOODUSOPETUS_TASKS: ScienceTask[] = dataset.tasks;
-
-// Only these two session lengths are offered to the child.
-export const SCIENCE_SESSION_SIZES = [10, 25] as const;
-export type ScienceSessionSize = (typeof SCIENCE_SESSION_SIZES)[number];
-
-export function isScienceSessionSize(value: number): value is ScienceSessionSize {
-  return (SCIENCE_SESSION_SIZES as readonly number[]).includes(value);
-}
 
 const TASKS_BY_ID = new Map(LOODUSOPETUS_TASKS.map((task) => [task.id, task]));
 
@@ -24,27 +18,10 @@ export function getScienceTaskById(id: string): ScienceTask | undefined {
   return TASKS_BY_ID.get(id);
 }
 
-// Choice texts are written as sentences; the runner shows them without the
-// trailing full stop, so saved answers are stored that way too.
-export function cleanScienceAnswer(value: string) {
-  return value.replace(/\s*\.\s*$/, '').trim();
-}
-
-// Picks `count` unique tasks from the pool, shuffled by a stable seed so a given
-// seed always yields the same session (handy for retries and debugging).
+// Picks `count` unique tasks from the full pool; the runner picks the same
+// tasks (by id, in the same order) from its lighter copy in ./runnerTasks.
 export function pickScienceSession(count: number, seed: number): ScienceTask[] {
-  const size = Math.max(1, Math.min(count, LOODUSOPETUS_TASKS.length));
-  const rng = seededRng(seed || 1);
-  const shuffled = shuffleWithRng(rng, [...LOODUSOPETUS_TASKS]);
-  const session: ScienceTask[] = [];
-  const usedIds = new Set<string>();
-  for (const task of shuffled) {
-    if (usedIds.has(task.id)) continue;
-    usedIds.add(task.id);
-    session.push(task);
-    if (session.length >= size) break;
-  }
-  return session;
+  return pickScienceSessionFrom(LOODUSOPETUS_TASKS, count, seed);
 }
 
 export type ScienceValidationResult = {
