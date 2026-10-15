@@ -27,7 +27,7 @@ type StoreVisibility = 'kiur' | 'kirsi' | 'both';
 type StoreStockType = 'unlimited' | 'fixed_stock' | 'daily_stock' | 'one_time_global';
 
 type Template = { id: number; title: string; points: number; assignmentMode: AssignmentMode; recurrenceType: RecurrenceType; selectedWeekdaysJson: string | null; startDate: string | null; onceDate: string | null; requiresApproval: number };
-type PendingApproval = { assignmentId: number; learner: Learner; title: string; points: number; assignmentMode: AssignmentMode; completedAt: string | null };
+type PendingApproval = { assignmentId: number; learner: Learner; title: string; points: number; assignmentMode: AssignmentMode; completedAt: string | null; date: string };
 type HeldReward = { id: number; learner: Learner; completionDate: string | null; score: number; questionCount: number; exerciseId: string | null; status: 'withheld' | 'needs_review'; reviewReasonCode: string | null };
 type OfflineTaskReview = { clientActionId: string; learner: Learner; taskDate: string; title: string; points: number; completedAt: string | null; reasonCode: string | null };
 type ParentHistoryAttempt = { id: number; createdAt: string; learner: Learner | null; category: string; score: number; questionCount: number };
@@ -191,6 +191,17 @@ function learnerLabel(learner: Learner) {
 // "Kiuri tähti vähendati" — the possessor takes the genitive.
 function learnerGenitive(learner: Learner) {
   return learner === 'kiur' ? 'Kiuri' : 'Kirsi';
+}
+
+// "13.10" for an app date "2026-10-13"; approvals from earlier days carry it so
+// the parent can tell yesterday's chore from today's.
+function shortDayLabel(date: string) {
+  const [, month, day] = date.split('-');
+  return month && day ? `${Number(day)}.${month}` : date;
+}
+
+function clockLabel(value: string) {
+  return new Date(value).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
 }
 
 function timeLabel(value: string) {
@@ -866,7 +877,7 @@ export default function ParentHub() {
               <div key={item.assignmentId} className='parent-approval-row'>
                 <div className='parent-approval-info'>
                   <strong>{learnerLabel(item.learner)} · {item.title}</strong>
-                  <span>+{item.points} ⭐{item.completedAt ? ` · ${timeLabel(item.completedAt)}` : ''}</span>
+                  <span>+{item.points} ⭐{item.date && item.date !== today() ? ` · ${shortDayLabel(item.date)}` : ''}{item.completedAt ? ` · ${clockLabel(item.completedAt)}` : ''}</span>
                 </div>
                 <div className='parent-approval-actions'>
                   <button type='button' className='view-button' onClick={() => resolveApproval(item.assignmentId, 'approve')}>Kinnita</button>
