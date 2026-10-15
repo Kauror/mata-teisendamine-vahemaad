@@ -2,8 +2,8 @@ import db from '@/lib/db';
 import { childExerciseCards } from '@/lib/childExerciseCards';
 import { getCompletedExerciseIdsToday } from '@/lib/exerciseCompletion';
 import { DAILY_EXERCISE_LIMIT, getActiveLearningExercises, getLearningExerciseCatalog } from '@/lib/learningExercises';
-import { isKirsiAttempt } from '@/lib/history';
 import { getLearningDaysThisWeek } from '@/lib/learningPoints';
+import { historyLearnerClause } from '@/lib/server/historyLearnerFilter';
 import { isoToAppDate, startOfAppWeek } from '@/lib/appDate';
 import { todayDateString, type Learner } from '@/lib/tasks';
 
@@ -19,13 +19,16 @@ export type Achievement = {
   tooltipCount: number;
 };
 
-type AttemptRow = { category: string; learner: string | null; createdAt: string };
+type AttemptRow = { createdAt: string };
 
 // Total exercise sessions the child has completed. Each attempt row is one
-// finished exercise, so this is simply how many they belong to.
+// finished exercise, so this is simply how many they belong to. The learner
+// filter runs in SQL — historyLearnerClause is the SQL twin of isKirsiAttempt,
+// so legacy rows without a learner are still assigned by category — instead of
+// loading both children's whole history on every dashboard read.
 function learnerAttempts(learner: Learner) {
-  const rows = db.prepare('SELECT category, learner, createdAt FROM attempts').all() as AttemptRow[];
-  return rows.filter((row) => (isKirsiAttempt(row.category, row.learner) ? 'kirsi' : 'kiur') === learner);
+  const filter = historyLearnerClause(learner, 'a');
+  return db.prepare(`SELECT a.createdAt FROM attempts a WHERE ${filter.sql}`).all(...filter.params) as AttemptRow[];
 }
 
 const PERFECT_WEEK_DAYS = 7;
@@ -42,10 +45,17 @@ function completedExercisesToday(learner: Learner) {
 
 // Milestones are derived from history on each read rather than stored. Exercise
 // milestones are cumulative, while the weekly achievement is current-week only.
-export function getAchievements(learner: Learner): Achievement[] {
+//
+// `studyDates` lets a caller that already read the child's study days (the
+// dashboard route reads them for the streak too) hand them in instead of
+// querying them again; the result is the same either way.
+export function getAchievements(
+  learner: Learner,
+  today = todayDateString(),
+  studyDates?: Set<string>
+): Achievement[] {
   const attempts = learnerAttempts(learner);
   const exercises = attempts.length;
-  const today = todayDateString();
   const weekStart = startOfAppWeek(today);
   const exercisesToday = attempts.filter((attempt) => isoToAppDate(attempt.createdAt) === today).length;
   const exercisesThisWeek = attempts.filter((attempt) => {
@@ -55,7 +65,7 @@ export function getAchievements(learner: Learner): Achievement[] {
   const exerciseMilestone = latestExerciseMilestone(exercises);
   const nextExerciseMilestone = EXERCISE_MILESTONES.find((milestone) => milestone > exercises) ?? 999;
   const dailyExercises = completedExercisesToday(learner);
-  const weeklyDays = getLearningDaysThisWeek(learner);
+  const weeklyDays = getLearningDaysThisWeek(learner, today, studyDates);
 
   return [
     {
