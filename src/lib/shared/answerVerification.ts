@@ -55,9 +55,13 @@ export function verifyGeneratedMathAnswer(question: GeneratedQuestion, answer: u
   }
   if (question.kind === 'choice') {
     const normalized = normalizeMathAnswer(answer);
+    if (mathChoiceAnswerLabels(question).some((label) => normalizeMathAnswer(label) === normalized)) return true;
+    // The runner submits the option label. A bare option index is only a legacy
+    // fallback, and only when it cannot be read as a label: with numeric options
+    // (["2", "18", "17"]) the answer "2" is the wrong option, not index 2.
+    if (question.choiceOptions?.some((option) => normalizeMathAnswer(option) === normalized)) return false;
     const correctIndexes = question.correctAnswers?.length ? question.correctAnswers : [question.correctAnswer];
-    return mathChoiceAnswerLabels(question).some((label) => normalizeMathAnswer(label) === normalized)
-      || correctIndexes.some((index) => String(index) === normalized);
+    return correctIndexes.some((index) => String(index) === normalized);
   }
   if (question.kind === 'text' || question.correctAnswerText) return verifyMathTextAnswer(question, answer);
   return isAnswerCorrect(String(answer ?? ''), question.correctAnswer);
