@@ -1,5 +1,6 @@
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
+import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 
 type InternalType =
   | 'suitable-unit-choice'
@@ -123,12 +124,35 @@ function mixedPlan(rng: RNG, count: number): InternalType[] {
   return out;
 }
 
-export function generateSession(_mode: Category, difficulty: Difficulty, count: number, seed: number): GeneratedQuestion[] {
+// Types that always ask the very same question. v1 could draw them again for
+// the slots after the first twelve, so 44 % of sessions repeated one of them.
+const SINGLE_QUESTION_TYPES: ReadonlySet<InternalType> = new Set<InternalType>(['ruler-or-segment', 'realistic-length-choice']);
+
+function mixedPlanV2(rng: RNG, count: number): InternalType[] {
+  const out = shuffle(rng, [...INTERNAL_TYPES]);
+  if (count <= out.length) return out.slice(0, count);
+  let pool: InternalType[] = [];
+  while (out.length < count) {
+    if (!pool.length) pool = shuffle(rng, INTERNAL_TYPES.filter((type) => !SINGLE_QUESTION_TYPES.has(type)));
+    const t = pool.shift()!;
+    if (out[out.length - 1] !== t) out.push(t);
+  }
+  return out;
+}
+
+// See mathGeneratorVersion.ts: v1 must keep generating exactly what it did.
+export function generateSession(_mode: Category, difficulty: Difficulty, count: number, seed: number, generatorVersion: MathGeneratorVersion = MATH_GENERATOR_VERSION): GeneratedQuestion[] {
   const rng = seededRng(seed);
-  const types = mixedPlan(rng, count);
+  const v1 = generatorVersion === MATH_GENERATOR_VERSION_V1;
+  const types = v1 ? mixedPlan(rng, count) : mixedPlanV2(rng, count);
   const out: GeneratedQuestion[] = [];
   const used = new Set<string>();
-  const signature = (q: GeneratedQuestion) => `${q.question}|${q.correctAnswer}|${q.orderingCards?.map((card) => `${card.label}:${card.valueMm}`).join(',') ?? ''}`;
+  const cards = (q: GeneratedQuestion) => q.orderingCards?.map((card) => `${card.label}:${card.valueMm}`).join(',') ?? '';
+  // v2 drops the answer from the key: the same question text with its options
+  // in another order is still the same question to a child.
+  const signature = v1
+    ? (q: GeneratedQuestion) => `${q.question}|${q.correctAnswer}|${cards(q)}`
+    : (q: GeneratedQuestion) => `${q.question}|${cards(q)}`;
   for (let i = 0; i < count; i++) {
     let tries = 0;
     let q: GeneratedQuestion;

@@ -113,7 +113,7 @@ describe('protocol-v2 attempt writes', () => {
           exerciseId: entry!.id,
           catalogueVersion: catalogue!.version,
           rewardPolicyVersion: grant!.rewardPolicyVersion,
-          generatorVersion: grant!.generatorVersion,
+          generatorVersion: getOfflineRunnerCapability('math')!.generatorVersion,
           runnerVersion: 'math-v1',
           rotationVersion: grant!.rotationVersion,
           startedAt: completedAt,

@@ -3,6 +3,7 @@ import { generateSession as generateLengthSession } from '@/lib/exercises/length
 import { isKiurLengthTopic } from '@/lib/kiurMathTopics';
 import { kiurTextProblemPool } from '@/lib/kiurTextProblems';
 import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
+import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 
 const rInt = randomInt;
 const pick = pickRandom;
@@ -22,6 +23,27 @@ function mixedPlan(rng: RNG, count: number, types: readonly TopicCategory[]) {
   return shuffleWithRng(rng, out);
 }
 
+// Categories that always produce the very same question. v1's plan repeated the
+// first categories of the list to fill 15 slots, so every Ring session asked
+// «Milline sirglõik on raadius/läbimõõt?» twice.
+const SINGLE_QUESTION_CATS: ReadonlySet<TopicCategory> = new Set<TopicCategory>(['Leia raadius', 'Leia läbimõõt']);
+
+// v2: every category once (in random order, so a short session is not always
+// the first categories of the list), then extra slots only from categories
+// that can produce a different question.
+function mixedPlanV2(rng: RNG, count: number, types: readonly TopicCategory[]) {
+  const base = shuffleWithRng(rng, [...types]);
+  if (count <= base.length) return base.slice(0, count);
+  const repeatable = types.filter((type) => !SINGLE_QUESTION_CATS.has(type));
+  const extras: TopicCategory[] = [];
+  let pool: TopicCategory[] = [];
+  while (base.length + extras.length < count) {
+    if (!pool.length) pool = shuffleWithRng(rng, [...repeatable]);
+    extras.push(pool.shift()!);
+  }
+  return shuffleWithRng(rng, [...base, ...extras]);
+}
+
 function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
   const mk = () => {
     const divisor = rInt(rng, 2, 9);
@@ -35,8 +57,8 @@ function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gene
     // an outbox attempt minted by an older build that had the difficulty picker.
     // For such an attempt the range differs and deleting the branch would reject
     // it. It is also the natural seam for a future adaptive difficulty.
-    // Guarded by kiurMath.test.ts; changing the ranges needs a GENERATOR_VERSION
-    // bump in shared/types.
+    // Guarded by kiurMath.test.ts; changing the ranges needs a new version in
+    // mathGeneratorVersion.ts with the old branch kept reachable.
     const quotient = rInt(rng, d === 'Lihtne' ? 2 : 4, d === 'Raske' ? 22 : 16);
     const dividend = divisor * quotient;
     if (dividend < 10 || dividend > 99) return mk();
@@ -109,8 +131,94 @@ function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gene
 }
 
 
-function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+const PLACE_VALUES = [1000, 100, 10, 1] as const;
+
+function placeTerms(digits: readonly number[], weights: readonly number[]) {
+  return digits.map((digit, index) => digit * weights[index]).filter((value) => value !== 0);
+}
+
+// Every permutation of the four place values except the right one, single
+// swaps first: those are the mistakes a child actually makes.
+const PLACE_WEIGHT_MISTAKES: ReadonlyArray<readonly number[]> = (() => {
+  const all: number[][] = [];
+  const permute = (rest: number[], prefix: number[]) => {
+    if (!rest.length) all.push(prefix);
+    rest.forEach((value, index) => permute([...rest.slice(0, index), ...rest.slice(index + 1)], [...prefix, value]));
+  };
+  permute([...PLACE_VALUES], []);
+  const misplaced = (weights: number[]) => weights.filter((value, index) => value !== PLACE_VALUES[index]).length;
+  return all.filter((weights) => misplaced(weights) > 0).sort((a, b) => misplaced(a) - misplaced(b));
+})();
+
+// v2 «Lahuta arv järkudeks». In v1 a wrong option could still add up to the
+// number (only its terms reordered, e.g. 3000 + 50 + 500 for 3550), whole
+// thousands gave two identical wrong options, and only the wrong options showed
+// «+ 0» terms. Here every option drops its zero terms, no wrong option sums to
+// the number, and no two options are the same.
+function placeValueSplitV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+  for (;;) {
+    const n = rInt(rng, 1001, 9999);
+    const digits = String(n).split('').map(Number);
+    const [t, s, k, y] = digits;
+    if (s === 0 && k === 0 && y === 0) continue;
+    const good = placeTerms(digits, PLACE_VALUES).join(' + ');
+    const singleSwaps = PLACE_WEIGHT_MISTAKES.filter((weights) => weights.filter((value, index) => value !== PLACE_VALUES[index]).length === 2);
+    const candidates = [...shuffleWithRng(rng, singleSwaps), ...shuffleWithRng(rng, PLACE_WEIGHT_MISTAKES.slice(singleSwaps.length))];
+    const wrong: string[] = [];
+    for (const weights of candidates) {
+      const terms = placeTerms(digits, weights);
+      const text = terms.join(' + ');
+      if (terms.reduce((sum, value) => sum + value, 0) === n || text === good || wrong.includes(text)) continue;
+      wrong.push(text);
+      if (wrong.length === 2) break;
+    }
+    if (wrong.length < 2) continue;
+    return { id: `n9-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Milline on arvu ${n} õige lahutus?`, correctAnswer: 0, kind: 'choice', choiceOptions: [good, ...wrong], explanation: `Arvus ${n} on ${t} tuhandelist, ${s} sajalist, ${k} kümnelist ja ${y} ühelist.` };
+  }
+}
+
+// v2 «Numbri väärtus». In v1 the asked digit could occur twice («numbri 3
+// väärtus arvus 3328» offered 3000, 300 and 3), or be 0. Here the asked digit is
+// non-zero and occurs once, and the wrong options are that digit in the other
+// places, so exactly one option is right.
+function digitValueV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+  for (;;) {
+    const n = rInt(rng, 1200, 9800);
+    const digits = String(n).split('').map(Number);
+    const unique = [0, 1, 2, 3].filter((index) => digits[index] !== 0 && digits.filter((digit) => digit === digits[index]).length === 1);
+    if (!unique.length) continue;
+    const idx = pickRandom(rng, unique);
+    const digit = digits[idx];
+    const others = shuffleWithRng(rng, [0, 1, 2, 3].filter((index) => index !== idx)).slice(0, 2);
+    const options = [digit * PLACE_VALUES[idx], ...others.map((index) => digit * PLACE_VALUES[index])].map(String);
+    return { id: `n11-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Mis on numbri ${digit} väärtus arvus ${n}?`, correctAnswer: 0, kind: 'choice', choiceOptions: options, explanation: `${digit} on ${['tuhandeliste', 'sajaliste', 'kümneliste', 'üheliste'][idx]} kohal, seega on selle väärtus ${options[0]}.` };
+  }
+}
+
+// v2 «Ümardamine». In v1 a number that rounds down had the next round number
+// both as «ceil» and as «answer + step», so half of these questions had only
+// two options with the right one first. Here there are always three, and the
+// number to round is never already round.
+function roundingV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+  const toThousands = rInt(rng, 0, 1) === 1;
+  const step = toThousands ? 1000 : 100;
+  let n = rInt(rng, 1200, 9800);
+  while (n % step === 0) n = rInt(rng, 1200, 9800);
+  const ans = Math.round(n / step) * step;
+  const wrong = Array.from(new Set([Math.floor(n / step) * step, Math.ceil(n / step) * step, ans + step, ans - step, ans + 2 * step, ans - 2 * step]))
+    .filter((value) => value !== ans && value > 0 && value <= 10000)
+    .slice(0, 2);
+  const unitName = toThousands ? 'tuhandeni' : 'sajani';
+  return { id: `n12-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Ümarda lähima ${unitName}: ${n}`, correctAnswer: 0, kind: 'choice', choiceOptions: [ans, ...wrong].map(String), explanation: `${n} ümardatuna lähima ${unitName} on ${ans}.` };
+}
+
+function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
   const mk4 = (min = 1200, max = 9800) => rInt(rng, min, max);
+  if (v !== MATH_GENERATOR_VERSION_V1) {
+    if (cat === 'Lahuta arv järkudeks') return placeValueSplitV2(cat, d, rng, i);
+    if (cat === 'Numbri väärtus') return digitValueV2(cat, d, rng, i);
+    if (cat === 'Ümardamine') return roundingV2(cat, d, rng, i);
+  }
 
   if (cat === 'Liida sajalised') {
     const a = rInt(rng, 20, 95) * 100;
@@ -213,7 +321,28 @@ function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gen
   return { id: `n15-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Millist arvu näitavad plokid? ${parts.join(', ')}.`, correctAnswer: n, explanation: `${t} tuhandelist, ${s} sajalist, ${k} kümnelist ja ${y} ühelist teeb kokku ${n}.`, visual: 'place-value-blocks' };
 }
 
-function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+// v2 «Võrdle raadiuseid». v1 always set the mm radius to exactly the cm radius,
+// so the answer was always «Jah» / «sama suured». Here both questions also have
+// a «different» outcome, and the yes/no question is a fair coin.
+function compareRadiiV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+  const cm = pick(rng, [3, 4, 5, 6]);
+  const yesNo = rInt(rng, 0, 1) === 0;
+  const relation = yesNo
+    ? (rInt(rng, 0, 1) === 0 ? 'same' : pick(rng, ['K', 'L'] as const))
+    : pick(rng, ['same', 'K', 'L'] as const);
+  const mm = cm * 10 + (relation === 'same' ? 0 : pick(rng, [5, 10, 20]) * (relation === 'K' ? 1 : -1));
+  const conversion = `${cm} cm = ${cm * 10} mm`;
+  const explanation = relation === 'same'
+    ? `${conversion}, seega on ringjooned sama suured.`
+    : `${conversion}. ${mm} mm on ${relation === 'K' ? 'rohkem' : 'vähem'} kui ${cm * 10} mm, seega on ringjoon ${relation} suurem.`;
+  if (yesNo) {
+    return { id: `cv-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `K raadius on ${mm} mm ja L raadius on ${cm} cm. Kas ringjooned on sama suured?`, correctAnswer: relation === 'same' ? 0 : 1, kind: 'choice', choiceOptions: ['Jah', 'Ei'], explanation };
+  }
+  return { id: `cv-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `K raadius on ${mm} mm ja L raadius on ${cm} cm. Milline ringjoon on suurem?`, correctAnswer: relation === 'K' ? 0 : relation === 'L' ? 1 : 2, kind: 'choice', choiceOptions: ['K', 'L', 'sama suured'], explanation };
+}
+
+function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
+  if (cat === 'Võrdle raadiuseid' && v !== MATH_GENERATOR_VERSION_V1) return compareRadiiV2(cat, d, rng, i);
   const unit = pick(rng, ['cm', 'mm'] as const);
   if (cat === 'Ring või ringjoon') {
     const variants = [
@@ -423,8 +552,13 @@ function generateTextProblemSession(seed: number): GeneratedQuestion[] {
   }));
 }
 
-export function generateKiurMathSession(topic: string, category: string, difficulty: Difficulty, count: number, seed: number): GeneratedQuestion[] {
-  if (isKiurLengthTopic(topic)) return generateLengthSession(category as Category, difficulty, count, seed);
+// `generatorVersion` selects which generator a session is replayed with. New
+// sessions use the current MATH_GENERATOR_VERSION; the server and a resumed
+// paused session pass the version the session was created with. See
+// mathGeneratorVersion.ts before changing anything a seed generates.
+export function generateKiurMathSession(topic: string, category: string, difficulty: Difficulty, count: number, seed: number, generatorVersion: MathGeneratorVersion = MATH_GENERATOR_VERSION): GeneratedQuestion[] {
+  const v = generatorVersion;
+  if (isKiurLengthTopic(topic)) return generateLengthSession(category as Category, difficulty, count, seed, v);
   if (topic === 'korrutamine') return generateMultiplicationSession(count, seed);
   if (topic === 'tekstulesanded' || category === 'Tekstülesanded') return generateTextProblemSession(seed);
   const rng = seededRng(seed);
@@ -432,7 +566,13 @@ export function generateKiurMathSession(topic: string, category: string, difficu
   const isBigNumbers = normalizedTopic === 'arvud-10000-piires' || normalizedTopic === 'arvud-10000';
   const topicTypes = normalizedTopic === 'jagamine-kahekohaline-uhekohaline' ? DIV_CATS : isBigNumbers ? BIG_NUM_CATS : normalizedTopic === 'ring-ja-ringjoon' ? CIRCLE_CATS : normalizedTopic === 'mustrid' ? PATTERN_CATS : null;
   if (!topicTypes) return [];
-  const types = category === 'Segaharjutus' ? mixedPlan(rng, count, topicTypes) : Array.from({ length: count }, () => category as TopicCategory);
+  const plan = v === MATH_GENERATOR_VERSION_V1 ? mixedPlan : mixedPlanV2;
+  const types = category === 'Segaharjutus' ? plan(rng, count, topicTypes) : Array.from({ length: count }, () => category as TopicCategory);
+  // v1 keyed on the answer too, so «Kus asub punkt A?» could repeat with the
+  // same text; v2 treats the same visible question as a repeat.
+  const signature = v === MATH_GENERATOR_VERSION_V1
+    ? (q: GeneratedQuestion) => `${q.kind}|${q.question}|${q.correctAnswer}`
+    : (q: GeneratedQuestion) => `${q.kind}|${q.question}|${q.visual ?? ''}|${q.visualKnownDegrees ?? ''}`;
   const out: GeneratedQuestion[] = [];
   const used = new Set<string>();
   for (let i = 0; i < types.length; i++) {
@@ -442,13 +582,13 @@ export function generateKiurMathSession(topic: string, category: string, difficu
       q = normalizedTopic === 'jagamine-kahekohaline-uhekohaline'
         ? divisionQ(types[i], difficulty, rng, i + tries * 17)
         : isBigNumbers
-          ? bigNumberQ(types[i], difficulty, rng, i + tries * 17)
+          ? bigNumberQ(types[i], difficulty, rng, i + tries * 17, v)
           : normalizedTopic === 'mustrid'
             ? patternQ(types[i], difficulty, rng, i + tries * 17)
-            : circleQ(types[i], difficulty, rng, i + tries * 17);
+            : circleQ(types[i], difficulty, rng, i + tries * 17, v);
       tries++;
-    } while (used.has(`${q.kind}|${q.question}|${q.correctAnswer}`) && tries < 20);
-    used.add(`${q.kind}|${q.question}|${q.correctAnswer}`);
+    } while (used.has(signature(q)) && tries < 20);
+    used.add(signature(q));
     out.push({ ...q, id: `${topic}-${q.id}-${i}` });
   }
   return out;

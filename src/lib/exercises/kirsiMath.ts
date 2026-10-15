@@ -1,5 +1,6 @@
 import { Category, GeneratedQuestion } from '@/lib/types';
 import { RNG, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
+import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 
 type KirsiCategory = 'Loendamine' | 'Arvutamine 10 piires' | 'Arvutamine 20 piires' | 'Suurem või väiksem kuni 100' | 'Segaülesanded' | 'Kellaaeg';
 
@@ -147,12 +148,15 @@ function buildClockChoices(rng: RNG, hour: number, minutes: ClockMinutes): strin
   return shuffle(rng, Array.from(new Set(base)));
 }
 
-function buildClockBank(): ClockTask[] {
+function buildClockBank(generatorVersion: MathGeneratorVersion): ClockTask[] {
   const bank: ClockTask[] = [];
   for (let h = 1; h <= 12; h++) bank.push({ id: `full-${h}`, hour: h, minutes: 0, clockType: 'full-hour' });
   for (let h = 1; h <= 12; h++) bank.push({ id: `half-${h}`, hour: h, minutes: 30, clockType: 'half-hour' });
   for (let h = 1; h <= 12; h++) bank.push({ id: `q15-${h}`, hour: h, minutes: 15, clockType: 'quarter-hour' });
   for (let h = 1; h <= 12; h++) bank.push({ id: `q45-${h}`, hour: h, minutes: 45, clockType: 'quarter-hour' });
+  // v2 drops these: they are 12:00 and 12:30 again, so 71 of 3000 v1 sessions
+  // showed the same clock twice. v1 keeps them for replay (mathGeneratorVersion.ts).
+  if (generatorVersion !== MATH_GENERATOR_VERSION_V1) return bank;
   // Two extra anchor variants to round the bank to ~50 distinct items.
   bank.push({ id: 'anchor-12-00', hour: 12, minutes: 0, clockType: 'full-hour' });
   bank.push({ id: 'anchor-12-30', hour: 12, minutes: 30, clockType: 'half-hour' });
@@ -167,9 +171,9 @@ function clockExplanation(task: ClockTask): string {
   return `Pikk seier on 9 peal ja väike seier liigub ${next} poole.`;
 }
 
-function clockSession(count: number, seed: number): GeneratedQuestion[] {
+function clockSession(count: number, seed: number, generatorVersion: MathGeneratorVersion): GeneratedQuestion[] {
   const rng = seededRng(seed);
-  return shuffle(rng, buildClockBank()).slice(0, count).map((task, index) => {
+  return shuffle(rng, buildClockBank(generatorVersion)).slice(0, count).map((task, index) => {
     const choices = buildClockChoices(rng, task.hour, task.minutes);
     const correctText = formatClockTime(task.hour, task.minutes);
     return {
@@ -191,9 +195,10 @@ function clockSession(count: number, seed: number): GeneratedQuestion[] {
   });
 }
 
-export function generateKirsiSession(mode: KirsiCategory, count: number, seed: number): GeneratedQuestion[] {
+// `generatorVersion`: see mathGeneratorVersion.ts.
+export function generateKirsiSession(mode: KirsiCategory, count: number, seed: number, generatorVersion: MathGeneratorVersion = MATH_GENERATOR_VERSION): GeneratedQuestion[] {
   if (mode === 'Loendamine') return countingSession(count, seed);
-  if (mode === 'Kellaaeg') return clockSession(count, seed);
+  if (mode === 'Kellaaeg') return clockSession(count, seed, generatorVersion);
   const rng = seededRng(seed);
   const types = mode === 'Segaülesanded'
     ? (count <= 3 ? shuffle(rng, ['Arvutamine 10 piires', 'Arvutamine 20 piires', 'Suurem või väiksem kuni 100']).slice(0, count)

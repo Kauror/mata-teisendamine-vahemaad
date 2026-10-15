@@ -1,5 +1,6 @@
 import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
+import { isSupportedMathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
 import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
@@ -19,6 +20,9 @@ export type VerifiableAttempt = {
   category: string;
   difficulty: string;
   seed: number | string;
+  // The generator version stamped on the attempt. Required by the maths
+  // runner's replay; the fixed-dataset runners ignore it.
+  generatorVersion: string;
   questionIds: string[];
   questions: unknown[];
 };
@@ -67,12 +71,17 @@ function verifyMathQuestion(expected: GeneratedQuestion, actual: ResultRow) {
   return verifyGeneratedMathAnswer(expected, answerOf(actual));
 }
 
+// The attempt is re-generated with the generator version it was made with, so
+// an attempt (or a paused run) from before a generator change still verifies
+// after it. A version this server cannot replay is a contract error.
 function verifyMath(input: VerifiableAttempt) {
   const count = input.questions.length;
   const seed = numberSeed(input.seed);
+  const version = input.generatorVersion;
+  if (!isSupportedMathGeneratorVersion(version)) throw new AttemptContractError(`Unsupported math generator version: ${String(version)}`);
   const expected = input.learner === 'kirsi'
-    ? generateKirsiSession(input.category as Parameters<typeof generateKirsiSession>[0], count, seed)
-    : generateKiurMathSession(input.topic, input.category, input.difficulty as Difficulty, count, seed);
+    ? generateKirsiSession(input.category as Parameters<typeof generateKirsiSession>[0], count, seed, version)
+    : generateKiurMathSession(input.topic, input.category, input.difficulty as Difficulty, count, seed, version);
   if (expected.length !== count) throw new AttemptContractError('Generator returned an unexpected question count.');
   return expected.map((question, index) => verifyMathQuestion(question, row(input.questions[index])));
 }

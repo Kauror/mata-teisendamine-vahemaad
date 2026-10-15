@@ -30,6 +30,8 @@ import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRu
 import { buildMathQuestionResults, mathChoiceLabels, type MathAnswerSnapshot } from '@/lib/mathResults';
 import { verifyMathTextAnswer } from '@/lib/shared/answerVerification';
 import { composeTextAnswer, textAnswerFields, textAnswerValues } from '@/lib/textAnswerFields';
+import { MATH_GENERATOR_VERSION_V1, isSupportedMathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { buildMathOptionOrder, displayedMathOptions, type MathOptionOrder } from '@/lib/mathOptionOrder';
 
 type ActiveLearningExercise = {
   id?: string;
@@ -94,6 +96,7 @@ function TestPageContent() {
   const baseSelectionUrl = learner === 'kirsi' ? '/kirsi' : learner === 'kiur' ? '/kiur' : '/';
 
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
+  const [optionOrder, setOptionOrder] = useState<MathOptionOrder | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -116,6 +119,10 @@ function TestPageContent() {
   const legacySessionId = useMemo(() => `${learner}|${subject}|${topic}|${categoryParam}|${seed}`, [learner, subject, topic, categoryParam, seed]);
   const snapshotRef = useRef<Partial<MathSession>>({});
   const contractRef = useRef<CatalogueContract | null>(null);
+  // The generator version the run's questions were made with. A run resumed
+  // after an app update must finalise with the version it was created with, or
+  // the server would re-generate it with the new generator and reject it.
+  const generatorVersionRef = useRef<string | null>(null);
   const exerciseIdRef = useRef<string | null>(exerciseIdParam);
   const learnerId: 'kiur' | 'kirsi' | null = learner === 'kiur' || learner === 'kirsi' ? learner : null;
 
@@ -187,7 +194,9 @@ function TestPageContent() {
           rotationVersion: existing.rotationVersion ?? 1,
           dailyLimit: 0
         };
+        generatorVersionRef.current = existing.generatorVersion;
         setQuestions(stored);
+        setOptionOrder((existing.optionOrder ?? null) as MathOptionOrder | null);
         setAnswers(state.answers?.length === stored.length ? state.answers : Array(stored.length).fill(''));
         setChoiceAnswers(state.choiceAnswers?.length === stored.length ? state.choiceAnswers : Array(stored.length).fill(''));
         setOrderingAnswers(state.orderingAnswers?.length === stored.length ? state.orderingAnswers : Array.from({ length: stored.length }, () => []));
@@ -214,20 +223,24 @@ function TestPageContent() {
         : null;
       const resolvedExerciseId = exerciseIdParam ?? catalogueExercise?.id ?? null;
       if (learnerId && !resolvedExerciseId) throw new Error('Harjutuse kataloogikirjet ei leitud.');
-      const generated = isKirsiMath ? generateKirsiSession(categoryParam as never, count, seed) : generateKiurMathSession(topic, categoryParam, difficulty, count, seed);
+      const capability = getOfflineRunnerCapability('math');
+      if (!capability) throw new Error('Matemaatikaharjutuse võrguühenduseta leping puudub.');
+      const currentVersion = capability.generatorVersion;
+      if (!isSupportedMathGeneratorVersion(currentVersion)) throw new Error('Matemaatikaharjutuse küsimuste versioon ei ole toetatud.');
+      const generated = isKirsiMath ? generateKirsiSession(categoryParam as never, count, seed, currentVersion) : generateKiurMathSession(topic, categoryParam, difficulty, count, seed, currentVersion);
       const emptyAnswers = Array(generated.length).fill('');
       const emptyOrdering = Array.from({ length: generated.length }, () => [] as string[]);
       const beganAt = new Date().toISOString();
-      const capability = getOfflineRunnerCapability('math');
-      if (!capability) throw new Error('Matemaatikaharjutuse võrguühenduseta leping puudub.');
 
       // One-release migration for the legacy v2 math session. Its exact question
       // payload is preserved under the newly minted UUID before the old key is
-      // removed.
+      // removed. Those questions predate generator versions, so they are v1 and
+      // keep their generated option order.
       const legacy = await getSession(legacySessionId).catch(() => undefined);
-      const restoredQuestions = legacy?.questionsPayload && Array.isArray(legacy.questionsPayload)
-        ? legacy.questionsPayload as GeneratedQuestion[]
-        : generated;
+      const isLegacyRestore = Boolean(legacy?.questionsPayload && Array.isArray(legacy.questionsPayload));
+      const restoredQuestions = isLegacyRestore ? legacy!.questionsPayload as GeneratedQuestion[] : generated;
+      const sessionGeneratorVersion = isLegacyRestore ? MATH_GENERATOR_VERSION_V1 : currentVersion;
+      const restoredOptionOrder = isLegacyRestore ? null : buildMathOptionOrder(restoredQuestions, seed);
       const initialState: MathRunnerState = {
         answers: legacy?.answers?.length === restoredQuestions.length ? legacy.answers : emptyAnswers,
         orderingAnswers: legacy?.orderingAnswers?.length === restoredQuestions.length ? legacy.orderingAnswers : emptyOrdering,
@@ -246,13 +259,14 @@ function TestPageContent() {
         category: categoryParam,
         seed,
         questions: restoredQuestions,
+        optionOrder: restoredOptionOrder,
         answers: initialState.answers,
         currentIndex: legacy?.currentIndex ?? 0,
         currentPhase: 'question',
         runnerState: initialState,
         catalogueVersion: contract?.catalogueVersion ?? null,
         rewardPolicyVersion: contract?.rewardPolicyVersion ?? 'legacy-v1',
-        generatorVersion: capability.generatorVersion,
+        generatorVersion: sessionGeneratorVersion,
         runnerVersion: capability.runnerVersion,
         rotationVersion: capability.rotationVersion,
         startedAt: legacy?.startedAt ?? beganAt
@@ -260,9 +274,11 @@ function TestPageContent() {
       if (legacy) await clearSession(legacySessionId);
       if (cancelled) return;
       contractRef.current = contract;
+      generatorVersionRef.current = created.generatorVersion;
       exerciseIdRef.current = resolvedExerciseId;
       startedAtRef.current = created.startedAt;
-      setQuestions(restoredQuestions);
+      setQuestions(created.questions);
+      setOptionOrder((created.optionOrder ?? null) as MathOptionOrder | null);
       setAnswers(initialState.answers);
       setChoiceAnswers(initialState.choiceAnswers);
       setOrderingAnswers(initialState.orderingAnswers);
@@ -410,7 +426,7 @@ function TestPageContent() {
         runnerId: capability.runnerId,
         questionIds: questions.map((question) => question.id),
         rewardPolicyVersion: contract.rewardPolicyVersion,
-        generatorVersion: capability.generatorVersion,
+        generatorVersion: generatorVersionRef.current ?? capability.generatorVersion,
         runnerVersion: capability.runnerVersion,
         rotationVersion: capability.rotationVersion,
         learner: learnerId,
@@ -490,7 +506,7 @@ function TestPageContent() {
               </div>
             ) : isChoiceQuestion ? (
               <div className='choice-answer-grid' onKeyDown={(e) => { if (e.key === 'Enter' && choiceAnswers[index]) { e.preventDefault(); void handleSubmit(); } }}>
-                {(current.choiceOptions?.length ? current.choiceOptions : ['<', '=', '>']).map((sign) => <button type='button' key={sign} aria-pressed={choiceAnswers[index] === sign} disabled={Boolean(countingFeedback)} className={choiceAnswers[index] === sign ? 'choice-answer-button selected' : 'choice-answer-button'} onClick={() => { if (isCountingQuestion) { chooseCountingAnswer(sign); return; } const next = [...choiceAnswers]; next[index] = sign; setChoiceAnswers(next); }}>{sign}</button>)}
+                {(current.choiceOptions?.length ? displayedMathOptions(current, optionOrder) : ['<', '=', '>']).map((sign) => <button type='button' key={sign} aria-pressed={choiceAnswers[index] === sign} disabled={Boolean(countingFeedback)} className={choiceAnswers[index] === sign ? 'choice-answer-button selected' : 'choice-answer-button'} onClick={() => { if (isCountingQuestion) { chooseCountingAnswer(sign); return; } const next = [...choiceAnswers]; next[index] = sign; setChoiceAnswers(next); }}>{sign}</button>)}
               </div>
             ) : isTextQuestion && currentTextFields ? (
               <div className={currentTextFields.length > 1 ? 'answer-input-row split-answer-row' : 'answer-input-row'}>

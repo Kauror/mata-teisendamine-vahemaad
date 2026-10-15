@@ -19,6 +19,7 @@ import { metadataMatchesContract, validateAttemptRecordV2 } from '@/lib/server/h
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import { isOfflineProtocolV2Enabled } from '@/lib/offline/protocol';
 import { validateAttemptTiming } from '@/lib/offline/server/attemptTiming';
+import { MATH_GENERATOR_VERSIONS } from '@/lib/exercises/mathGeneratorVersion';
 import { createHash } from 'node:crypto';
 
 // Both legacy online completion and phased protocol-v2 sync use this one
@@ -132,6 +133,7 @@ function prepareV2(input: InsertAttemptInput, serverNow: string): V2Preparation 
       category: String(input.category),
       difficulty: String(input.difficulty),
       seed: input.seed as number | string,
+      generatorVersion: String(input.generatorVersion),
       questionIds: input.questionIds as string[],
       questions: input.questions as unknown[]
     });
@@ -231,6 +233,7 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       catalogueVersion: grant.catalogueVersion,
       rewardPolicyVersion: grant.rewardPolicyVersion,
       generatorVersion: runnerContract.generatorVersion,
+      acceptedGeneratorVersions: runnerContract.runnerId === 'math' ? MATH_GENERATOR_VERSIONS : undefined,
       runnerVersion: runnerContract.runnerVersion,
       rotationVersion: runnerContract.rotationVersion
     })) {

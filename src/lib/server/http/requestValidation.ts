@@ -263,6 +263,13 @@ export type AttemptContract = {
   catalogueVersion: string;
   rewardPolicyVersion: string;
   generatorVersion: string;
+  // Further generator versions the server can still replay for this runner. A
+  // grant snapshot names one version, but across a generator bump a device can
+  // legitimately hold either side of it: an outbox attempt or a paused run made
+  // before the update (old version, grant already refreshed), or a run started
+  // on the updated app before its grant was refreshed (new version, old grant).
+  // The score is recomputed with the attempt's own version either way.
+  acceptedGeneratorVersions?: readonly string[];
   runnerVersion: string;
   rotationVersion: number;
 };
@@ -272,7 +279,8 @@ export function metadataMatchesContract(attempt: Record<string, unknown>, contra
     attempt.exerciseId === contract.exerciseId &&
     attempt.catalogueVersion === contract.catalogueVersion &&
     attempt.rewardPolicyVersion === contract.rewardPolicyVersion &&
-    attempt.generatorVersion === contract.generatorVersion &&
+    (attempt.generatorVersion === contract.generatorVersion ||
+      (typeof attempt.generatorVersion === 'string' && (contract.acceptedGeneratorVersions ?? []).includes(attempt.generatorVersion))) &&
     attempt.runnerVersion === contract.runnerVersion &&
     attempt.rotationVersion === contract.rotationVersion;
 }
