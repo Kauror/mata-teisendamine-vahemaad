@@ -45,8 +45,9 @@ export async function resolveExerciseActive(
 }
 
 type UseExerciseActiveOptions = ExerciseMatch & {
-  learner: Learner;
-  // false: the runner is not gated by the catalogue; it is treated as active.
+  learner: Learner | null;
+  // false (or no learner): the runner is not gated by the catalogue; it is
+  // treated as active.
   enabled?: boolean;
   // How the server's answer decides it; defaults to "exerciseIds lists it".
   isActive?: (body: ActiveExercisesBody) => boolean;
@@ -59,7 +60,7 @@ export function useExerciseActive({ learner, exerciseId, subject, topic, categor
   isActiveRef.current = isActive;
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || !learner) {
       setActive(true);
       return;
     }
