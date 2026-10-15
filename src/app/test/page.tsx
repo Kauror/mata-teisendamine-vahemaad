@@ -3,8 +3,6 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Difficulty, GeneratedQuestion } from '@/lib/types';
-import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
-import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { compactTopicLabel } from '@/lib/history';
 import { formatElapsed, validateAnswerInput } from '@/lib/validation';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
@@ -183,7 +181,11 @@ function TestPageContent() {
       if (!capability) throw new Error('Matemaatikaharjutuse võrguühenduseta leping puudub.');
       const currentVersion = capability.generatorVersion;
       if (!isSupportedMathGeneratorVersion(currentVersion)) throw new Error('Matemaatikaharjutuse küsimuste versioon ei ole toetatud.');
-      const generated = isKirsiMath ? generateKirsiSession(categoryParam as never, count, seed, currentVersion) : generateKiurMathSession(topic, categoryParam, difficulty, count, seed, currentVersion);
+      // Only the learner's own generator loads, and only for a new run (a
+      // precached chunk offline): Kiur's carries his text-problem bank.
+      const generated = isKirsiMath
+        ? (await import('@/lib/exercises/kirsiMath')).generateKirsiSession(categoryParam as never, count, seed, currentVersion)
+        : (await import('@/lib/exercises/kiurMath')).generateKiurMathSession(topic, categoryParam, difficulty, count, seed, currentVersion);
       const emptyAnswers = Array(generated.length).fill('');
       const emptyOrdering = Array.from({ length: generated.length }, () => [] as string[]);
       const beganAt = new Date().toISOString();
