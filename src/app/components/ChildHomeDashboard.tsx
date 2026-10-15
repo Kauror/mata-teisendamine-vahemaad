@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { preload } from 'react-dom';
 import DailyTasksPanel from '@/app/components/DailyTasksPanel';
 import NoticeBoard from '@/app/components/NoticeBoard';
 import YesterdayPointsPopup from '@/app/components/YesterdayPointsPopup';
@@ -6,6 +7,7 @@ import ChildAvatarEasterEgg from '@/app/components/ChildAvatarEasterEgg';
 import ChildExerciseGrid from '@/app/components/ChildExerciseGrid';
 import PeekModeBanner from '@/app/components/PeekModeBanner';
 import { ChildExerciseCard } from '@/lib/childExerciseCards';
+import { CHILD_PAGE_DATA_PRELOAD, childPageDataPreloads } from '@/lib/childPageData';
 import { getYesterdayPointsSummary } from '@/lib/dailyPointsSummary';
 import { Learner } from '@/lib/tasks';
 
@@ -29,6 +31,10 @@ export default function ChildHomeDashboard({
   completedExerciseCounts?: Record<string, number>;
 }) {
   const yesterdayPoints = getYesterdayPointsSummary(child.learner);
+  // Start the panel's and the notice board's reads while the JavaScript is
+  // still loading; they pick the responses up after hydration. No data goes
+  // into the (offline-cached) HTML — see childPageData.ts.
+  for (const href of childPageDataPreloads(child.learner)) preload(href, CHILD_PAGE_DATA_PRELOAD);
 
   return (
     <main className='container child-home-page'>

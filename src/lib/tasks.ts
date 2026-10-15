@@ -143,7 +143,42 @@ function awardDailyTaskBonusIfReady(date: string, createdAt: string): DailyBonus
   return { awarded: true, amount: 1 };
 }
 
+// Every dashboard, approvals and sync read calls ensureTaskInstancesForDate,
+// and each call used to open two write transactions even when the day was long
+// prepared. Once a date has been fully prepared, the only things that can make
+// a repeat call do anything are listed here, and each of them forgets the
+// prepared date so the next call runs in full:
+//   - a template is created, edited (which may also drop today's untouched
+//     instance) or deleted — createTaskTemplate / updateTaskTemplate /
+//     deleteTaskTemplate;
+//   - a parent's rejection turns an assignment back to 'active', possibly on an
+//     earlier day that markMissed must close again — rejectTaskAssignment;
+//   - a call for any other date (an offline completion for yesterday, or a new
+//     day) — the memo holds one date only, so switching dates always re-runs.
+// Kept on globalThis so that any duplicated copy of this module in the server
+// process (separate route bundles, dev reloads) shares the one marker.
+const PREPARED_DATE_KEY = Symbol.for('harjutaja.tasks.preparedInstanceDate');
+type PreparedDateHolder = { [PREPARED_DATE_KEY]?: string | null };
+
+function preparedInstanceDate() {
+  return (globalThis as PreparedDateHolder)[PREPARED_DATE_KEY] ?? null;
+}
+
+function setPreparedInstanceDate(date: string | null) {
+  (globalThis as PreparedDateHolder)[PREPARED_DATE_KEY] = date;
+}
+
+// Forget which day ensureTaskInstancesForDate last prepared. Called by every
+// write that changes what preparing a day would do (see above), and by tests
+// that wipe the task tables directly.
+export function invalidateTaskInstancePreparation() {
+  setPreparedInstanceDate(null);
+}
+
 export function ensureTaskInstancesForDate(date = todayDateString()) {
+  if (preparedInstanceDate() === date) return;
+  // Cleared first, so a throw part-way through never leaves a stale marker.
+  setPreparedInstanceDate(null);
   const markMissed = db.transaction(() => {
     db.prepare("UPDATE task_instance_assignments SET status = 'missed' WHERE status = 'active' AND taskInstanceId IN (SELECT id FROM task_instances WHERE date < ?)").run(date);
     db.prepare("UPDATE task_instances SET status = 'missed' WHERE status = 'active' AND date < ?").run(date);
@@ -167,6 +202,7 @@ export function ensureTaskInstancesForDate(date = todayDateString()) {
     }
   });
   createForDate();
+  setPreparedInstanceDate(date);
 }
 
 export function getChildDashboard(learner: Learner, date = todayDateString()) {
@@ -244,6 +280,7 @@ export function createTaskTemplate(input: TaskTemplateInput) {
     nowIso()
   );
 
+  invalidateTaskInstancePreparation();
   ensureTaskInstancesForDate();
   return result.lastInsertRowid;
 }
@@ -284,11 +321,13 @@ export function updateTaskTemplate(id: number, input: TaskTemplateInput) {
   });
   apply();
 
+  invalidateTaskInstancePreparation();
   ensureTaskInstancesForDate();
 }
 
 export function deleteTaskTemplate(id: number) {
   db.prepare('UPDATE task_templates SET deletedAt = ? WHERE id = ? AND deletedAt IS NULL').run(nowIso(), id);
+  invalidateTaskInstancePreparation();
 }
 
 type AssignmentRow = {
@@ -457,7 +496,11 @@ export function rejectTaskAssignment(assignmentId: number) {
     emitTaskChangeForAssignment(assignmentId, 'returned', { reasonCode: 'parent_rejected' });
     return { ok: true };
   });
-  return reject();
+  const result = reject();
+  // The returned assignment is 'active' again — on an earlier day it must be
+  // closed as missed by the next preparation, so that one may not be skipped.
+  invalidateTaskInstancePreparation();
+  return result;
 }
 
 // Every assignment still awaiting the parent, from any day, oldest task day

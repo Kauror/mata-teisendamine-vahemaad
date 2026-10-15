@@ -134,8 +134,8 @@ function latestStudyDateOnOrBefore(dates: Set<string>, date: string) {
 
 // Which past days would need covering for the streak to survive into today.
 // Today itself is never included: it is not missed until it is over.
-export function gapNeedingCover(learner: Learner, today = todayDateString()) {
-  const dates = studyDates(learner);
+export function gapNeedingCover(learner: Learner, today = todayDateString(), knownStudyDates?: Set<string>) {
+  const dates = knownStudyDates ?? studyDates(learner);
   const lastStudyDay = latestStudyDateOnOrBefore(dates, today);
   // Nothing to protect - a streak has to exist before it can be saved.
   if (!lastStudyDay || lastStudyDay === today) return [];
@@ -160,9 +160,12 @@ export type SettlementResult = { covered: string[]; held: number };
 // Spend held freezes on the days that broke the streak. Runs on every dashboard
 // read, so it must be idempotent — the unique index on (learner, coveredDate)
 // is the backstop.
-export function settleStreakFreezes(learner: Learner, today = todayDateString()): SettlementResult {
+//
+// Settlement never changes study days, so a caller that already holds them may
+// pass them in (`knownStudyDates`) and reuse the same set afterwards.
+export function settleStreakFreezes(learner: Learner, today = todayDateString(), knownStudyDates?: Set<string>): SettlementResult {
   const settle = db.transaction((): SettlementResult => {
-    const gap = gapNeedingCover(learner, today);
+    const gap = gapNeedingCover(learner, today, knownStudyDates);
     const available = heldRows(learner);
 
     // All or nothing. Spending two freezes on a three-day gap buys nothing:

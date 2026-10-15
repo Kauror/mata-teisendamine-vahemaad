@@ -237,8 +237,8 @@ export function getLongestLearningStreak(learner: Learner) {
 
 // Counts distinct study days in the current Monday-Sunday week. A new Monday
 // naturally starts at zero, which keeps the weekly achievement current.
-export function getLearningDaysThisWeek(learner: Learner, today = todayDateString()) {
-  const dates = studyDates(learner);
+export function getLearningDaysThisWeek(learner: Learner, today = todayDateString(), knownStudyDates?: Set<string>) {
+  const dates = knownStudyDates ?? studyDates(learner);
   return appDateRange(startOfAppWeek(today), today).filter((day) => dates.has(day)).length;
 }
 
@@ -247,8 +247,8 @@ export function getLearningDaysThisWeek(learner: Learner, today = todayDateStrin
 // parent's streak rewards), getLongestLearningStreak and getLearningDaysThisWeek
 // all stay freeze-free, so a bought freeze can never buy stars, a personal
 // record or the perfect-week achievement.
-export function getActiveLearningStreak(learner: Learner, today = todayDateString()) {
-  const dates = studyDates(learner);
+export function getActiveLearningStreak(learner: Learner, today = todayDateString(), knownStudyDates?: Set<string>) {
+  const dates = knownStudyDates ?? studyDates(learner);
   const frozen = frozenDates(learner);
   const todayStreak = countLearningStreakFrom(dates, today, frozen);
   if (todayStreak > 0) return todayStreak;

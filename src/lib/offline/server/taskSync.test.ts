@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import db from '@/lib/db';
-import { approveTaskAssignment, createTaskTemplate, findAssignmentId, getBalance, rejectTaskAssignment, todayDateString, updateTaskTemplate } from '@/lib/tasks';
+import { approveTaskAssignment, createTaskTemplate, findAssignmentId, getBalance, invalidateTaskInstancePreparation, rejectTaskAssignment, todayDateString, updateTaskTemplate } from '@/lib/tasks';
 import { applyOfflineTaskAction, getSyncTaskAssignments, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
 import { getTaskChangesAfter } from '@/lib/offline/server/taskChanges';
 import { listOfflineTaskReviews, resolveOfflineTaskReview } from '@/lib/offline/server/taskReviews';
@@ -11,6 +11,8 @@ function reset() {
   db.pragma('foreign_keys = OFF');
   db.exec('DELETE FROM point_ledger; DELETE FROM task_instance_assignments; DELETE FROM task_instances; DELETE FROM task_templates; DELETE FROM offline_task_actions; DELETE FROM daily_task_bonuses; DELETE FROM server_change_log;');
   db.pragma('foreign_keys = ON');
+  // The tables were wiped behind the module's back; forget the prepared day.
+  invalidateTaskInstancePreparation();
 }
 beforeEach(reset);
 
