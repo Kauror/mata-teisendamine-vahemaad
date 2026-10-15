@@ -57,13 +57,14 @@ export function qualifySprintsPure(rows: SprintRow[]): Map<number, SprintQualifi
 // Recompute all authoritative Kiur sprint rows. This intentionally updates later
 // rows when an older offline attempt arrives, making the result upload-order
 // independent. Held/review rows never establish or raise the standing record.
+// `deletedAt` is intentionally not a predicate: hiding a history row is only a
+// display preference and must not rewrite the sprint record or qualification.
 export function recomputeSprintQualifications() {
   const rows = db.prepare(`
     SELECT id, clientAttemptId, effectiveCompletedAt, createdAt, score
     FROM attempts
     WHERE learner = 'kiur' AND subject = 'inglise-keel' AND topic = 'sprint'
       AND (COALESCE(protocolVersion, 1) <> 2 OR rewardSettlementStatus = 'eligible')
-      AND deletedAt IS NULL
   `).all() as SprintRow[];
   const qualifications = qualifySprintsPure(rows);
   const update = db.prepare(`
