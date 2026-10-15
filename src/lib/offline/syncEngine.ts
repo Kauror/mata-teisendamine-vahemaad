@@ -160,17 +160,42 @@ function responseProtocols(ping: PingResponse): Set<1 | 2> {
   return new Set(ping.supportedProtocolVersions?.length ? ping.supportedProtocolVersions : [ping.protocolVersion]);
 }
 
-async function postSync<T>(request: unknown, signal: AbortSignal): Promise<T> {
+// The cycle's signal (lock lost, page leaving) cancels every request; the
+// timeout bounds each request alone (OFF-11). A cycle-wide timeout aborted a
+// long backfill on a slow link every time, however steadily it was moving.
+function requestSignal(cycleSignal: AbortSignal): { signal: AbortSignal; done: () => void } {
+  const controller = new AbortController();
+  const onCycleAbort = () => controller.abort(cycleSignal.reason);
+  if (cycleSignal.aborted) onCycleAbort();
+  else cycleSignal.addEventListener('abort', onCycleAbort, { once: true });
+  const timer = setTimeout(() => controller.abort(new DOMException('Sync request timed out.', 'TimeoutError')), SYNC_REQUEST_TIMEOUT_MS);
+  return {
+    signal: controller.signal,
+    done: () => {
+      clearTimeout(timer);
+      cycleSignal.removeEventListener('abort', onCycleAbort);
+    }
+  };
+}
+
+async function postSync<T>(request: unknown, cycleSignal: AbortSignal): Promise<T> {
   const json = JSON.stringify(request);
   if (new TextEncoder().encode(json).byteLength > 1024 * 1024) throw new SyncHttpError(413, { code: 'body_too_large' });
-  const response = await fetch('/api/offline/sync', {
-    method: 'POST',
-    cache: 'no-store',
-    headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-    body: json,
-    signal
-  });
-  const text = await response.text();
+  const { signal, done } = requestSignal(cycleSignal);
+  let response: Response;
+  let text: string;
+  try {
+    response = await fetch('/api/offline/sync', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: json,
+      signal
+    });
+    text = await response.text();
+  } finally {
+    done();
+  }
   let body: unknown = null;
   try {
     body = text ? JSON.parse(text) : null;
@@ -205,12 +230,22 @@ if (typeof window !== 'undefined') {
   window.addEventListener('pageshow', () => { pageLeaving = false; });
 }
 
-async function scheduleRetry(message: string): Promise<string> {
+// What a cycle has achieved so far. A cycle that pushed or pulled something
+// before failing proved the server reachable; it is a slow link, not an outage.
+type SyncCycle = { signal: AbortSignal; pushed: number; pulled: number; pagesApplied: number };
+
+function cycleProgressed(cycle: SyncCycle): boolean {
+  return cycle.pushed > 0 || cycle.pagesApplied > 0;
+}
+
+async function scheduleRetry(message: string, cycle: SyncCycle): Promise<string> {
   if (pageLeaving) return new Date().toISOString();
   const current = await retryState();
-  const retryCount = current.retryCount + 1;
-  const nextRetryAt = new Date(Date.now() + retryDelayMs(current.retryCount)).toISOString();
-  await writeRetryState({ status: 'retry_wait', retryCount, nextRetryAt, lastError: message });
+  // OFF-11: progress restarts the backoff at its shortest delay instead of
+  // growing it, so a big backfill over a slow link keeps moving.
+  const failuresBefore = cycleProgressed(cycle) ? 0 : current.retryCount;
+  const nextRetryAt = new Date(Date.now() + retryDelayMs(failuresBefore)).toISOString();
+  await writeRetryState({ status: 'retry_wait', retryCount: failuresBefore + 1, nextRetryAt, lastError: message });
   return nextRetryAt;
 }
 
@@ -276,7 +311,7 @@ async function reviewBatch<Row, Result>(outbox: OutboxPush<Row, Result>, rows: R
   });
 }
 
-async function handlePushError<Row, Result>(outbox: OutboxPush<Row, Result>, error: unknown, batch: Row[]): Promise<void> {
+async function handlePushError<Row, Result>(outbox: OutboxPush<Row, Result>, error: unknown, batch: Row[], cycle: SyncCycle): Promise<void> {
   const disposition = errorDisposition(error);
   const message = error instanceof Error ? error.message : String(error);
   if (disposition === 'record_validation' || disposition === 'terminal') {
@@ -288,7 +323,7 @@ async function handlePushError<Row, Result>(outbox: OutboxPush<Row, Result>, err
     await blockRetry(disposition, message);
     throw new StopSyncCycle(message, disposition);
   }
-  const nextRetryAt = await scheduleRetry(message);
+  const nextRetryAt = await scheduleRetry(message, cycle);
   await returnBatch(outbox, batch, message, nextRetryAt);
   throw new StopSyncCycle(message, disposition === 'timeout' ? 'timeout' : 'retryable');
 }
@@ -300,7 +335,7 @@ async function pushBatch<Row, Result>(
   outbox: OutboxPush<Row, Result>,
   batch: Row[],
   device: OfflineSyncDevice,
-  signal: AbortSignal,
+  cycle: SyncCycle,
   aggregate: Result[],
   alreadyMarked = false
 ): Promise<number> {
@@ -320,24 +355,25 @@ async function pushBatch<Row, Result>(
     pending
   };
   try {
-    const response = await postSync<OfflineSyncPushResponseV2>(request, signal);
+    const response = await postSync<OfflineSyncPushResponseV2>(request, cycle.signal);
     if (response.protocolVersion !== 2 || response.phase !== 'push') throw new Error('invalid-v2-push-response');
     const results = outbox.results(response);
     aggregate.push(...results);
     const applied = await applySyncEnvelope({ serverTime: response.serverTime, ...outbox.envelope(results) });
     await outbox.afterApply?.(applied);
+    cycle.pushed += results.length;
     return results.length;
   } catch (error) {
     if (error instanceof SyncHttpError && error.status === 413 && batch.length > 1) {
       const midpoint = Math.ceil(batch.length / 2);
-      return (await pushBatch(outbox, batch.slice(0, midpoint), device, signal, aggregate, true)) +
-        (await pushBatch(outbox, batch.slice(midpoint), device, signal, aggregate, true));
+      return (await pushBatch(outbox, batch.slice(0, midpoint), device, cycle, aggregate, true)) +
+        (await pushBatch(outbox, batch.slice(midpoint), device, cycle, aggregate, true));
     }
     if (error instanceof SyncHttpError && error.status === 413) {
       await reviewBatch(outbox, [batch[0]], 'payload_too_large');
       return 0;
     }
-    await handlePushError(outbox, error, batch);
+    await handlePushError(outbox, error, batch, cycle);
     return 0;
   }
 }
@@ -359,8 +395,7 @@ export async function knownCataloguesForPull(): Promise<Partial<Record<Learner, 
   return known;
 }
 
-async function pullV2(device: OfflineSyncDevice, signal: AbortSignal): Promise<number> {
-  let pulled = 0;
+async function pullV2(device: OfflineSyncDevice, cycle: SyncCycle): Promise<void> {
   let previousCursor = '';
   for (let page = 0; page < MAX_PULL_PAGES_PER_CYCLE; page += 1) {
     const cursor = cursorV2(await getCursor());
@@ -375,7 +410,7 @@ async function pullV2(device: OfflineSyncDevice, signal: AbortSignal): Promise<n
       knownCatalogues: await knownCataloguesForPull(),
       pageSize: { attempts: 300, tombstones: 300, taskChanges: 300, remediationChanges: 300, historyBackfill: 300 }
     };
-    const response = await postSync<OfflineSyncPullResponseV2>(request, signal);
+    const response = await postSync<OfflineSyncPullResponseV2>(request, cycle.signal);
     if (response.protocolVersion !== 2 || response.phase !== 'pull') throw new Error('invalid-v2-pull-response');
     await applySyncEnvelope({
       serverTime: response.serverTime,
@@ -384,8 +419,9 @@ async function pullV2(device: OfflineSyncDevice, signal: AbortSignal): Promise<n
       nextCursor: response.nextCursor,
       resetRequired: Boolean(response.resetRequired)
     });
-    pulled += response.pull.attempts.length;
-    if (!Object.values(response.hasMore).some(Boolean)) return pulled;
+    cycle.pulled += response.pull.attempts.length;
+    cycle.pagesApplied += 1;
+    if (!Object.values(response.hasMore).some(Boolean)) return;
   }
   throw new StopSyncCycle('pull_page_limit', 'retryable');
 }
@@ -394,11 +430,9 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
   const cycleController = new AbortController();
   const onLockAbort = () => cycleController.abort(lockSignal.reason);
   lockSignal.addEventListener('abort', onLockAbort, { once: true });
-  const timeout = setTimeout(() => cycleController.abort(new DOMException('Sync cycle timed out.', 'TimeoutError')), SYNC_REQUEST_TIMEOUT_MS);
+  const cycle: SyncCycle = { signal: cycleController.signal, pushed: 0, pulled: 0, pagesApplied: 0 };
   const aggregateAttempts: AttemptResult[] = [];
   const aggregateActions: TaskActionResult[] = [];
-  let pushed = 0;
-  let pulled = 0;
 
   try {
     await Promise.all([attemptRepo.recoverExpiredSyncing(), taskActionRepo.recoverExpiredSyncing()]);
@@ -439,11 +473,11 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
       const modernAttempts = dueAttempts.filter((row) => toV2Payload(row) !== null);
       const legacyAttempts = dueAttempts.filter((row) => toV2Payload(row) === null);
       for (const batch of chunkRecords(modernAttempts, CLIENT_ATTEMPT_BATCH_SIZE)) {
-        pushed += await pushBatch(attemptOutbox, batch, device, cycleController.signal, aggregateAttempts);
+        await pushBatch(attemptOutbox, batch, device, cycle, aggregateAttempts);
       }
       // Task actions are pushed only after every attempt batch.
       for (const batch of chunkRecords(dueActions, CLIENT_ACTION_BATCH_SIZE)) {
-        pushed += await pushBatch(taskActionOutbox, batch, device, cycleController.signal, aggregateActions);
+        await pushBatch(taskActionOutbox, batch, device, cycle, aggregateActions);
       }
       // Preserve pre-v2 outbox rows in IndexedDB for explicit manual review.
       // They cannot be safely upgraded because their immutable runner contract
@@ -454,12 +488,13 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
           attemptResults: legacyAttempts.map((row) => ({ clientAttemptId: row.clientAttemptId, status: 'needs_review', reasonCode: 'legacy_client_upgrade_required' }))
         });
       }
-      pulled += await pullV2(device, cycleController.signal);
+      await pullV2(device, cycle);
     }
 
     await writeRetryState({ status: 'idle', retryCount: 0 });
-    return { ok: true, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
+    return { ok: true, pushed: cycle.pushed, pulled: cycle.pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
   } catch (error) {
+    const { pushed, pulled } = cycle;
     if (error instanceof StopSyncCycle) return { ok: false, reason: error.disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('history epoch regressed')) {
@@ -467,7 +502,7 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
       return { ok: false, reason: 'epoch_regression', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     if (cycleController.signal.aborted) {
-      await scheduleRetry(message);
+      await scheduleRetry(message, cycle);
       return { ok: false, reason: 'timeout', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     // Pull requests use the same HTTP policy as every push path.  Do not turn
@@ -478,13 +513,12 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
       return { ok: false, reason: disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     if (disposition === 'retryable' || disposition === 'timeout') {
-      await scheduleRetry(message);
+      await scheduleRetry(message, cycle);
       return { ok: false, reason: disposition === 'timeout' ? 'timeout' : 'retryable', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     await blockRetry('storage_error', message).catch(() => {});
     return { ok: false, reason: 'storage_error', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
   } finally {
-    clearTimeout(timeout);
     lockSignal.removeEventListener('abort', onLockAbort);
   }
 }
