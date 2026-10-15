@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
 
+# A new push to a pull request makes the run for the previous push pointless.
+# Runs on main are never cancelled, so every main commit keeps its evidence.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   security:
     name: Production dependency, secret and configuration gates
@@ -45,9 +51,18 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  # The suite runs with one worker against one shared database, so it cannot
+  # be parallelised inside a runner. It is split across runners instead: each
+  # browser on its own machine, each cut into shards. Every runner starts its
+  # own dev server and its own empty database, exactly as the single job did.
   e2e:
-    name: Browser E2E (Playwright)
+    name: Browser E2E (${{ matrix.project }} ${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, webkit]
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -55,12 +70,26 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+      - name: Read the Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Restore the browser
+        id: browser-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ matrix.project }}
+      - name: Install the browser and its system libraries
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps ${{ matrix.project }}
+      - name: Install the system libraries for the cached browser
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps ${{ matrix.project }}
+      - run: npm run test:e2e -- --project=${{ matrix.project }} --shard=${{ matrix.shard }}/2
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 7
 
@@ -74,7 +103,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install chromium
+      - name: Read the Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      # Shares the cache entry with the chromium E2E shards.
+      - name: Restore the browser
+        id: browser-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+      - if: steps.browser-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
       # Builds the production app + generated service worker and exercises SW
       # install / offline reload in a real Chromium (RTM2-H06).
       - run: PW_TEST_PORT=3100 CI=1 npm run test:e2e:prod
