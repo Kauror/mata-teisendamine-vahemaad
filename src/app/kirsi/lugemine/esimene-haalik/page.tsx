@@ -155,7 +155,9 @@ export default function KirsiFirstSoundPage() {
       const capability = getOfflineRunnerCapability('kirsi-first-sound');
       if (!contract || !capability) throw new Error('Ühenda seade internetiga, et harjutus ette valmistada.');
       const startedAt = new Date().toISOString();
-      await createRunnerSession<KirsiFirstSoundTask, ReviewItem, FirstSoundRunnerState, null>({
+      // Returns the stored session when an overlapping start already wrote one
+      // for this run id; the screen must show that session, not this one.
+      const created = await createRunnerSession<KirsiFirstSoundTask, ReviewItem, FirstSoundRunnerState, null>({
         runId: id,
         learner: 'kirsi',
         runnerId: 'kirsi-first-sound',
@@ -178,11 +180,11 @@ export default function KirsiFirstSoundPage() {
         startedAt
       });
       if (cancelled) return;
-      startedAtRef.current = startedAt;
+      startedAtRef.current = created.startedAt;
       contractRef.current = contract;
-      setSeed(nextSeed);
-      setSession(questions);
-      setOptionOrder(orderedOptions);
+      setSeed(Number(created.seed ?? nextSeed));
+      setSession(created.questions);
+      setOptionOrder((created.optionOrder ?? orderedOptions) as Record<string, string[]>);
       setSessionReady(true);
     })().catch((error) => {
       if (!cancelled) setStorageError(runnerStorageFailure(error).message);

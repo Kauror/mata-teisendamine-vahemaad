@@ -100,6 +100,9 @@ export default function KiurReadingPage() {
   const snapshotRef = useRef<Partial<ReadingSession>>({});
   const contractRef = useRef<CatalogueContract | null>(null);
   const answerLockedRef = useRef(false);
+  // A double tap on "Alusta" must not start two runs: both taps share the run
+  // id in the URL, so the second would build different questions for it.
+  const startingRef = useRef(false);
 
   const current = session[index];
   const runCount = session.length;
@@ -221,13 +224,22 @@ export default function KiurReadingPage() {
   }, [elapsedSeconds, phase, reviewItems, runCount, runId, saved, score, session]);
 
   const startRun = async () => {
-    if (!readingActive || storageError) return;
+    if (!readingActive || storageError || startingRef.current) return;
     if (phase === 'result') {
       window.location.assign('/kiur/lugemine');
       return;
     }
     const nextSession = buildSession();
     if (!nextSession.length) return;
+    startingRef.current = true;
+    try {
+      await createRun(nextSession);
+    } finally {
+      startingRef.current = false;
+    }
+  };
+
+  const createRun = async (nextSession: SessionTask[]) => {
     const id = ensureRunIdInCurrentUrl();
     const contract = await getCatalogueContract('kiur');
     const capability = getOfflineRunnerCapability('kiur-reading');
@@ -238,7 +250,9 @@ export default function KiurReadingPage() {
     const startedAt = new Date().toISOString();
     const nextSeed = Date.now();
     try {
-      await createRunnerSession<SessionTask, ReviewItem, ReadingRunnerState, null>({
+      // Returns the stored session when this run id already has one; the
+      // screen must show that session, not the questions built just now.
+      const created = await createRunnerSession<SessionTask, ReviewItem, ReadingRunnerState, null>({
         runId: id,
         learner: 'kiur',
         runnerId: 'kiur-reading',
@@ -258,11 +272,11 @@ export default function KiurReadingPage() {
         rotationVersion: capability.rotationVersion,
         startedAt
       });
-      startedAtRef.current = startedAt;
-      seedRef.current = nextSeed;
+      startedAtRef.current = created.startedAt;
+      seedRef.current = created.seed ?? nextSeed;
       contractRef.current = contract;
       setRunId(id);
-      setSession(nextSession);
+      setSession(created.questions);
       setIndex(0);
       setScore(0);
       setSelectedAnswer('');
