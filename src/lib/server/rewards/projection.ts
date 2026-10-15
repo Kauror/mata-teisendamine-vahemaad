@@ -1,10 +1,11 @@
 import db from '@/lib/db';
 import { addAppDays } from '@/lib/appDate';
 import { getBalance, type Learner } from '@/lib/tasks';
-import { recordDailyLeaderboard } from '@/lib/leaderboard';
+import { rebuildDailyLeaderboard, recordDailyLeaderboard } from '@/lib/leaderboard';
 import { REWARD_ENGINE_VERSION, rewardPolicyByVersion, type RewardPolicyV2 } from '@/lib/server/rewards/policy';
 import { emitAttemptChange } from '@/lib/offline/server/attemptChanges';
 import { sprintAttemptQualifies } from '@/lib/sprintReward';
+import { recomputeSprintQualifications } from '@/lib/sprintQualification';
 
 export type ProjectionAttempt = {
   id: number;
@@ -175,8 +176,11 @@ export type AppliedProjection = {
 // eligible, and the projection itself is revision/idempotency-keyed (RTM-003).
 export function approveHeldRewardAttempt(attemptId: number): AppliedProjection | null {
   const row = db.prepare(
-    'SELECT learner, rewardSettlementStatus, rewardPolicyVersion, completionDate FROM attempts WHERE id = ? AND protocolVersion = 2'
-  ).get(attemptId) as { learner: Learner; rewardSettlementStatus: string; rewardPolicyVersion: string | null; completionDate: string | null } | undefined;
+    'SELECT learner, rewardSettlementStatus, rewardPolicyVersion, completionDate, subject, topic FROM attempts WHERE id = ? AND protocolVersion = 2'
+  ).get(attemptId) as {
+    learner: Learner; rewardSettlementStatus: string; rewardPolicyVersion: string | null; completionDate: string | null;
+    subject: string | null; topic: string | null;
+  } | undefined;
   if (!row) return null;
   if (row.rewardSettlementStatus === 'eligible') return null;
   if (!row.rewardPolicyVersion || !rewardPolicyByVersion(row.rewardPolicyVersion)) {
@@ -184,6 +188,11 @@ export function approveHeldRewardAttempt(attemptId: number): AppliedProjection |
   }
   return db.transaction(() => {
     db.prepare("UPDATE attempts SET rewardSettlementStatus = 'eligible' WHERE id = ? AND rewardSettlementStatus <> 'eligible'").run(attemptId);
+    // A held Kiur sprint was skipped by the qualification pass (held rows never
+    // set or raise the record), so its sprintQualified is still NULL. Recompute
+    // before projecting so it can earn stars, mirroring insertAttempt.
+    const isKiurSprint = row.learner === 'kiur' && row.subject === 'inglise-keel' && row.topic === 'sprint';
+    if (isKiurSprint) recomputeSprintQualifications();
     const applied = applyRewardProjectionV2(row.learner, attemptId);
     // The approved attempt itself changed (settlement flipped to eligible, stars
     // now awarded). It is the projection trigger, so the projection loop skips it;
@@ -192,6 +201,9 @@ export function approveHeldRewardAttempt(attemptId: number): AppliedProjection |
     // The attempt now counts: refresh every derived aggregate it feeds, including
     // the daily leaderboard for its completion day (RTM2-H03).
     if (row.completionDate) recordDailyLeaderboard(row.completionDate);
+    // An approved sprint can raise the record and so revise later days'
+    // qualification; rebuild every derived daily/monthly snapshot.
+    if (isKiurSprint) rebuildDailyLeaderboard();
     return applied;
   })();
 }

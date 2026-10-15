@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { decodeHistoryCursor, encodeHistoryCursor, historyPageLimit } from '@/lib/server/historyCursor';
 import { CANONICAL_EARNED_STARS_SQL, CANONICAL_REVIEW_REASON_SQL } from '@/lib/server/attempts/canonicalAttemptProjection';
+import { historyLearnerClause } from '@/lib/server/historyLearnerFilter';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,17 +18,22 @@ export async function GET(request: Request) {
     return NextResponse.json({ code: 'invalid_pagination' }, { status: 400 });
   }
 
-  const learner = search.get('learner');
+  const rawLearner = search.get('learner');
+  const learner = rawLearner === 'kiur' || rawLearner === 'kirsi' ? rawLearner : null;
   const subject = search.get('subject');
   const topic = search.get('topic');
-  if ((learner && learner !== 'kiur' && learner !== 'kirsi') || [subject, topic].some((value) => value && value.length > 64)) {
+  if ((rawLearner && !learner) || [subject, topic].some((value) => value && value.length > 64)) {
     return NextResponse.json({ code: 'invalid_filter' }, { status: 400 });
   }
 
   const db = await getDb();
   const clauses = ['a.deletedAt IS NULL'];
   const params: Array<string | number> = [];
-  if (learner) { clauses.push('a.learner = ?'); params.push(learner); }
+  if (learner) {
+    const filter = historyLearnerClause(learner);
+    clauses.push(filter.sql);
+    params.push(...filter.params);
+  }
   if (subject) { clauses.push('a.subject = ?'); params.push(subject); }
   if (topic) { clauses.push('a.topic = ?'); params.push(topic); }
   if (cursor) {

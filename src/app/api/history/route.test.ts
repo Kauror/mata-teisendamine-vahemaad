@@ -49,6 +49,34 @@ describe('history API compatibility', () => {
     expect(filtered.items.map((row) => row.id)).toEqual([12, 11]);
   });
 
+  it('filters by learner per child, including legacy rows without a learner (WEB-04)', async () => {
+    const insert = db.prepare(`
+      INSERT INTO attempts (
+        id, createdAt, category, difficulty, questionCount, score, elapsedSeconds,
+        questions, learner, protocolVersion, rewardSettlementStatus
+      ) VALUES (?, ?, ?, 'Lihtne', 1, 1, 1, '[]', ?, 1, 'eligible')
+    `);
+    // Legacy rows the client classified by category.
+    insert.run(1, '2025-01-01T10:00:00.000Z', 'Arvutamine 10 piires', null); // Kirsi's
+    insert.run(2, '2025-01-01T11:00:00.000Z', 'Korrutamine', null); // Kiur's
+    // Kiur then does 60 exercises; Kirsi does one.
+    for (let index = 0; index < 60; index += 1) {
+      insert.run(100 + index, `2026-07-02T10:${String(index).padStart(2, '0')}:00.000Z`, 'Korrutamine', 'kiur');
+    }
+    insert.run(200, '2026-07-01T09:00:00.000Z', 'Arvutamine 10 piires', 'kirsi');
+    // An explicit learner wins over the category.
+    insert.run(201, '2026-07-01T08:00:00.000Z', 'Arvutamine 10 piires', 'kiur');
+
+    const page = async (query: string) =>
+      ((await (await GET(new Request(`https://example.test/api/history?${query}`))).json()) as { items: Array<{ id: number }> }).items.map((row) => row.id);
+
+    expect(await page('learner=kirsi&limit=3')).toEqual([200, 1]);
+    expect(await page('learner=kiur&limit=3')).toEqual([159, 158, 157]);
+    const allKiur = await page('learner=kiur&limit=100');
+    expect(allKiur).toHaveLength(62);
+    expect(allKiur.slice(-2)).toEqual([201, 2]);
+  });
+
   it('rejects malformed and over-limit pagination', async () => {
     expect((await GET(new Request('https://example.test/api/history?limit=101'))).status).toBe(400);
     expect((await GET(new Request('https://example.test/api/history?cursor=not-json'))).status).toBe(400);

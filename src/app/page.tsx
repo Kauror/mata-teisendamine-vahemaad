@@ -1,11 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   compactTopicLabel,
   exerciseWord,
-  isKirsiAttempt,
   relativeDateTimeLabel,
   subjectLabel,
   todayStandings,
@@ -20,6 +19,8 @@ import { fetchHistoryPage } from '@/lib/historyClient';
 import { APP_VERSION } from '@/lib/shared/types';
 import { starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
 
+const RECENT_PER_CHILD = 3;
+
 type H = {
   id: number;
   createdAt: string;
@@ -32,7 +33,7 @@ type H = {
 };
 
 function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, balance, trophies }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; streak: number; balance: number; trophies: number }) {
-  const latest = attempts.slice(0, 3);
+  const latest = attempts.slice(0, RECENT_PER_CHILD);
   const learner = name === 'Kiur' ? 'kiur' : 'kirsi';
 
   return (
@@ -126,16 +127,23 @@ function TodayLeaderboard({ kiurCount, kirsiCount }: { kiurCount: number; kirsiC
 }
 
 export default function Home() {
-  const [history, setHistory] = useState<H[]>([]);
+  const [history, setHistory] = useState<{ kiur: H[]; kirsi: H[] }>({ kiur: [], kirsi: [] });
   const [streaks, setStreaks] = useState({ kiur: 0, kirsi: 0 });
   const [balances, setBalances] = useState({ kiur: 0, kirsi: 0 });
   const [trophies, setTrophies] = useState({ kiur: 0, kirsi: 0 });
   const [today, setToday] = useState({ kiur: 0, kirsi: 0 });
 
+  // Each card asks for its own three newest rows. One shared page of the newest
+  // 50 left a card empty once the other child had done ~48 exercises since. The
+  // server's learner filter also covers legacy rows without a learner, using the
+  // same category rule as isKirsiAttempt.
   useEffect(() => {
-    fetchHistoryPage<H>(new URLSearchParams({ limit: '50' }))
-      .then((page) => setHistory(page.items))
-      .catch(() => setHistory([]));
+    const latest = (learner: 'kiur' | 'kirsi') =>
+      fetchHistoryPage<H>(new URLSearchParams({ learner, limit: String(RECENT_PER_CHILD) }))
+        .then((page) => page.items)
+        .catch(() => [] as H[]);
+    Promise.all([latest('kiur'), latest('kirsi')])
+      .then(([kiur, kirsi]) => setHistory({ kiur, kirsi }));
   }, []);
 
   // Today's standings come from the same stored row that decides the karikas
@@ -166,11 +174,7 @@ export default function Home() {
     });
   }, []);
 
-  const { kiur, kirsi } = useMemo(() => {
-    const kiur = history.filter((attempt) => !isKirsiAttempt(attempt.category, attempt.learner));
-    const kirsi = history.filter((attempt) => isKirsiAttempt(attempt.category, attempt.learner));
-    return { kiur, kirsi };
-  }, [history]);
+  const { kiur, kirsi } = history;
 
   return (
     <main className='container dashboard'>
