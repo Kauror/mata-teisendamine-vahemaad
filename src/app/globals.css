@@ -1152,6 +1152,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 /* Parent: Inglise keele sõnavara. */
 .vocab-admin{display:grid;gap:12px}
 .vocab-admin-unit{display:grid;gap:8px;padding:12px;border-radius:16px;border:1px solid var(--card-border-colour);background:#fff}
+.vocab-admin-unit[data-waiting="true"]{border-color:var(--vocab-unknown-border);background:var(--vocab-unknown-bg)}
+.vocab-admin-waiting{margin:0;color:var(--vocab-unknown-ink);font-weight:800}
 .vocab-admin-unit-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
 .vocab-admin-unit-head strong{font-size:16px;color:var(--vocab-ink)}
 .vocab-admin-chips{display:flex;flex-wrap:wrap;gap:6px}

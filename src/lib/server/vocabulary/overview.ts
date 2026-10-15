@@ -121,6 +121,11 @@ export type ParentUnitSummary = {
   manualUnlock: boolean;
   accessible: boolean;
   accessReason: UnitAccessReason;
+  // For a locked unit: the unit whose test opens it.
+  previousUnitNumber: number | null;
+  // The child has passed the last unit they can see, and this hidden unit is
+  // the one that would open next — publishing it is all that is missing.
+  waitingForPublish: { passedUnitLabel: string } | null;
   started: boolean;
   hasHistory: boolean;
   studyInProgress: { known: number; total: number } | null;
@@ -176,6 +181,14 @@ export function getParentVocabularyOverview(learner: Learner) {
     FROM english_vocab_test_rounds WHERE learner = ? AND kind = 'full' ORDER BY id ASC
   `).all(learner) as Array<RoundRow & { unitId: string }>;
 
+  // The last unit the child can see, if they have passed it: the first hidden
+  // unit after it (with words to publish) is what the child is waiting for.
+  const visible = units.filter((unit) => access.get(unit.id)?.reason !== 'unpublished');
+  const lastVisible = visible.at(-1) ?? null;
+  const waitingUnitId = lastVisible && progress.get(lastVisible.id)?.testPassedAt
+    ? units.find((unit) => unit.unitNumber > lastVisible.unitNumber && access.get(unit.id)?.reason === 'unpublished' && (counts.get(unit.id) ?? 0) > 0)?.id ?? null
+    : null;
+
   const summaries: ParentUnitSummary[] = units.map((unit) => {
     const row = progress.get(unit.id);
     const unitAccess = access.get(unit.id)!;
@@ -194,6 +207,8 @@ export function getParentVocabularyOverview(learner: Learner) {
       manualUnlock: Boolean(row?.manualUnlock),
       accessible: unitAccess.accessible,
       accessReason: unitAccess.reason,
+      previousUnitNumber: unitAccess.previousUnitNumber,
+      waitingForPublish: unit.id === waitingUnitId && lastVisible ? { passedUnitLabel: vocabUnitLabel(lastVisible) } : null,
       started: Boolean(sessions?.total),
       hasHistory: Boolean(sessions?.total),
       studyInProgress: activeStudy.get(unit.id) ?? null,

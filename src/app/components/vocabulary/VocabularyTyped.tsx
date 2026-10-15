@@ -6,7 +6,7 @@ import Celebration from '@/app/components/Celebration';
 import { useVocabSession } from '@/app/components/vocabulary/useVocabSession';
 import { VocabularyProblem, VocabularyProgress, VocabularyShell } from '@/app/components/vocabulary/VocabularyShell';
 import { formatStars } from '@/lib/formatStars';
-import { VOCAB_HOME_ROUTE } from '@/lib/vocabulary/constants';
+import { VOCAB_ALL_PASSED_MESSAGE, VOCAB_HOME_ROUTE } from '@/lib/vocabulary/constants';
 import type { TypedFeedback } from '@/lib/vocabulary/engine';
 
 // The typed-answer screens: the unit test and "Korda eksitud sõnu". One word at
@@ -100,7 +100,9 @@ export function VocabularyTest({ unitId }: { unitId: string }) {
           <p className='vocab-summary-big'><strong>{test.lastRound.correct}/{test.lastRound.total} õigesti — {test.lastRound.percent}%</strong></p>
           <p>{unitLabel} on läbitud.</p>
           {test.firstRound && test.round > 1 ? <p>Esimesel korral: {test.firstRound.correct}/{test.firstRound.total}. Läbisid {test.round}. katsega.</p> : null}
-          {view.nextUnit ? <p>{view.nextUnit.label} on nüüd avatud.</p> : null}
+          {view.nextUnit
+            ? <p>{view.nextUnitOpened ? `${view.nextUnit.label} on nüüd avatud.` : `Järgmine: ${view.nextUnit.label}`}</p>
+            : view.allUnitsPassed ? <p>{VOCAB_ALL_PASSED_MESSAGE}</p> : null}
         </div>
         {test.counted === false ? (
           <div className='vocab-reward'>

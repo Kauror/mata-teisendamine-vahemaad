@@ -40,6 +40,7 @@ import {
 import { displayPercent, requiredCorrect } from '@/lib/vocabulary/threshold';
 import type { VocabEvent, VocabMode } from '@/lib/vocabulary/types';
 import { applyEventToWeakState } from '@/lib/vocabulary/weakWords';
+import { computeUnitAccess, unitOpenedByPassing } from '@/lib/vocabulary/unlock';
 import {
   activeWordCounts,
   activeWords,
@@ -51,6 +52,7 @@ import {
   listUnits,
   toSnapshot,
   unitAccessFor,
+  unitAccessInputs,
   VocabConflictError,
   VocabNotFoundError,
   type UnitRow,
@@ -141,6 +143,12 @@ export type SessionView = {
   };
   reward: { awardedAmount: number; balanceAfter: number; held: boolean } | null;
   nextUnit: VocabUnitInfo | null;
+  // True only when this very pass opened nextUnit; a unit that was already
+  // open (manual unlock, earlier pass, a repeat pass) is just "next".
+  nextUnitOpened: boolean;
+  // Every unit the child can see is passed. Unpublished units are not counted
+  // and are never mentioned to the child.
+  allUnitsPassed: boolean;
 };
 
 export type SessionActionInput =
@@ -177,12 +185,30 @@ function assertUnitAccess(learner: Learner, unitId: string, needTest: boolean) {
   if (needTest && !access.testUnlocked) throw new VocabForbiddenError('Test avaneb, kui õppimine on lõpetatud.');
 }
 
-function nextOpenUnit(learner: Learner, unit: UnitRow | null): VocabUnitInfo | null {
-  if (!unit) return null;
-  const access = unitAccessFor(learner);
+type PassOutcome = Pick<SessionView, 'nextUnit' | 'nextUnitOpened' | 'allUnitsPassed'>;
+
+const NO_PASS_OUTCOME: PassOutcome = { nextUnit: null, nextUnitOpened: false, allUnitsPassed: false };
+
+// What the passed-test screen may say about the next unit. Computed from the
+// current data on every read (so a reload says the same thing): "opened" is
+// decided by replaying the access rules without this pass — and only for the
+// session that recorded the unit's first pass, since a repeat pass opens nothing.
+function passOutcome(row: SessionRow, unit: UnitRow | null): PassOutcome {
+  if (!unit) return NO_PASS_OUTCOME;
+  const units = listUnits();
   const counts = activeWordCounts();
-  const next = listUnits().find((candidate) => candidate.unitNumber > unit.unitNumber && candidate.published && (counts.get(candidate.id) ?? 0) > 0);
-  return next && access.get(next.id)?.accessible ? unitInfo(next) : null;
+  const progress = progressRows(row.learner);
+  const inputs = unitAccessInputs(row.learner, units, counts, progress);
+  const access = computeUnitAccess(inputs);
+  const nextRow = units.find((candidate) => candidate.unitNumber > unit.unitNumber && candidate.published && (counts.get(candidate.id) ?? 0) > 0);
+  const nextUnit = nextRow && access.get(nextRow.id)?.accessible ? unitInfo(nextRow) : null;
+  let nextUnitOpened = false;
+  if (nextUnit && progress.get(unit.id)?.passedSessionId === row.id) {
+    const beforePass = inputs.map((input) => input.id === unit.id ? { ...input, testPassed: false } : input);
+    nextUnitOpened = unitOpenedByPassing(beforePass, unit.id) === nextUnit.id;
+  }
+  const visible = inputs.filter((input) => input.published);
+  return { nextUnit, nextUnitOpened, allUnitsPassed: visible.length > 0 && visible.every((input) => input.testPassed) };
 }
 
 function rewardFor(row: SessionRow): SessionView['reward'] {
@@ -203,7 +229,7 @@ function typedPrompt(word: { id: string; estonian: string } | null) {
 export function buildSessionView(row: SessionRow): SessionView {
   const state = parseState(row);
   const unit = row.unitId ? getUnit(row.unitId) : null;
-  const base = { id: row.id, revision: row.revision, mode: row.mode, status: row.status, unit: unitInfo(unit), reward: rewardFor(row), nextUnit: null as VocabUnitInfo | null };
+  const base = { id: row.id, revision: row.revision, mode: row.mode, status: row.status, unit: unitInfo(unit), reward: rewardFor(row), ...NO_PASS_OUTCOME };
 
   if (state.kind === 'study') {
     const word = currentStudyWord(state);
@@ -223,7 +249,7 @@ export function buildSessionView(row: SessionRow): SessionView {
     const first = state.rounds[0] ?? null;
     return {
       ...base,
-      nextUnit: state.phase === 'passed' ? nextOpenUnit(row.learner, unit) : null,
+      ...(state.phase === 'passed' ? passOutcome(row, unit) : NO_PASS_OUTCOME),
       test: {
         phase: state.phase,
         round: state.round,
