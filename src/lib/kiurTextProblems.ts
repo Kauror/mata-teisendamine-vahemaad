@@ -107,7 +107,14 @@ export const kiurTextProblemPool: TextProblemTask[] = [
     id: "tekst-017",
     question: "Isa läheb magama kell 22 ja tõuseb kell 6. Mitu tundi isa magab ja mitu tundi vähem on see kui emal, kes magas 9 tundi?",
     answer: "8 tundi, 1 tund vähem",
-    solution: "Kell 22 kuni 24 on 2 tundi ja kell 0 kuni 6 on 6 tundi. 2 + 6 = 8. 9 - 8 = 1."
+    solution: "Kell 22 kuni 24 on 2 tundi ja kell 0 kuni 6 on 6 tundi. 2 + 6 = 8. 9 - 8 = 1.",
+    acceptedAnswers: [
+      "8 tundi, 1 tunni võrra vähem",
+      "8 tundi, 1 vähem",
+      "8 tundi, 1 tund",
+      "8 h, 1 h vähem",
+      "8 ja 1"
+    ]
   },
   {
     id: "tekst-018",
@@ -119,7 +126,20 @@ export const kiurTextProblemPool: TextProblemTask[] = [
     id: "tekst-019",
     question: "Enn läheb magama 2 tundi hiljem kui Mall, kes läheb magama kell 19. Enn magab 8 tundi. Mis kell Enn magama läheb ja mis kell ta tõuseb?",
     answer: "läheb magama kell 21 ja tõuseb kell 5",
-    solution: "19 + 2 = 21. Kell 21 + 8 tundi = kell 5."
+    solution: "19 + 2 = 21. Kell 21 + 8 tundi = kell 5.",
+    acceptedAnswers: [
+      "Enn läheb magama kell 21 ja tõuseb kell 5",
+      "magama kell 21 ja tõuseb kell 5",
+      "läheb kell 21 ja tõuseb kell 5",
+      "läheb magama 21 ja tõuseb 5",
+      "kell 21 ja kell 5",
+      "kell 21.00 ja kell 5.00",
+      "kell 21:00 ja kell 5:00",
+      "21 ja 5",
+      "21.00 ja 5.00",
+      "21:00 ja 5:00",
+      "21:00 ja 05:00"
+    ]
   },
   {
     id: "tekst-020",
@@ -161,7 +181,18 @@ export const kiurTextProblemPool: TextProblemTask[] = [
     id: "tekst-026",
     question: "Aseta arvude 9, 6, 2 ja 5 vahele tehtemärgid nii, et tulemus oleks väiksem kui 2.",
     answer: "9 - 6 + 2 - 5 = 0",
-    solution: "9 - 6 + 2 - 5 = 0 ja 0 on väiksem kui 2."
+    solution: "9 - 6 + 2 - 5 = 0 ja 0 on väiksem kui 2.",
+    // The question asks only for the signs, so the bare signs count too.
+    // 9 - 6 - 2 - 5 = -4 is also smaller than 2, so it is correct as well.
+    acceptedAnswers: [
+      "9 - 6 + 2 - 5",
+      "- + -",
+      "miinus pluss miinus",
+      "9 - 6 - 2 - 5 = -4",
+      "9 - 6 - 2 - 5",
+      "- - -",
+      "miinus miinus miinus"
+    ]
   },
   {
     id: "tekst-027",
@@ -209,7 +240,8 @@ export const kiurTextProblemPool: TextProblemTask[] = [
     id: "tekst-034",
     question: "Kirjuta märkide asemele tehtemärgid nii, et võrdus oleks õige: 8 __ 2 = 1 __ 5.",
     answer: "8 - 2 = 1 + 5",
-    solution: "8 - 2 = 6 ja 1 + 5 = 6."
+    solution: "8 - 2 = 6 ja 1 + 5 = 6.",
+    acceptedAnswers: ["- ja +", "miinus ja pluss"]
   },
   {
     id: "tekst-035",

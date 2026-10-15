@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EnglishMatchingBoard, { type EnglishMatchingBoardState } from '@/app/components/EnglishMatchingBoard';
 import Celebration from '@/app/components/Celebration';
-import { ENGLISH_PACKS, shuffle } from '@/lib/englishGame';
+import { ENGLISH_PACKS, pickSprintBoardWords, shuffle } from '@/lib/englishGame';
 import { fetchBestEnglishSprintScore } from '@/lib/englishHistory';
 import type { EnglishVocabularyWord } from '@/lib/englishVocabulary';
 import {
@@ -95,7 +95,7 @@ export default function SprintPage() {
 
   const boardShuffleSeed = runSeed + boardSeed * 10_007;
   const boardLayoutSeed = runSeed + boardSeed * 20_011;
-  const boardWords = useMemo(() => shuffle(wordPool, boardShuffleSeed).slice(0, 5), [wordPool, boardShuffleSeed]);
+  const boardWords = useMemo(() => pickSprintBoardWords(shuffle(wordPool, boardShuffleSeed), 5), [wordPool, boardShuffleSeed]);
 
   useEffect(() => {
     let cancelled = false;
@@ -173,7 +173,9 @@ export default function SprintPage() {
       const capability = getOfflineRunnerCapability('kiur-english-sprint');
       if (!contract || !capability) throw new Error('Ühenda seade internetiga, et sprint enne võrguühenduseta kasutamist ette valmistada.');
       const startedAt = new Date().toISOString();
-      await createRunnerSession<EnglishVocabularyWord, SprintReviewItem, EnglishSprintRunnerState, null>({
+      // Returns the stored session when an overlapping start already wrote one
+      // for this run id; the screen must show that session, not this one.
+      const created = await createRunnerSession<EnglishVocabularyWord, SprintReviewItem, EnglishSprintRunnerState, null>({
         runId: id,
         learner: 'kiur',
         runnerId: capability.runnerId,
@@ -194,10 +196,10 @@ export default function SprintPage() {
         startedAt
       });
       if (cancelled) return;
-      startedAtRef.current = startedAt;
+      startedAtRef.current = created.startedAt;
       contractRef.current = contract;
-      setRunSeed(seed);
-      setWordPool(words);
+      setRunSeed(Number(created.seed ?? seed));
+      setWordPool(created.questions);
       setBoardState(initialBoardState);
       setSessionReady(true);
     })().catch((error) => {

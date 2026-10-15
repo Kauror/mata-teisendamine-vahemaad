@@ -71,6 +71,15 @@ describe('server-owned score recomputation', () => {
     }
   });
 
+  it('accepts a corrected English label and the label it replaced, nothing else', () => {
+    const so = ENGLISH_VOCABULARY.find((word) => word.formerEstonian?.length)!;
+    const id = `run:1:0:${so.id}`;
+    const score = (userAnswer: string) => recomputeScore({ runnerId: 'kiur-english-sprint', learner: 'kiur', subject: 'inglise-keel', topic: 'sprint', category: 'Sprint', difficulty: 'normal', seed: 1, questionIds: [id], questions: [{ id, question: so.english, vocabularyId: so.id, direction: 'en-et', userAnswer, isCorrect: true }] }).score;
+    expect(score(so.estonian)).toBe(1);
+    expect(score(so.formerEstonian![0])).toBe(1);
+    expect(score('ilus')).toBe(0);
+  });
+
   it('matches client verification over a generated mathematics corpus', () => {
     const corpora = [
       { topic: 'pikkused', category: 'Segaharjutus', count: 15, seed: 42 },

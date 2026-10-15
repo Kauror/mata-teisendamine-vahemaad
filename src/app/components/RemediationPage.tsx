@@ -164,7 +164,12 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
+  const [saveError, setSaveError] = useState('');
   const startedAtRef = useRef(Date.now());
+  // The finished run, frozen at the first save. A retry re-sends exactly this:
+  // the server returns the stored result for a session it already completed,
+  // so sending it twice (a save that landed but whose reply was lost) is safe.
+  const submissionRef = useRef<string | null>(null);
 
   useEffect(() => {
     startedAtRef.current = Date.now();
@@ -220,19 +225,29 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
     }
 
     if (!sessionId || isSubmitting) return;
-    setIsSubmitting(true);
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000));
+    submissionRef.current ??= JSON.stringify({ learner, answers: answers.map(({ sessionItemId, answer }) => ({ sessionItemId, answer })), elapsedSeconds });
+    await submit();
+  };
+
+  // A failed save keeps the answers on screen with the error beside them; it
+  // must never replace the run, or the child loses the whole Kordamine.
+  const submit = async () => {
+    if (!sessionId || !submissionRef.current || isSubmitting) return;
+    setIsSubmitting(true);
+    setSaveError('');
     try {
       const response = await fetch(`/api/remediation/${sessionId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ learner, answers: answers.map(({ sessionItemId, answer }) => ({ sessionItemId, answer })), elapsedSeconds })
+        body: submissionRef.current
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || 'Kordamist ei saanud salvestada.');
       setResult(body as SubmitResult);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Kordamist ei saanud salvestada.');
+      const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+      setSaveError(offline ? 'Kordamist ei saanud salvestada, sest internetiühendus puudub.' : error instanceof Error ? error.message : 'Kordamist ei saanud salvestada.');
     } finally {
       setIsSubmitting(false);
     }
@@ -385,10 +400,18 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
           ) : null}
         </section>
 
+        {saveError ? <p className='test-error' role='alert'>{saveError}</p> : null}
+
         <footer className='test-actions-panel'>
-          <button type='button' className='next-button' disabled={!answered || isSubmitting} onClick={next}>
-            {isSubmitting ? 'Salvestan...' : index === questions.length - 1 ? 'Lõpeta' : 'Järgmine'}
-          </button>
+          {saveError ? (
+            <button type='button' className='next-button' disabled={isSubmitting} onClick={() => void submit()}>
+              {isSubmitting ? 'Salvestan...' : 'Proovi uuesti'}
+            </button>
+          ) : (
+            <button type='button' className='next-button' disabled={!answered || isSubmitting} onClick={next}>
+              {isSubmitting ? 'Salvestan...' : index === questions.length - 1 ? 'Lõpeta' : 'Järgmine'}
+            </button>
+          )}
           <Link className='stop-button' href={backHref}>Lõpeta</Link>
         </footer>
       </section>

@@ -142,8 +142,8 @@ function verifyEnglish(input: VerifiableAttempt) {
     // The currently supported immutable runner contract is English prompt ->
     // Estonian response.  Direction is not client-selectable.
     if (!expected || (actual.vocabularyId !== undefined && actual.vocabularyId !== vocabularyId) || (actual.direction !== undefined && actual.direction !== 'en-et') || actual.question !== expected.english) throw new AttemptContractError(`Unknown English vocabulary item ${input.questionIds[index]}.`);
-    const expectedAnswer = expected.estonian;
-    return normalize(answerOf(actual)) === normalize(expectedAnswer);
+    const answer = normalize(answerOf(actual));
+    return [expected.estonian, ...(expected.formerEstonian ?? [])].some((label) => normalize(label) === answer);
   });
 }
 

@@ -48,4 +48,28 @@ describe('shared mathematics answer verification', () => {
     expect(verifyGeneratedMathAnswer(comparison, '<')).toBe(true);
     expect(verifyGeneratedMathAnswer(comparison, '>')).toBe(false);
   });
+  it('never reads a numeric option label as an option index', () => {
+    const counting = {
+      id: 'count', category: 'Arvutamine', difficulty: 'Lihtne', question: 'Mitu?', correctAnswer: 2,
+      kind: 'choice', choiceOptions: ['2', '18', '17']
+    } satisfies GeneratedQuestion;
+    expect(verifyGeneratedMathAnswer(counting, '17')).toBe(true);
+    expect(verifyGeneratedMathAnswer(counting, '2')).toBe(false);
+    expect(verifyGeneratedMathAnswer(counting, '18')).toBe(false);
+  });
+
+  it('keeps the legacy index fallback when the index is not an option label', () => {
+    const words = {
+      id: 'words', category: 'Võrdlemine', difficulty: 'Lihtne', question: 'Vali', correctAnswer: 1,
+      kind: 'choice', choiceOptions: ['vähem', 'rohkem']
+    } satisfies GeneratedQuestion;
+    const comparison = {
+      id: 'compare', category: 'Võrdlemine', difficulty: 'Lihtne', question: 'Võrdle', correctAnswer: -1,
+      kind: 'choice'
+    } satisfies GeneratedQuestion;
+    expect(verifyGeneratedMathAnswer(words, 'rohkem')).toBe(true);
+    expect(verifyGeneratedMathAnswer(words, '1')).toBe(true);
+    expect(verifyGeneratedMathAnswer(words, '0')).toBe(false);
+    expect(verifyGeneratedMathAnswer(comparison, '-1')).toBe(true);
+  });
 });

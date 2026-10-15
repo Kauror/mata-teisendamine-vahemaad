@@ -99,6 +99,8 @@ export default function KirsiPictureWordSprintPage() {
   const savedHistoryRef = useRef(false);
   const snapshotRef = useRef<Partial<PictureWordSession>>({});
   const contractRef = useRef<CatalogueContract | null>(null);
+  // A double tap on "Alusta" must not start two runs for the same run id.
+  const startingRef = useRef(false);
 
   const boardPairs = useMemo(() => buildBoardPairs(pairPool, runSeedRef.current, boardIndex), [boardIndex, pairPool]);
 
@@ -234,11 +236,20 @@ export default function KirsiPictureWordSprintPage() {
   }, [best, elapsedSeconds, ended, exerciseActive, reviewItems, runId, score]);
 
   const startGame = async () => {
-    if (exerciseActive !== true || storageError) return;
+    if (exerciseActive !== true || storageError || startingRef.current) return;
     if (ended) {
       window.location.assign('/kirsi/lugemine/pilt-ja-sona');
       return;
     }
+    startingRef.current = true;
+    try {
+      await createGame();
+    } finally {
+      startingRef.current = false;
+    }
+  };
+
+  const createGame = async () => {
     const id = ensureRunIdInCurrentUrl();
     const nextSeed = Date.now();
     const startedAt = new Date().toISOString();
@@ -247,7 +258,9 @@ export default function KirsiPictureWordSprintPage() {
       const contract = await getCatalogueContract('kirsi');
       const capability = getOfflineRunnerCapability('kirsi-picture-word');
       if (!contract || !capability) throw new Error('Ühenda seade internetiga, et harjutus ette valmistada.');
-      await createRunnerSession<KirsiReadingPair, ReviewItem, PictureWordRunnerState, null>({
+      // Returns the stored session when this run id already has one; the
+      // screen must follow that session's pairs and seed.
+      const created = await createRunnerSession<KirsiReadingPair, ReviewItem, PictureWordRunnerState, null>({
         runId: id,
         learner: 'kirsi',
         runnerId: capability.runnerId,
@@ -269,9 +282,9 @@ export default function KirsiPictureWordSprintPage() {
       });
       setRunId(id);
       contractRef.current = contract;
-      setPairPool([...KIRSI_READING_PAIRS]);
-      runSeedRef.current = nextSeed;
-      startedAtRef.current = startedAt;
+      setPairPool([...created.questions]);
+      runSeedRef.current = Number(created.seed ?? nextSeed);
+      startedAtRef.current = created.startedAt;
       endedRef.current = false;
       savedHistoryRef.current = false;
       setStarted(true);
