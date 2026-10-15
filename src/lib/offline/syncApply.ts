@@ -45,6 +45,8 @@ export type SyncApplyInput = {
 
 export type SyncApplyResult = {
   dataRevision: number;
+  // False when the envelope wrote nothing but sync timestamps; no broadcast then.
+  changed: boolean;
   missingCanonicalAttemptIds: string[];
   confirmedAttempts: number;
 };
@@ -80,6 +82,44 @@ function asRemediationBundle(value: unknown): PreparedRemediationBundle | null {
   if (!row.status || !['prepared', 'active', 'completed', 'stale', 'needs_review'].includes(row.status)) return null;
   if (typeof row.generatorVersion !== 'string' || typeof row.updatedAt !== 'string') return null;
   return row as PreparedRemediationBundle;
+}
+
+function hasItems(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0;
+  if (value && typeof value === 'object') return Object.values(value).some((entry) => entry !== undefined && entry !== null);
+  return false;
+}
+
+// Whether the envelope carries anything that writes local data. Over-reporting
+// is harmless (one extra refresh); under-reporting would hide a change, so any
+// acknowledgement or non-empty pull collection counts.
+function envelopeCarriesData(input: SyncApplyInput): boolean {
+  if (input.resetRequired) return true;
+  if (hasItems(input.attemptResults) || hasItems(input.taskActionResults) || hasItems(input.remediationActionResults)) return true;
+  const pull = input.pull;
+  if (!pull) return false;
+  if (pull.taskTemplates !== undefined) return true; // authoritative snapshot: replaced even when empty
+  return [
+    pull.attempts, pull.tombstones, pull.taskChanges, pull.remediationChanges, pull.taskAssignments,
+    pull.remediationBundles, pull.catalogueGrants, pull.catalogues, pull.dashboards
+  ].some(hasItems);
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort()
+      .filter((key) => (value as Record<string, unknown>)[key] !== undefined)
+      .map((key) => `${JSON.stringify(key)}:${stableJson((value as Record<string, unknown>)[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+// The cursor's position, without the timestamps every successful pull moves.
+const CURSOR_TIMESTAMP_KEYS = new Set(['syncedAt', 'lastSuccessfulSyncAt', 'lastAttemptedSyncAt']);
+
+function cursorPosition(cursor: SyncCursorValue): string {
+  return stableJson(Object.fromEntries(Object.entries(cursor).filter(([key]) => !CURSOR_TIMESTAMP_KEYS.has(key))));
 }
 
 function broadcastRevision(dataRevision: number) {
@@ -134,6 +174,9 @@ export async function applySyncEnvelope(input: SyncApplyInput): Promise<SyncAppl
     const pulledByClientId = new Map(pulledAttempts.filter((row) => row.clientAttemptId).map((row) => [row.clientAttemptId!, row]));
     const missingCanonicalAttemptIds: string[] = [];
     let confirmedAttempts = 0;
+    // OFF-09: only an envelope that changed local data bumps the revision and
+    // wakes listeners; an empty pull page merely moves sync timestamps.
+    let changed = envelopeCarriesData(input) || epochDecision === 'reset_confirmed';
 
     if (input.resetRequired || epochDecision === 'reset_confirmed') {
       await history.clear();
@@ -328,16 +371,15 @@ export async function applySyncEnvelope(input: SyncApplyInput): Promise<SyncAppl
     }
 
     if (input.nextCursor) {
-      await meta.put({
-        key: SYNC_CURSOR_KEY,
-        value: {
-          ...existingCursor,
-          ...input.nextCursor,
-          historyEpoch: serverEpoch,
-          lastSuccessfulSyncAt: input.nextCursor.syncedAt ?? input.nextCursor.lastSuccessfulSyncAt ?? input.serverTime,
-          lastAttemptedSyncAt: input.serverTime
-        }
-      });
+      const nextCursorValue: SyncCursorValue = {
+        ...existingCursor,
+        ...input.nextCursor,
+        historyEpoch: serverEpoch,
+        lastSuccessfulSyncAt: input.nextCursor.syncedAt ?? input.nextCursor.lastSuccessfulSyncAt ?? input.serverTime,
+        lastAttemptedSyncAt: input.serverTime
+      };
+      if (!existingCursorRow || cursorPosition(nextCursorValue) !== cursorPosition(existingCursor)) changed = true;
+      await meta.put({ key: SYNC_CURSOR_KEY, value: nextCursorValue });
     }
 
     // A complete bootstrap is an evidence marker, not merely "some sync ran".
@@ -346,6 +388,7 @@ export async function applySyncEnvelope(input: SyncApplyInput): Promise<SyncAppl
     const grantsAdvertised = input.pull?.catalogueGrants !== undefined;
     const hasBothGrants = Boolean(await tx.objectStore('catalogueGrants').get('kiur')) && Boolean(await tx.objectStore('catalogueGrants').get('kirsi'));
     if (hasBothCatalogues && hasBothSnapshots && (!grantsAdvertised || hasBothGrants)) {
+      if ((await tx.objectStore('bootstrap').get('deviceBootstrapComplete'))?.value !== true) changed = true;
       await tx.objectStore('bootstrap').put({ key: 'deviceBootstrapComplete', value: true, updatedAt: input.serverTime });
     }
     if (input.pull?.taskTemplates !== undefined) {
@@ -385,13 +428,16 @@ export async function applySyncEnvelope(input: SyncApplyInput): Promise<SyncAppl
       remediationCursor = await remediationCursor.continue();
     }
 
+    if (cleanupDeletes > 0) changed = true;
+
     const revisionRow = await meta.get(DATA_REVISION_KEY);
-    const dataRevision = Math.max(0, Number(revisionRow?.value) || 0) + 1;
-    await meta.put({ key: DATA_REVISION_KEY, value: dataRevision });
+    const currentRevision = Math.max(0, Number(revisionRow?.value) || 0);
+    const dataRevision = changed ? currentRevision + 1 : currentRevision;
+    if (changed) await meta.put({ key: DATA_REVISION_KEY, value: dataRevision });
     await tx.done;
-    return { dataRevision, missingCanonicalAttemptIds, confirmedAttempts };
+    return { dataRevision, changed, missingCanonicalAttemptIds, confirmedAttempts };
   });
 
-  broadcastRevision(result.dataRevision);
+  if (result.changed) broadcastRevision(result.dataRevision);
   return result;
 }

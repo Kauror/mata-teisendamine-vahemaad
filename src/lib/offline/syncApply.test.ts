@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applySyncEnvelope } from '@/lib/offline/syncApply';
+import { getCursor } from '@/lib/offline/meta';
 import { attemptRepo, taskAssignmentRepo } from '@/lib/offline/repositories';
 import type { LocalAttempt } from '@/lib/offline/records';
 import { closeOfflineDbForTests, OFFLINE_DB_NAME } from '@/lib/offline/db';
@@ -92,5 +93,51 @@ describe('legacy attempt preservation', () => {
       reasonCode: 'legacy_client_upgrade_required',
       questions: [{ id: 'legacy' }]
     });
+  });
+});
+
+describe('data revision broadcast (OFF-09)', () => {
+  const cursor = (lastServerAttemptId: number, syncedAt: string) => ({
+    lastServerAttemptId, lastTombstoneId: 0, lastTaskChangeId: 0, lastRemediationChangeId: 0,
+    lastAttemptChangeId: 0, historyEpoch: 0, catalogueVersions: {}, syncedAt
+  });
+  const emptyPull = (lastServerAttemptId: number, syncedAt: string): Parameters<typeof applySyncEnvelope>[0] => ({
+    serverTime: syncedAt,
+    pull: { attempts: [], tombstones: [], taskChanges: [], remediationChanges: [] },
+    nextCursor: cursor(lastServerAttemptId, syncedAt)
+  });
+
+  function listen() {
+    const target = new EventTarget();
+    vi.stubGlobal('window', target);
+    const revisions: number[] = [];
+    target.addEventListener('offline-data-revision', (event) => revisions.push((event as CustomEvent<{ dataRevision: number }>).detail.dataRevision));
+    return revisions;
+  }
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('stays quiet for an empty pull that only moves sync timestamps', async () => {
+    await applySyncEnvelope(emptyPull(5, '2026-07-13T10:00:00.000Z'));
+    const revisions = listen();
+
+    const result = await applySyncEnvelope(emptyPull(5, '2026-07-13T10:05:00.000Z'));
+
+    expect(result.changed).toBe(false);
+    expect(revisions).toEqual([]);
+    // The cursor timestamps still advance; only the broadcast is skipped.
+    expect(await getCursor()).toMatchObject({ lastSuccessfulSyncAt: '2026-07-13T10:05:00.000Z' });
+  });
+
+  it('broadcasts when the cursor position moves or data is written', async () => {
+    const first = await applySyncEnvelope(emptyPull(5, '2026-07-13T10:00:00.000Z'));
+    const revisions = listen();
+
+    const moved = await applySyncEnvelope(emptyPull(6, '2026-07-13T10:05:00.000Z'));
+    const assigned = await applySyncEnvelope(envelope([assignment('a-1', 1, '2026-07-13')]));
+
+    expect(moved.changed).toBe(true);
+    expect(assigned.changed).toBe(true);
+    expect(revisions).toEqual([first.dataRevision + 1, first.dataRevision + 2]);
   });
 });
