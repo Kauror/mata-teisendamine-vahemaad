@@ -11,15 +11,16 @@ import {
   finalizeRunnerSession,
   getCatalogueContract,
   getLocalAttempt,
-  isExercisePermittedOffline,
   loadRunnerSession,
-  patchRunnerSession,
   runnerStorageFailure
 } from '@/lib/offline/api';
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
-import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
+import { useRunnerAutosave, useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
+import { useExerciseActive } from '@/lib/offline/useExerciseActive';
+import { contractFromSession, runnerFinalizeContract } from '@/lib/offline/runnerContract';
+import RunnerPausedScreen from '@/lib/offline/RunnerPausedScreen';
 
 const QUESTION_COUNT = 10;
 
@@ -81,33 +82,17 @@ export default function KirsiFirstSoundPage() {
   const [reward, setReward] = useState<Reward>(null);
   const [saved, setSaved] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
-  const [exerciseActive, setExerciseActive] = useState<boolean | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [storageError, setStorageError] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const startedAtRef = useRef(new Date().toISOString());
-  const snapshotRef = useRef<Partial<FirstSoundSession>>({});
   const contractRef = useRef<CatalogueContract | null>(null);
   const current: KirsiFirstSoundTask | undefined = session[index];
   const answered = selectedLetter !== null;
   const isCorrect = Boolean(current && selectedLetter === current.correctLetter);
   const options = useMemo(() => current ? (optionOrder[current.id] ?? current.options) : [], [current, optionOrder]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void fetch('/api/learning-exercises/active?learner=kirsi')
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((body: { exerciseIds?: string[] }) => {
-        if (!cancelled) setExerciseActive(Boolean(body.exerciseIds?.includes('kirsi.reading.esimene-haalik')));
-      })
-      .catch(async () => {
-        const permitted = await isExercisePermittedOffline('kirsi', { exerciseId: 'kirsi.reading.esimene-haalik', subject: 'lugemine', topic: 'esimene-haalik', category: 'Lugemine - esimene häälik' }).catch(() => false);
-        if (!cancelled) setExerciseActive(permitted);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const exerciseActive = useExerciseActive({ learner: 'kirsi', exerciseId: 'kirsi.reading.esimene-haalik', subject: 'lugemine', topic: 'esimene-haalik', category: 'Lugemine - esimene häälik' });
 
   useEffect(() => {
     if (exerciseActive !== true || sessionReady) return;
@@ -121,15 +106,7 @@ export default function KirsiFirstSoundPage() {
         if (existing.runnerId !== 'kirsi-first-sound') throw new Error('See salvestatud jooks kuulub teisele harjutusele.');
         const state = existing.runnerState;
         startedAtRef.current = existing.startedAt;
-        contractRef.current = {
-          catalogueVersion: existing.catalogueVersion ?? '',
-          rewardPolicyVersion: existing.rewardPolicyVersion ?? 'legacy-v1',
-          generatorVersion: existing.generatorVersion,
-          runnerVersion: existing.runnerVersion,
-          algorithmVersion: existing.rotationVersion ?? 1,
-          rotationVersion: existing.rotationVersion ?? 1,
-          dailyLimit: 0
-        };
+        contractRef.current = contractFromSession(existing);
         setSeed(Number(existing.seed));
         setSession(existing.questions);
         setOptionOrder((existing.optionOrder ?? {}) as Record<string, string[]>);
@@ -192,21 +169,19 @@ export default function KirsiFirstSoundPage() {
     return () => { cancelled = true; };
   }, [exerciseActive, sessionReady]);
 
-  snapshotRef.current = {
+  const snapshotRef = useRunnerAutosave<FirstSoundSession>({
     currentIndex: index,
     currentPhase: index >= session.length && session.length ? 'result' : selectedLetter ? 'feedback' : 'question',
     answers: reviewItems,
     activeElapsedMs: elapsedSeconds * 1000,
     runnerState: { score, hintCount, hintVisible, selectedLetter, reviewItems, showStopConfirm },
     status: storageError ? 'paused' : 'active'
-  };
-
-  useEffect(() => {
-    if (!sessionReady || !runId || saved || storageError || (session.length > 0 && index >= session.length)) return;
-    void patchRunnerSession<FirstSoundSession>(runId, snapshotRef.current).catch((error) => {
-      setStorageError(runnerStorageFailure(error).message);
-    });
-  }, [hintCount, hintVisible, index, reviewItems, runId, saved, score, selectedLetter, session.length, sessionReady, showStopConfirm, storageError]);
+  }, {
+    enabled: sessionReady && !saved && !storageError && !(session.length > 0 && index >= session.length),
+    runId,
+    setStorageError,
+    changes: [hintCount, hintVisible, index, reviewItems, runId, saved, score, selectedLetter, session.length, sessionReady, showStopConfirm, storageError]
+  });
 
   useVisibleElapsedTimer(sessionReady && !saved && !storageError && index < session.length, setElapsedSeconds);
   useRunnerCheckpoint<FirstSoundSession>({ enabled: sessionReady && !saved, runId, snapshotRef, setStorageError });
@@ -216,24 +191,16 @@ export default function KirsiFirstSoundPage() {
     setSaved(true);
 
     void (async () => {
-      const contract = contractRef.current;
-      const capability = getOfflineRunnerCapability('kirsi-first-sound');
-      if (!contract || !capability) throw new Error('Harjutuse võrguühenduseta leping puudub.');
       const outcome = await finalizeRunnerSession({
+        ...runnerFinalizeContract('kirsi-first-sound', contractRef.current),
         runId,
         seed: seed ?? 0,
-        runnerId: capability.runnerId,
         questionIds: session.map((task) => task.id),
-        rewardPolicyVersion: contract.rewardPolicyVersion,
-        generatorVersion: capability.generatorVersion,
-        runnerVersion: capability.runnerVersion,
-        rotationVersion: capability.rotationVersion,
         learner: 'kirsi',
         subject: 'lugemine',
         topic: 'esimene-haalik',
         category: 'Lugemine - esimene häälik',
         exerciseId: 'kirsi.reading.esimene-haalik',
-        catalogueVersion: contract.catalogueVersion,
         startedAt: startedAtRef.current,
         questionCount: session.length,
         score,
@@ -287,16 +254,7 @@ export default function KirsiFirstSoundPage() {
   };
 
   if (storageError) {
-    return (
-      <main className='container english-page reading-page'>
-        <section className='practice-shell english-shell first-sound-shell' role='alert'>
-          <h1>Harjutus on peatatud</h1>
-          <p>{storageError}</p>
-          <button type='button' className='start-button' onClick={() => window.location.reload()}>Proovi salvestust uuesti</button>
-          <Link className='practice-back-button' href='/kirsi'>Tagasi harjutuste juurde</Link>
-        </section>
-      </main>
-    );
+    return <RunnerPausedScreen variant='practice' mainClassName='container english-page reading-page' shellClassName='practice-shell english-shell first-sound-shell' message={storageError} backHref='/kirsi' />;
   }
 
   if (exerciseActive === null || seed === null || !sessionReady) {
