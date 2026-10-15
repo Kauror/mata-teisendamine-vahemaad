@@ -1,7 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { PEEK_OPT_OUT_STORAGE_KEY, hasPeekCookie, isPeekModeActive } from '@/lib/peekMode';
+import { PARENT_PEEK_OFF_COOKIE, PARENT_PEEK_COOKIE_VALUE, PEEK_OPT_OUT_STORAGE_KEY, hasPeekCookie, hasPeekOptOutCookie, isPeekModeActive } from '@/lib/peekMode';
 
 // A module-level store rather than a context: the child screens are server
 // components, and the three consumers (the recap popup, the daily panel, the
@@ -14,7 +14,11 @@ const listeners = new Set<() => void>();
 let peekSnapshot: boolean | null = null;
 let parentSnapshot: boolean | null = null;
 
-function readOptOut() {
+// The opt-out lives in a browser-session cookie, because the server has to
+// see it too (peeking refuses child writes there). The old per-tab
+// sessionStorage flag is still honoured so an open tab keeps its choice.
+function readOptOut(cookieHeader: string) {
+  if (hasPeekOptOutCookie(cookieHeader)) return true;
   try {
     return window.sessionStorage.getItem(PEEK_OPT_OUT_STORAGE_KEY) === '1';
   } catch {
@@ -23,10 +27,17 @@ function readOptOut() {
   }
 }
 
+function writeOptOutCookie(optedOut: boolean) {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = optedOut
+    ? `${PARENT_PEEK_OFF_COOKIE}=${PARENT_PEEK_COOKIE_VALUE}; Path=/; SameSite=Strict${secure}`
+    : `${PARENT_PEEK_OFF_COOKIE}=; Path=/; Max-Age=0; SameSite=Strict${secure}`;
+}
+
 function refresh() {
   const cookieHeader = typeof document === 'undefined' ? '' : document.cookie;
   const parent = hasPeekCookie(cookieHeader);
-  const peek = isPeekModeActive({ cookieHeader, optedOut: parent && readOptOut() });
+  const peek = isPeekModeActive({ cookieHeader, optedOut: parent && readOptOut(cookieHeader) });
   const changed = parent !== parentSnapshot || peek !== peekSnapshot;
   parentSnapshot = parent;
   peekSnapshot = peek;
@@ -70,9 +81,24 @@ export function setPeekOptOut(optedOut: boolean) {
     if (optedOut) window.sessionStorage.setItem(PEEK_OPT_OUT_STORAGE_KEY, '1');
     else window.sessionStorage.removeItem(PEEK_OPT_OUT_STORAGE_KEY);
   } catch {
-    // Ignore storage failures; the toggle simply will not stick.
+    // Ignore storage failures; the cookie below still carries the choice.
+  }
+  try {
+    writeOptOutCookie(optedOut);
+  } catch {
+    // Cookies blocked: the page stays read-only, which is the safe side.
   }
   publish();
+}
+
+// The peek state right now, read synchronously. Guards around child writes use
+// this rather than the hook value: during hydration the hook still reports the
+// server snapshot (not peeking), and a write fired from a mount effect would
+// slip through before the re-render.
+export function readPeekMode() {
+  if (typeof document === 'undefined') return false;
+  refresh();
+  return peekSnapshot as boolean;
 }
 
 // True while a parent is looking and the one-shot markers must not be written.

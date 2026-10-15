@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import PeekModeBanner from '@/app/components/PeekModeBanner';
 import type { ChildUnitCard, ChildVocabularyHome } from '@/lib/server/vocabulary/overview';
 import { VOCAB_ALL_PASSED_MESSAGE, VOCAB_HOME_ROUTE } from '@/lib/vocabulary/constants';
 
@@ -81,6 +82,7 @@ export default function VocabularyHome() {
     <main className='english-page vocab-page'>
       <section className='practice-shell english-shell vocab-shell'>
         <Link className='practice-back-button' href='/kiur'>← Harjutused</Link>
+        <PeekModeBanner />
         <header className='subject-header vocab-home-header'>
           <div className='subject-emoji' aria-hidden>🔤</div>
           <h1>Inglise keel</h1>

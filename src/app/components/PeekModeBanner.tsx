@@ -3,6 +3,7 @@
 import { setPeekOptOut, useParentPresent, usePeekMode } from '@/app/components/usePeekMode';
 
 // Visible on a child's screen whenever a parent session exists on this browser.
+// Peeking is read-only for the child's data; "Vaata nagu laps" lifts that too.
 // Peeking is silent by design, so the banner is what stops it from being a
 // surprise — and it is the way back for testing the page as the child sees it.
 export default function PeekModeBanner() {
@@ -16,8 +17,8 @@ export default function PeekModeBanner() {
       <span aria-hidden>{peeking ? '👀' : '🧒'}</span>
       <span className='peek-banner-text'>
         {peeking
-          ? 'Vanema vaatlusrežiim — teated jäävad lapsele alles.'
-          : 'Vaatad nagu laps — teated märgitakse nähtuks.'}
+          ? 'Vanema vaatlusrežiim — teated jäävad lapsele alles ja lapse andmeid ei muudeta.'
+          : 'Vaatad nagu laps — teated märgitakse nähtuks ja tegevused salvestatakse.'}
       </span>
       <button type='button' onClick={() => setPeekOptOut(peeking)}>
         {peeking ? 'Vaata nagu laps' : 'Tagasi vaatlusesse'}

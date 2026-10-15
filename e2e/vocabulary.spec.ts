@@ -98,6 +98,10 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   const firstId = units.find((unit) => unit.unitNumber === first)!.id;
   const secondId = units.find((unit) => unit.unitNumber === first + 1)!.id;
 
+  // Peeking is read-only for the child's data, so act as Kiur the way a parent
+  // would: the banner's "Vaata nagu laps" sets this browser-session cookie.
+  await page.context().addCookies([{ name: 'harjutaja_peek_off', value: '1', url: new URL(page.url()).origin }]);
+
   // The child's list: the second unit is locked and says why.
   await navigateStable(page, '/kiur/inglise-keel');
   const firstCard = page.locator('.vocab-unit-card').filter({ hasText: `Unit ${first} — Animals` });
