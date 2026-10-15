@@ -165,6 +165,18 @@ export function rebuildDailyLeaderboard() {
   return { rebuiltDates: dates.size, reconciledMonths: months.length };
 }
 
+// One day's stored standings, for the home page. Same backfill as the full
+// history, so a fresh database still shows today's counts, but it reads only
+// that day's row. No row yet (nothing recorded today) is 0–0, exactly what
+// todayStandings() makes of the full board.
+export function getDailyStandings(date = todayDateString()) {
+  backfillFromAttempts();
+  const row = db
+    .prepare('SELECT kiurCount, kirsiCount FROM daily_leaderboard WHERE date = ?')
+    .get(date) as { kiurCount: number; kirsiCount: number } | undefined;
+  return { kiur: row?.kiurCount ?? 0, kirsi: row?.kirsiCount ?? 0 };
+}
+
 // Full per-day history (most recent first) plus how many days each child has won.
 export function getLeaderboardHistory() {
   backfillFromAttempts();

@@ -7,15 +7,12 @@ import {
   exerciseWord,
   relativeDateTimeLabel,
   subjectLabel,
-  todayStandings,
-  todayStandingsSummary,
-  type DailyStandingsRow
+  todayStandingsSummary
 } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import NoticeBoard from '@/app/components/NoticeBoard';
 import SchoolNowCard from '@/app/components/SchoolNowCard';
 import MetricTooltip from '@/app/components/MetricTooltip';
-import { fetchHistoryPage } from '@/lib/historyClient';
 import { APP_VERSION } from '@/lib/shared/types';
 import { starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
 
@@ -31,6 +28,9 @@ type H = {
   subject?: string | null;
   topic?: string | null;
 };
+
+type HomeChild = { streak?: number; balance?: number; trophies?: number; recent?: H[] };
+type HomeSummary = { today?: { kiur?: number; kirsi?: number }; children?: { kiur?: HomeChild; kirsi?: HomeChild } };
 
 function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, balance, trophies }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; streak: number; balance: number; trophies: number }) {
   const latest = attempts.slice(0, RECENT_PER_CHILD);
@@ -133,45 +133,25 @@ export default function Home() {
   const [trophies, setTrophies] = useState({ kiur: 0, kirsi: 0 });
   const [today, setToday] = useState({ kiur: 0, kirsi: 0 });
 
-  // Each card asks for its own three newest rows. One shared page of the newest
-  // 50 left a card empty once the other child had done ~48 exercises since. The
-  // server's learner filter also covers legacy rows without a learner, using the
-  // same category rule as isKirsiAttempt.
+  // One request for everything on this page (/api/home-summary). Each card
+  // gets its own three newest rows (the server's learner filter covers legacy
+  // rows without a learner, using the same category rule as isKirsiAttempt).
+  // Today's standings are the stored daily_leaderboard row that decides the
+  // karikas, not a re-count of history: an attempt held for parent review or a
+  // sprint that missed its threshold must not move the number. On failure the
+  // page shows zeros and empty lists, as before.
   useEffect(() => {
-    const latest = (learner: 'kiur' | 'kirsi') =>
-      fetchHistoryPage<H>(new URLSearchParams({ learner, limit: String(RECENT_PER_CHILD) }))
-        .then((page) => page.items)
-        .catch(() => [] as H[]);
-    Promise.all([latest('kiur'), latest('kirsi')])
-      .then(([kiur, kirsi]) => setHistory({ kiur, kirsi }));
-  }, []);
-
-  // Today's standings come from the same stored row that decides the karikas
-  // (daily_leaderboard), not from a re-count of the history page. Counting here
-  // disagreed with the trophy: the history page carries no settlement or sprint
-  // qualification, so an attempt withheld for parent review or a sprint that
-  // missed its threshold still moved the number and could show the crown next
-  // to the wrong child — and past 50 attempts the page ran out of rows anyway.
-  useEffect(() => {
-    fetch('/api/leaderboard')
-      .then((response) => response.ok ? response.json() : null)
-      .then((board: { days?: DailyStandingsRow[] } | null) => setToday(todayStandings(board?.days)))
-      .catch(() => setToday({ kiur: 0, kirsi: 0 }));
-  }, []);
-
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/child-dashboard?learner=kiur').then((response) => response.ok ? response.json() : null),
-      fetch('/api/child-dashboard?learner=kirsi').then((response) => response.ok ? response.json() : null)
-    ]).then(([kiur, kirsi]) => {
-      setStreaks({ kiur: kiur?.streak ?? 0, kirsi: kirsi?.streak ?? 0 });
-      setBalances({ kiur: kiur?.balance ?? 0, kirsi: kirsi?.balance ?? 0 });
-      setTrophies({ kiur: kiur?.trophies ?? 0, kirsi: kirsi?.trophies ?? 0 });
-    }).catch(() => {
-      setStreaks({ kiur: 0, kirsi: 0 });
-      setBalances({ kiur: 0, kirsi: 0 });
-      setTrophies({ kiur: 0, kirsi: 0 });
-    });
+    fetch('/api/home-summary', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<HomeSummary> : null)
+      .catch(() => null)
+      .then((summary) => {
+        const child = (learner: 'kiur' | 'kirsi') => summary?.children?.[learner];
+        setHistory({ kiur: child('kiur')?.recent ?? [], kirsi: child('kirsi')?.recent ?? [] });
+        setToday({ kiur: summary?.today?.kiur ?? 0, kirsi: summary?.today?.kirsi ?? 0 });
+        setStreaks({ kiur: child('kiur')?.streak ?? 0, kirsi: child('kirsi')?.streak ?? 0 });
+        setBalances({ kiur: child('kiur')?.balance ?? 0, kirsi: child('kirsi')?.balance ?? 0 });
+        setTrophies({ kiur: child('kiur')?.trophies ?? 0, kirsi: child('kirsi')?.trophies ?? 0 });
+      });
   }, []);
 
   const { kiur, kirsi } = history;
