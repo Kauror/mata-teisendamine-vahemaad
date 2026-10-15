@@ -126,13 +126,11 @@ describe('service worker navigation caching (OFF-03, OFF-08)', () => {
   });
 });
 
-describe('service worker install shell validation (OFF-03)', () => {
-  it('rejects installation when a shell route was rendered by another build', async () => {
-    const worker = loadWorker(async (url) => page(new URL(url, ORIGIN).pathname, 'build-c'));
-    await expect(worker.install()).rejects.toThrow(/another build/);
-  });
-
-  it.each([['its own build id', BUILD], ['no build header', null]] as const)('installs shells with %s', async (_label, buildId) => {
+// Install does not judge the build header: sw.js and the pages come from the
+// same server, and refusing would turn a deploy race into a failed update.
+// Only the runtime refresh of the shell is limited to the worker's own build.
+describe('service worker install (OFF-03)', () => {
+  it.each([['its own build id', BUILD], ['another build id', 'build-c'], ['no build header', null]] as const)('installs shells with %s', async (_label, buildId) => {
     const worker = loadWorker(async (url) => page(new URL(url, ORIGIN).pathname, buildId));
     await worker.install();
     const cache = await worker.shell();

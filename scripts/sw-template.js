@@ -41,11 +41,6 @@ function shellBuildId(response) {
 async function fetchRequired(cache, path, kind) {
   const response = await fetch(path, { credentials: 'same-origin', cache: 'reload', redirect: 'follow' });
   if (!validResponse(response, path, kind)) throw new Error('Required offline resource failed validation: ' + path);
-  // A deploy during install would otherwise store another build's HTML. A
-  // missing header (a server built without an id) keeps the old behaviour.
-  if (kind === 'shell' && shellBuildId(response) !== null && shellBuildId(response) !== BUILD_ID) {
-    throw new Error('Offline shell belongs to another build: ' + path);
-  }
   await cache.put(path, response.clone());
 }
 
