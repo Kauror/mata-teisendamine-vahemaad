@@ -136,5 +136,5 @@ export async function prepareOffline(): Promise<void> {
   await ensurePersistentStorage();
   await getDeviceId();
   const ping = await pingServer();
-  if (ping) await syncNow('prepare-offline');
+  if (ping.status === 'reachable') await syncNow('prepare-offline');
 }

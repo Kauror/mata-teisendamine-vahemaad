@@ -483,16 +483,27 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
       return { ok: false, reason: 'retry_wait', pushed: 0, pulled: 0 };
     }
 
-    const ping = await pingServer(5_000, cycleController.signal);
-    if (!ping) {
+    const pingResult = await pingServer(5_000, cycleController.signal);
+    if (pingResult.status === 'unauthorized') {
+      // An expired family session is not an outage: block like a 401 push so
+      // the UI asks for the PIN, and keep every queued record untouched.
+      const message = `ping-http-${pingResult.httpStatus}`;
+      await blockRetry('auth_blocked', message);
+      return { ok: false, reason: 'auth_blocked', pushed: 0, pulled: 0 };
+    }
+    if (pingResult.status !== 'reachable') {
       if (cycleController.signal.aborted) throw new StopSyncCycle('sync_timeout', 'timeout');
       return { ok: false, reason: 'offline', pushed: 0, pulled: 0 };
     }
+    const ping = pingResult.ping;
     const protocols = responseProtocols(ping);
     const device = await deviceDescriptor();
-    const dueAttempts = await attemptRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE);
-    const dueActions = await taskActionRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE);
-    const dueRemediationActions = await remediationActionRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE);
+    // "Sünkrooni nüüd" must push rows that are still backing off; otherwise a
+    // manual sync bypasses the cycle-level wait but then finds nothing due.
+    const dueOptions = { ignoreRetryAt: manual };
+    const dueAttempts = await attemptRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE, new Date(), dueOptions);
+    const dueActions = await taskActionRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE, new Date(), dueOptions);
+    const dueRemediationActions = await remediationActionRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE, new Date(), dueOptions);
 
     if (!protocols.has(2)) {
       await blockRetry('upgrade_required', 'No mutually supported offline protocol.');
@@ -554,9 +565,20 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
   }
 }
 
-// Full push-before-pull cycle guarded by a cross-tab lock. Manual sync bypasses
-// backoff; background/open/visibility triggers respect it.
-export async function syncNow(reason: string): Promise<SyncOutcome> {
+// Every finished cycle is announced in this tab, whoever started it. Result
+// screens call syncNow directly; without this the provider's pending count and
+// sync state stay at "Ootab sünkroonimist" until its own next trigger.
+export const SYNC_COMPLETE_EVENT = 'offline-sync-complete';
+export type SyncCompleteDetail = { reason: string; outcome: SyncOutcome };
+
+function announceSyncComplete(reason: string, outcome: SyncOutcome) {
+  if (typeof window === 'undefined' || typeof CustomEvent === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent<SyncCompleteDetail>(SYNC_COMPLETE_EVENT, { detail: { reason, outcome } }));
+  } catch { /* a listener failure must never fail the sync */ }
+}
+
+async function runLockedSync(reason: string): Promise<SyncOutcome> {
   try {
     const outcome = await withSyncLock((context) => runSyncCycle(reason, context.signal));
     return outcome ?? { ok: false, reason: 'locked', pushed: 0, pulled: 0 };
@@ -565,4 +587,12 @@ export async function syncNow(reason: string): Promise<SyncOutcome> {
     await blockRetry('storage_error', message).catch(() => {});
     return { ok: false, reason: 'storage_error', pushed: 0, pulled: 0 };
   }
+}
+
+// Full push-before-pull cycle guarded by a cross-tab lock. Manual sync bypasses
+// backoff; background/open/visibility triggers respect it.
+export async function syncNow(reason: string): Promise<SyncOutcome> {
+  const outcome = await runLockedSync(reason);
+  announceSyncComplete(reason, outcome);
+  return outcome;
 }

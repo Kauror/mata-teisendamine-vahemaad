@@ -15,6 +15,9 @@ import type { CatalogueGrant, ChildDashboardSnapshot, Learner, OfflineCatalogue 
 // Small, responsibility-separated repositories over the IndexedDB stores. The UI
 // and sync engine talk to these, never to raw IndexedDB.
 
+// A manual sync ("Sünkrooni nüüd") pushes rows that are still backing off.
+export type PendingDueOptions = { ignoreRetryAt?: boolean };
+
 export const catalogRepo = {
   async put(catalogue: OfflineCatalogue) {
     const db = await offlineDb();
@@ -140,14 +143,14 @@ export const attemptRepo = {
     ]);
     return pending + syncing;
   },
-  async pendingDue(limit: number, now = new Date()): Promise<LocalAttempt[]> {
+  async pendingDue(limit: number, now = new Date(), options: PendingDueOptions = {}): Promise<LocalAttempt[]> {
     const db = await offlineDb();
     const nowMs = now.getTime();
     const tx = db.transaction('attempts');
     const rows: LocalAttempt[] = [];
     let cursor = await tx.store.index('byStatus').openCursor('pending');
     while (cursor && rows.length < limit) {
-      if (!cursor.value.nextRetryAt || new Date(cursor.value.nextRetryAt).getTime() <= nowMs) rows.push(cursor.value);
+      if (options.ignoreRetryAt || !cursor.value.nextRetryAt || new Date(cursor.value.nextRetryAt).getTime() <= nowMs) rows.push(cursor.value);
       cursor = await cursor.continue();
     }
     await tx.done;
@@ -300,14 +303,14 @@ export const taskActionRepo = {
     ]);
     return pending + syncing;
   },
-  async pendingDue(limit: number, now = new Date()): Promise<LocalTaskAction[]> {
+  async pendingDue(limit: number, now = new Date(), options: PendingDueOptions = {}): Promise<LocalTaskAction[]> {
     const db = await offlineDb();
     const nowMs = now.getTime();
     const tx = db.transaction('taskActions');
     const rows: LocalTaskAction[] = [];
     let cursor = await tx.store.index('byStatus').openCursor('pending');
     while (cursor && rows.length < limit) {
-      if (!cursor.value.nextRetryAt || new Date(cursor.value.nextRetryAt).getTime() <= nowMs) rows.push(cursor.value);
+      if (options.ignoreRetryAt || !cursor.value.nextRetryAt || new Date(cursor.value.nextRetryAt).getTime() <= nowMs) rows.push(cursor.value);
       cursor = await cursor.continue();
     }
     await tx.done;
@@ -364,14 +367,14 @@ export const remediationActionRepo = {
     ]);
     return pending + syncing;
   },
-  async pendingDue(limit: number, now = new Date()): Promise<LocalRemediationAction[]> {
+  async pendingDue(limit: number, now = new Date(), options: PendingDueOptions = {}): Promise<LocalRemediationAction[]> {
     const db = await offlineDb();
     const nowMs = now.getTime();
     const tx = db.transaction('remediationActions');
     const rows: LocalRemediationAction[] = [];
     let cursor = await tx.store.index('byStatus').openCursor('pending');
     while (cursor && rows.length < limit) {
-      if (!cursor.value.nextRetryAt || new Date(cursor.value.nextRetryAt).getTime() <= nowMs) rows.push(cursor.value);
+      if (options.ignoreRetryAt || !cursor.value.nextRetryAt || new Date(cursor.value.nextRetryAt).getTime() <= nowMs) rows.push(cursor.value);
       cursor = await cursor.continue();
     }
     await tx.done;
