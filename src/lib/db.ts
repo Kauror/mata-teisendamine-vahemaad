@@ -1070,6 +1070,16 @@ const migrations: Migration[] = [
     name: 'english_vocabulary_studied_words',
     checksumSource: 'english_vocabulary_studied_words:v1:2026-10-12',
     up: addEnglishVocabularyStudiedWords
+  },
+  {
+    id: 11,
+    name: 'store_purchases_item_index',
+    checksumSource: 'store_purchases_item_index:v1:2026-10-15',
+    // The store's per-item daily-stock and one-time checks seek one item's
+    // purchases (store.ts getDailyUsed / oneTimeBought).
+    up: (connection) => {
+      connection.exec('CREATE INDEX IF NOT EXISTS idx_store_purchases_item ON store_purchases(storeItemId, purchasedAt)');
+    }
   }
 ];
 

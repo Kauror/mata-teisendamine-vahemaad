@@ -1,4 +1,5 @@
 import db from '@/lib/db';
+import { appDayTextBracket, notDatePrefixed } from '@/lib/appDayWindow';
 import { formatStars } from '@/lib/formatStars';
 import { getStreakFreezeState } from '@/lib/streakFreeze';
 import { getBalance, getBalances, isoToAppDate, Learner, nowIso, todayDateString } from '@/lib/tasks';
@@ -117,8 +118,26 @@ function purchaseDate(row: { purchasedAt: string; metadataJson: string | null })
   return isoToAppDate(row.purchasedAt) ?? '';
 }
 
+// Purchases of one item on one app day. The SQL seeks the item through
+// idx_store_purchases_item and keeps only rows that can be on that day — a
+// stored metadata date equal to it, or (no usable stored date) a purchase time
+// inside that day's UTC bracket — so it no longer parses every purchase the
+// item ever had. purchaseDate() stays the authoritative per-row check, so the
+// count is exactly the previous one. The CASE guards keep a malformed
+// metadataJson from making json_extract throw; such a row falls back to its
+// purchase time, as purchaseDate() does.
 function getDailyUsed(itemId: number, date: string) {
-  const rows = db.prepare('SELECT purchasedAt, metadataJson FROM store_purchases WHERE storeItemId = ?').all(itemId) as Array<{ purchasedAt: string; metadataJson: string | null }>;
+  const bracket = appDayTextBracket(date, date);
+  const rows = db.prepare(`
+    SELECT purchasedAt, metadataJson FROM store_purchases
+    WHERE storeItemId = ?
+      AND (
+        (CASE WHEN json_valid(metadataJson) AND json_type(metadataJson) = 'object' THEN json_type(metadataJson, '$.date') END) = 'text'
+          AND (CASE WHEN json_valid(metadataJson) AND json_type(metadataJson) = 'object' THEN json_extract(metadataJson, '$.date') END) = ?
+        OR (CASE WHEN json_valid(metadataJson) AND json_type(metadataJson) = 'object' THEN json_type(metadataJson, '$.date') END) IS NOT 'text'
+          AND ((purchasedAt >= ? AND purchasedAt < ?) OR ${notDatePrefixed('purchasedAt')})
+      )
+  `).all(itemId, date, bracket.fromInclusive, bracket.toExclusive) as Array<{ purchasedAt: string; metadataJson: string | null }>;
   return rows.filter((row) => purchaseDate(row) === date).length;
 }
 
@@ -343,6 +362,14 @@ export function getParentStoreDashboard(date = todayDateString()) {
   return { date, balances: getBalances(), items: enriched, purchases };
 }
 
-export function getStorePurchaseHistory() {
-  return db.prepare('SELECT * FROM store_purchases ORDER BY purchasedAt DESC').all() as StorePurchase[];
+// Newest first. `limit` -1 means every row (SQLite's "no limit"); `before` is a
+// keyset cursor, the (purchasedAt, id) of the last row already shown.
+export function getStorePurchaseHistory(options: { limit?: number; before?: { at: string; id: number } | null } = {}) {
+  const before = options.before ?? null;
+  return db.prepare(`
+    SELECT * FROM store_purchases
+    WHERE (? IS NULL OR purchasedAt < ? OR (purchasedAt = ? AND id < ?))
+    ORDER BY purchasedAt DESC, id DESC
+    LIMIT ?
+  `).all(before?.at ?? null, before?.at ?? null, before?.at ?? null, before?.id ?? 0, options.limit ?? -1) as StorePurchase[];
 }

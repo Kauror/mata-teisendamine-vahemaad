@@ -2,7 +2,9 @@ import db from '@/lib/db';
 import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
 import { KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
-import { awardStudyPointsForAttempt, exerciseKeyForAttempt } from '@/lib/learningPoints';
+import { isoToAppDate } from '@/lib/appDate';
+import { exerciseKeyForAttempt, getStudyReward } from '@/lib/learningPoints';
+import { recordDailyLeaderboard } from '@/lib/leaderboard';
 import { cleanScienceAnswer, getScienceTaskById } from '@/lib/loodusopetus/tasks';
 import { isChoiceTask, type ChoiceScienceTask } from '@/lib/loodusopetus/types';
 import {
@@ -13,7 +15,9 @@ import {
   type RemediationQuestion,
   type RemediationRendererType
 } from '@/lib/shared/remediationQuestion';
-import { Learner, nowIso } from '@/lib/tasks';
+import { ensureCurrentRewardPolicy, REWARD_ENGINE_VERSION, rewardPolicyByVersion } from '@/lib/server/rewards/policy';
+import { applyRewardProjectionV2, getCanonicalRewardSummary } from '@/lib/server/rewards/projection';
+import { getBalance, Learner, nowIso } from '@/lib/tasks';
 import { isQuestionVisual } from '@/lib/types';
 
 export { REMEDIATION_RENDERER_TYPES } from '@/lib/shared/remediationQuestion';
@@ -578,7 +582,9 @@ export function submitRemediationSession(input: {
     const session = db.prepare('SELECT * FROM remediation_sessions WHERE id = ? AND learner = ?').get(input.sessionId, input.learner) as SessionRow | undefined;
     if (!session) throw new Error('Kordamist ei leitud.');
     if (session.completedAt && session.historyAttemptId) {
-      return { historyAttemptId: session.historyAttemptId, score: session.score ?? 0, questionCount: REMEDIATION_QUESTION_COUNT, reward: awardStudyPointsForAttempt(session.historyAttemptId), resolvedCount: 0 };
+      // A retry never settles anything again: it reports the reward the first
+      // submission recorded, from whichever engine settled it.
+      return { historyAttemptId: session.historyAttemptId, score: session.score ?? 0, questionCount: REMEDIATION_QUESTION_COUNT, reward: savedRemediationReward(session.historyAttemptId), resolvedCount: 0 };
     }
 
     const items = db.prepare('SELECT * FROM remediation_session_items WHERE sessionId = ? ORDER BY position ASC').all(input.sessionId) as SessionItemRow[];
@@ -625,11 +631,14 @@ export function submitRemediationSession(input: {
 
     const score = historyQuestions.filter((question) => question.isCorrect).length;
     const createdAt = nowIso();
-    const attempt = db.prepare(`
-      INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic)
-      VALUES (?, 'Kordamine', 'Tavaline', ?, ?, ?, ?, ?, 'kordamine', 'kordamine')
-    `).run(createdAt, REMEDIATION_QUESTION_COUNT, score, Math.max(0, Math.floor(input.elapsedSeconds || 0)), JSON.stringify(historyQuestions), input.learner);
-    const attemptId = Number(attempt.lastInsertRowid);
+    const attemptId = insertRemediationAttemptV2({
+      learner: input.learner,
+      sessionId: input.sessionId,
+      createdAt,
+      score,
+      elapsedSeconds: Math.max(0, Math.floor(input.elapsedSeconds || 0)),
+      questionsJson: JSON.stringify(historyQuestions)
+    });
 
     let resolvedCount = 0;
     for (const [mistakeId, state] of latestByMistake.entries()) {
@@ -655,10 +664,121 @@ export function submitRemediationSession(input: {
       WHERE id = ?
     `).run(createdAt, score, attemptId, JSON.stringify({ resolvedCount }), input.sessionId);
 
-    const reward = awardStudyPointsForAttempt(attemptId);
+    // Settled by the same canonical v2 projection as every other exercise, so
+    // Kordamine shares the one daily cap, decay and streak with them (SRV-06).
+    // The leaderboard is refreshed for the attempt's own day inside this
+    // transaction, so a failure rolls the whole submission back instead of
+    // leaving a counted attempt with a stale standing.
+    applyRewardProjectionV2(input.learner, attemptId);
+    recordDailyLeaderboard(remediationCompletionDate(createdAt));
+    const reward = remediationRewardV2(attemptId);
     db.prepare('UPDATE remediation_sessions SET earnedStars = ? WHERE id = ?').run(reward?.awardedAmount ?? 0, input.sessionId);
     return { historyAttemptId: attemptId, score, questionCount: REMEDIATION_QUESTION_COUNT, reward, resolvedCount };
   });
 
   return tx();
+}
+
+// --- Reward settlement (protocol v2) ---------------------------------------
+//
+// Kordamine used to insert a protocol-v1 attempt and settle it with the legacy
+// awardStudyPointsForAttempt engine, whose daily cap only counted other v1
+// ledger rows, while every other exercise is protocol v2. The two caps — and
+// the two streak bonuses — therefore applied side by side. A completion is now
+// a protocol-v2 row settled by applyRewardProjectionV2, exactly like the
+// vocabulary test attempt (server/vocabulary/sessions.ts).
+//
+// Sessions completed before this change keep their v1 attempt untouched: the v2
+// projection only reads protocolVersion = 2 rows, so their study_exercise /
+// streak_bonus / reward_streak ledger rows and study_attempt_rewards rows keep
+// exactly the stars they were paid.
+
+export const REMEDIATION_RUNNER_ID = 'remediation';
+
+// The same key the v1 engine used for decay, so "the n-th Kordamine today"
+// still decays as one exercise.
+export function remediationExerciseId(learner: Learner) {
+  return exerciseKeyForAttempt(learner, 'Kordamine', 'kordamine');
+}
+
+function remediationCompletionDate(createdAt: string) {
+  return isoToAppDate(createdAt) ?? createdAt.slice(0, 10);
+}
+
+function insertRemediationAttemptV2(input: {
+  learner: Learner;
+  sessionId: number;
+  createdAt: string;
+  score: number;
+  elapsedSeconds: number;
+  questionsJson: string;
+}) {
+  const policy = ensureCurrentRewardPolicy();
+  // Server-timed: the completion is "now", so every timestamp is the same and
+  // the clock needs no correction.
+  const at = input.createdAt;
+  const result = db.prepare(`
+    INSERT INTO attempts (
+      createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions,
+      learner, subject, topic, exerciseId,
+      clientAttemptId, completedAt, rawDeviceCompletedAt, syncedAt,
+      clientCorrectedCompletedAt, effectiveCompletedAt, completionDate, clockStatus, clockSkewMs,
+      rewardPolicyVersion, rewardEngineVersion, runnerId, protocolVersion, rewardSettlementStatus
+    ) VALUES (?, 'Kordamine', 'Tavaline', ?, ?, ?, ?, ?, 'kordamine', 'kordamine', ?, ?, ?, ?, ?, ?, ?, ?, 'ok', 0, ?, ?, ?, 2, 'eligible')
+  `).run(
+    at, REMEDIATION_QUESTION_COUNT, input.score, input.elapsedSeconds, input.questionsJson,
+    input.learner, remediationExerciseId(input.learner),
+    `remediation:${input.sessionId}`, at, at, at,
+    at, at, remediationCompletionDate(at),
+    policy.version, REWARD_ENGINE_VERSION, REMEDIATION_RUNNER_ID
+  );
+  return Number(result.lastInsertRowid);
+}
+
+export type RemediationReward = {
+  awardedAmount: number;
+  balanceAfter: number;
+  capReached: boolean;
+};
+
+// What the result screen shows: the attempt's whole canonical total (study plus
+// any streak / rule component it owns — the same figure the history list
+// shows), and whether the shared daily cap is what held its study stars back.
+function remediationRewardV2(attemptId: number): RemediationReward | null {
+  const summary = getCanonicalRewardSummary(attemptId);
+  if (!summary) return null;
+  const attempt = db.prepare(`
+    SELECT learner, score, questionCount, completionDate, rewardPolicyVersion, runnerId, exerciseId, effectiveCompletedAt
+    FROM attempts WHERE id = ?
+  `).get(attemptId) as {
+    learner: Learner; score: number; questionCount: number; completionDate: string; rewardPolicyVersion: string;
+    runnerId: string; exerciseId: string; effectiveCompletedAt: string;
+  };
+  const policy = rewardPolicyByVersion(attempt.rewardPolicyVersion);
+  let capReached = false;
+  if (policy && policy.learning.learningPointsEnabled && attempt.questionCount > 0 &&
+    attempt.score / attempt.questionCount >= policy.learning.minimumScorePercent) {
+    // The decay position the projection used: this exercise's eligible
+    // attempts on the same day, up to and including this one.
+    const { position } = db.prepare(`
+      SELECT COUNT(*) AS position FROM attempts
+      WHERE learner = ? AND protocolVersion = 2 AND rewardSettlementStatus = 'eligible'
+        AND completionDate = ? AND runnerId = ? AND exerciseId = ?
+        AND (effectiveCompletedAt < ? OR (effectiveCompletedAt = ? AND id <= ?))
+    `).get(attempt.learner, attempt.completionDate, attempt.runnerId, attempt.exerciseId,
+      attempt.effectiveCompletedAt, attempt.effectiveCompletedAt, attemptId) as { position: number };
+    const base = Math.max(policy.learning.minimumValue, policy.learning.baseValue - policy.learning.decayStep * (Math.max(1, position) - 1));
+    capReached = summary.study < Math.round(base * 100) / 100;
+  }
+  return { awardedAmount: summary.total, balanceAfter: getBalance(attempt.learner), capReached };
+}
+
+function savedRemediationReward(attemptId: number): RemediationReward | null {
+  const row = db.prepare('SELECT protocolVersion FROM attempts WHERE id = ?').get(attemptId) as { protocolVersion: number } | undefined;
+  if (!row) return null;
+  if (row.protocolVersion === 2) return remediationRewardV2(attemptId);
+  // A session completed before the move to v2: read its legacy reward, never
+  // award it again.
+  const legacy = getStudyReward(attemptId);
+  return legacy ? { awardedAmount: legacy.awardedAmount, balanceAfter: legacy.balanceAfter, capReached: legacy.capReached } : null;
 }

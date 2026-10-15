@@ -9,7 +9,7 @@ import { getMergedExerciseHistory } from '@/lib/offline/api';
 import { mergeLocalHistoryRows } from '@/lib/offline/historyMerge';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import HistoryStats from '@/app/components/HistoryStats';
-import { fetchHistoryPage } from '@/lib/historyClient';
+import { fetchHistoryPage, fetchWholeTimeline } from '@/lib/historyClient';
 
 type ExerciseHistory = {
   kind: 'exercise';
@@ -149,13 +149,11 @@ export default function HistoryPage() {
         if (serverRows.length > 0) setHistory([...serverRows, ...pending]);
       })
       .catch(() => loadLocalExercises());
-    const loadTasks = fetch('/api/task-history')
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((tasks) => setTaskHistory((tasks as Omit<TaskHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'task' }))))
+    const loadTasks = fetchWholeTimeline<Omit<TaskHistory, 'kind'>>('/api/task-history')
+      .then((tasks) => setTaskHistory(tasks.map((item) => ({ ...item, kind: 'task' }))))
       .catch(() => setTaskHistory([]));
-    const loadStore = fetch('/api/store/history')
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((purchases) => setStoreHistory((purchases as Omit<PurchaseHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'store' }))))
+    const loadStore = fetchWholeTimeline<Omit<PurchaseHistory, 'kind'>>('/api/store/history')
+      .then((purchases) => setStoreHistory(purchases.map((item) => ({ ...item, kind: 'store' }))))
       .catch(() => setStoreHistory([]));
     void Promise.allSettled([loadExercises, loadTasks, loadStore]);
     // Merge by id instead of replacing: the shown list also holds server pages

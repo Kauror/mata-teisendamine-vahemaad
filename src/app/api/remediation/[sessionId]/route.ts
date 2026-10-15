@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isLearner } from '@/lib/learningExercises';
 import { getRemediationSession, submitRemediationSession } from '@/lib/remediation';
-import { recordDailyLeaderboard } from '@/lib/leaderboard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,12 +26,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ses
   if (!isLearner(learner) || !Number.isInteger(id)) return NextResponse.json({ message: 'Vale kordamine.' }, { status: 400 });
 
   try {
+    // The daily leaderboard is refreshed inside the submission transaction, for
+    // the attempt's own completion day (SRV-06).
     const result = submitRemediationSession({ learner, sessionId: id, answers, elapsedSeconds });
-    try {
-      recordDailyLeaderboard();
-    } catch (error) {
-      console.warn('Daily leaderboard snapshot failed', error);
-    }
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ message: error instanceof Error ? error.message : 'Kordamist ei saanud salvestada.' }, { status: 400 });
