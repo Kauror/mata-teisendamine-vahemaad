@@ -234,3 +234,26 @@ describe('a completion that meets a running sync', () => {
     await running;
   });
 });
+
+describe('a stale retry delay', () => {
+  async function waitingForRetry() {
+    await metaRepo.put('syncRetryState', { status: 'retry_wait', retryCount: 3, nextRetryAt: new Date(Date.now() + 20 * 60_000).toISOString(), lastError: 'Load request cancelled', updatedAt: new Date().toISOString() });
+  }
+
+  it('does not hold back a result the child has just finished', async () => {
+    const fetchMock = mockServer(500);
+    await attemptRepo.put(pendingAttempt());
+    await waitingForRetry();
+    await syncNow('attempt-complete');
+    expect(pushCalls(fetchMock)).toHaveLength(1);
+  });
+
+  it('still holds back background triggers', async () => {
+    const fetchMock = mockServer(500);
+    await attemptRepo.put(pendingAttempt());
+    await waitingForRetry();
+    const outcome = await syncNow('visibility');
+    expect(outcome.reason).toBe('retry_wait');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

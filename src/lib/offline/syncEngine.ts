@@ -12,6 +12,7 @@ import {
   SYNC_REQUEST_TIMEOUT_MS,
   chunkRecords,
   classifySyncHttpStatus,
+  bypassesRetryWait,
   isManualSync,
   retryDelayMs,
   type SyncFailureDisposition
@@ -210,7 +211,17 @@ export async function clearAuthBlockedSyncState(): Promise<void> {
   if (state.status === 'auth_blocked') await writeRetryState({ status: 'idle', retryCount: 0 });
 }
 
+// A request cancelled because the page is going away (the app closed or
+// reloaded mid-sync) says nothing about the server, so it must not start a
+// retry delay that would then hold every later background sync back.
+let pageLeaving = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => { pageLeaving = true; });
+  window.addEventListener('pageshow', () => { pageLeaving = false; });
+}
+
 async function scheduleRetry(message: string): Promise<string> {
+  if (pageLeaving) return new Date().toISOString();
   const current = await retryState();
   const retryCount = current.retryCount + 1;
   const nextRetryAt = new Date(Date.now() + retryDelayMs(current.retryCount)).toISOString();
@@ -499,7 +510,7 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
     if (!manual && (state.status === 'auth_blocked' || state.status === 'upgrade_required' || state.status === 'epoch_regression')) {
       return { ok: false, reason: state.status, pushed: 0, pulled: 0 };
     }
-    if (!manual && state.status === 'retry_wait' && state.nextRetryAt && new Date(state.nextRetryAt).getTime() > Date.now()) {
+    if (!bypassesRetryWait(reason) && state.status === 'retry_wait' && state.nextRetryAt && new Date(state.nextRetryAt).getTime() > Date.now()) {
       return { ok: false, reason: 'retry_wait', pushed: 0, pulled: 0 };
     }
 

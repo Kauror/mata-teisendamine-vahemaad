@@ -39,6 +39,14 @@ export function isManualSync(reason: string): boolean {
   return reason === 'manual' || reason.startsWith('manual:');
 }
 
+// A result the child has just finished goes now, like a manual sync: the retry
+// delay exists to spare an unreachable server from background triggers, and a
+// stale delay (left, say, by a request the page cancelled on its way out) must
+// not hold a fresh result back for up to half an hour.
+export function bypassesRetryWait(reason: string): boolean {
+  return isManualSync(reason) || reason === 'attempt-complete' || reason === 'task-complete';
+}
+
 export function chunkRecords<T>(records: readonly T[], size: number): T[][] {
   if (!Number.isInteger(size) || size < 1) throw new Error('Batch size must be a positive integer.');
   const chunks: T[][] = [];

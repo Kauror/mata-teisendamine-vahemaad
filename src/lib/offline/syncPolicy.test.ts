@@ -13,7 +13,7 @@ import {
   shouldRunSync,
   syncedRecently
 } from '@/lib/offline/syncPolicy';
-import { PENDING_FOLLOW_UP_LIMIT, shouldFollowUpPending } from '@/lib/offline/syncPolicy';
+import { bypassesRetryWait, PENDING_FOLLOW_UP_LIMIT, shouldFollowUpPending } from '@/lib/offline/syncPolicy';
 
 describe('sync HTTP failure policy', () => {
   it.each([408, 429, 500, 502, 503])('keeps HTTP %i retryable', (status) => {
@@ -105,5 +105,14 @@ describe('follow-up sync for results still queued', () => {
     for (const reason of ['offline', 'auth_blocked', 'retry_wait', 'storage_error', 'upgrade_required']) {
       expect(shouldFollowUpPending({ outcomeReason: reason, ok: false, pending: 1, followUps: 0 })).toBe(false);
     }
+  });
+});
+
+describe('which syncs go despite a retry delay', () => {
+  it('lets a just-finished result and a manual sync through, and holds background triggers', () => {
+    expect(bypassesRetryWait('attempt-complete')).toBe(true);
+    expect(bypassesRetryWait('task-complete')).toBe(true);
+    expect(bypassesRetryWait('manual:status-bar')).toBe(true);
+    for (const reason of ['startup', 'visibility', 'interval', 'online-event', 'pending-follow-up']) expect(bypassesRetryWait(reason)).toBe(false);
   });
 });
