@@ -12,15 +12,16 @@ import {
   finalizeRunnerSession,
   getCatalogueContract,
   getLocalAttempt,
-  isExercisePermittedOffline,
   loadRunnerSession,
-  patchRunnerSession,
   runnerStorageFailure
 } from '@/lib/offline/api';
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
-import { useRunnerCheckpoint } from '@/lib/offline/useRunnerLifecycle';
+import { useRunnerAutosave, useRunnerCheckpoint } from '@/lib/offline/useRunnerLifecycle';
+import { useExerciseActive } from '@/lib/offline/useExerciseActive';
+import { contractFromSession, runnerFinalizeContract } from '@/lib/offline/runnerContract';
+import RunnerPausedScreen from '@/lib/offline/RunnerPausedScreen';
 
 type FailedSprintPair = {
   word: EnglishVocabularyWord;
@@ -75,7 +76,6 @@ export default function SprintPage() {
   const [timeLeft, setTimeLeft] = useState(12);
   const [failedPair, setFailedPair] = useState<FailedSprintPair | null>(null);
   const [reward, setReward] = useState<SprintReward>(null);
-  const [sprintActive, setSprintActive] = useState<boolean | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [storageError, setStorageError] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -90,29 +90,13 @@ export default function SprintPage() {
   const scoreRef = useRef(0);
   const pairsRef = useRef(0);
   const mistakesRef = useRef(0);
-  const snapshotRef = useRef<Partial<EnglishSprintSession>>({});
   const contractRef = useRef<CatalogueContract | null>(null);
 
   const boardShuffleSeed = runSeed + boardSeed * 10_007;
   const boardLayoutSeed = runSeed + boardSeed * 20_011;
   const boardWords = useMemo(() => pickSprintBoardWords(shuffle(wordPool, boardShuffleSeed), 5), [wordPool, boardShuffleSeed]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void fetch('/api/learning-exercises/active?learner=kiur')
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((body: { exerciseIds?: string[] }) => {
-        if (!cancelled) setSprintActive(Boolean(body.exerciseIds?.includes('kiur.english.sprint')));
-      })
-      .catch(async () => {
-        // Offline: fall back to the cached catalogue instead of blocking.
-        const permitted = await isExercisePermittedOffline('kiur', { exerciseId: 'kiur.english.sprint', subject: 'inglise-keel', topic: 'sprint', category: 'Inglise keel - sprint' }).catch(() => false);
-        if (!cancelled) setSprintActive(permitted);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const sprintActive = useExerciseActive({ learner: 'kiur', exerciseId: 'kiur.english.sprint', subject: 'inglise-keel', topic: 'sprint', category: 'Inglise keel - sprint' });
 
   useEffect(() => {
     void fetchBestEnglishSprintScore()
@@ -132,15 +116,7 @@ export default function SprintPage() {
         if (existing.runnerId !== 'kiur-english-sprint') throw new Error('See salvestatud jooks kuulub teisele harjutusele.');
         const state = existing.runnerState;
         startedAtRef.current = existing.startedAt;
-        contractRef.current = {
-          catalogueVersion: existing.catalogueVersion ?? '',
-          rewardPolicyVersion: existing.rewardPolicyVersion ?? 'legacy-v1',
-          generatorVersion: existing.generatorVersion,
-          runnerVersion: existing.runnerVersion,
-          algorithmVersion: existing.rotationVersion ?? 1,
-          rotationVersion: existing.rotationVersion ?? 1,
-          dailyLimit: 0
-        };
+        contractRef.current = contractFromSession(existing);
         endedRef.current = state.ended;
         failedPairRef.current = state.failedPair;
         scoreRef.current = state.score;
@@ -208,19 +184,19 @@ export default function SprintPage() {
     return () => { cancelled = true; };
   }, [sessionReady, sprintActive]);
 
-  snapshotRef.current = {
+  const snapshotRef = useRunnerAutosave<EnglishSprintSession>({
     currentIndex: boardSeed,
     currentPhase: ended ? 'result' : 'matching',
     answers: reviewItems,
     activeElapsedMs: elapsedSeconds * 1000,
     runnerState: { score, streak, boardSeed, ended, timeLeft, failedPair, pairs, mistakes, boardState, reviewItems },
     status: storageError ? 'paused' : 'active'
-  };
-
-  useEffect(() => {
-    if (!sessionReady || !runId || ended || savedHistoryRef.current || storageError) return;
-    void patchRunnerSession<EnglishSprintSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
-  }, [boardSeed, boardState, ended, failedPair, mistakes, pairs, reviewItems, runId, score, sessionReady, storageError, streak, timeLeft]);
+  }, {
+    enabled: sessionReady && !ended && !savedHistoryRef.current && !storageError,
+    runId,
+    setStorageError,
+    changes: [boardSeed, boardState, ended, failedPair, mistakes, pairs, reviewItems, runId, score, sessionReady, storageError, streak, timeLeft]
+  });
 
   useEffect(() => {
     if (ended || sprintActive !== true || !sessionReady || storageError) return;
@@ -269,25 +245,17 @@ export default function SprintPage() {
     // Local-first: save the run to IndexedDB, then best-effort sync. The result
     // shows immediately whether online or off.
     void (async () => {
-      const contract = contractRef.current;
-      const capability = getOfflineRunnerCapability('kiur-english-sprint');
-      if (!contract || !capability) throw new Error('Harjutuse kataloogileping puudub.');
       const outcome = await finalizeRunnerSession({
+        ...runnerFinalizeContract('kiur-english-sprint', contractRef.current),
         runId,
         seed: runSeed,
-        runnerId: capability.runnerId,
         questionIds: reviewItems.map((item) => item.taskId),
-        rewardPolicyVersion: contract.rewardPolicyVersion,
-        generatorVersion: capability.generatorVersion,
-        runnerVersion: capability.runnerVersion,
-        rotationVersion: capability.rotationVersion,
         learner: 'kiur',
         subject: 'inglise-keel',
         topic: 'sprint',
         category: 'Inglise keel - sprint',
         difficulty: 'Tavaline',
         exerciseId: 'kiur.english.sprint',
-        catalogueVersion: contract.catalogueVersion,
         startedAt: startedAtRef.current,
         questionCount: finalQuestionCount,
         score: finalScore,
@@ -302,16 +270,7 @@ export default function SprintPage() {
   }, [best, elapsedSeconds, ended, reviewItems, runId, runSeed, sprintActive]);
 
   if (storageError) {
-    return (
-      <main className='container english-page'>
-        <section className='practice-shell english-shell' role='alert'>
-          <h1>Sprint on peatatud</h1>
-          <p>{storageError}</p>
-          <button type='button' className='start-button' onClick={() => window.location.reload()}>Proovi salvestust uuesti</button>
-          <Link className='practice-back-button' href='/kiur'>Tagasi harjutuste juurde</Link>
-        </section>
-      </main>
-    );
+    return <RunnerPausedScreen variant='practice' mainClassName='container english-page' shellClassName='practice-shell english-shell' title='Sprint on peatatud' message={storageError} backHref='/kiur' />;
   }
 
   if (sprintActive === null || !sessionReady) {
