@@ -6,6 +6,7 @@ import { formatElapsed } from '@/lib/validation';
 import { compactTopicLabel, dayLabel, groupHistoryByMonth, HELD_REWARD_MESSAGE, isHeldReward, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import { getMergedExerciseHistory } from '@/lib/offline/api';
+import { mergeLocalHistoryRows } from '@/lib/offline/historyMerge';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import HistoryStats from '@/app/components/HistoryStats';
 import { fetchHistoryPage } from '@/lib/historyClient';
@@ -157,7 +158,15 @@ export default function HistoryPage() {
       .then((purchases) => setStoreHistory((purchases as Omit<PurchaseHistory, 'kind'>[]).map((item) => ({ ...item, kind: 'store' }))))
       .catch(() => setStoreHistory([]));
     void Promise.allSettled([loadExercises, loadTasks, loadStore]);
-    const onRevision = () => void loadLocalExercises();
+    // Merge by id instead of replacing: the shown list also holds server pages
+    // ("Laadi rohkem") that the local 200-row window does not contain.
+    const onRevision = () => void getMergedExerciseHistory()
+      .then((offline) => {
+        if (!active || offline.length === 0) return;
+        const fresh = offline.map((item) => ({ ...item, kind: 'exercise' as const }));
+        setHistory((current) => mergeLocalHistoryRows(current, fresh));
+      })
+      .catch(() => {});
     window.addEventListener('offline-data-revision', onRevision);
     const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('harjutaja-offline-data');
     if (channel) channel.onmessage = onRevision;

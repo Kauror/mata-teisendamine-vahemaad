@@ -3,7 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { pingServer, isOnlineHint } from '@/lib/offline/connection';
-import { syncNow } from '@/lib/offline/syncEngine';
+import { SYNC_COMPLETE_EVENT, syncNow, type SyncCompleteDetail, type SyncOutcome } from '@/lib/offline/syncEngine';
+import { createReconnectRetry, type ReconnectRetry } from '@/lib/offline/reconnectRetry';
 import { getPendingCount } from '@/lib/offline/api';
 import { getCursor } from '@/lib/offline/meta';
 import { prepareOffline } from '@/lib/offline/readiness';
@@ -68,6 +69,8 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const updateActivationStartedRef = useRef(false);
   const activationTimeoutRef = useRef<number | null>(null);
   const runnerTabIdRef = useRef<string | null>(null);
+  const reconnectRetryRef = useRef<ReconnectRetry | null>(null);
+  const reconnectRunRef = useRef<() => void>(() => {});
 
   const refreshPending = useCallback(async () => {
     try {
@@ -79,14 +82,24 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // One place turns a finished cycle into UI state, whoever started it (this
+  // provider, a result screen, the login page). 'locked' means another cycle
+  // owns the sync; its own outcome arrives separately, so nothing changes here.
+  const applyOutcome = useCallback((outcome: SyncOutcome) => {
+    if (outcome.reason === 'locked') return;
+    const offline = outcome.reason === 'offline';
+    setOnline(!offline);
+    setSyncState(outcome.ok ? 'healthy' : (outcome.reason as OfflineSyncState) ?? 'unknown');
+    reconnectRetryRef.current?.report(offline ? 'offline' : 'reachable');
+  }, []);
+
   const sync = useCallback(async (reason: string) => {
     if (syncingRef.current) return;
     syncingRef.current = true;
     setSyncing(true);
     try {
-      const outcome = await syncNow(reason);
-      setOnline(outcome.reason !== 'offline');
-      setSyncState(outcome.ok ? 'healthy' : (outcome.reason as OfflineContextValue['syncState']) ?? 'unknown');
+      // The outcome reaches applyOutcome through SYNC_COMPLETE_EVENT.
+      await syncNow(reason);
     } catch {
       /* transient */
     } finally {
@@ -99,15 +112,24 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   // Full offline preparation: local persistence + device id (safe offline) and,
   // when the server is reachable, an initial sync. Marked "done" only after a
   // complete online preparation, so a transient startup outage retries later via
-  // the online/visibility/interval triggers instead of being skipped forever.
+  // the quick reconnect retries and the online/visibility/interval triggers
+  // instead of being skipped forever (RTM-008).
   const runBootstrap = useCallback(async () => {
     if (bootstrapDoneRef.current || bootstrapInFlightRef.current) return;
     bootstrapInFlightRef.current = true;
+    let unreachable = false;
     try {
       const ping = await pingServer();
-      setOnline(Boolean(ping));
+      if (ping.status === 'unauthorized') {
+        // The server answered: this is an expired session, not an outage.
+        setOnline(true);
+        setSyncState('auth_blocked');
+      } else {
+        unreachable = ping.status !== 'reachable';
+        setOnline(!unreachable);
+      }
       await prepareOffline();
-      if (ping) {
+      if (ping.status === 'reachable') {
         await sync('startup');
         bootstrapDoneRef.current = true;
       }
@@ -115,8 +137,47 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       /* leave bootstrapDoneRef false so a later trigger retries preparation */
     } finally {
       bootstrapInFlightRef.current = false;
+      // Reported only after the in-flight flag clears, so the scheduled retry
+      // can never fire into a bootstrap that is still running and be dropped.
+      reconnectRetryRef.current?.report(unreachable ? 'offline' : 'reachable');
     }
   }, [sync]);
+
+  reconnectRunRef.current = () => {
+    if (!bootstrapDoneRef.current) void runBootstrap();
+    else void sync('reconnect-retry');
+  };
+
+  // Quick retries after a failed ping while the device says it is online.
+  // Declared before the bootstrap effect so the scheduler exists first.
+  useEffect(() => {
+    const retry = createReconnectRetry({ run: () => reconnectRunRef.current(), isOnlineHint });
+    reconnectRetryRef.current = retry;
+    return () => {
+      retry.cancel();
+      if (reconnectRetryRef.current === retry) reconnectRetryRef.current = null;
+    };
+  }, []);
+
+  // Direct syncNow calls (result screens, task completion, login) and data
+  // written by any tab must refresh the pending count and sync state too.
+  useEffect(() => {
+    const onComplete = (event: Event) => {
+      const detail = (event as CustomEvent<SyncCompleteDetail>).detail;
+      if (detail?.outcome) applyOutcome(detail.outcome);
+      void refreshPending();
+    };
+    const onRevision = () => { void refreshPending(); };
+    window.addEventListener(SYNC_COMPLETE_EVENT, onComplete);
+    window.addEventListener('offline-data-revision', onRevision);
+    const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('harjutaja-offline-data');
+    if (channel) channel.onmessage = onRevision;
+    return () => {
+      window.removeEventListener(SYNC_COMPLETE_EVENT, onComplete);
+      window.removeEventListener('offline-data-revision', onRevision);
+      channel?.close();
+    };
+  }, [applyOutcome, refreshPending]);
 
   // Register the service worker + prepare offline, then run an initial sync.
   useEffect(() => {

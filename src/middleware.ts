@@ -71,7 +71,21 @@ export async function middleware(req: NextRequest) {
       return NextResponse.json({ code: 'csrf_invalid', message: 'Turvatunnus puudub või ei sobi.' }, { status: 403 });
     }
   }
-  return applyParentPeekCookie(req, NextResponse.next());
+  return withBuildId(req, await applyParentPeekCookie(req, NextResponse.next()));
+}
+
+// Inlined at build time (scripts/build-app.mjs sets it to the same id as
+// .next/BUILD_ID, which build-sw.mjs bakes into the worker). The worker caches
+// a navigation only when this header equals its own build, so a waiting new
+// build's HTML never lands in the old worker's shell cache (OFF-03).
+const APP_BUILD_ID_HEADER = 'X-App-Build-Id';
+
+function withBuildId(request: NextRequest, response: NextResponse) {
+  const buildId = process.env.NEXT_PUBLIC_APP_BUILD_ID;
+  if (buildId && request.method === 'GET' && !request.nextUrl.pathname.startsWith('/api/')) {
+    response.headers.set(APP_BUILD_ID_HEADER, buildId);
+  }
+  return response;
 }
 
 export const config = {
