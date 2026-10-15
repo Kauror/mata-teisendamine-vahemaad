@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
@@ -10,14 +10,12 @@ import { formatElapsed, validateAnswerInput } from '@/lib/validation';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 import { ShapeVisual } from '@/app/components/visuals/CircleVisual';
 import {
-  clearSession,
   createRunnerSession,
   ensureRunIdInCurrentUrl,
   finalizeRunnerSession,
   getCatalogueContract,
   getCatalogueExercise,
   getLocalAttempt,
-  getSession,
   loadRunnerSession,
   runnerStorageFailure
 } from '@/lib/offline/api';
@@ -31,7 +29,7 @@ import RunnerPausedScreen from '@/lib/offline/RunnerPausedScreen';
 import { buildMathQuestionResults, mathChoiceLabels, type MathAnswerSnapshot } from '@/lib/mathResults';
 import { verifyMathTextAnswer } from '@/lib/shared/answerVerification';
 import { composeTextAnswer, textAnswerFields, textAnswerValues } from '@/lib/textAnswerFields';
-import { MATH_GENERATOR_VERSION_V1, isSupportedMathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { isSupportedMathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 import { buildMathOptionOrder, displayedMathOptions, type MathOptionOrder } from '@/lib/mathOptionOrder';
 
 type MathRunnerState = {
@@ -109,7 +107,6 @@ function TestPageContent() {
   const [sessionReady, setSessionReady] = useState(false);
   const [storageError, setStorageError] = useState('');
   const startedAtRef = useRef<string>(new Date().toISOString());
-  const legacySessionId = useMemo(() => `${learner}|${subject}|${topic}|${categoryParam}|${seed}`, [learner, subject, topic, categoryParam, seed]);
   const contractRef = useRef<CatalogueContract | null>(null);
   // The generator version the run's questions were made with. A run resumed
   // after an app update must finalise with the version it was created with, or
@@ -190,20 +187,10 @@ function TestPageContent() {
       const emptyAnswers = Array(generated.length).fill('');
       const emptyOrdering = Array.from({ length: generated.length }, () => [] as string[]);
       const beganAt = new Date().toISOString();
-
-      // One-release migration for the legacy v2 math session. Its exact question
-      // payload is preserved under the newly minted UUID before the old key is
-      // removed. Those questions predate generator versions, so they are v1 and
-      // keep their generated option order.
-      const legacy = await getSession(legacySessionId).catch(() => undefined);
-      const isLegacyRestore = Boolean(legacy?.questionsPayload && Array.isArray(legacy.questionsPayload));
-      const restoredQuestions = isLegacyRestore ? legacy!.questionsPayload as GeneratedQuestion[] : generated;
-      const sessionGeneratorVersion = isLegacyRestore ? MATH_GENERATOR_VERSION_V1 : currentVersion;
-      const restoredOptionOrder = isLegacyRestore ? null : buildMathOptionOrder(restoredQuestions, seed);
       const initialState: MathRunnerState = {
-        answers: legacy?.answers?.length === restoredQuestions.length ? legacy.answers : emptyAnswers,
-        orderingAnswers: legacy?.orderingAnswers?.length === restoredQuestions.length ? legacy.orderingAnswers : emptyOrdering,
-        choiceAnswers: legacy?.choiceAnswers?.length === restoredQuestions.length ? legacy.choiceAnswers : emptyAnswers,
+        answers: emptyAnswers,
+        orderingAnswers: emptyOrdering,
+        choiceAnswers: emptyAnswers,
         countingFeedback: null,
         textFeedback: null,
         showStopConfirm: false
@@ -217,20 +204,19 @@ function TestPageContent() {
         topic,
         category: categoryParam,
         seed,
-        questions: restoredQuestions,
-        optionOrder: restoredOptionOrder,
+        questions: generated,
+        optionOrder: buildMathOptionOrder(generated, seed),
         answers: initialState.answers,
-        currentIndex: legacy?.currentIndex ?? 0,
+        currentIndex: 0,
         currentPhase: 'question',
         runnerState: initialState,
         catalogueVersion: contract?.catalogueVersion ?? null,
         rewardPolicyVersion: contract?.rewardPolicyVersion ?? 'legacy-v1',
-        generatorVersion: sessionGeneratorVersion,
+        generatorVersion: currentVersion,
         runnerVersion: capability.runnerVersion,
         rotationVersion: capability.rotationVersion,
-        startedAt: legacy?.startedAt ?? beganAt
+        startedAt: beganAt
       });
-      if (legacy) await clearSession(legacySessionId);
       if (cancelled) return;
       contractRef.current = contract;
       generatorVersionRef.current = created.generatorVersion;
@@ -242,7 +228,7 @@ function TestPageContent() {
       setChoiceAnswers(initialState.choiceAnswers);
       setOrderingAnswers(initialState.orderingAnswers);
       setIndex(created.currentIndex);
-      setElapsed(legacy?.elapsedSeconds ?? 0);
+      setElapsed(0);
       setError('');
       setIsSaving(false);
       setSaveError('');
@@ -254,7 +240,7 @@ function TestPageContent() {
       if (!cancelled) setStorageError(runnerStorageFailure(cause).message);
     });
     return () => { cancelled = true; };
-  }, [categoryParam, count, difficulty, exerciseAvailability, exerciseIdParam, isKirsiMath, learnerId, legacySessionId, seed, sessionReady, subject, topic]);
+  }, [categoryParam, count, difficulty, exerciseAvailability, exerciseIdParam, isKirsiMath, learnerId, seed, sessionReady, subject, topic]);
 
   const snapshotRef = useRunnerAutosave<MathSession>({
     currentIndex: index,
