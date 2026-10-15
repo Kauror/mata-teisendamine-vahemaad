@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PictureWordSprintBoard, { type PictureWordSprintBoardState } from '@/app/components/PictureWordSprintBoard';
 import Celebration from '@/app/components/Celebration';
-import { shuffle } from '@/lib/englishGame';
+import { shuffleWithSeed as shuffle } from '@/lib/random';
 import { fetchBestKirsiReadingSprintScore } from '@/lib/kirsiReadingHistory';
 import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS, KirsiReadingPair } from '@/lib/kirsiReadingPairs';
 import { formatStars } from '@/lib/formatStars';
