@@ -113,6 +113,14 @@ test.beforeEach(async ({ page }) => authenticateFamilyWithCatalogue(page));
 
 test('a run paused on the old generator resumes identically and is accepted with its version', async ({ page }) => {
   test.setTimeout(120_000);
+  // Diagnostics for the WebKit sync path: printed only when the test fails.
+  const trail: string[] = [];
+  const started = Date.now();
+  const at = () => ((Date.now() - started) / 1000).toFixed(1);
+  page.on('requestfinished', (request) => { if (request.url().includes('/api/offline/')) void request.response().then((response) => trail.push(`${at()} ${request.method()} ${new URL(request.url()).pathname} ${response?.status()}`)); });
+  page.on('requestfailed', (request) => { if (request.url().includes('/api/offline/')) trail.push(`${at()} FAILED ${new URL(request.url()).pathname} ${request.failure()?.errorText}`); });
+  page.on('framenavigated', (frame) => { if (frame === page.mainFrame()) trail.push(`${at()} NAV ${new URL(frame.url()).pathname}`); });
+  page.on('console', (message) => { if (message.type() === 'error') trail.push(`${at()} CONSOLE ${message.text().slice(0, 160)}`); });
   const exercise = await kiurExercise(page, TOPIC);
   const seed = 7311;
   const oldQuestions = generateKiurMathSession(TOPIC, CATEGORY, 'Lihtne', 15, seed, MATH_GENERATOR_VERSION_V1);
@@ -147,8 +155,22 @@ test('a run paused on the old generator resumes identically and is accepted with
   // The server re-generates the run with the v1 generator to score it.
   await expect.poll(async () => {
     const stored = await storedAttempt(page, id);
+    if (!stored.confirmed) trail.push(`${at()} LOCAL ${JSON.stringify({ status: stored.local?.status, retry: stored.local?.retryCount, next: stored.local?.nextRetryAt, reason: stored.local?.reasonCode })}`);
     return stored.confirmed ? { score: stored.confirmed.score, questionCount: stored.confirmed.questionCount } : stored.local?.generatorVersion;
-  }, { timeout: 30_000 }).toEqual({ score: 15, questionCount: 15 });
+  }, { timeout: 30_000 }).toEqual({ score: 15, questionCount: 15 }).catch(async (error) => {
+    const lease = await page.evaluate(() => new Promise((resolve) => {
+      const open = indexedDB.open('harjutaja-offline');
+      open.onsuccess = () => {
+        const request = open.result.transaction('syncLeases').objectStore('syncLeases').getAll();
+        request.onsuccess = () => { resolve({ leases: request.result, locks: 'locks' in navigator, now: new Date().toISOString() }); open.result.close(); };
+      };
+    }));
+    console.log(`SYNC TRAIL
+${[...new Set(trail)].join('
+')}
+LEASE ${JSON.stringify(lease)}`);
+    throw error;
+  });
 });
 
 test('a new run uses the new generator and keeps its shuffled option order on reload', async ({ page }) => {
