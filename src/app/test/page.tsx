@@ -1,44 +1,34 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Difficulty, GeneratedQuestion } from '@/lib/types';
-import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
-import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { compactTopicLabel } from '@/lib/history';
 import { formatElapsed, validateAnswerInput } from '@/lib/validation';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 import { ShapeVisual } from '@/app/components/visuals/CircleVisual';
 import {
-  clearSession,
   createRunnerSession,
   ensureRunIdInCurrentUrl,
   finalizeRunnerSession,
   getCatalogueContract,
   getCatalogueExercise,
   getLocalAttempt,
-  getSession,
-  isExercisePermittedOffline,
   loadRunnerSession,
-  patchRunnerSession,
   runnerStorageFailure
 } from '@/lib/offline/api';
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
-import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
+import { useRunnerAutosave, useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
+import { useExerciseActive } from '@/lib/offline/useExerciseActive';
+import { contractFromSession, runnerFinalizeContract } from '@/lib/offline/runnerContract';
+import RunnerPausedScreen from '@/lib/offline/RunnerPausedScreen';
 import { buildMathQuestionResults, mathChoiceLabels, type MathAnswerSnapshot } from '@/lib/mathResults';
 import { verifyMathTextAnswer } from '@/lib/shared/answerVerification';
 import { composeTextAnswer, textAnswerFields, textAnswerValues } from '@/lib/textAnswerFields';
-import { MATH_GENERATOR_VERSION_V1, isSupportedMathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { isSupportedMathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 import { buildMathOptionOrder, displayedMathOptions, type MathOptionOrder } from '@/lib/mathOptionOrder';
-
-type ActiveLearningExercise = {
-  id?: string;
-  subject: string;
-  topic: string;
-  category: string;
-};
 
 type MathRunnerState = {
   answers: string[];
@@ -107,7 +97,6 @@ function TestPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [showStopConfirm, setShowStopConfirm] = useState(false);
-  const [exerciseAvailability, setExerciseAvailability] = useState<'loading' | 'allowed' | 'blocked'>('loading');
   const [countingFeedback, setCountingFeedback] = useState<{ answer: string; isCorrect: boolean } | null>(null);
   const [textFeedback, setTextFeedback] = useState<{ answer: string; isCorrect: boolean } | null>(null);
   // Offline: the catalogue version this session started from (attached to the
@@ -116,8 +105,6 @@ function TestPageContent() {
   const [sessionReady, setSessionReady] = useState(false);
   const [storageError, setStorageError] = useState('');
   const startedAtRef = useRef<string>(new Date().toISOString());
-  const legacySessionId = useMemo(() => `${learner}|${subject}|${topic}|${categoryParam}|${seed}`, [learner, subject, topic, categoryParam, seed]);
-  const snapshotRef = useRef<Partial<MathSession>>({});
   const contractRef = useRef<CatalogueContract | null>(null);
   // The generator version the run's questions were made with. A run resumed
   // after an app update must finalise with the version it was created with, or
@@ -126,50 +113,25 @@ function TestPageContent() {
   const exerciseIdRef = useRef<string | null>(exerciseIdParam);
   const learnerId: 'kiur' | 'kirsi' | null = learner === 'kiur' || learner === 'kirsi' ? learner : null;
 
-  useEffect(() => {
-    if (learner !== 'kiur' && learner !== 'kirsi') {
-      setExerciseAvailability('allowed');
-      return;
-    }
-    if (subject !== 'matemaatika' && subject !== 'inglise-keel' && subject !== 'lugemine') {
-      setExerciseAvailability('allowed');
-      return;
-    }
-
-    let cancelled = false;
-    setExerciseAvailability('loading');
-    const learnerId = learner as 'kiur' | 'kirsi';
-    // Try the live server config; if the network is unavailable, fall back to the
-    // most recent cached catalogue so the exercise still opens offline. Only block
-    // if neither the server nor a usable local catalogue permits it.
-    void fetch(`/api/learning-exercises/active?learner=${learner}`)
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then(async (body: { exercises?: ActiveLearningExercise[] }) => {
-        if (cancelled) return;
-        const exercises = body.exercises ?? [];
-        const isActive = exercises.some((exercise) => {
-          if (exerciseIdParam && exercise.id) return exercise.id === exerciseIdParam;
-          if (exercise.subject !== subject) return false;
-          if (subject === 'matemaatika') {
-            if (learner === 'kirsi') return exercise.topic === topic && exercise.category === categoryParam;
-            return exercise.topic === topic;
-          }
-          return exercise.topic === topic || exercise.category === categoryParam;
-        });
-        if (cancelled) return;
-        setExerciseAvailability(isActive ? 'allowed' : 'blocked');
-      })
-      .catch(async () => {
-        if (cancelled) return;
-        const permitted = await isExercisePermittedOffline(learnerId, { exerciseId: exerciseIdParam, subject, topic, category: categoryParam }).catch(() => false);
-        if (cancelled) return;
-        setExerciseAvailability(permitted ? 'allowed' : 'blocked');
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [categoryParam, exerciseIdParam, learner, subject, topic]);
+  // Only the catalogue-managed subjects are gated; anything else is allowed.
+  const exerciseActive = useExerciseActive({
+    learner: learnerId,
+    enabled: subject === 'matemaatika' || subject === 'inglise-keel' || subject === 'lugemine',
+    exerciseId: exerciseIdParam,
+    subject,
+    topic,
+    category: categoryParam,
+    isActive: (body) => (body.exercises ?? []).some((exercise) => {
+      if (exerciseIdParam && exercise.id) return exercise.id === exerciseIdParam;
+      if (exercise.subject !== subject) return false;
+      if (subject === 'matemaatika') {
+        if (learner === 'kirsi') return exercise.topic === topic && exercise.category === categoryParam;
+        return exercise.topic === topic;
+      }
+      return exercise.topic === topic || exercise.category === categoryParam;
+    })
+  });
+  const exerciseAvailability = exerciseActive === null ? 'loading' : exerciseActive ? 'allowed' : 'blocked';
 
   useEffect(() => {
     if (exerciseAvailability === 'loading' || sessionReady) return;
@@ -185,15 +147,7 @@ function TestPageContent() {
         const state = existing.runnerState;
         startedAtRef.current = existing.startedAt;
         exerciseIdRef.current = existing.exerciseId;
-        contractRef.current = {
-          catalogueVersion: existing.catalogueVersion ?? '',
-          rewardPolicyVersion: existing.rewardPolicyVersion ?? 'legacy-v1',
-          generatorVersion: existing.generatorVersion,
-          runnerVersion: existing.runnerVersion,
-          algorithmVersion: existing.rotationVersion ?? 1,
-          rotationVersion: existing.rotationVersion ?? 1,
-          dailyLimit: 0
-        };
+        contractRef.current = contractFromSession(existing);
         generatorVersionRef.current = existing.generatorVersion;
         setQuestions(stored);
         setOptionOrder((existing.optionOrder ?? null) as MathOptionOrder | null);
@@ -227,24 +181,18 @@ function TestPageContent() {
       if (!capability) throw new Error('Matemaatikaharjutuse võrguühenduseta leping puudub.');
       const currentVersion = capability.generatorVersion;
       if (!isSupportedMathGeneratorVersion(currentVersion)) throw new Error('Matemaatikaharjutuse küsimuste versioon ei ole toetatud.');
-      const generated = isKirsiMath ? generateKirsiSession(categoryParam as never, count, seed, currentVersion) : generateKiurMathSession(topic, categoryParam, difficulty, count, seed, currentVersion);
+      // Only the learner's own generator loads, and only for a new run (a
+      // precached chunk offline): Kiur's carries his text-problem bank.
+      const generated = isKirsiMath
+        ? (await import('@/lib/exercises/kirsiMath')).generateKirsiSession(categoryParam as never, count, seed, currentVersion)
+        : (await import('@/lib/exercises/kiurMath')).generateKiurMathSession(topic, categoryParam, difficulty, count, seed, currentVersion);
       const emptyAnswers = Array(generated.length).fill('');
       const emptyOrdering = Array.from({ length: generated.length }, () => [] as string[]);
       const beganAt = new Date().toISOString();
-
-      // One-release migration for the legacy v2 math session. Its exact question
-      // payload is preserved under the newly minted UUID before the old key is
-      // removed. Those questions predate generator versions, so they are v1 and
-      // keep their generated option order.
-      const legacy = await getSession(legacySessionId).catch(() => undefined);
-      const isLegacyRestore = Boolean(legacy?.questionsPayload && Array.isArray(legacy.questionsPayload));
-      const restoredQuestions = isLegacyRestore ? legacy!.questionsPayload as GeneratedQuestion[] : generated;
-      const sessionGeneratorVersion = isLegacyRestore ? MATH_GENERATOR_VERSION_V1 : currentVersion;
-      const restoredOptionOrder = isLegacyRestore ? null : buildMathOptionOrder(restoredQuestions, seed);
       const initialState: MathRunnerState = {
-        answers: legacy?.answers?.length === restoredQuestions.length ? legacy.answers : emptyAnswers,
-        orderingAnswers: legacy?.orderingAnswers?.length === restoredQuestions.length ? legacy.orderingAnswers : emptyOrdering,
-        choiceAnswers: legacy?.choiceAnswers?.length === restoredQuestions.length ? legacy.choiceAnswers : emptyAnswers,
+        answers: emptyAnswers,
+        orderingAnswers: emptyOrdering,
+        choiceAnswers: emptyAnswers,
         countingFeedback: null,
         textFeedback: null,
         showStopConfirm: false
@@ -258,20 +206,19 @@ function TestPageContent() {
         topic,
         category: categoryParam,
         seed,
-        questions: restoredQuestions,
-        optionOrder: restoredOptionOrder,
+        questions: generated,
+        optionOrder: buildMathOptionOrder(generated, seed),
         answers: initialState.answers,
-        currentIndex: legacy?.currentIndex ?? 0,
+        currentIndex: 0,
         currentPhase: 'question',
         runnerState: initialState,
         catalogueVersion: contract?.catalogueVersion ?? null,
         rewardPolicyVersion: contract?.rewardPolicyVersion ?? 'legacy-v1',
-        generatorVersion: sessionGeneratorVersion,
+        generatorVersion: currentVersion,
         runnerVersion: capability.runnerVersion,
         rotationVersion: capability.rotationVersion,
-        startedAt: legacy?.startedAt ?? beganAt
+        startedAt: beganAt
       });
-      if (legacy) await clearSession(legacySessionId);
       if (cancelled) return;
       contractRef.current = contract;
       generatorVersionRef.current = created.generatorVersion;
@@ -283,7 +230,7 @@ function TestPageContent() {
       setChoiceAnswers(initialState.choiceAnswers);
       setOrderingAnswers(initialState.orderingAnswers);
       setIndex(created.currentIndex);
-      setElapsed(legacy?.elapsedSeconds ?? 0);
+      setElapsed(0);
       setError('');
       setIsSaving(false);
       setSaveError('');
@@ -295,21 +242,21 @@ function TestPageContent() {
       if (!cancelled) setStorageError(runnerStorageFailure(cause).message);
     });
     return () => { cancelled = true; };
-  }, [categoryParam, count, difficulty, exerciseAvailability, exerciseIdParam, isKirsiMath, learnerId, legacySessionId, seed, sessionReady, subject, topic]);
+  }, [categoryParam, count, difficulty, exerciseAvailability, exerciseIdParam, isKirsiMath, learnerId, seed, sessionReady, subject, topic]);
 
-  snapshotRef.current = {
+  const snapshotRef = useRunnerAutosave<MathSession>({
     currentIndex: index,
     currentPhase: countingFeedback || textFeedback ? 'feedback' : 'question',
     answers,
     activeElapsedMs: elapsed * 1000,
     runnerState: { answers, orderingAnswers, choiceAnswers, countingFeedback, textFeedback, showStopConfirm },
     status: storageError ? 'paused' : isSaving ? 'finalizing' : 'active'
-  };
-
-  useEffect(() => {
-    if (!sessionReady || !runId || !questions.length || isSaving || storageError) return;
-    void patchRunnerSession<MathSession>(runId, snapshotRef.current).catch((cause) => setStorageError(runnerStorageFailure(cause).message));
-  }, [answers, choiceAnswers, countingFeedback, index, isSaving, orderingAnswers, questions.length, runId, sessionReady, showStopConfirm, storageError, textFeedback]);
+  }, {
+    enabled: sessionReady && Boolean(questions.length) && !isSaving && !storageError,
+    runId,
+    setStorageError,
+    changes: [answers, choiceAnswers, countingFeedback, index, isSaving, orderingAnswers, questions.length, runId, sessionReady, showStopConfirm, storageError, textFeedback]
+  });
 
   useVisibleElapsedTimer(Boolean(questions.length && sessionReady && !isSaving && !storageError), setElapsed);
   useRunnerCheckpoint<MathSession>({ enabled: sessionReady && !isSaving, runId, snapshotRef, setStorageError });
@@ -354,7 +301,7 @@ function TestPageContent() {
     setError('');
   };
 
-  if (storageError) return <main className='test-page'><section className='test-shell'><section className='question-card' role='alert'><h2>Harjutus on peatatud</h2><p>{storageError}</p><button type='button' className='next-button' onClick={() => window.location.reload()}>Proovi salvestust uuesti</button><button type='button' className='stop-button' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
+  if (storageError) return <RunnerPausedScreen variant='test' message={storageError} backHref={baseSelectionUrl} />;
   if (exerciseAvailability === 'loading' || !sessionReady) return <main className='test-page'><section className='test-shell'><section className='question-card'>Taastan harjutust...</section></section></main>;
   if (exerciseAvailability === 'blocked' && !questions.length) return <main className='test-page'><section className='test-shell'><section className='question-card'><h2>Harjutus ei ole saadaval</h2><p>See harjutus ei ole praegu aktiivne.</p><button type='button' className='btn' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
   if (!current) return <main className='test-page'><section className='test-shell'><section className='question-card'><h2>Harjutus ei ole saadaval</h2><p>Valitud teemat ei leitud.</p><button type='button' className='btn' onClick={() => router.push(baseSelectionUrl)}>Tagasi</button></section></section></main>;
@@ -417,25 +364,17 @@ function TestPageContent() {
       // Local-first: save to IndexedDB and clear the session BEFORE any network,
       // then best-effort sync. The result shows immediately, online or off.
       if (!runId) throw new Error('Harjutuse jooksu ID puudub.');
-      const contract = contractRef.current;
-      const capability = getOfflineRunnerCapability('math');
-      if (!contract || !capability) throw new Error('Harjutuse võrguühenduseta leping puudub.');
       const outcome = await finalizeRunnerSession({
+        ...runnerFinalizeContract('math', contractRef.current, generatorVersionRef.current),
         runId,
         seed,
-        runnerId: capability.runnerId,
         questionIds: questions.map((question) => question.id),
-        rewardPolicyVersion: contract.rewardPolicyVersion,
-        generatorVersion: generatorVersionRef.current ?? capability.generatorVersion,
-        runnerVersion: capability.runnerVersion,
-        rotationVersion: capability.rotationVersion,
         learner: learnerId,
         subject: subject || null,
         topic,
         category: categoryParam,
         difficulty: 'Lihtne',
         exerciseId: exerciseIdRef.current,
-        catalogueVersion: contract.catalogueVersion,
         startedAt: startedAtRef.current,
         questionCount: results.length,
         score,

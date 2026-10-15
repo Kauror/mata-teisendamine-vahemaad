@@ -15,16 +15,17 @@ import {
   finalizeRunnerSession,
   getCatalogueContract,
   getLocalAttempt,
-  isExercisePermittedOffline,
   isRunId,
   loadRunnerSession,
-  patchRunnerSession,
   runnerStorageFailure
 } from '@/lib/offline/api';
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
-import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
+import { useRunnerAutosave, useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
+import { useExerciseActive } from '@/lib/offline/useExerciseActive';
+import { contractFromSession, runnerFinalizeContract } from '@/lib/offline/runnerContract';
+import RunnerPausedScreen from '@/lib/offline/RunnerPausedScreen';
 
 type ReviewItem = {
   taskId: string;
@@ -89,7 +90,6 @@ export default function KirsiPictureWordSprintPage() {
   const [reward, setReward] = useState<SprintReward>(null);
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
-  const [exerciseActive, setExerciseActive] = useState<boolean | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [storageError, setStorageError] = useState('');
   const [boardState, setBoardState] = useState<PictureWordSprintBoardState>({ boardKey: '', selectedPictureId: null, selectedWordId: null, completedIds: [] });
@@ -97,28 +97,13 @@ export default function KirsiPictureWordSprintPage() {
   const startedAtRef = useRef(new Date().toISOString());
   const endedRef = useRef(false);
   const savedHistoryRef = useRef(false);
-  const snapshotRef = useRef<Partial<PictureWordSession>>({});
   const contractRef = useRef<CatalogueContract | null>(null);
   // A double tap on "Alusta" must not start two runs for the same run id.
   const startingRef = useRef(false);
 
   const boardPairs = useMemo(() => buildBoardPairs(pairPool, runSeedRef.current, boardIndex), [boardIndex, pairPool]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void fetch('/api/learning-exercises/active?learner=kirsi')
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((body: { exerciseIds?: string[] }) => {
-        if (!cancelled) setExerciseActive(Boolean(body.exerciseIds?.includes('kirsi.reading.pilt-ja-sona')));
-      })
-      .catch(async () => {
-        const permitted = await isExercisePermittedOffline('kirsi', { exerciseId: 'kirsi.reading.pilt-ja-sona', subject: 'lugemine', topic: 'pilt-ja-sona', category: 'Lugemine - pilt ja sõna' }).catch(() => false);
-        if (!cancelled) setExerciseActive(permitted);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const exerciseActive = useExerciseActive({ learner: 'kirsi', exerciseId: 'kirsi.reading.pilt-ja-sona', subject: 'lugemine', topic: 'pilt-ja-sona', category: 'Lugemine - pilt ja sõna' });
 
   useEffect(() => {
     void fetchBestKirsiReadingSprintScore()
@@ -146,15 +131,7 @@ export default function KirsiPictureWordSprintPage() {
       const state = existing.runnerState;
       runSeedRef.current = Number(existing.seed);
       startedAtRef.current = existing.startedAt;
-      contractRef.current = {
-        catalogueVersion: existing.catalogueVersion ?? '',
-        rewardPolicyVersion: existing.rewardPolicyVersion ?? 'legacy-v1',
-        generatorVersion: existing.generatorVersion,
-        runnerVersion: existing.runnerVersion,
-        algorithmVersion: existing.rotationVersion ?? 1,
-        rotationVersion: existing.rotationVersion ?? 1,
-        dailyLimit: 0
-      };
+      contractRef.current = contractFromSession(existing);
       endedRef.current = state.ended;
       setPairPool(existing.questions);
       setStarted(state.started);
@@ -174,19 +151,19 @@ export default function KirsiPictureWordSprintPage() {
     return () => { cancelled = true; };
   }, []);
 
-  snapshotRef.current = {
+  const snapshotRef = useRunnerAutosave<PictureWordSession>({
     currentIndex: boardIndex,
     currentPhase: ended ? 'result' : started ? 'matching' : 'start',
     answers: reviewItems,
     activeElapsedMs: elapsedSeconds * 1000,
     runnerState: { started, score, streak, boardIndex, ended, wrongMatch, reviewItems, showStopConfirm, boardState },
     status: storageError ? 'paused' : 'active'
-  };
-
-  useEffect(() => {
-    if (!sessionReady || !runId || !started || ended || savedHistoryRef.current || storageError) return;
-    void patchRunnerSession<PictureWordSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
-  }, [boardIndex, boardState, ended, reviewItems, runId, score, sessionReady, showStopConfirm, started, storageError, streak, wrongMatch]);
+  }, {
+    enabled: sessionReady && started && !ended && !savedHistoryRef.current && !storageError,
+    runId,
+    setStorageError,
+    changes: [boardIndex, boardState, ended, reviewItems, runId, score, sessionReady, showStopConfirm, started, storageError, streak, wrongMatch]
+  });
 
   useVisibleElapsedTimer(started && !ended && !storageError, setElapsedSeconds);
   useRunnerCheckpoint<PictureWordSession>({ enabled: sessionReady && started && !ended, runId, snapshotRef, setStorageError });
@@ -203,25 +180,17 @@ export default function KirsiPictureWordSprintPage() {
     }
 
     void (async () => {
-      const contract = contractRef.current;
-      const capability = getOfflineRunnerCapability('kirsi-picture-word');
-      if (!contract || !capability) throw new Error('Harjutuse võrguühenduseta leping puudub.');
       const outcome = await finalizeRunnerSession({
+        ...runnerFinalizeContract('kirsi-picture-word', contractRef.current),
         runId,
         seed: runSeedRef.current,
-        runnerId: capability.runnerId,
         questionIds: reviewItems.map((item) => item.taskId),
-        rewardPolicyVersion: contract.rewardPolicyVersion,
-        generatorVersion: capability.generatorVersion,
-        runnerVersion: capability.runnerVersion,
-        rotationVersion: capability.rotationVersion,
         learner: 'kirsi',
         subject: 'lugemine',
         topic: 'pilt-ja-sona',
         category: 'Lugemine - pilt ja sõna',
         difficulty: 'Sprint',
         exerciseId: 'kirsi.reading.pilt-ja-sona',
-        catalogueVersion: contract.catalogueVersion,
         startedAt: startedAtRef.current,
         questionCount: score + 1,
         score,
@@ -333,16 +302,7 @@ export default function KirsiPictureWordSprintPage() {
   };
 
   if (storageError) {
-    return (
-      <main className='container english-page reading-page'>
-        <section className='practice-shell english-shell reading-intro-shell' role='alert'>
-          <h1>Harjutus on peatatud</h1>
-          <p>{storageError}</p>
-          <button type='button' className='start-button' onClick={() => window.location.reload()}>Proovi salvestust uuesti</button>
-          <Link className='practice-back-button' href='/kirsi'>Tagasi harjutuste juurde</Link>
-        </section>
-      </main>
-    );
+    return <RunnerPausedScreen variant='practice' mainClassName='container english-page reading-page' shellClassName='practice-shell english-shell reading-intro-shell' message={storageError} backHref='/kirsi' />;
   }
 
   if (exerciseActive === null || !sessionReady) {

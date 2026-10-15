@@ -19,8 +19,10 @@ export type ScienceChoice = {
 type ScienceTaskBase = {
   id: string;
   subject: 'loodusopetus';
-  targetLearner: 'kiur';
-  gradeBand: string;
+  // targetLearner, gradeBand and interactiveIdea are authoring fields: the
+  // runner's lighter copy of the pool (./runnerTasks) leaves them out.
+  targetLearner?: 'kiur';
+  gradeBand?: string;
   topic: string;
   difficulty: ScienceDifficulty;
   title: string;

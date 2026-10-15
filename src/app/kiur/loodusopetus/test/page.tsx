@@ -4,8 +4,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatElapsed } from '@/lib/validation';
 import { seededRng, shuffleWithRng } from '@/lib/random';
-import { cleanScienceAnswer as cleanAnswer, isScienceSessionSize, pickScienceSession } from '@/lib/loodusopetus/tasks';
-import { isChoiceTask, type ScienceData, type ScienceTaskType } from '@/lib/loodusopetus/types';
+import { cleanScienceAnswer as cleanAnswer, isScienceSessionSize } from '@/lib/loodusopetus/session';
+import { isChoiceTask, type ScienceData, type ScienceTask, type ScienceTaskType } from '@/lib/loodusopetus/types';
 import { SCIENCE_EYEBROW, ScienceDataPanel } from '@/app/components/science/ScienceTaskPresentation';
 import {
   createRunnerSession,
@@ -14,14 +14,14 @@ import {
   getCatalogueContract,
   getLocalAttempt,
   loadRunnerSession,
-  patchRunnerSession,
   runnerStorageFailure
 } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import type { CatalogueContract } from '@/lib/offline/api';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
-import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
-import { ROTATION_ALGORITHM_VERSION } from '@/lib/shared/types';
+import { useRunnerAutosave, useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
+import { contractFromSession, runnerFinalizeContract } from '@/lib/offline/runnerContract';
+import RunnerPausedScreen from '@/lib/offline/RunnerPausedScreen';
 
 type SavedScienceQuestion = {
   id: string;
@@ -66,7 +66,7 @@ type ScienceDisplayOrder = Record<string, {
   groups?: string[];
 }>;
 
-type ScienceSession = RunnerSessionV3<ReturnType<typeof pickScienceSession>[number], SavedScienceQuestion, ScienceRunnerState, null>;
+type ScienceSession = RunnerSessionV3<ScienceTask, SavedScienceQuestion, ScienceRunnerState, null>;
 
 function hashString(value: string) {
   let hash = 0;
@@ -103,7 +103,7 @@ function ScienceTestContent() {
   const seed = Number(params.get('seed')) || 1;
 
   const [runId, setRunId] = useState<string | null>(null);
-  const [session, setSession] = useState<ReturnType<typeof pickScienceSession>>([]);
+  const [session, setSession] = useState<ScienceTask[]>([]);
   const [displayOrder, setDisplayOrder] = useState<ScienceDisplayOrder>({});
 
   const [index, setIndex] = useState(0);
@@ -120,7 +120,6 @@ function ScienceTestContent() {
   const [storageError, setStorageError] = useState('');
   const [startedAt, setStartedAt] = useState(new Date().toISOString());
   const seedRef = useRef<number | string>(seed);
-  const snapshotRef = useRef<Partial<ScienceSession>>({});
   const contractRef = useRef<CatalogueContract | null>(null);
 
   useEffect(() => {
@@ -128,23 +127,15 @@ function ScienceTestContent() {
     void (async () => {
       const id = ensureRunIdInCurrentUrl();
       setRunId(id);
-      const existing = await loadRunnerSession<ReturnType<typeof pickScienceSession>[number], SavedScienceQuestion, ScienceRunnerState, null>(id);
+      const existing = await loadRunnerSession<ScienceTask, SavedScienceQuestion, ScienceRunnerState, null>(id);
       if (cancelled) return;
       if (existing) {
         if (existing.runnerId !== 'kiur-science') throw new Error('See salvestatud jooks kuulub teisele harjutusele.');
-        contractRef.current = {
-          catalogueVersion: existing.catalogueVersion ?? '',
-          rewardPolicyVersion: existing.rewardPolicyVersion ?? '',
-          generatorVersion: existing.generatorVersion,
-          runnerVersion: existing.runnerVersion,
-          rotationVersion: existing.rotationVersion ?? ROTATION_ALGORITHM_VERSION,
-          algorithmVersion: existing.rotationVersion ?? ROTATION_ALGORITHM_VERSION,
-          dailyLimit: 0
-        };
+        contractRef.current = contractFromSession(existing);
         const state = existing.runnerState;
         seedRef.current = existing.seed ?? seed;
         setStartedAt(existing.startedAt);
-        setSession(existing.questions as ReturnType<typeof pickScienceSession>);
+        setSession(existing.questions);
         setDisplayOrder((existing.optionOrder ?? {}) as ScienceDisplayOrder);
         setIndex(existing.currentIndex);
         setChoiceSel(state.choiceSel);
@@ -160,7 +151,9 @@ function ScienceTestContent() {
         window.location.replace(`/tulemus?clientId=${encodeURIComponent(id)}`);
         return;
       }
-      const questions = pickScienceSession(count, seed);
+      // The task pool loads only for a new run (a precached chunk offline).
+      const { pickRunnerScienceSession } = await import('@/lib/loodusopetus/runnerTasks');
+      const questions = pickRunnerScienceSession(count, seed);
       const order: ScienceDisplayOrder = {};
       for (const task of questions) {
         order[task.id] = {
@@ -174,7 +167,7 @@ function ScienceTestContent() {
       const capability = getOfflineRunnerCapability('kiur-science');
       if (!contract || !capability) throw new Error('Ühenda seade internetiga, et loodusõpetus enne võrguühenduseta kasutamist ette valmistada.');
       const beganAt = new Date().toISOString();
-      await createRunnerSession<ReturnType<typeof pickScienceSession>[number], SavedScienceQuestion, ScienceRunnerState, null>({
+      await createRunnerSession<ScienceTask, SavedScienceQuestion, ScienceRunnerState, null>({
         runId: id,
         learner: 'kiur',
         runnerId: 'kiur-science',
@@ -208,18 +201,18 @@ function ScienceTestContent() {
     return () => { cancelled = true; };
   }, [count, seed]);
 
-  snapshotRef.current = {
+  const snapshotRef = useRunnerAutosave<ScienceSession>({
     currentIndex: index,
     currentPhase: checked[index] ? 'feedback' : 'question',
     activeElapsedMs: elapsed * 1000,
     runnerState: { choiceSel, sortSel, matchSel, checked, showStopConfirm },
     status: storageError ? 'paused' : 'active'
-  };
-
-  useEffect(() => {
-    if (!sessionReady || !runId || isSaving || storageError) return;
-    void patchRunnerSession<ScienceSession>(runId, snapshotRef.current).catch((cause) => setStorageError(runnerStorageFailure(cause).message));
-  }, [checked, choiceSel, index, isSaving, matchSel, runId, sessionReady, showStopConfirm, sortSel, storageError]);
+  }, {
+    enabled: sessionReady && !isSaving && !storageError,
+    runId,
+    setStorageError,
+    changes: [checked, choiceSel, index, isSaving, matchSel, runId, sessionReady, showStopConfirm, sortSel, storageError]
+  });
 
   useVisibleElapsedTimer(Boolean(session.length && sessionReady && !isSaving && !storageError), setElapsed);
   useRunnerCheckpoint<ScienceSession>({ enabled: sessionReady && !isSaving, runId, snapshotRef, setStorageError });
@@ -237,18 +230,7 @@ function ScienceTestContent() {
   const displaySortGroups = useMemo(() => (current?.type === 'sort' ? displayOrder[current.id]?.groups ?? current.groups : []), [current, displayOrder]);
 
   if (storageError) {
-    return (
-      <main className='test-page'>
-        <section className='test-shell'>
-          <section className='question-card' role='alert'>
-            <h2>Harjutus on peatatud</h2>
-            <p>{storageError}</p>
-            <button type='button' className='next-button' onClick={() => window.location.reload()}>Proovi salvestust uuesti</button>
-            <button type='button' className='stop-button' onClick={() => router.push('/kiur')}>Tagasi</button>
-          </section>
-        </section>
-      </main>
-    );
+    return <RunnerPausedScreen variant='test' message={storageError} backHref='/kiur' />;
   }
 
   if (!sessionReady) {
@@ -371,25 +353,17 @@ function ScienceTestContent() {
     try {
       // Local-first save, then best-effort sync under the immutable catalogue
       // grant captured when this permanent runner started.
-      const contract = contractRef.current;
-      const capability = getOfflineRunnerCapability('kiur-science');
-      if (!contract || !capability) throw new Error('Harjutuse kataloogileping puudub.');
       const outcome = await finalizeRunnerSession({
+        ...runnerFinalizeContract('kiur-science', contractRef.current),
         runId,
         seed: seedRef.current,
-        runnerId: capability.runnerId,
         questionIds: session.map((task) => task.id),
-        rewardPolicyVersion: contract.rewardPolicyVersion,
-        generatorVersion: capability.generatorVersion,
-        runnerVersion: capability.runnerVersion,
-        rotationVersion: capability.rotationVersion,
         learner: 'kiur',
         subject: 'loodusopetus',
         topic: 'segaharjutus',
         category: 'Loodusõpetus',
         difficulty: 'segaharjutus',
         exerciseId: 'kiur.science.loodusopetus',
-        catalogueVersion: contract.catalogueVersion,
         startedAt,
         questionCount: session.length,
         score,
