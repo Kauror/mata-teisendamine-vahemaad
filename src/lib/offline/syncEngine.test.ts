@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { closeOfflineDbForTests, OFFLINE_DB_NAME } from '@/lib/offline/db';
 import { attemptRepo, metaRepo, taskActionRepo } from '@/lib/offline/repositories';
 import { SYNC_COMPLETE_EVENT, syncNow, type SyncCompleteDetail } from '@/lib/offline/syncEngine';
+import { withSyncLock } from '@/lib/offline/syncLock';
 import type { LocalAttempt, LocalTaskAction } from '@/lib/offline/records';
 
 async function resetDatabase() {
@@ -195,5 +196,41 @@ describe('sync completion event (OFF-04)', () => {
 
     expect(seen).toHaveLength(1);
     expect(seen[0]).toMatchObject({ reason: 'attempt-complete', outcome: { ok: false, reason: 'auth_blocked' } });
+  });
+});
+
+describe('a completion that meets a running sync', () => {
+  it('waits for the running cycle and pushes as soon as the lock is free', async () => {
+    const fetchMock = mockServer(500);
+    await attemptRepo.put(pendingAttempt());
+    let release: () => void = () => {};
+    let held = false;
+    const running = withSyncLock(() => new Promise<void>((resolve) => { held = true; release = resolve; }));
+    while (!held) await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const completion = syncNow('attempt-complete');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(pushCalls(fetchMock)).toHaveLength(0);
+
+    release();
+    await running;
+    const outcome = await completion;
+    expect(outcome.reason).not.toBe('locked');
+    expect(pushCalls(fetchMock)).toHaveLength(1);
+  });
+
+  it('leaves other reasons to the next trigger', async () => {
+    const fetchMock = mockServer(500);
+    await attemptRepo.put(pendingAttempt());
+    let release: () => void = () => {};
+    let held = false;
+    const running = withSyncLock(() => new Promise<void>((resolve) => { held = true; release = resolve; }));
+    while (!held) await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const outcome = await syncNow('visibility');
+    expect(outcome.reason).toBe('locked');
+    expect(pushCalls(fetchMock)).toHaveLength(0);
+    release();
+    await running;
   });
 });

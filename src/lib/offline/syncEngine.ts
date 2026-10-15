@@ -611,8 +611,19 @@ async function runLockedSync(reason: string): Promise<SyncOutcome> {
 
 // Full push-before-pull cycle guarded by a cross-tab lock. Manual sync bypasses
 // backoff; background/open/visibility triggers respect it.
+// A result saved while another cycle holds the lock would otherwise wait for the
+// next trigger, which can be the 5-minute interval. A completion therefore waits
+// for the running cycle and goes as soon as the lock is free.
+const COMPLETION_REASONS = new Set(['attempt-complete', 'task-complete']);
+export const LOCKED_COMPLETION_RETRY_MS = 750;
+const LOCKED_COMPLETION_RETRY_LIMIT = 40;
+
 export async function syncNow(reason: string): Promise<SyncOutcome> {
-  const outcome = await runLockedSync(reason);
+  let outcome = await runLockedSync(reason);
+  for (let attempt = 0; outcome.reason === 'locked' && COMPLETION_REASONS.has(reason) && attempt < LOCKED_COMPLETION_RETRY_LIMIT; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, LOCKED_COMPLETION_RETRY_MS));
+    outcome = await runLockedSync(reason);
+  }
   announceSyncComplete(reason, outcome);
   return outcome;
 }
