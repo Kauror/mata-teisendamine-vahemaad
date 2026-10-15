@@ -1,20 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { csrfHeaders } from '@/lib/auth/client';
+import { parentFetch } from '@/app/components/parent/parentApi';
 import type { ParentUnitSummary, ParentWordDetail } from '@/lib/server/vocabulary/overview';
 import type { ImportCell, ImportMapping, ImportMode, ImportPlan, ImportTable } from '@/lib/vocabulary/importPlan';
 
 // "Inglise keele sõnavara" inside the parent hub: import textbook words from a
 // spreadsheet, publish and unlock units, and follow Kiur's progress per unit
-// and per word. Every request carries the parent CSRF token.
-
-function fetch(input: RequestInfo | URL, init: RequestInit = {}) {
-  return globalThis.fetch(input, { ...init, headers: csrfHeaders(init.headers, 'parent_csrf') });
-}
+// and per word. Every request goes through the shared parent wrapper (CSRF
+// token, 401 back to the login form).
 
 async function request<T>(input: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(input, init);
+  const response = await parentFetch(input, init);
   const body = await response.json().catch(() => ({})) as T & { message?: string };
   if (!response.ok) throw new Error(body.message || 'Päring ebaõnnestus.');
   return body;
@@ -469,7 +466,7 @@ function UnitRow({ unit, onChanged, setError, setNotice }: { unit: ParentUnitSum
   );
 }
 
-export default function ParentEnglishVocabulary({ setNotice, setError, onSummary }: { setNotice: (value: string) => void; setError: (value: string) => void; onSummary?: (summary: string) => void }) {
+export default function ParentEnglishVocabulary({ setNotice, setError }: { setNotice: (value: string) => void; setError: (value: string) => void }) {
   const [units, setUnits] = useState<ParentUnitSummary[] | null>(null);
   const [unitNumber, setUnitNumber] = useState('');
   const [title, setTitle] = useState('');
@@ -480,12 +477,6 @@ export default function ParentEnglishVocabulary({ setNotice, setError, onSummary
       .catch((error: Error) => setError(error.message));
   }, [setError]);
   useEffect(load, [load]);
-
-  useEffect(() => {
-    if (!units || !onSummary) return;
-    const published = units.filter((unit) => unit.published).length;
-    onSummary(`${units.length} ${unitWord(units.length)} · avaldatud ${published}`);
-  }, [onSummary, units]);
 
   const create = async (event: FormEvent) => {
     event.preventDefault();
