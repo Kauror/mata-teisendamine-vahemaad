@@ -6,9 +6,10 @@ import type { Learner } from '@/lib/shared/types';
 import {
   formatClock,
   hasMoreToday,
-  isSchoolDate,
   nowState,
   scheduleFor,
+  schoolStartHint,
+  showSchoolCard,
   type AppClock
 } from '@/lib/schoolTimetable';
 
@@ -43,47 +44,53 @@ function ChildNowRow({ learner, name, avatar, accent, clock }: { learner: Learne
     word = 'Kodus';
   }
 
+  const hint = state.kind === 'home' ? schoolStartHint(learner, clock) : null;
+  const busy = state.kind === 'lesson' || state.kind === 'club';
+
   return (
     <div className='school-now-row' data-accent={accent} aria-label={name} role='group'>
       <span className='school-now-avatar' aria-hidden>{avatar}</span>
-      <div className='school-now-main'>
-        <div className='school-now-top'>
-          <span className='school-pill' data-state={state.kind}><span aria-hidden>{icon}</span><span className={showWord ? undefined : 'sr-only'}>{word}</span></span>
-          {(state.kind === 'lesson' || state.kind === 'club') && <strong className='school-now-what'>{state.item.name}</strong>}
-        </div>
-        {(state.kind === 'lesson' || state.kind === 'club') && (
-          <>
-            <span className='school-bar' aria-hidden><span style={{ width: `${state.progress}%` }} /></span>
-            <span className='school-now-time'>{formatClock(state.item.start)}–{formatClock(state.item.end)} · veel {state.minutesLeft} min</span>
-          </>
-        )}
+      <div className='school-now-state'>
+        <span className='school-pill' data-state={state.kind}><span aria-hidden>{icon}</span><span className={showWord ? undefined : 'sr-only'}>{word}</span></span>
         {more && (
           <button type='button' className='school-now-toggle' aria-expanded={open} aria-controls={listId} onClick={() => setOpen((value) => !value)}>
             {open ? 'Peida ▴' : 'tunniplaan ▾'}
           </button>
         )}
-        {more && open && (
-          <ul className='school-now-list' id={listId} aria-label={`${name} täna`}>
-            {scheduleFor(learner, clock.weekday).map((item) => {
-              const when = clock.minutes >= item.end ? 'past' : clock.minutes >= item.start ? 'now' : 'later';
-              return (
-                <li key={`${item.kind}-${item.start}`} data-when={when} data-kind={item.kind} aria-current={when === 'now' ? 'time' : undefined}>
-                  <span>{formatClock(item.start)}–{formatClock(item.end)}</span>
-                  <span>{item.name}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
       </div>
+      {busy && (
+        <div className='school-now-detail'>
+          <strong className='school-now-what'>{state.item.name}</strong>
+          <span className='school-now-time'>{formatClock(state.item.start)}–{formatClock(state.item.end)} · veel {state.minutesLeft} min</span>
+        </div>
+      )}
+      {hint && (
+        <div className='school-now-detail'>
+          <span className='school-now-time'>Kool algab {hint.when === 'tomorrow' ? 'homme ' : ''}{formatClock(hint.minutes)}</span>
+        </div>
+      )}
+      {more && open && (
+        <ul className='school-now-list' id={listId} aria-label={`${name} täna`}>
+          {scheduleFor(learner, clock.weekday).map((item) => {
+            const when = clock.minutes >= item.end ? 'past' : clock.minutes >= item.start ? 'now' : 'later';
+            return (
+              <li key={`${item.kind}-${item.start}`} data-when={when} data-kind={item.kind} aria-current={when === 'now' ? 'time' : undefined}>
+                <span>{formatClock(item.start)}–{formatClock(item.end)}</span>
+                <span>{item.name}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
 
-// Where the children are right now. Only on school days.
+// Where the children are right now. On school days, and from the evening
+// before one (Sunday, the last day of a holiday) to say when school starts.
 export default function SchoolNowCard() {
   const clock = useAppClock();
-  if (!clock || !isSchoolDate(clock.date)) return null;
+  if (!clock || !showSchoolCard(clock)) return null;
 
   return (
     <section className='school-now-card' aria-label='Lapsed koolis'>

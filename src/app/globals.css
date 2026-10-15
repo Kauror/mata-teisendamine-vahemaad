@@ -104,7 +104,6 @@
   --school-break-soft:#fffbeb; --school-break-ink:#b45309; --school-break-line:#fcd34d;
   --school-club-soft:#f5f3ff; --school-club-ink:#5b21b6;
   --school-home-soft:#f1f5f9; --school-home-ink:#475569;
-  --school-bar-track:rgba(15,23,42,.06);
   --school-line:rgba(30,64,175,.08);
   --school-muted:#94a3b8;
   --school-bring-bg:#fffdf3; --school-bring-border:#fde68a;
@@ -1192,28 +1191,30 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .timetable-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 12px;border-radius:10px;background:#fff;color:var(--learner,#1d4ed8);font-size:13px;font-weight:800;text-decoration:none;box-shadow:inset 0 0 0 2px var(--learner-soft-2,#bfdbfe)}
 .timetable-button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
 
-/* Home: where the children are right now. Only rendered on school days. */
-.school-now-card{background:#fff;border-radius:20px;padding:4px 12px;border:var(--card-border);box-shadow:var(--card-shadow);display:grid}
-.school-now-row{display:grid;grid-template-columns:36px 1fr;gap:9px;padding:9px 0;align-items:start}
+/* Home: where the children are right now. On school days, and from the
+   evening before one. One row per child: avatar | pill over the toggle |
+   divider | what is on and until when. Fits a 375px phone. */
+.school-now-card{background:#fff;border-radius:20px;padding:2px 12px;border:var(--card-border);box-shadow:var(--card-shadow);display:grid;min-width:0}
+.school-now-row{display:grid;grid-template-columns:40px auto minmax(0,1fr);column-gap:10px;row-gap:6px;padding:8px 0;align-items:center;min-width:0}
 .school-now-row+.school-now-row{border-top:1px solid var(--school-line)}
-.school-now-avatar{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:linear-gradient(180deg,var(--learner-soft),var(--learner-soft-2))}
-.school-now-main{display:grid;gap:4px;min-width:0}
-.school-now-top{display:flex;align-items:center;gap:8px;min-width:0;min-height:36px}
-.school-now-what{font-size:16px;font-weight:900;color:#0b1b45;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.school-now-time{font-size:12.5px;font-weight:700;color:#64748b;font-variant-numeric:tabular-nums}
+.school-now-avatar{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:22px;background:linear-gradient(180deg,var(--learner-soft),var(--learner-soft-2))}
+.school-now-state{display:grid;justify-items:start;gap:2px}
+.school-now-detail{display:grid;gap:1px;min-width:0;padding-left:10px;border-left:1px solid var(--school-line)}
+.school-now-what{font-size:15px;font-weight:900;line-height:1.25;color:#0b1b45;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.school-now-time{font-size:11.5px;font-weight:700;color:#64748b;font-variant-numeric:tabular-nums;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .school-pill{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;border-radius:999px;padding:3px 9px;white-space:nowrap}
 .school-pill[data-state="lesson"]{background:var(--school-now-soft);color:var(--school-now-ink)}
 .school-pill[data-state="break"]{background:var(--school-break-soft);color:var(--school-break-ink);box-shadow:inset 0 0 0 1px var(--school-break-line)}
 .school-pill[data-state="club"]{background:var(--school-club-soft);color:var(--school-club-ink)}
 .school-pill[data-state="home"]{background:var(--school-home-soft);color:var(--school-home-ink)}
-.school-bar{display:block;height:6px;background:var(--school-bar-track);border-radius:99px;overflow:hidden}
-.school-bar>span{display:block;height:100%;background:var(--school-now);border-radius:99px}
 /* 26px tall + 9px each side = 44px. */
-.school-now-toggle{position:relative;width:fit-content;min-height:26px;padding:0;border:0;background:none;box-shadow:none;color:var(--learner,#1d4ed8);font-size:12px;font-weight:800;cursor:pointer}
+.school-now-toggle{position:relative;width:fit-content;min-height:26px;padding:0 2px;border:0;background:none;box-shadow:none;color:var(--learner,#1d4ed8);font-size:12px;font-weight:800;white-space:nowrap;cursor:pointer}
 .school-now-toggle::after{content:'';position:absolute;inset:-9px -6px}
 .school-now-toggle:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px;border-radius:6px}
-.school-now-list{list-style:none;margin:0;padding:0;display:grid;gap:1px}
-.school-now-list li{display:grid;grid-template-columns:82px 1fr;gap:6px;font-size:12.5px;font-weight:700;color:#334155;padding:2px 0;font-variant-numeric:tabular-nums}
+/* Today's list sits under the text, not under the avatar. */
+.school-now-list{grid-column:2/-1;list-style:none;margin:0;padding:0;display:grid;gap:1px;min-width:0}
+.school-now-list li{display:grid;grid-template-columns:82px minmax(0,1fr);gap:6px;font-size:12.5px;font-weight:700;color:#334155;padding:2px 0;font-variant-numeric:tabular-nums}
+.school-now-list li>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .school-now-list li>span:first-child{color:var(--school-muted)}
 .school-now-list li[data-when="past"],.school-now-list li[data-when="past"]>span:first-child{color:var(--school-muted)}
 .school-now-list li[data-when="now"],.school-now-list li[data-when="now"]>span:first-child{color:var(--school-now-ink)}
