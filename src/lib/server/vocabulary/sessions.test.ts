@@ -122,6 +122,7 @@ describe('vocabulary sessions', () => {
     expect(passed.test?.firstRound).toMatchObject({ correct: 16, total: 20, percent: 80 });
     expect(passed.test?.lastRound).toMatchObject({ correct: 20, passed: true });
     expect(passed.nextUnit).toMatchObject({ id: second.id });
+    expect(passed.nextUnitOpened).toBe(true);
     expect(passed.reward?.awardedAmount).toBe(1);
     expect(getBalance(LEARNER)).toBe(balanceBefore + 1);
 
@@ -330,5 +331,49 @@ describe('parent unit administration', () => {
     // Re-importing the same file changes nothing.
     const again = previewImport(parsed, 'merge');
     expect(again.plan.totals).toMatchObject({ new: 0, updated: 0, unchanged: 3 });
+  });
+});
+
+describe('what a pass tells the child and the parent', () => {
+  it('says a unit opened only when this pass opened it', () => {
+    const first = unitWithWords(3, 2);
+    const second = unitWithWords(4, 2);
+    finishStudy(first.id);
+    const firstPass = playTest(first.id, 0);
+    expect(firstPass).toMatchObject({ nextUnit: { id: second.id }, nextUnitOpened: true, allUnitsPassed: false });
+
+    // A repeat pass opens nothing: the next unit is only "next".
+    const repeat = playTest(first.id, 0);
+    expect(repeat).toMatchObject({ nextUnit: { id: second.id }, nextUnitOpened: false });
+  });
+
+  it('does not claim the next unit opened when the parent had already opened it by hand', () => {
+    const first = unitWithWords(3, 2);
+    const second = unitWithWords(4, 2);
+    setManualUnlock(LEARNER, second.id, true);
+    finishStudy(first.id);
+    expect(playTest(first.id, 0)).toMatchObject({ nextUnit: { id: second.id }, nextUnitOpened: false });
+  });
+
+  it('reports every visible unit passed without revealing the unpublished next unit', () => {
+    const first = unitWithWords(3, 2);
+    const hidden = unitWithWords(4, 2, false);
+    finishStudy(first.id);
+    const passed = playTest(first.id, 0);
+    expect(passed).toMatchObject({ nextUnit: null, nextUnitOpened: false, allUnitsPassed: true });
+    expect(getChildVocabularyHome(LEARNER).units.map((card) => card.id)).toEqual([first.id]);
+
+    const parent = getParentVocabularyOverview(LEARNER).units;
+    expect(parent.find((unit) => unit.id === hidden.id)).toMatchObject({ accessReason: 'unpublished', waitingForPublish: { passedUnitLabel: 'Unit 3 — Teema 3' } });
+    expect(parent.find((unit) => unit.id === first.id)?.waitingForPublish).toBeNull();
+  });
+
+  it('flags nothing as waiting while the last visible unit is not passed', () => {
+    unitWithWords(3, 2);
+    const second = unitWithWords(4, 2);
+    const hidden = unitWithWords(5, 2, false);
+    const parent = getParentVocabularyOverview(LEARNER).units;
+    expect(parent.find((unit) => unit.id === hidden.id)?.waitingForPublish).toBeNull();
+    expect(parent.find((unit) => unit.id === second.id)).toMatchObject({ accessReason: 'locked', previousUnitNumber: 3 });
   });
 });

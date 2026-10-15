@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import db from '@/lib/db';
 import { nowIso, type Learner } from '@/lib/tasks';
-import { computeUnitAccess, type UnitAccess } from '@/lib/vocabulary/unlock';
+import { computeUnitAccess, type UnitAccess, type UnitAccessInput } from '@/lib/vocabulary/unlock';
 import {
   IMPORT_LIMITS,
   planImport,
@@ -139,7 +139,13 @@ export function unstudiedWordIds(row: ProgressRow | undefined, activeIds: readon
 // Access for every unit, from current data. A unit without words is treated as
 // unpublished for the child: there is nothing in it to study.
 export function unitAccessFor(learner: Learner, units = listUnits(), counts = activeWordCounts(), progress = progressRows(learner), wordIds = activeWordIdsByUnit()): Map<string, UnitAccess> {
-  return computeUnitAccess(units.map((unit) => {
+  return computeUnitAccess(unitAccessInputs(learner, units, counts, progress, wordIds));
+}
+
+// The raw inputs of the access rules, for callers that need to ask "what if"
+// (e.g. what a pass opened) rather than just the current answer.
+export function unitAccessInputs(learner: Learner, units = listUnits(), counts = activeWordCounts(), progress = progressRows(learner), wordIds = activeWordIdsByUnit()): UnitAccessInput[] {
+  return units.map((unit) => {
     const row = progress.get(unit.id);
     return {
       id: unit.id,
@@ -149,7 +155,7 @@ export function unitAccessFor(learner: Learner, units = listUnits(), counts = ac
       studyCompleted: Boolean(row?.studyCompletedAt) && unstudiedWordIds(row, wordIds.get(unit.id) ?? []).length === 0,
       testPassed: Boolean(row?.testPassedAt)
     };
-  }));
+  });
 }
 
 function unitHasHistory(unitId: string) {

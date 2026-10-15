@@ -428,6 +428,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .parent-task-form{grid-template-columns:repeat(2,minmax(0,1fr));align-items:flex-end}.parent-task-form button[type='submit']{grid-column:1/-1}
 .parent-checkbox{display:flex!important;align-items:center;gap:10px;min-height:48px}.parent-checkbox input{width:22px;height:22px;min-height:0}
 .weekday-picker{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.parent-form-fieldset{display:contents;margin:0;padding:0;border:0;min-width:0}
 .parent-action-row{display:flex;gap:8px;flex-wrap:wrap}.parent-action-row button[type='submit']{flex:1}
 .parent-adjust-card{gap:12px}
 .parent-adjust-controls{display:flex;gap:10px;align-items:flex-end}
@@ -1151,6 +1152,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 /* Parent: Inglise keele sõnavara. */
 .vocab-admin{display:grid;gap:12px}
 .vocab-admin-unit{display:grid;gap:8px;padding:12px;border-radius:16px;border:1px solid var(--card-border-colour);background:#fff}
+.vocab-admin-unit[data-waiting="true"]{border-color:var(--vocab-unknown-border);background:var(--vocab-unknown-bg)}
+.vocab-admin-waiting{margin:0;color:var(--vocab-unknown-ink);font-weight:800}
 .vocab-admin-unit-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
 .vocab-admin-unit-head strong{font-size:16px;color:var(--vocab-ink)}
 .vocab-admin-chips{display:flex;flex-wrap:wrap;gap:6px}

@@ -5,6 +5,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
 import { starWord } from '@/lib/history';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
+import { readPeekMode } from '@/app/components/usePeekMode';
+import { PEEK_READ_ONLY_ACTION_MESSAGE } from '@/lib/peekMode';
+
+// Buying, freezes and gifts spend the child's stars, so a peeking parent is
+// stopped before the request (the server refuses it as well).
+function refusedWhilePeeking(setError: (message: string) => void) {
+  if (!readPeekMode()) return false;
+  setError(PEEK_READ_ONLY_ACTION_MESSAGE);
+  return true;
+}
 
 type Learner = 'kiur' | 'kirsi';
 
@@ -86,6 +96,10 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
 
   const buy = async () => {
     if (!confirmItem) return;
+    if (refusedWhilePeeking(setError)) {
+      setConfirmItem(null);
+      return;
+    }
     if (!online) {
       setConfirmItem(null);
       setError('Ostu ei saadetud. Ostu tegemiseks taasta internetiühendus.');
@@ -112,6 +126,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
   };
 
   const buyFreeze = async () => {
+    if (refusedWhilePeeking(setError)) return;
     if (!online) {
       setError('Ostu ei saadetud. Ostu tegemiseks taasta internetiühendus.');
       return;
@@ -136,6 +151,10 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
   };
 
   const sendGift = async () => {
+    if (refusedWhilePeeking(setError)) {
+      setConfirmGift(false);
+      return;
+    }
     if (!online) {
       setConfirmGift(false);
       setError('Kingitust ei saadetud. Kinkimiseks taasta internetiühendus.');

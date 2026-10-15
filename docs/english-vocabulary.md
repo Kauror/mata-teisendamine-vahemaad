@@ -22,7 +22,11 @@ The existing Sprint is unchanged and still linked from that page.
    needs 18/18.
 4. **Completion.** Passing opens the next *published* unit. Completed units
    stay open and can be studied or tested again; the original completion
-   record is never overwritten.
+   record is never overwritten. The passed screen says the next unit "on nüüd
+   avatud" only when this (first) pass opened it; otherwise it names it as
+   "Järgmine". When every visible unit is passed the child sees a neutral line
+   that never mentions unpublished units; the parent sees which hidden unit
+   the child is waiting for (`waitingForPublish`).
 5. **Words added later.** If the parent adds words to a unit after it was
    studied and before its test is passed, the test closes until the child has
    studied just the new words (*Õpi uued sõnad*). A test already under way can

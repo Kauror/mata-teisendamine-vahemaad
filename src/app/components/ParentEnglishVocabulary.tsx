@@ -28,6 +28,21 @@ function unitWord(count: number) {
   return count === 1 ? 'õppetükk' : 'õppetükki';
 }
 
+// Why the child can or cannot open a unit, in the parent's words. Manual
+// opening has no effect on an unpublished unit, so it is never offered as the fix.
+function accessLabel(unit: ParentUnitSummary): { text: string; tone: 'good' | 'muted' | 'warn' } {
+  if (unit.accessReason === 'unpublished') {
+    if (unit.published && unit.wordCount === 0) return { text: 'Lukus: sõnad puuduvad', tone: 'muted' };
+    return { text: 'Lukus: ootab avaldamist', tone: unit.waitingForPublish ? 'warn' : 'muted' };
+  }
+  if (unit.accessReason === 'locked') {
+    return { text: unit.previousUnitNumber !== null ? `Lukus: avaneb pärast Unit ${unit.previousUnitNumber} testi` : 'Lapsele lukus', tone: 'muted' };
+  }
+  if (unit.accessReason === 'first') return { text: 'Lapsele avatud (esimene õppetükk)', tone: 'good' };
+  if (unit.accessReason === 'previous_passed') return { text: `Lapsele avatud (Unit ${unit.previousUnitNumber} läbitud)`, tone: 'good' };
+  return { text: 'Lapsele avatud', tone: 'good' };
+}
+
 function dateLabel(value: string | null) {
   return value ? new Date(value).toLocaleDateString('et-EE', { day: 'numeric', month: 'numeric', year: 'numeric' }) : '–';
 }
@@ -401,15 +416,19 @@ function UnitRow({ unit, onChanged, setError, setNotice }: { unit: ParentUnitSum
     }
   };
 
+  const access = accessLabel(unit);
+  // Manual opening only works on a published unit with words; an existing
+  // manual flag can still be removed.
+  const canUnlockByHand = unit.accessReason !== 'unpublished' || unit.manualUnlock;
   const studyState = unit.studyCompletedAt ? 'Õppimine tehtud' : unit.studyInProgress ? `Õppimine pooleli (${unit.studyInProgress.known}/${unit.studyInProgress.total})` : unit.started ? 'Alustatud' : 'Alustamata';
 
   return (
-    <div className='vocab-admin-unit'>
+    <div className='vocab-admin-unit' data-waiting={unit.waitingForPublish ? 'true' : undefined}>
       <div className='vocab-admin-unit-head'>
         <strong>{unit.label}</strong>
         <div className='vocab-admin-chips'>
           <span className='vocab-admin-chip' data-tone={unit.published ? 'good' : 'muted'}>{unit.published ? 'Avaldatud' : 'Avaldamata'}</span>
-          <span className='vocab-admin-chip' data-tone={unit.accessible ? 'good' : 'muted'}>{unit.accessible ? 'Lapsele avatud' : 'Lapsele lukus'}</span>
+          <span className='vocab-admin-chip' data-tone={access.tone}>{access.text}</span>
           {unit.manualUnlock ? <span className='vocab-admin-chip'>Käsitsi avatud</span> : null}
           <span className='vocab-admin-chip'>{studyState}</span>
           {unit.testUnlocked && !unit.testPassedAt ? <span className='vocab-admin-chip'>Test avatud</span> : null}
@@ -417,6 +436,7 @@ function UnitRow({ unit, onChanged, setError, setNotice }: { unit: ParentUnitSum
           {unit.weakCount ? <span className='vocab-admin-chip' data-tone='warn'>Vajab kordamist: {unit.weakCount}</span> : null}
         </div>
       </div>
+      {unit.waitingForPublish ? <p className='vocab-admin-waiting' role='status'>Kiur on {unit.waitingForPublish.passedUnitLabel} läbinud — avalda {unit.label}, et see avaneks.</p> : null}
       <dl className='vocab-admin-stats'>
         <div><dt>Sõnu</dt><dd>{unit.wordCount}{unit.retiredWordCount ? ` (+${unit.retiredWordCount} peidetud)` : ''}</dd></div>
         <div><dt>Õppimine esimesel korral</dt><dd>{unit.studyFirstKnown !== null && unit.studyTotal ? `${unit.studyFirstKnown}/${unit.studyTotal}` : '–'}</dd></div>
@@ -439,7 +459,7 @@ function UnitRow({ unit, onChanged, setError, setNotice }: { unit: ParentUnitSum
       ) : null}
       <div className='vocab-admin-actions'>
         <button type='button' className='view-button' disabled={!unit.published && unit.wordCount === 0} onClick={() => void patch({ published: !unit.published }, unit.published ? 'Õppetükk peidetud.' : 'Õppetükk avaldatud.')}>{unit.published ? 'Peida lapse eest' : 'Avalda'}</button>
-        <button type='button' className='filter-chip' onClick={() => void patch({ manualUnlock: !unit.manualUnlock }, unit.manualUnlock ? 'Käsitsi avamine eemaldatud.' : 'Õppetükk avatud käsitsi.')}>{unit.manualUnlock ? 'Eemalda käsitsi avamine' : 'Ava käsitsi'}</button>
+        {canUnlockByHand ? <button type='button' className='filter-chip' onClick={() => void patch({ manualUnlock: !unit.manualUnlock }, unit.manualUnlock ? 'Käsitsi avamine eemaldatud.' : 'Õppetükk avatud käsitsi.')}>{unit.manualUnlock ? 'Eemalda käsitsi avamine' : 'Ava käsitsi'}</button> : null}
         <button type='button' className='filter-chip' onClick={() => { if (!editing) { setTitle(unit.title); setUnitNumber(String(unit.unitNumber)); } setEditing(!editing); }}>Muuda</button>
         <button type='button' className='filter-chip' aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Peida sõnad' : 'Sõnad ja statistika'}</button>
         {!unit.hasHistory ? <button type='button' className='delete-button' onClick={() => void remove()}>Kustuta</button> : null}
@@ -483,7 +503,7 @@ export default function ParentEnglishVocabulary({ setNotice, setError, onSummary
   return (
     <>
       <section className='parent-card'>
-        <p>Kiur õpib iga õppetüki kõigepealt kaartidega ja teeb siis kirjutamistesti. Järgmine avaldatud õppetükk avaneb, kui test on ühe korraga vähemalt 95%. Õppetüki saab avada ka käsitsi. Harjutus ise lülitatakse sisse „Harjutuste kogu“ all (Sõnavara).</p>
+        <p>Kiur õpib iga õppetüki kõigepealt kaartidega ja teeb siis kirjutamistesti. Järgmine avaldatud õppetükk avaneb, kui test on ühe korraga vähemalt 95%. Avaldamata õppetükki laps ei näe — see ei avane ka käsitsi, enne kui on avaldatud. Avaldatud õppetüki saab avada ka käsitsi, ilma eelmise testita. Harjutus ise lülitatakse sisse „Harjutuste kogu“ all (Sõnavara).</p>
       </section>
       <VocabularyImport onImported={load} setNotice={setNotice} setError={setError} />
       <section className='parent-card'>

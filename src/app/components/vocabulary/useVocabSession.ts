@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SessionActionInput, SessionView } from '@/lib/server/vocabulary/sessions';
 import type { VocabMode } from '@/lib/vocabulary/types';
+import { readPeekMode, usePeekMode } from '@/app/components/usePeekMode';
+import { PEEK_READ_ONLY_MESSAGE } from '@/lib/peekMode';
 
 // Client side of a vocabulary session. The server holds the state; this hook
 // only loads it, sends the child's actions one at a time and shows whatever the
@@ -14,6 +16,9 @@ import type { VocabMode } from '@/lib/vocabulary/types';
 //    request that failed in transit is retried with the same id, which the
 //    server recognises, so a flaky connection can never count an answer twice.
 //  - If another tab moved the session on, the server's newer state is adopted.
+//  - While a parent is peeking nothing is created or answered: starting a
+//    session is a write, so the page shows a note instead (the server refuses
+//    the same requests too).
 
 export type VocabSessionError = { message: string; retryable: boolean };
 
@@ -41,6 +46,8 @@ export function useVocabSession(start: { unitId: string | null; mode: VocabMode 
   const viewRef = useRef<SessionView | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const { unitId, mode } = start;
+  // Re-run load when the parent switches between peeking and "Vaata nagu laps".
+  const peeking = usePeekMode();
 
   const adopt = useCallback((next: SessionView) => {
     viewRef.current = next;
@@ -49,6 +56,10 @@ export function useVocabSession(start: { unitId: string | null; mode: VocabMode 
 
   const load = useCallback(async () => {
     setError(null);
+    if (readPeekMode()) {
+      setError({ message: PEEK_READ_ONLY_MESSAGE, retryable: false });
+      return;
+    }
     try {
       const url = new URL(window.location.href);
       const existing = url.searchParams.get('session');
@@ -87,7 +98,7 @@ export function useVocabSession(start: { unitId: string | null; mode: VocabMode 
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, peeking]);
 
   // Set when an action fails. Actions still waiting in the queue were based on
   // a state the server may never have reached, so they are dropped rather
@@ -102,6 +113,10 @@ export function useVocabSession(start: { unitId: string | null; mode: VocabMode 
   const send = useCallback((action: SessionActionInput): Promise<SessionView | null> => {
     const run = async (): Promise<SessionView | null> => {
       if (failed.current) return null;
+      if (readPeekMode()) {
+        fail({ message: PEEK_READ_ONLY_MESSAGE, retryable: false });
+        return null;
+      }
       const current = viewRef.current;
       if (!current || current.status !== 'active') return current;
       const actionId = newActionId();

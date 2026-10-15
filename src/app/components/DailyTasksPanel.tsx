@@ -8,8 +8,8 @@ import { freezeWord, streakFreezeNotice } from '@/lib/streakFreezeNotice';
 import { completeTaskOffline, getDailyTasksOffline, getDashboardSnapshot } from '@/lib/offline/api';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import MetricTooltip from '@/app/components/MetricTooltip';
-import { usePeekMode } from '@/app/components/usePeekMode';
-import { mayRecordSeenMarker } from '@/lib/peekMode';
+import { readPeekMode, usePeekMode } from '@/app/components/usePeekMode';
+import { mayRecordSeenMarker, PEEK_READ_ONLY_ACTION_MESSAGE } from '@/lib/peekMode';
 import { decideMilestoneNotice } from '@/lib/milestoneNotice';
 import { todayDateString } from '@/lib/appDate';
 import { achievementLabel, starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
@@ -157,6 +157,13 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
 
   const completeTask = async () => {
     if (!confirmTask) return;
+    // A peeking parent must not tick the child's task — neither online nor
+    // into the offline queue. Read now, not from the hook: see readPeekMode.
+    if (readPeekMode()) {
+      setConfirmTask(null);
+      setError(PEEK_READ_ONLY_ACTION_MESSAGE);
+      return;
+    }
     if (!online && !confirmTask.offline) {
       setError('See tegevus ei ole veel võrguühenduseta lõpetamiseks ette valmistatud. Taasta internetiühendus või ava töölaud uuesti, et kasutada salvestatud päevategevusi.');
       setConfirmTask(null);

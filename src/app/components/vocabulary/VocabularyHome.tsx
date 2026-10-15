@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import PeekModeBanner from '@/app/components/PeekModeBanner';
 import type { ChildUnitCard, ChildVocabularyHome } from '@/lib/server/vocabulary/overview';
-import { VOCAB_HOME_ROUTE } from '@/lib/vocabulary/constants';
+import { VOCAB_ALL_PASSED_MESSAGE, VOCAB_HOME_ROUTE } from '@/lib/vocabulary/constants';
 
 type HomeData = ChildVocabularyHome & { sprintActive: boolean };
 
@@ -81,6 +82,7 @@ export default function VocabularyHome() {
     <main className='english-page vocab-page'>
       <section className='practice-shell english-shell vocab-shell'>
         <Link className='practice-back-button' href='/kiur'>← Harjutused</Link>
+        <PeekModeBanner />
         <header className='subject-header vocab-home-header'>
           <div className='subject-emoji' aria-hidden>🔤</div>
           <h1>Inglise keel</h1>
@@ -109,6 +111,9 @@ export default function VocabularyHome() {
                       <small>{data.weakTotal} sõna vajab veel kordamist</small>
                     </span>
                   </Link>
+                ) : null}
+                {data.units.every((card) => card.status === 'passed') ? (
+                  <p className='vocab-empty vocab-all-passed' role='status'>{VOCAB_ALL_PASSED_MESSAGE}</p>
                 ) : null}
                 <div className='vocab-unit-list'>
                   {data.units.map((card) => <UnitCard key={card.id} card={card} />)}

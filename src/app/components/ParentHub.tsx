@@ -1,11 +1,11 @@
 'use client';
 
 import type { FormEvent, ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { todayDateString } from '@/lib/appDate';
 import { formatStars } from '@/lib/formatStars';
-import { dayWord, exerciseWord } from '@/lib/history';
+import { dayWord, exerciseWord, itemWord, prizeWord, starWord, taskWord, trophyWord } from '@/lib/history';
 import { OfflineReadiness } from '@/app/components/offline/OfflineReadiness';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { ParentNoticePanel, ParentPasswordPanel } from '@/app/components/ParentAccountPanels';
@@ -27,7 +27,7 @@ type StoreVisibility = 'kiur' | 'kirsi' | 'both';
 type StoreStockType = 'unlimited' | 'fixed_stock' | 'daily_stock' | 'one_time_global';
 
 type Template = { id: number; title: string; points: number; assignmentMode: AssignmentMode; recurrenceType: RecurrenceType; selectedWeekdaysJson: string | null; startDate: string | null; onceDate: string | null; requiresApproval: number };
-type PendingApproval = { assignmentId: number; learner: Learner; title: string; points: number; assignmentMode: AssignmentMode; completedAt: string | null };
+type PendingApproval = { assignmentId: number; learner: Learner; title: string; points: number; assignmentMode: AssignmentMode; completedAt: string | null; date: string };
 type HeldReward = { id: number; learner: Learner; completionDate: string | null; score: number; questionCount: number; exerciseId: string | null; status: 'withheld' | 'needs_review'; reviewReasonCode: string | null };
 type OfflineTaskReview = { clientActionId: string; learner: Learner; taskDate: string; title: string; points: number; completedAt: string | null; reasonCode: string | null };
 type ParentHistoryAttempt = { id: number; createdAt: string; learner: Learner | null; category: string; score: number; questionCount: number };
@@ -188,6 +188,22 @@ function learnerLabel(learner: Learner) {
   return learner === 'kiur' ? 'Kiur' : 'Kirsi';
 }
 
+// "Kiuri tähti vähendati" — the possessor takes the genitive.
+function learnerGenitive(learner: Learner) {
+  return learner === 'kiur' ? 'Kiuri' : 'Kirsi';
+}
+
+// "13.10" for an app date "2026-10-13"; approvals from earlier days carry it so
+// the parent can tell yesterday's chore from today's.
+function shortDayLabel(date: string) {
+  const [, month, day] = date.split('-');
+  return month && day ? `${Number(day)}.${month}` : date;
+}
+
+function clockLabel(value: string) {
+  return new Date(value).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
+}
+
 function timeLabel(value: string) {
   return new Date(value).toLocaleString('et-EE', { dateStyle: 'short', timeStyle: 'short' });
 }
@@ -265,6 +281,8 @@ export default function ParentHub() {
   const [heldRewards, setHeldRewards] = useState<HeldReward[]>([]);
   const [offlineTaskReviews, setOfflineTaskReviews] = useState<OfflineTaskReview[]>([]);
   const [parentHistory, setParentHistory] = useState<ParentHistoryAttempt[]>([]);
+  const [parentHistoryCursor, setParentHistoryCursor] = useState<string | null>(null);
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [streakFreezes, setStreakFreezes] = useState<Record<Learner, StreakFreezeState> | null>(null);
   const [historyConfirmId, setHistoryConfirmId] = useState<number | null>(null);
   const [confirmHideAllHistory, setConfirmHideAllHistory] = useState(false);
@@ -274,6 +292,29 @@ export default function ParentHub() {
   const [exerciseSubjectFilter, setExerciseSubjectFilter] = useState<'all' | LearningExerciseSubject>('all');
   const [exerciseTopicFilter, setExerciseTopicFilter] = useState('all');
   const [exerciseStatusFilter, setExerciseStatusFilter] = useState<'all' | LearningExerciseStatus>('all');
+  // One write at a time. The ref closes the gap before React re-renders the
+  // disabled controls, so a fast double tap cannot POST twice (two identical
+  // tasks or shop items); the state drives the disabled fieldsets.
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  // A reload after any action must not wipe a half-edited draft: these forms
+  // take server values only while untouched, and become clean again on save.
+  const learningSettingsDirty = useRef(false);
+  const monthlyPrizeDirty = useRef(false);
+
+  const guarded = async (action: () => Promise<void>) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await action();
+    } catch {
+      setError('Toimingut ei saanud teha.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
 
   const toggleSection = (section: ParentSectionId) => {
     setOpenSections((current) => {
@@ -296,31 +337,53 @@ export default function ParentHub() {
       fetch('/api/parent/weekly-digest').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/held-rewards').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/task-reviews').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/parent/history').then((res) => (res.ok ? res.json() : Promise.reject())),
       fetch('/api/parent/streak-freeze').then((res) => (res.ok ? res.json() : Promise.reject()))
     ])
-      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, monthlyPrizeData, weeklyDigestData, heldRewardData, taskReviewData, historyData, freezeData]) => {
+      .then(([dashboard, storeDashboard, settings, exerciseDashboard, rewardData, monthlyPrizeData, weeklyDigestData, heldRewardData, taskReviewData, freezeData]) => {
         setData(dashboard);
         setStore(storeDashboard);
-        setLearningSettings(settings);
+        if (!learningSettingsDirty.current) setLearningSettings(settings);
         // A body that could not be read must not replace the list with
         // `undefined` — that crashed the whole parent page.
         const exercises = (exerciseDashboard as Partial<LearningExerciseDashboard> | null)?.exercises;
         if (Array.isArray(exercises)) setLearningExercises(exercises);
         setRewardRules(Array.isArray(rewardData?.rules) ? rewardData.rules : []);
         setMonthlyPrize(monthlyPrizeData as MonthlyPrize);
-        setMonthlyPrizeInput((monthlyPrizeData as MonthlyPrize)?.prizeStars ?? 10);
+        if (!monthlyPrizeDirty.current) setMonthlyPrizeInput((monthlyPrizeData as MonthlyPrize)?.prizeStars ?? 10);
         setWeeklyDigest(weeklyDigestData as WeeklyDigest);
         setHeldRewards(Array.isArray(heldRewardData?.held) ? heldRewardData.held : []);
         setOfflineTaskReviews(Array.isArray(taskReviewData?.reviews) ? taskReviewData.reviews : []);
-        setParentHistory(Array.isArray(historyData?.items) ? historyData.items : []);
         setStreakFreezes(freezeData as Record<Learner, StreakFreezeState>);
       })
       .catch(() => setError('Andmeid ei saanud laadida.'));
   };
 
+  // History is paged separately from load(): an unrelated action reloading the
+  // dashboard must not collapse pages the parent opened with "Näita rohkem".
+  const loadHistory = async (cursor: string | null) => {
+    const res = await fetch(cursor ? `/api/parent/history?cursor=${encodeURIComponent(cursor)}` : '/api/parent/history');
+    if (!res.ok) throw new Error('history');
+    const body = await res.json() as { items?: ParentHistoryAttempt[]; nextCursor?: string | null };
+    const items = Array.isArray(body.items) ? body.items : [];
+    setParentHistory((current) => cursor ? [...current, ...items.filter((item) => !current.some((seen) => seen.id === item.id))] : items);
+    setParentHistoryCursor(typeof body.nextCursor === 'string' ? body.nextCursor : null);
+  };
+
+  const loadMoreHistory = async () => {
+    if (!parentHistoryCursor || loadingMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      await loadHistory(parentHistoryCursor);
+    } catch {
+      setError('Ajalugu ei saanud laadida.');
+    } finally {
+      setLoadingMoreHistory(false);
+    }
+  };
+
   useEffect(() => {
     load();
+    loadHistory(null).catch(() => setError('Andmeid ei saanud laadida.'));
   }, []);
 
   // Auto-hide the success toast so it fades away after a brief moment.
@@ -426,8 +489,9 @@ export default function ParentHub() {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const createTask = async (event: FormEvent) => {
+  const createTask = (event: FormEvent) => {
     event.preventDefault();
+    return guarded(async () => {
     setError('');
     setNotice('');
     const url = editingTaskId ? `/api/parent/tasks/${editingTaskId}` : '/api/parent/tasks';
@@ -444,16 +508,28 @@ export default function ParentHub() {
     setNotice(editingTaskId ? 'Tegevus muudetud.' : 'Tegevus lisatud.');
     resetTaskForm();
     load();
+    });
   };
 
   const deleteTask = async (id: number) => {
     if (typeof window !== 'undefined' && !window.confirm('Kas kustutada see tegevus?')) return;
-    await fetch(`/api/parent/tasks/${id}`, { method: 'DELETE' });
-    if (editingTaskId === id) resetTaskForm();
-    load();
+    await guarded(async () => {
+      setError('');
+      setNotice('');
+      const res = await fetch(`/api/parent/tasks/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.message || 'Tegevust ei saanud kustutada.');
+        load();
+        return;
+      }
+      if (editingTaskId === id) resetTaskForm();
+      setNotice('Tegevus kustutatud.');
+      load();
+    });
   };
 
-  const resolveApproval = async (assignmentId: number, action: 'approve' | 'reject') => {
+  const resolveApproval = (assignmentId: number, action: 'approve' | 'reject') => guarded(async () => {
     setError('');
     setNotice('');
     const res = await fetch('/api/parent/approvals', {
@@ -469,9 +545,9 @@ export default function ParentHub() {
     }
     setNotice(action === 'approve' ? 'Tähed kinnitatud.' : 'Tegevus saadeti uuesti tegemiseks.');
     load();
-  };
+  });
 
-  const approveHeldReward = async (attemptId: number) => {
+  const approveHeldReward = (attemptId: number) => guarded(async () => {
     setError('');
     setNotice('');
     const res = await fetch('/api/parent/held-rewards', {
@@ -487,23 +563,24 @@ export default function ParentHub() {
     }
     setNotice('Harjutuse tähed kinnitatud.');
     load();
-  };
+  });
 
-  const resolveOfflineTaskReview = async (clientActionId: string, action: 'approve' | 'reject') => {
+  const resolveOfflineTaskReview = (clientActionId: string, action: 'approve' | 'reject') => guarded(async () => {
     const res = await fetch('/api/parent/task-reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientActionId, action }) });
     if (!res.ok) { const body = await res.json().catch(() => ({})); setError(body.message || 'Toimingut ei saanud teha.'); return; }
     setNotice(action === 'approve' ? 'Offline tegevus kinnitatud ja tähed lisatud.' : 'Offline tegevus lükati tagasi.');
     load();
-  };
+  });
 
   // Stars and trophies adjust the same way: +/- a positive magnitude for one
-  // child, via their own endpoint. Only the endpoint and wording differ.
+  // child, via their own endpoint. Only the endpoint and wording differ. The
+  // count word agrees with the number ("+1 täht", "+3 tähte").
   const ADJUST_KINDS = {
-    points: { url: '/api/parent/adjust-points', fail: 'Punkte ei saanud muuta.', addNoun: 'tähte', removeVerb: 'tähti vähendati' },
-    trophies: { url: '/api/parent/adjust-trophies', fail: 'Karikaid ei saanud muuta.', addNoun: 'karikat', removeVerb: 'karikaid vähendati' }
+    points: { url: '/api/parent/adjust-points', fail: 'Punkte ei saanud muuta.', noun: (n: number) => starWord(formatStars(n)), removeVerb: 'tähti vähendati' },
+    trophies: { url: '/api/parent/adjust-trophies', fail: 'Karikaid ei saanud muuta.', noun: trophyWord, removeVerb: 'karikaid vähendati' }
   } as const;
 
-  const submitAdjustment = async (kind: keyof typeof ADJUST_KINDS, learner: Learner, direction: 1 | -1) => {
+  const submitAdjustment = (kind: keyof typeof ADJUST_KINDS, learner: Learner, direction: 1 | -1) => guarded(async () => {
     setError('');
     setNotice('');
     const magnitude = Math.max(1, Math.trunc(Math.abs(Number(adjustAmount) || 1)));
@@ -520,14 +597,14 @@ export default function ParentHub() {
     }
     setAdjustReason('');
     setNotice(direction > 0
-      ? `${learnerLabel(learner)} sai +${magnitude} ${config.addNoun}.`
-      : `${learnerLabel(learner)} ${config.removeVerb} ${magnitude} võrra.`);
+      ? `${learnerLabel(learner)}: +${magnitude} ${config.noun(magnitude)}.`
+      : `${learnerGenitive(learner)} ${config.removeVerb} ${magnitude} võrra.`);
     load();
-  };
+  });
 
   // Hands a child a freeze for a day that genuinely was not their fault -
   // illness, travel. Free to the child, and still capped by the hold limit.
-  const grantStreakFreeze = async (learner: Learner) => {
+  const grantStreakFreeze = (learner: Learner) => guarded(async () => {
     setError('');
     setNotice('');
     const res = await fetch('/api/parent/streak-freeze', {
@@ -542,10 +619,11 @@ export default function ParentHub() {
     }
     setNotice(`${learnerLabel(learner)} sai ühe külmutuse.`);
     load();
-  };
+  });
 
-  const saveStoreItem = async (event: FormEvent) => {
+  const saveStoreItem = (event: FormEvent) => {
     event.preventDefault();
+    return guarded(async () => {
     setError('');
     setNotice('');
     const url = editingStoreId ? `/api/parent/store/${editingStoreId}` : '/api/parent/store';
@@ -563,10 +641,12 @@ export default function ParentHub() {
     setEditingStoreId(null);
     setStoreForm(emptyStoreForm);
     load();
+    });
   };
 
-  const saveLearningSettings = async (event: FormEvent) => {
+  const saveLearningSettings = (event: FormEvent) => {
     event.preventDefault();
+    return guarded(async () => {
     setError('');
     const res = await fetch('/api/parent/learning-settings', {
       method: 'POST',
@@ -578,8 +658,15 @@ export default function ParentHub() {
       setError(body.message || 'Õppimise seadeid ei saanud salvestada.');
       return;
     }
+    learningSettingsDirty.current = false;
     setLearningSettings(body);
     setNotice('Õppimise seaded salvestatud.');
+    });
+  };
+
+  const editLearningSettings = (patch: Partial<LearningSettings>) => {
+    learningSettingsDirty.current = true;
+    setLearningSettings((current) => ({ ...current, ...patch }));
   };
 
   const resetRewardForm = () => {
@@ -595,8 +682,9 @@ export default function ParentHub() {
     setError('');
   };
 
-  const saveRewardRule = async (event: FormEvent) => {
+  const saveRewardRule = (event: FormEvent) => {
     event.preventDefault();
+    return guarded(async () => {
     setError('');
     setNotice('');
     const url = editingRewardId ? `/api/parent/reward-rules/${editingRewardId}` : '/api/parent/reward-rules';
@@ -613,17 +701,27 @@ export default function ParentHub() {
     if (Array.isArray(body.rules)) setRewardRules(body.rules);
     setNotice(editingRewardId ? 'Auhind muudetud.' : 'Auhind lisatud.');
     resetRewardForm();
+    });
   };
 
   const deleteRewardRule = async (id: number) => {
     if (typeof window !== 'undefined' && !window.confirm('Kas kustutada see auhind?')) return;
-    const res = await fetch(`/api/parent/reward-rules/${id}`, { method: 'DELETE' });
-    const body = await res.json().catch(() => ({}));
-    if (Array.isArray(body.rules)) setRewardRules(body.rules);
-    if (editingRewardId === id) resetRewardForm();
+    await guarded(async () => {
+      setError('');
+      setNotice('');
+      const res = await fetch(`/api/parent/reward-rules/${id}`, { method: 'DELETE' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.message || 'Auhinda ei saanud kustutada.');
+        return;
+      }
+      if (Array.isArray(body.rules)) setRewardRules(body.rules);
+      if (editingRewardId === id) resetRewardForm();
+      setNotice('Auhind kustutatud.');
+    });
   };
 
-  const toggleRewardEnabled = async (rule: RewardRule) => {
+  const toggleRewardEnabled = (rule: RewardRule) => guarded(async () => {
     setError('');
     setNotice('');
     const res = await fetch(`/api/parent/reward-rules/${rule.id}`, {
@@ -637,7 +735,7 @@ export default function ParentHub() {
       return;
     }
     if (Array.isArray(body.rules)) setRewardRules(body.rules);
-  };
+  });
 
   const editStoreItem = (item: StoreItem) => {
     setEditingStoreId(item.id);
@@ -658,7 +756,7 @@ export default function ParentHub() {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const storePatch = async (id: number, action: string) => {
+  const storePatch = (id: number, action: string) => guarded(async () => {
     setError('');
     setNotice('');
     setStore((current) => current ? {
@@ -673,10 +771,11 @@ export default function ParentHub() {
     }
     setNotice(action === 'hide_today' ? 'Peidetud tänaseks.' : 'Näidatakse täna.');
     load();
-  };
+  });
 
-  const saveMonthlyPrize = async (event: FormEvent) => {
+  const saveMonthlyPrize = (event: FormEvent) => {
     event.preventDefault();
+    return guarded(async () => {
     setError('');
     setNotice('');
     const res = await fetch('/api/parent/monthly-prize', {
@@ -689,17 +788,35 @@ export default function ParentHub() {
       setError(body.message || 'Auhinda ei saanud salvestada.');
       return;
     }
+    monthlyPrizeDirty.current = false;
     setMonthlyPrize(body as MonthlyPrize);
     setMonthlyPrizeInput((body as MonthlyPrize)?.prizeStars ?? monthlyPrizeInput);
     setNotice('Kuu auhind salvestatud.');
+    });
   };
 
   const deleteStore = async (id: number) => {
-    await fetch(`/api/parent/store/${id}`, { method: 'DELETE' });
-    load();
+    if (typeof window !== 'undefined' && !window.confirm('Kas kustutada see poe ese?')) return;
+    await guarded(async () => {
+      setError('');
+      setNotice('');
+      const res = await fetch(`/api/parent/store/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.message || 'Poe eset ei saanud kustutada.');
+        load();
+        return;
+      }
+      if (editingStoreId === id) {
+        setEditingStoreId(null);
+        setStoreForm(emptyStoreForm);
+      }
+      setNotice('Poe ese kustutatud.');
+      load();
+    });
   };
 
-  const hideHistoryAttempt = async (id: number) => {
+  const hideHistoryAttempt = (id: number) => guarded(async () => {
     const res = await fetch(`/api/parent/history/${id}`, { method: 'DELETE' });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -709,9 +826,9 @@ export default function ParentHub() {
     setParentHistory((current) => current.filter((item) => item.id !== id));
     setHistoryConfirmId(null);
     setNotice('Tulemus on ajaloos peidetud.');
-  };
+  });
 
-  const hideAllHistory = async () => {
+  const hideAllHistory = () => guarded(async () => {
     const res = await fetch('/api/parent/history', { method: 'DELETE' });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -719,10 +836,11 @@ export default function ParentHub() {
       return;
     }
     setParentHistory([]);
+    setParentHistoryCursor(null);
     setConfirmHideAllHistory(false);
     setHistoryConfirmId(null);
     setNotice('Harjutuste ajalugu on peidetud.');
-  };
+  });
 
   const logout = async () => {
     await fetch('/api/parent/logout', { method: 'POST' });
@@ -759,7 +877,7 @@ export default function ParentHub() {
               <div key={item.assignmentId} className='parent-approval-row'>
                 <div className='parent-approval-info'>
                   <strong>{learnerLabel(item.learner)} · {item.title}</strong>
-                  <span>+{item.points} ⭐{item.completedAt ? ` · ${timeLabel(item.completedAt)}` : ''}</span>
+                  <span>+{item.points} ⭐{item.date && item.date !== today() ? ` · ${shortDayLabel(item.date)}` : ''}{item.completedAt ? ` · ${clockLabel(item.completedAt)}` : ''}</span>
                 </div>
                 <div className='parent-approval-actions'>
                   <button type='button' className='view-button' onClick={() => resolveApproval(item.assignmentId, 'approve')}>Kinnita</button>
@@ -964,9 +1082,10 @@ export default function ParentHub() {
         <ParentEnglishVocabulary setNotice={setNotice} setError={setError} />
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Tegevused' summary={editingTaskId ? 'Muudad tegevust' : `${data?.templates?.length ?? 0} tegevust`} open={openSections.has('tasks')} onToggle={() => toggleSection('tasks')}>
+      <ParentAccordionSection title='Tegevused' summary={editingTaskId ? 'Muudad tegevust' : `${data?.templates?.length ?? 0} ${taskWord(data?.templates?.length ?? 0)}`} open={openSections.has('tasks')} onToggle={() => toggleSection('tasks')}>
       <section className='parent-card'>
         <form className='parent-form parent-task-form' onSubmit={createTask}>
+          <fieldset className='parent-form-fieldset' disabled={saving}>
           <label><span>Tegevuse nimi</span><input value={title} maxLength={80} onChange={(event) => setTitle(event.target.value)} placeholder='Pese hambad' /></label>
           <label><span>Punktid</span><input type='number' min={1} max={99} value={points} onChange={(event) => setPoints(Number(event.target.value))} /></label>
           <label><span>Kellele?</span><select value={assignmentMode} onChange={(event) => setAssignmentMode(event.target.value as AssignmentMode)}>{Object.entries(ASSIGNMENT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -978,6 +1097,7 @@ export default function ParentHub() {
             {editingTaskId && <button type='button' className='filter-chip' onClick={resetTaskForm}>Tühista</button>}
             <button type='submit'>{editingTaskId ? 'Muuda tegevust' : 'Salvesta'}</button>
           </div>
+          </fieldset>
         </form>
       </section>
       <section className='parent-card'>
@@ -1000,9 +1120,10 @@ export default function ParentHub() {
       </section>
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Pood' summary={`${store?.items.length ?? 0} eset`} open={openSections.has('store')} onToggle={() => toggleSection('store')}>
+      <ParentAccordionSection title='Pood' summary={`${store?.items.length ?? 0} ${itemWord(store?.items.length ?? 0)}`} open={openSections.has('store')} onToggle={() => toggleSection('store')}>
       <section className='parent-card'>
         <form className='parent-form parent-task-form' onSubmit={saveStoreItem}>
+          <fieldset className='parent-form-fieldset' disabled={saving}>
           <label><span>Nimi</span><input value={storeForm.title} maxLength={80} onChange={(event) => setStoreForm({ ...storeForm, title: event.target.value })} placeholder='30 min ekraaniaega' /></label>
           <label><span>Kirjeldus</span><input value={storeForm.description} maxLength={300} onChange={(event) => setStoreForm({ ...storeForm, description: event.target.value })} placeholder='Lisa aeg mängimiseks või video vaatamiseks.' /></label>
           <label><span>Hind</span><input type='number' min={1} max={9999} value={storeForm.price} onChange={(event) => setStoreForm({ ...storeForm, price: Number(event.target.value) })} /></label>
@@ -1021,6 +1142,7 @@ export default function ParentHub() {
             {editingStoreId && <button type='button' className='filter-chip' onClick={() => { setEditingStoreId(null); setStoreForm(emptyStoreForm); }}>Tühista</button>}
             <button type='submit'>{editingStoreId ? 'Muuda poe eset' : 'Lisa poe ese'}</button>
           </div>
+          </fieldset>
         </form>
       </section>
       <section className='parent-card'>
@@ -1067,15 +1189,17 @@ export default function ParentHub() {
       <section className='parent-card'>
         <p>Õppimise punktid annavad tähti harjutuste tegemise eest. Sama harjutuse kordamisel väheneb tänane väärtus, et vältida lihtsat punktide kogumist.</p>
         <form className='parent-form parent-task-form' onSubmit={saveLearningSettings}>
-          <label><span>Algväärtus</span><input type='number' step='0.1' min={0} max={20} value={learningSettings.baseValue} onChange={(event) => setLearningSettings({ ...learningSettings, baseValue: Number(event.target.value) })} /></label>
-          <label><span>Vähenemine</span><input type='number' step='0.1' min={0} max={20} value={learningSettings.decayStep} onChange={(event) => setLearningSettings({ ...learningSettings, decayStep: Number(event.target.value) })} /></label>
-          <label><span>Miinimum</span><input type='number' step='0.1' min={0} max={20} value={learningSettings.minimumValue} onChange={(event) => setLearningSettings({ ...learningSettings, minimumValue: Number(event.target.value) })} /></label>
-          <label><span>Päevane õppimise piir</span><input type='number' step='0.1' min={0} max={100} value={learningSettings.dailyCap} onChange={(event) => setLearningSettings({ ...learningSettings, dailyCap: Number(event.target.value) })} /></label>
-          <label><span>Seeriaboonuse samm</span><input type='number' min={1} max={365} value={learningSettings.streakIntervalDays} onChange={(event) => setLearningSettings({ ...learningSettings, streakIntervalDays: Number(event.target.value) })} /></label>
-          <label><span>Seeriaboonus</span><input type='number' step='0.1' min={0} max={100} value={learningSettings.streakBonusAmount} onChange={(event) => setLearningSettings({ ...learningSettings, streakBonusAmount: Number(event.target.value) })} /></label>
-          <label className='parent-checkbox'><input type='checkbox' checked={learningSettings.learningPointsEnabled} onChange={(event) => setLearningSettings({ ...learningSettings, learningPointsEnabled: event.target.checked })} /> Õppimise punktid sees</label>
-          <label className='parent-checkbox'><input type='checkbox' checked={learningSettings.streakBonusEnabled} onChange={(event) => setLearningSettings({ ...learningSettings, streakBonusEnabled: event.target.checked })} /> Seeriaboonus sees</label>
+          <fieldset className='parent-form-fieldset' disabled={saving}>
+          <label><span>Algväärtus</span><input type='number' step='0.1' min={0} max={20} value={learningSettings.baseValue} onChange={(event) => editLearningSettings({baseValue: Number(event.target.value) })} /></label>
+          <label><span>Vähenemine</span><input type='number' step='0.1' min={0} max={20} value={learningSettings.decayStep} onChange={(event) => editLearningSettings({decayStep: Number(event.target.value) })} /></label>
+          <label><span>Miinimum</span><input type='number' step='0.1' min={0} max={20} value={learningSettings.minimumValue} onChange={(event) => editLearningSettings({minimumValue: Number(event.target.value) })} /></label>
+          <label><span>Päevane õppimise piir</span><input type='number' step='0.1' min={0} max={100} value={learningSettings.dailyCap} onChange={(event) => editLearningSettings({dailyCap: Number(event.target.value) })} /></label>
+          <label><span>Seeriaboonuse samm</span><input type='number' min={1} max={365} value={learningSettings.streakIntervalDays} onChange={(event) => editLearningSettings({streakIntervalDays: Number(event.target.value) })} /></label>
+          <label><span>Seeriaboonus</span><input type='number' step='0.1' min={0} max={100} value={learningSettings.streakBonusAmount} onChange={(event) => editLearningSettings({streakBonusAmount: Number(event.target.value) })} /></label>
+          <label className='parent-checkbox'><input type='checkbox' checked={learningSettings.learningPointsEnabled} onChange={(event) => editLearningSettings({learningPointsEnabled: event.target.checked })} /> Õppimise punktid sees</label>
+          <label className='parent-checkbox'><input type='checkbox' checked={learningSettings.streakBonusEnabled} onChange={(event) => editLearningSettings({streakBonusEnabled: event.target.checked })} /> Seeriaboonus sees</label>
           <button type='submit'>Salvesta</button>
+          </fieldset>
         </form>
       </section>
       </ParentAccordionSection>
@@ -1088,13 +1212,15 @@ export default function ParentHub() {
       <ParentNoticePanel request={fetch} onError={setError} onNotice={setNotice} />
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Auhinnad' summary={rewardRules.length === 0 ? 'Pole seadistatud' : `${rewardRules.length} auhinda`} open={openSections.has('rewards')} onToggle={() => toggleSection('rewards')}>
+      <ParentAccordionSection title='Auhinnad' summary={rewardRules.length === 0 ? 'Pole seadistatud' : `${rewardRules.length} ${prizeWord(rewardRules.length)}`} open={openSections.has('rewards')} onToggle={() => toggleSection('rewards')}>
       <section className='parent-card'>
         <h3>🏆 Kuu võistlus</h3>
         <p>Iga päev saab rohkem ülesandeid lahendanud laps ühe karika. Kuu lõpus võidab see, kellel on rohkem karikaid, ja saab auhinnaks tähed. Auhind makstakse välja automaatselt uue kuu esimesel päeval. Viigi korral auhinda ei anta.</p>
         <form className='parent-form parent-task-form' onSubmit={saveMonthlyPrize}>
-          <label><span>Auhind võitjale (tähti)</span><input type='number' step='0.1' min={0} max={1000} value={monthlyPrizeInput} onChange={(event) => setMonthlyPrizeInput(Number(event.target.value))} /></label>
+          <fieldset className='parent-form-fieldset' disabled={saving}>
+          <label><span>Auhind võitjale (tähti)</span><input type='number' step='0.1' min={0} max={1000} value={monthlyPrizeInput} onChange={(event) => { monthlyPrizeDirty.current = true; setMonthlyPrizeInput(Number(event.target.value)); }} /></label>
           <button type='submit'>Salvesta auhind</button>
+          </fieldset>
         </form>
         {monthlyPrize && (
           <div className='monthly-standing'>
@@ -1108,6 +1234,7 @@ export default function ParentHub() {
         <h3>Õpiseeria auhinnad</h3>
         <p>Auhinnad annavad lisatähti, kui laps jõuab harjutuste tegemisel teatud päevade seeriani. Näiteks 5 päeva järjest harjutamise eest antakse boonustähed. Seeria katkemisel ja uuesti samasse piirini jõudmisel antakse auhind uuesti.</p>
         <form className='parent-form parent-task-form' onSubmit={saveRewardRule}>
+          <fieldset className='parent-form-fieldset' disabled={saving}>
           <label><span>Päevade seeria</span><input type='number' min={1} max={365} value={rewardForm.thresholdDays} onChange={(event) => setRewardForm({ ...rewardForm, thresholdDays: Number(event.target.value) })} /></label>
           <label><span>Tähti auhinnaks</span><input type='number' step='0.1' min={0.1} max={1000} value={rewardForm.rewardStars} onChange={(event) => setRewardForm({ ...rewardForm, rewardStars: Number(event.target.value) })} /></label>
           <label><span>Kellele?</span><select value={rewardForm.learnerScope} onChange={(event) => setRewardForm({ ...rewardForm, learnerScope: event.target.value as RewardLearnerScope })}>{Object.entries(REWARD_SCOPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -1116,6 +1243,7 @@ export default function ParentHub() {
             {editingRewardId && <button type='button' className='filter-chip' onClick={resetRewardForm}>Tühista</button>}
             <button type='submit'>{editingRewardId ? 'Muuda auhinda' : 'Lisa auhind'}</button>
           </div>
+          </fieldset>
         </form>
       </section>
       <section className='parent-card'>
@@ -1139,7 +1267,7 @@ export default function ParentHub() {
       </section>
       </ParentAccordionSection>
 
-      <ParentAccordionSection title='Ajaloo haldamine' summary={`${parentHistory.length} ${exerciseWord(parentHistory.length)}`} open={openSections.has('history')} onToggle={() => toggleSection('history')}>
+      <ParentAccordionSection title='Ajaloo haldamine' summary={parentHistoryCursor ? `Viimased ${parentHistory.length} ${exerciseWord(parentHistory.length)}` : `${parentHistory.length} ${exerciseWord(parentHistory.length)}`} open={openSections.has('history')} onToggle={() => toggleSection('history')}>
       <section className='parent-card'>
         <p>Peitmine eemaldab tulemuse laste ajaloovaatest, kuid ei muuda teenitud tähti, seeriat ega võistlustulemusi.</p>
         <div className='stock-list'>
@@ -1163,6 +1291,11 @@ export default function ParentHub() {
           ))}
           {parentHistory.length === 0 && <p>Nähtavaid harjutustulemusi ei ole.</p>}
         </div>
+        {parentHistoryCursor && (
+          <div className='parent-action-row'>
+            <button type='button' className='filter-chip' disabled={loadingMoreHistory} onClick={loadMoreHistory}>{loadingMoreHistory ? 'Laadin...' : 'Näita rohkem'}</button>
+          </div>
+        )}
         {parentHistory.length > 0 && (
           <div className='parent-action-row'>
             {confirmHideAllHistory ? (

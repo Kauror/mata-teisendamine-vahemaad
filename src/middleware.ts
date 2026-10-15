@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { APP_ACCESS_COOKIE, PARENT_SESSION_COOKIE } from '@/lib/auth/constants';
 import { hasExactOrigin, verifySession } from '@/lib/auth/session';
-import { PARENT_PEEK_COOKIE, PARENT_PEEK_COOKIE_VALUE, PARENT_PEEK_MAX_AGE_SECONDS } from '@/lib/peekMode';
+import { isChildWritePath, isPeekReadOnlyRequest, PARENT_PEEK_COOKIE, PARENT_PEEK_COOKIE_VALUE, PARENT_PEEK_MAX_AGE_SECONDS, PEEK_READ_ONLY_ACTION_MESSAGE, PEEK_READ_ONLY_CODE } from '@/lib/peekMode';
 
 function isPublicPath(pathname: string) {
   if (pathname === '/access' || pathname === '/api/access') return true;
@@ -69,6 +69,15 @@ export async function middleware(req: NextRequest) {
     }
     if (req.headers.get('x-csrf-token') !== parent.csrf) {
       return NextResponse.json({ code: 'csrf_invalid', message: 'Turvatunnus puudub või ei sobi.' }, { status: 403 });
+    }
+  }
+  // Peek mode is read-only for the child's data: a parent signed in on this
+  // browser cannot start a session, tick a task or buy on the child's behalf,
+  // whatever the page does. "Vaata nagu laps" (the opt-out cookie) lifts it.
+  if (isMutation(req) && isChildWritePath(pathname)) {
+    const parent = await verifySession(req.cookies.get(PARENT_SESSION_COOKIE)?.value, 'parent');
+    if (isPeekReadOnlyRequest({ parentSession: Boolean(parent), cookieHeader: req.headers.get('cookie') })) {
+      return NextResponse.json({ code: PEEK_READ_ONLY_CODE, message: PEEK_READ_ONLY_ACTION_MESSAGE }, { status: 403 });
     }
   }
   return withBuildId(req, await applyParentPeekCookie(req, NextResponse.next()));
