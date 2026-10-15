@@ -82,6 +82,10 @@
 
   /* History: earlier months fold into one row each. */
   --history-month-bg:#eef4ff; --history-month-border:#c7d7fe;
+  /* History statistics charts: one series colour per child, plus the axis,
+     the 50% guide line and the tick labels. */
+  --stats-kiur:#3b82f6; --stats-kirsi:#ec4899;
+  --stats-axis:#e2e8f0; --stats-guide:#f1f5f9; --stats-tick:#64748b;
 
   /* English vocabulary (Sõnavara): one big flashcard, two answer directions. */
   --vocab-card-min-height:300px;
@@ -431,6 +435,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .parent-checkbox{display:flex!important;align-items:center;gap:10px;min-height:48px}.parent-checkbox input{width:22px;height:22px;min-height:0}
 .weekday-picker{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
 .parent-form-fieldset{display:contents;margin:0;padding:0;border:0;min-width:0}
+.parent-hub-fieldset{margin:0;padding:0;border:0;min-width:0}
 .parent-action-row{display:flex;gap:8px;flex-wrap:wrap}.parent-action-row button[type='submit']{flex:1}
 .parent-adjust-card{gap:12px}
 .parent-adjust-controls{display:flex;gap:10px;align-items:flex-end}
@@ -912,15 +917,22 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .stats-range{margin:0;font-size:14px;font-weight:700;color:#64748b}
 .stats-totals{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .stats-total-card{background:rgba(255,255,255,.94);border:1px solid #dfe8f6;border-radius:18px;padding:14px;box-shadow:0 12px 30px rgba(30,64,175,.07)}
-.stats-total-card[data-child="kiur"]{border-top:4px solid #3b82f6}
-.stats-total-card[data-child="kirsi"]{border-top:4px solid #ec4899}
+.stats-total-card[data-child="kiur"]{border-top:4px solid var(--stats-kiur)}
+.stats-total-card[data-child="kirsi"]{border-top:4px solid var(--stats-kirsi)}
 .stats-total-card h2{margin:0 0 8px;font-size:18px;font-weight:900;color:#0b1b45}
 .stats-total-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:3px 0}
 .stats-total-row span{font-size:13px;font-weight:700;color:#64748b}
 .stats-total-row strong{font-size:16px;font-weight:900;color:#0b1b45}
 .stats-legend{display:flex;gap:18px;align-items:center}
 .stats-legend span{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:800;color:#334155}
-.stats-legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.stats-legend i{width:14px;height:14px;border-radius:4px;display:inline-block;background:var(--series)}
+:is(.stats-legend,.stats-chart) [data-child="kiur"]{--series:var(--stats-kiur)}
+:is(.stats-legend,.stats-chart) [data-child="kirsi"]{--series:var(--stats-kirsi)}
+.stats-axis{stroke:var(--stats-axis);stroke-width:1}
+.stats-guide{stroke:var(--stats-guide);stroke-width:1}
+.stats-tick{fill:var(--stats-tick);font-size:11px}
+.stats-bar,.stats-point{fill:var(--series)}
+.stats-line{fill:none;stroke:var(--series);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
 .stats-section{background:rgba(255,255,255,.94);border:1px solid #dfe8f6;border-radius:18px;padding:14px;box-shadow:0 12px 30px rgba(30,64,175,.07);display:grid;gap:8px}
 .stats-section h2{margin:0;font-size:16px;font-weight:850;color:#0b1b45}
 .stats-chart-scroll{overflow-x:auto}
