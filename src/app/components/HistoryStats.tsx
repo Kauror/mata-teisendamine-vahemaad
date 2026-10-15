@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react';
 import type { StatsDay, StatsOverview } from '@/lib/stats';
 
-const KIUR_COLOR = '#3b82f6';
-const KIRSI_COLOR = '#ec4899';
 const CHART_W = 640;
 const CHART_H = 180;
 const PAD_LEFT = 10;
@@ -33,17 +31,17 @@ function ExercisesChart({ days, max }: { days: StatsDay[]; max: number }) {
   const scale = (value: number) => (max > 0 ? (value / max) * PLOT_H : 0);
   const baseY = PAD_TOP + PLOT_H;
   return <svg className='stats-chart' viewBox={`0 0 ${CHART_W} ${CHART_H}`} role='img' aria-label='Harjutusi päevas'>
-    <line x1={PAD_LEFT} y1={baseY} x2={CHART_W - PAD_RIGHT} y2={baseY} stroke='#e2e8f0' strokeWidth={1} />
+    <line className='stats-axis' x1={PAD_LEFT} y1={baseY} x2={CHART_W - PAD_RIGHT} y2={baseY} />
     {days.map((day, i) => {
       const groupX = PAD_LEFT + i * groupW;
       const kiurH = scale(day.kiur.exercises);
       const kirsiH = scale(day.kirsi.exercises);
       return <g key={day.date}>
-        <rect x={groupX + groupW / 2 - barW - 0.5} y={baseY - kiurH} width={barW} height={kiurH} rx={1.5} fill={KIUR_COLOR} />
-        <rect x={groupX + groupW / 2 + 0.5} y={baseY - kirsiH} width={barW} height={kirsiH} rx={1.5} fill={KIRSI_COLOR} />
+        <rect className='stats-bar' data-child='kiur' x={groupX + groupW / 2 - barW - 0.5} y={baseY - kiurH} width={barW} height={kiurH} rx={1.5} />
+        <rect className='stats-bar' data-child='kirsi' x={groupX + groupW / 2 + 0.5} y={baseY - kirsiH} width={barW} height={kirsiH} rx={1.5} />
       </g>;
     })}
-    {axisTicks(days).map((tick) => <text key={tick.index} x={PAD_LEFT + tick.index * groupW + groupW / 2} y={CHART_H - 8} textAnchor='middle' fontSize={11} fill='#64748b'>{tick.label}</text>)}
+    {axisTicks(days).map((tick) => <text key={tick.index} className='stats-tick' x={PAD_LEFT + tick.index * groupW + groupW / 2} y={CHART_H - 8} textAnchor='middle'>{tick.label}</text>)}
   </svg>;
 }
 
@@ -63,17 +61,17 @@ function LineChart({ days, kiurValue, kirsiValue, max, ariaLabel, asPercent = fa
     .filter((point): point is { x: number; value: number } => point.value !== null)
     .map((point) => ({ x: point.x, y: y(point.value) }));
   const series = [
-    { color: KIUR_COLOR, coords: coordsFor(kiurValue) },
-    { color: KIRSI_COLOR, coords: coordsFor(kirsiValue) }
+    { child: 'kiur', coords: coordsFor(kiurValue) },
+    { child: 'kirsi', coords: coordsFor(kirsiValue) }
   ];
   return <svg className='stats-chart' viewBox={`0 0 ${CHART_W} ${CHART_H}`} role='img' aria-label={ariaLabel}>
-    <line x1={PAD_LEFT} y1={baseY} x2={CHART_W - PAD_RIGHT} y2={baseY} stroke='#e2e8f0' strokeWidth={1} />
-    {asPercent && <line x1={PAD_LEFT} y1={y(50)} x2={CHART_W - PAD_RIGHT} y2={y(50)} stroke='#f1f5f9' strokeWidth={1} />}
-    {series.map((line, index) => <g key={index}>
-      {line.coords.length > 1 && <polyline points={line.coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ')} fill='none' stroke={line.color} strokeWidth={2.5} strokeLinejoin='round' strokeLinecap='round' />}
-      {line.coords.map((c, i) => <circle key={i} cx={c.x} cy={c.y} r={2.4} fill={line.color} />)}
+    <line className='stats-axis' x1={PAD_LEFT} y1={baseY} x2={CHART_W - PAD_RIGHT} y2={baseY} />
+    {asPercent && <line className='stats-guide' x1={PAD_LEFT} y1={y(50)} x2={CHART_W - PAD_RIGHT} y2={y(50)} />}
+    {series.map((line) => <g key={line.child} data-child={line.child}>
+      {line.coords.length > 1 && <polyline className='stats-line' points={line.coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ')} />}
+      {line.coords.map((c, i) => <circle key={i} className='stats-point' cx={c.x} cy={c.y} r={2.4} />)}
     </g>)}
-    {axisTicks(days).map((tick) => <text key={tick.index} x={PAD_LEFT + tick.index * stepX} y={CHART_H - 8} textAnchor='middle' fontSize={11} fill='#64748b'>{tick.label}</text>)}
+    {axisTicks(days).map((tick) => <text key={tick.index} className='stats-tick' x={PAD_LEFT + tick.index * stepX} y={CHART_H - 8} textAnchor='middle'>{tick.label}</text>)}
   </svg>;
 }
 
@@ -88,7 +86,7 @@ function StatsContent({ overview }: { overview: StatsOverview }) {
       <div className='stats-total-row'><span>Täpsus</span><strong>{totals[child].accuracyPercent}%</strong></div>
       <div className='stats-total-row'><span>Karikaid</span><strong>{totals[child].trophies} 🏆</strong></div>
     </div>)}</div>
-    <div className='stats-legend'><span><i style={{ background: KIUR_COLOR }} /> Kiur</span><span><i style={{ background: KIRSI_COLOR }} /> Kirsi</span></div>
+    <div className='stats-legend'><span><i data-child='kiur' /> Kiur</span><span><i data-child='kirsi' /> Kirsi</span></div>
     <section className='stats-section'><h2>Harjutusi päevas</h2><div className='stats-chart-scroll'><ExercisesChart days={days} max={maxExercisesInADay} /></div></section>
     <section className='stats-section'><h2>Täpsus (%)</h2><div className='stats-chart-scroll'><LineChart days={days} max={100} asPercent ariaLabel='Täpsuse trend' kiurValue={(day) => day.kiur.questions > 0 ? Math.round(day.kiur.correct / day.kiur.questions * 100) : null} kirsiValue={(day) => day.kirsi.questions > 0 ? Math.round(day.kirsi.correct / day.kirsi.questions * 100) : null} /></div></section>
     <section className='stats-section'><h2>Karikate jooks</h2><div className='stats-chart-scroll'><LineChart days={days} max={maxTrophies} ariaLabel='Karikate kogunemine' kiurValue={(day) => day.kiurTrophiesToDate} kirsiValue={(day) => day.kirsiTrophiesToDate} /></div></section>
