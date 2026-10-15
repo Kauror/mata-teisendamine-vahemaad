@@ -97,7 +97,9 @@ const cases: OutboxCase[] = [
     idsIn: (body) => (body.pending?.taskActions ?? []).map((row) => row.clientActionId),
     success: (ids) => ({ taskActionResults: ids.map((clientActionId) => ({ clientActionId, status: 'applied' })) }),
     settled: { status: 'applied', resolvedAt: SERVER_TIME },
-    retried: { status: 'pending', reasonCode: 'sync-http-500' }
+    // Counted like the other outboxes; the transport error no longer lands in
+    // reasonCode, which is reserved for the server's verdict.
+    retried: { status: 'pending', retryCount: 1, lastError: 'sync-http-500' }
   },
   {
     name: 'remediation actions',
@@ -195,6 +197,7 @@ describe.each(cases)('$name outbox lifecycle', (outbox) => {
     const stored = await getRow(outbox.store, outbox.key(row));
     expect(stored).toMatchObject(outbox.retried);
     expect(stored?.syncLeaseUntil).toBeUndefined();
+    expect((stored as { reasonCode?: string }).reasonCode).toBeUndefined();
     expect(new Date(stored!.nextRetryAt!).getTime()).toBeGreaterThan(Date.now());
     const state = await metaRepo.get<{ status: string; retryCount: number; nextRetryAt?: string }>('syncRetryState', { status: 'idle', retryCount: 0 });
     expect(state).toMatchObject({ status: 'retry_wait', retryCount: 1 });

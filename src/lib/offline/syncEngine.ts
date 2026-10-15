@@ -1,9 +1,9 @@
 import { csrfHeaders } from '@/lib/auth/client';
 import { pingServer } from '@/lib/offline/connection';
 import { getCursor, getDeviceId, getServerOffsetMs, type SyncCursor } from '@/lib/offline/meta';
-import { attemptRepo, catalogRepo, catalogueGrantRepo, metaRepo, remediationActionRepo, taskActionRepo } from '@/lib/offline/repositories';
+import { attemptRepo, catalogRepo, catalogueGrantRepo, metaRepo, remediationActionRepo, taskActionRepo, type OutboxRepo } from '@/lib/offline/repositories';
 import type { LocalAttempt, LocalRemediationAction, LocalTaskAction } from '@/lib/offline/records';
-import { applySyncEnvelope } from '@/lib/offline/syncApply';
+import { applySyncEnvelope, type SyncApplyInput, type SyncApplyResult } from '@/lib/offline/syncApply';
 import { withSyncLock } from '@/lib/offline/syncLock';
 import {
   CLIENT_ACTION_BATCH_SIZE,
@@ -240,206 +240,128 @@ function errorDisposition(error: unknown): SyncFailureDisposition | 'timeout' {
   return 'retryable';
 }
 
-async function returnAttemptBatch(batch: LocalAttempt[], error: string, nextRetryAt?: string) {
-  await attemptRepo.returnPending(batch.map((row) => row.clientAttemptId), error, nextRetryAt);
-}
+// One outbox kind as the push path sees it: its store, how a batch becomes a
+// request, and how the server's per-row results are read and applied.
+type OutboxPush<Row, Result> = {
+  repo: OutboxRepo<Row>;
+  pushKind: OfflineSyncPushRequestV2['pushKind'];
+  // null when a row cannot be sent with this protocol.
+  pending(batch: Row[]): OfflineSyncPushRequestV2['pending'] | null;
+  results(response: OfflineSyncPushResponseV2): Result[];
+  envelope(results: Result[]): Omit<SyncApplyInput, 'serverTime'>;
+  needsReview(id: string, reasonCode: string, message?: string): Result;
+  afterApply?(applied: SyncApplyResult): Promise<void>;
+};
 
-async function returnTaskBatch(batch: LocalTaskAction[], error: string, nextRetryAt?: string) {
-  await taskActionRepo.returnPending(batch.map((row) => row.clientActionId), error, nextRetryAt);
-}
-
-async function returnRemediationBatch(batch: LocalRemediationAction[], error: string, nextRetryAt?: string) {
-  await remediationActionRepo.returnPending(batch.map((row) => row.clientActionId), error, nextRetryAt);
-}
-
-async function handleAttemptPushError(error: unknown, batch: LocalAttempt[]): Promise<never | void> {
-  const disposition = errorDisposition(error);
-  const message = error instanceof Error ? error.message : String(error);
-  if (disposition === 'record_validation' || disposition === 'terminal') {
-    await applySyncEnvelope({
-      serverTime: new Date().toISOString(),
-      attemptResults: batch.map((row) => ({ clientAttemptId: row.clientAttemptId, status: 'needs_review', reasonCode: 'invalid_request', message }))
-    });
-    return;
-  }
-  if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
-    await returnAttemptBatch(batch, message);
-    await blockRetry(disposition, message);
-    throw new StopSyncCycle(message, disposition);
-  }
-  const nextRetryAt = await scheduleRetry(message);
-  await returnAttemptBatch(batch, message, nextRetryAt);
-  throw new StopSyncCycle(message, disposition === 'timeout' ? 'timeout' : 'retryable');
-}
-
-async function handleTaskPushError(error: unknown, batch: LocalTaskAction[]): Promise<never | void> {
-  const disposition = errorDisposition(error);
-  const message = error instanceof Error ? error.message : String(error);
-  if (disposition === 'record_validation' || disposition === 'terminal') {
-    await applySyncEnvelope({
-      serverTime: new Date().toISOString(),
-      taskActionResults: batch.map((row) => ({ clientActionId: row.clientActionId, status: 'needs_review', reasonCode: 'invalid_request', message }))
-    });
-    return;
-  }
-  if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
-    await returnTaskBatch(batch, message);
-    await blockRetry(disposition, message);
-    throw new StopSyncCycle(message, disposition);
-  }
-  const nextRetryAt = await scheduleRetry(message);
-  await returnTaskBatch(batch, message, nextRetryAt);
-  throw new StopSyncCycle(message, disposition === 'timeout' ? 'timeout' : 'retryable');
-}
-
-async function handleRemediationPushError(error: unknown, batch: LocalRemediationAction[]): Promise<never | void> {
-  const disposition = errorDisposition(error);
-  const message = error instanceof Error ? error.message : String(error);
-  if (disposition === 'record_validation' || disposition === 'terminal') {
-    await applySyncEnvelope({
-      serverTime: new Date().toISOString(),
-      remediationActionResults: batch.map((row) => ({ clientActionId: row.clientActionId, status: 'needs_review', reasonCode: 'invalid_request', message }))
-    });
-    return;
-  }
-  if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
-    await returnRemediationBatch(batch, message);
-    await blockRetry(disposition, message);
-    throw new StopSyncCycle(message, disposition);
-  }
-  const nextRetryAt = await scheduleRetry(message);
-  await returnRemediationBatch(batch, message, nextRetryAt);
-  throw new StopSyncCycle(message, disposition === 'timeout' ? 'timeout' : 'retryable');
-}
-
-async function pushAttemptBatch(
-  batch: LocalAttempt[],
-  device: OfflineSyncDevice,
-  signal: AbortSignal,
-  aggregate: AttemptResult[],
-  alreadyMarked = false
-): Promise<number> {
-  if (!batch.length) return 0;
-  if (!alreadyMarked) await attemptRepo.markSyncing(batch.map((row) => row.clientAttemptId), new Date(Date.now() + OUTBOX_LEASE_MS).toISOString());
-  const payloads = batch.map(toV2Payload);
-  if (payloads.some((row) => !row)) {
-    await returnAttemptBatch(batch, 'legacy_protocol_required');
-    return 0;
-  }
-  const request: OfflineSyncPushRequestV2 = {
-    protocolVersion: OFFLINE_PROTOCOL_VERSION,
-    phase: 'push',
-    pushKind: 'attempts',
-    device: { ...device, clientNow: new Date().toISOString() },
-    cursor: cursorV2(await getCursor()),
-    pending: { attempts: payloads as OfflineAttemptPayloadV2[] }
-  };
-  try {
-    const response = await postSync<OfflineSyncPushResponseV2>(request, signal);
-    if (response.protocolVersion !== 2 || response.phase !== 'push') throw new Error('invalid-v2-push-response');
-    aggregate.push(...response.attemptResults);
-    const applied = await applySyncEnvelope({ serverTime: response.serverTime, attemptResults: response.attemptResults });
+const attemptOutbox: OutboxPush<LocalAttempt, AttemptResult> = {
+  repo: attemptRepo,
+  pushKind: 'attempts',
+  pending(batch) {
+    const payloads = batch.map(toV2Payload);
+    return payloads.some((row) => !row) ? null : { attempts: payloads as OfflineAttemptPayloadV2[] };
+  },
+  results: (response) => response.attemptResults,
+  envelope: (attemptResults) => ({ attemptResults }),
+  needsReview: (clientAttemptId, reasonCode, message) => ({ clientAttemptId, status: 'needs_review', reasonCode, message }),
+  async afterApply(applied) {
     for (const id of applied.missingCanonicalAttemptIds) {
       const row = await attemptRepo.get(id);
       if (row) await attemptRepo.put({ ...row, nextRetryAt: new Date(Date.now() + retryDelayMs(row.retryCount)).toISOString() });
     }
-    return response.attemptResults.length;
-  } catch (error) {
-    if (error instanceof SyncHttpError && error.status === 413 && batch.length > 1) {
-      const midpoint = Math.ceil(batch.length / 2);
-      return (await pushAttemptBatch(batch.slice(0, midpoint), device, signal, aggregate, true)) +
-        (await pushAttemptBatch(batch.slice(midpoint), device, signal, aggregate, true));
-    }
-    if (error instanceof SyncHttpError && error.status === 413) {
-      await applySyncEnvelope({
-        serverTime: new Date().toISOString(),
-        attemptResults: [{ clientAttemptId: batch[0].clientAttemptId, status: 'needs_review', reasonCode: 'payload_too_large' }]
-      });
-      return 0;
-    }
-    await handleAttemptPushError(error, batch);
-    return 0;
   }
+};
+
+const taskActionOutbox: OutboxPush<LocalTaskAction, TaskActionResult> = {
+  repo: taskActionRepo,
+  pushKind: 'actions',
+  pending: (batch) => ({ taskActions: batch.map(toActionPayload), remediationActions: [] }),
+  results: (response) => response.taskActionResults,
+  envelope: (taskActionResults) => ({ taskActionResults }),
+  needsReview: (clientActionId, reasonCode, message) => ({ clientActionId, status: 'needs_review', reasonCode, message })
+};
+
+const remediationActionOutbox: OutboxPush<LocalRemediationAction, RemediationActionResult> = {
+  repo: remediationActionRepo,
+  pushKind: 'actions',
+  pending: (batch) => ({ taskActions: [], remediationActions: batch.map(toRemediationPayload) }),
+  results: (response) => response.remediationActionResults,
+  envelope: (remediationActionResults) => ({ remediationActionResults }),
+  needsReview: (clientActionId, reasonCode, message) => ({ clientActionId, status: 'needs_review', reasonCode, message })
+};
+
+async function returnBatch<Row, Result>(outbox: OutboxPush<Row, Result>, batch: Row[], error: string, nextRetryAt?: string) {
+  await outbox.repo.returnPending(batch.map(outbox.repo.idOf), error, nextRetryAt);
 }
 
-async function pushTaskBatch(
-  batch: LocalTaskAction[],
+async function reviewBatch<Row, Result>(outbox: OutboxPush<Row, Result>, rows: Row[], reasonCode: string, message?: string) {
+  await applySyncEnvelope({
+    serverTime: new Date().toISOString(),
+    ...outbox.envelope(rows.map((row) => outbox.needsReview(outbox.repo.idOf(row), reasonCode, message)))
+  });
+}
+
+async function handlePushError<Row, Result>(outbox: OutboxPush<Row, Result>, error: unknown, batch: Row[]): Promise<void> {
+  const disposition = errorDisposition(error);
+  const message = error instanceof Error ? error.message : String(error);
+  if (disposition === 'record_validation' || disposition === 'terminal') {
+    await reviewBatch(outbox, batch, 'invalid_request', message);
+    return;
+  }
+  if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
+    await returnBatch(outbox, batch, message);
+    await blockRetry(disposition, message);
+    throw new StopSyncCycle(message, disposition);
+  }
+  const nextRetryAt = await scheduleRetry(message);
+  await returnBatch(outbox, batch, message, nextRetryAt);
+  throw new StopSyncCycle(message, disposition === 'timeout' ? 'timeout' : 'retryable');
+}
+
+// Pushes one batch and applies the per-row results. A 413 halves the batch
+// (its rows stay leased) until a single row is still too large; that row goes
+// to manual review. Returns how many rows the server acknowledged.
+async function pushBatch<Row, Result>(
+  outbox: OutboxPush<Row, Result>,
+  batch: Row[],
   device: OfflineSyncDevice,
   signal: AbortSignal,
-  aggregate: TaskActionResult[],
+  aggregate: Result[],
   alreadyMarked = false
 ): Promise<number> {
   if (!batch.length) return 0;
-  if (!alreadyMarked) await taskActionRepo.markSyncing(batch.map((row) => row.clientActionId), new Date(Date.now() + OUTBOX_LEASE_MS).toISOString());
+  if (!alreadyMarked) await outbox.repo.markSyncing(batch.map(outbox.repo.idOf), new Date(Date.now() + OUTBOX_LEASE_MS).toISOString());
+  const pending = outbox.pending(batch);
+  if (!pending) {
+    await returnBatch(outbox, batch, 'legacy_protocol_required');
+    return 0;
+  }
   const request: OfflineSyncPushRequestV2 = {
     protocolVersion: OFFLINE_PROTOCOL_VERSION,
     phase: 'push',
-    pushKind: 'actions',
+    pushKind: outbox.pushKind,
     device: { ...device, clientNow: new Date().toISOString() },
     cursor: cursorV2(await getCursor()),
-    pending: { taskActions: batch.map(toActionPayload), remediationActions: [] }
+    pending
   };
   try {
     const response = await postSync<OfflineSyncPushResponseV2>(request, signal);
     if (response.protocolVersion !== 2 || response.phase !== 'push') throw new Error('invalid-v2-push-response');
-    aggregate.push(...response.taskActionResults);
-    await applySyncEnvelope({ serverTime: response.serverTime, taskActionResults: response.taskActionResults });
-    return response.taskActionResults.length;
+    const results = outbox.results(response);
+    aggregate.push(...results);
+    const applied = await applySyncEnvelope({ serverTime: response.serverTime, ...outbox.envelope(results) });
+    await outbox.afterApply?.(applied);
+    return results.length;
   } catch (error) {
     if (error instanceof SyncHttpError && error.status === 413 && batch.length > 1) {
       const midpoint = Math.ceil(batch.length / 2);
-      return (await pushTaskBatch(batch.slice(0, midpoint), device, signal, aggregate, true)) +
-        (await pushTaskBatch(batch.slice(midpoint), device, signal, aggregate, true));
+      return (await pushBatch(outbox, batch.slice(0, midpoint), device, signal, aggregate, true)) +
+        (await pushBatch(outbox, batch.slice(midpoint), device, signal, aggregate, true));
     }
     if (error instanceof SyncHttpError && error.status === 413) {
-      await applySyncEnvelope({
-        serverTime: new Date().toISOString(),
-        taskActionResults: [{ clientActionId: batch[0].clientActionId, status: 'needs_review', reasonCode: 'payload_too_large' }]
-      });
+      await reviewBatch(outbox, [batch[0]], 'payload_too_large');
       return 0;
     }
-    await handleTaskPushError(error, batch);
-    return 0;
-  }
-}
-
-async function pushRemediationBatch(
-  batch: LocalRemediationAction[],
-  device: OfflineSyncDevice,
-  signal: AbortSignal,
-  aggregate: RemediationActionResult[],
-  alreadyMarked = false
-): Promise<number> {
-  if (!batch.length) return 0;
-  if (!alreadyMarked) await remediationActionRepo.markSyncing(batch.map((row) => row.clientActionId), new Date(Date.now() + OUTBOX_LEASE_MS).toISOString());
-  const request: OfflineSyncPushRequestV2 = {
-    protocolVersion: OFFLINE_PROTOCOL_VERSION,
-    phase: 'push',
-    pushKind: 'actions',
-    device: { ...device, clientNow: new Date().toISOString() },
-    cursor: cursorV2(await getCursor()),
-    pending: { taskActions: [], remediationActions: batch.map(toRemediationPayload) }
-  };
-  try {
-    const response = await postSync<OfflineSyncPushResponseV2>(request, signal);
-    if (response.protocolVersion !== 2 || response.phase !== 'push') throw new Error('invalid-v2-push-response');
-    aggregate.push(...response.remediationActionResults);
-    await applySyncEnvelope({ serverTime: response.serverTime, remediationActionResults: response.remediationActionResults });
-    return response.remediationActionResults.length;
-  } catch (error) {
-    if (error instanceof SyncHttpError && error.status === 413 && batch.length > 1) {
-      const midpoint = Math.ceil(batch.length / 2);
-      return (await pushRemediationBatch(batch.slice(0, midpoint), device, signal, aggregate, true)) +
-        (await pushRemediationBatch(batch.slice(midpoint), device, signal, aggregate, true));
-    }
-    if (error instanceof SyncHttpError && error.status === 413) {
-      await applySyncEnvelope({
-        serverTime: new Date().toISOString(),
-        remediationActionResults: [{ clientActionId: batch[0].clientActionId, status: 'needs_review', reasonCode: 'payload_too_large' }]
-      });
-      return 0;
-    }
-    await handleRemediationPushError(error, batch);
+    await handlePushError(outbox, error, batch);
     return 0;
   }
 }
@@ -543,14 +465,14 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
       const modernAttempts = dueAttempts.filter((row) => toV2Payload(row) !== null);
       const legacyAttempts = dueAttempts.filter((row) => toV2Payload(row) === null);
       for (const batch of chunkRecords(modernAttempts, CLIENT_ATTEMPT_BATCH_SIZE)) {
-        pushed += await pushAttemptBatch(batch, device, cycleController.signal, aggregateAttempts);
+        pushed += await pushBatch(attemptOutbox, batch, device, cycleController.signal, aggregateAttempts);
       }
       // All task/remediation actions are pushed only after every attempt batch.
       for (const batch of chunkRecords(dueActions, CLIENT_ACTION_BATCH_SIZE)) {
-        pushed += await pushTaskBatch(batch, device, cycleController.signal, aggregateActions);
+        pushed += await pushBatch(taskActionOutbox, batch, device, cycleController.signal, aggregateActions);
       }
       for (const batch of chunkRecords(dueRemediationActions, CLIENT_ACTION_BATCH_SIZE)) {
-        pushed += await pushRemediationBatch(batch, device, cycleController.signal, aggregateRemediationActions);
+        pushed += await pushBatch(remediationActionOutbox, batch, device, cycleController.signal, aggregateRemediationActions);
       }
       // Preserve pre-v2 outbox rows in IndexedDB for explicit manual review.
       // They cannot be safely upgraded because their immutable runner contract
