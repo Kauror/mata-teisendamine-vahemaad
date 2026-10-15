@@ -99,6 +99,7 @@ function envelopeCarriesData(input: SyncApplyInput): boolean {
   const pull = input.pull;
   if (!pull) return false;
   if (pull.taskTemplates !== undefined) return true; // authoritative snapshot: replaced even when empty
+  if (hasItems(pull.taskAssignmentDates)) return true; // dated snapshot: those days replaced even when empty
   return [
     pull.attempts, pull.tombstones, pull.taskChanges, pull.remediationChanges, pull.taskAssignments,
     pull.remediationBundles, pull.catalogueGrants, pull.catalogues, pull.dashboards
@@ -297,6 +298,9 @@ export async function applySyncEnvelope(input: SyncApplyInput): Promise<SyncAppl
       }
     }
 
+    // OFF-07: catalogues, grants and dashboards are per-learner upserts. An
+    // omitted section or learner means "unchanged" and leaves the local row;
+    // nothing here clears these stores (only resetRequired does, above).
     for (const grant of Object.values(input.pull?.catalogueGrants ?? {})) {
       if (grant) await tx.objectStore('catalogueGrants').put(grant);
     }
@@ -328,12 +332,17 @@ export async function applySyncEnvelope(input: SyncApplyInput): Promise<SyncAppl
     // shadow the freshly created canonical one. So for every date present in the
     // response we clear the local assignments first, then insert the authoritative
     // rows. Dates not in the response are left untouched.
+    // OFF-07: an omitted section (undefined) is "unchanged". The dates the
+    // snapshot covers come from taskAssignmentDates when the server names them,
+    // so an empty array for a named day clears that day; older servers send no
+    // dates and only the dates present in the rows are replaced.
     if (input.pull?.taskAssignments !== undefined) {
       const assignmentStore = tx.objectStore('taskAssignments');
       const incoming = input.pull.taskAssignments
         .map(asTaskAssignment)
         .filter((row): row is TaskAssignmentRecord => row !== null);
-      const snapshotDates = new Set(incoming.map((row) => row.taskDate));
+      const namedDates = (input.pull.taskAssignmentDates ?? []).filter((date): date is string => typeof date === 'string');
+      const snapshotDates = new Set([...namedDates, ...incoming.map((row) => row.taskDate)]);
       for (const date of snapshotDates) {
         let assignmentCursor = await assignmentStore.index('byTaskDate').openCursor(IDBKeyRange.only(date));
         while (assignmentCursor) {
@@ -383,6 +392,8 @@ export async function applySyncEnvelope(input: SyncApplyInput): Promise<SyncAppl
     }
 
     // A complete bootstrap is an evidence marker, not merely "some sync ran".
+    // It reads the stores, not this envelope, because since OFF-07 a first pull
+    // delivers catalogues + grants on its first page and dashboards on its last.
     const hasBothCatalogues = Boolean(await tx.objectStore('catalogues').get('kiur')) && Boolean(await tx.objectStore('catalogues').get('kirsi'));
     const hasBothSnapshots = Boolean(await tx.objectStore('snapshots').get('kiur')) && Boolean(await tx.objectStore('snapshots').get('kirsi'));
     const grantsAdvertised = input.pull?.catalogueGrants !== undefined;

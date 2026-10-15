@@ -2,10 +2,11 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applySyncEnvelope } from '@/lib/offline/syncApply';
 import { getCursor } from '@/lib/offline/meta';
-import { attemptRepo, taskAssignmentRepo } from '@/lib/offline/repositories';
+import { attemptRepo, bootstrapRepo, catalogRepo, catalogueGrantRepo, snapshotRepo, taskAssignmentRepo, taskTemplateRepo } from '@/lib/offline/repositories';
 import type { LocalAttempt } from '@/lib/offline/records';
 import { closeOfflineDbForTests, OFFLINE_DB_NAME } from '@/lib/offline/db';
-import type { OfflineSyncPullDataV2 } from '@/lib/shared/types';
+import type { CatalogueGrant, ChildDashboardSnapshot, OfflineCatalogue, OfflineSyncPullDataV2 } from '@/lib/shared/types';
+import type { SyncTaskTemplate } from '@/lib/shared/taskProjection';
 
 async function resetDatabase() {
   await closeOfflineDbForTests();
@@ -62,6 +63,88 @@ describe('task assignment snapshot replacement (RTM3-H05)', () => {
     const rows = await taskAssignmentRepo.forLearner('kiur');
     expect(rows.find((row) => row.taskDate === tomorrow)?.assignmentId).toBe('tomorrow-1');
     expect(rows.filter((row) => row.taskDate === today).map((row) => row.assignmentId)).toEqual(['today-2']);
+  });
+});
+
+// OFF-07: an omitted section means "unchanged", an empty one means "empty".
+describe('omitted versus empty pull sections (OFF-07)', () => {
+  const today = '2026-07-12';
+  const tomorrow = '2026-07-13';
+  const catalogue = (learner: 'kiur' | 'kirsi'): OfflineCatalogue => ({
+    learner, version: `${learner}-v1`, issuedAt: '2026-07-01T00:00:00.000Z', refreshAfter: '2026-08-01T00:00:00.000Z',
+    validUntil: '2026-08-10T00:00:00.000Z', algorithmVersion: 1, generatorVersion: '2026-07-1', dailyLimit: 3, entries: []
+  });
+  const grant = (learner: 'kiur' | 'kirsi'): CatalogueGrant => ({
+    learner, catalogueVersion: `${learner}-v1`, rewardPolicyVersion: 'rp2-x', generatorVersion: '2026-07-1',
+    runnerVersion: 'legacy-v1', rotationVersion: 1, issuedAt: '2026-07-01T00:00:00.000Z', validUntil: '2026-08-10T00:00:00.000Z'
+  });
+  const dashboard = (learner: 'kiur' | 'kirsi'): ChildDashboardSnapshot => ({ learner, balance: 5, streak: 2, trophies: 1, updatedAt: '2026-07-12T10:00:00.000Z' });
+  const template: SyncTaskTemplate = {
+    id: 1, title: 'Koristus', points: 3, assignmentMode: 'both_independent', recurrenceType: 'daily',
+    selectedWeekdaysJson: null, startDate: null, onceDate: null, requiresApproval: false, version: 't1'
+  };
+  const feeds = { attempts: [], tombstones: [], taskChanges: [], remediationChanges: [] };
+  const apply = (pull: Partial<OfflineSyncPullDataV2>) => applySyncEnvelope({ serverTime: '2026-07-12T10:00:00.000Z', pull: { ...feeds, ...pull } });
+
+  async function seedEverything() {
+    await apply({
+      catalogues: { kiur: catalogue('kiur'), kirsi: catalogue('kirsi') },
+      catalogueGrants: { kiur: grant('kiur'), kirsi: grant('kirsi') },
+      dashboards: { kiur: dashboard('kiur'), kirsi: dashboard('kirsi') },
+      taskTemplates: [template],
+      taskAssignments: [assignment('today-1', 1, today), assignment('tomorrow-1', 1, tomorrow)],
+      taskAssignmentDates: [today]
+    });
+  }
+
+  it('leaves local data untouched when a page omits every snapshot section', async () => {
+    await seedEverything();
+    const result = await apply({});
+
+    expect(result.changed).toBe(false);
+    expect(await catalogRepo.get('kiur')).toMatchObject({ version: 'kiur-v1' });
+    expect(await catalogueGrantRepo.get('kirsi')).toMatchObject({ catalogueVersion: 'kirsi-v1' });
+    expect(await snapshotRepo.get('kiur')).toMatchObject({ balance: 5 });
+    expect((await taskTemplateRepo.all()).map((row) => row.id)).toEqual([1]);
+    expect((await taskAssignmentRepo.forLearner('kiur')).map((row) => row.assignmentId).sort()).toEqual(['today-1', 'tomorrow-1']);
+    expect(await bootstrapRepo.get('deviceBootstrapComplete', false)).toBe(true);
+  });
+
+  it('leaves the other learner untouched when only one catalogue is resent', async () => {
+    await seedEverything();
+    await apply({ catalogues: { kiur: { ...catalogue('kiur'), version: 'kiur-v2' } }, catalogueGrants: { kiur: { ...grant('kiur'), catalogueVersion: 'kiur-v2' } } });
+
+    expect(await catalogRepo.get('kiur')).toMatchObject({ version: 'kiur-v2' });
+    expect(await catalogRepo.get('kirsi')).toMatchObject({ version: 'kirsi-v1' });
+  });
+
+  it('clears templates and the named day when the sections are present but empty', async () => {
+    await seedEverything();
+    const result = await apply({ taskTemplates: [], taskAssignments: [], taskAssignmentDates: [today] });
+
+    expect(result.changed).toBe(true);
+    expect(await taskTemplateRepo.all()).toEqual([]);
+    const rows = await taskAssignmentRepo.forLearner('kiur');
+    // Only the day the snapshot names is cleared.
+    expect(rows.map((row) => row.assignmentId)).toEqual(['tomorrow-1']);
+  });
+
+  it('keeps the pre-OFF-07 per-row date behaviour for a server that names no dates', async () => {
+    await seedEverything();
+    await apply({ taskAssignments: [] });
+    expect((await taskAssignmentRepo.forLearner('kiur')).map((row) => row.assignmentId).sort()).toEqual(['today-1', 'tomorrow-1']);
+  });
+
+  it('sets the bootstrap markers once a paged first pull has delivered every part', async () => {
+    // Page 1: catalogues + grants. Page 2: history only. Page 3: projections.
+    await apply({ catalogues: { kiur: catalogue('kiur'), kirsi: catalogue('kirsi') }, catalogueGrants: { kiur: grant('kiur'), kirsi: grant('kirsi') } });
+    expect(await bootstrapRepo.get('deviceBootstrapComplete', false)).toBe(false);
+    await apply({});
+    expect(await bootstrapRepo.get('deviceBootstrapComplete', false)).toBe(false);
+    expect(await bootstrapRepo.get('taskBootstrapComplete', false)).toBe(false);
+    await apply({ dashboards: { kiur: dashboard('kiur'), kirsi: dashboard('kirsi') }, taskTemplates: [template], taskAssignments: [], taskAssignmentDates: [today] });
+    expect(await bootstrapRepo.get('deviceBootstrapComplete', false)).toBe(true);
+    expect(await bootstrapRepo.get('taskBootstrapComplete', false)).toBe(true);
   });
 });
 

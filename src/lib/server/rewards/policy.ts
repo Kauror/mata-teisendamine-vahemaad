@@ -87,6 +87,11 @@ export function snapshotCurrentRewardPolicy(): RewardPolicyV2 {
   };
 }
 
+// The version ensureCurrentRewardPolicy would return, without writing.
+export function currentRewardPolicyVersion(): string {
+  return `rp2-${contentHash(snapshotCurrentRewardPolicy())}`;
+}
+
 export function ensureCurrentRewardPolicy() {
   const policy = snapshotCurrentRewardPolicy();
   const hash = contentHash(policy);
@@ -172,6 +177,31 @@ export function grantCatalogueContract(input: Omit<CatalogueGrantContract, 'rewa
     now
   );
   return { ...input, rewardPolicyVersion };
+}
+
+// The exact row this device was last handed for a catalogue version (no
+// device-less fallback), plus whether its contract still matches what a fresh
+// grant would say. The sync pull resends a grant whose contract drifted
+// (policy edit, runner contract change, generator bump) even when its window
+// is still long, so slimming the pull never strands a device on an old policy.
+export function catalogueGrantForDevice(learner: 'kiur' | 'kirsi', catalogueVersion: string, deviceId: string) {
+  return db.prepare(`
+    SELECT learner, catalogueVersion, deviceId, rewardPolicyVersion, generatorVersion,
+           runnerVersion, runnerContractsJson, rotationVersion, issuedAt, validUntil
+    FROM catalogue_grants
+    WHERE learner = ? AND catalogueVersion = ? AND deviceId = ?
+  `).get(learner, catalogueVersion, deviceId) as CatalogueGrantContract | undefined;
+}
+
+export function grantContractIsCurrent(
+  row: CatalogueGrantContract,
+  expected: Pick<CatalogueGrantContract, 'rewardPolicyVersion' | 'generatorVersion' | 'runnerVersion' | 'rotationVersion'>
+): boolean {
+  return row.rewardPolicyVersion === expected.rewardPolicyVersion &&
+    row.generatorVersion === expected.generatorVersion &&
+    row.runnerVersion === expected.runnerVersion &&
+    row.rotationVersion === expected.rotationVersion &&
+    row.runnerContractsJson === JSON.stringify(OFFLINE_CAPABILITY_MANIFEST.runners);
 }
 
 export function catalogueGrantForAttempt(learner: 'kiur' | 'kirsi', catalogueVersion: string, deviceId: string | null) {
