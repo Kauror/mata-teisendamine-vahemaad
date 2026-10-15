@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { NOTICE_URL } from '@/lib/childPageData';
 
 export default function NoticeBoard() {
   const [text, setText] = useState('');
 
   useEffect(() => {
-    fetch('/api/notice')
+    // The child pages preload this exact URL (childPageData.ts).
+    fetch(NOTICE_URL)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setText(typeof data?.text === 'string' ? data.text : ''))
       .catch(() => setText(''));

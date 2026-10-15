@@ -12,6 +12,7 @@ import { readPeekMode, usePeekMode } from '@/app/components/usePeekMode';
 import { mayRecordSeenMarker, PEEK_READ_ONLY_ACTION_MESSAGE } from '@/lib/peekMode';
 import { decideMilestoneNotice } from '@/lib/milestoneNotice';
 import { todayDateString } from '@/lib/appDate';
+import { childDashboardUrl } from '@/lib/childPageData';
 import { achievementLabel, starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
 
 // Display-only shortening. The stored title stays "Täiuslik nädal" — only the
@@ -116,7 +117,9 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
 
   const load = useCallback(() => {
     setError('');
-    fetch(`/api/child-dashboard?learner=${learner}`)
+    // Same URL as the document's preload (childPageData.ts), so the first
+    // load picks up the response the browser already started fetching.
+    fetch(childDashboardUrl(learner))
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then(setData)
       .catch(async () => {
