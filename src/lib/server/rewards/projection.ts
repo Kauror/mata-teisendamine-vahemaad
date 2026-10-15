@@ -1,4 +1,4 @@
-import db from '@/lib/db';
+import db, { stmt } from '@/lib/db';
 import { addAppDays } from '@/lib/appDate';
 import { getBalance, type Learner } from '@/lib/tasks';
 import { rebuildDailyLeaderboard, recordDailyLeaderboard } from '@/lib/leaderboard';
@@ -122,7 +122,11 @@ export function projectCanonicalRewardsPure(
   return components;
 }
 
-export function projectCanonicalRewards(attempts: ProjectionAttempt[]): CanonicalComponent[] {
+// Each referenced policy version is read and parsed once per projection.
+// Policy versions are immutable, but the map is deliberately per call rather
+// than module-wide so a test database that reuses a version name never sees a
+// stale policy.
+function loadPolicies(attempts: ProjectionAttempt[]): Map<string, RewardPolicyV2> {
   const versions = new Set(attempts.map((attempt) => attempt.rewardPolicyVersion));
   const policies = new Map<string, RewardPolicyV2>();
   for (const version of versions) {
@@ -130,7 +134,11 @@ export function projectCanonicalRewards(attempts: ProjectionAttempt[]): Canonica
     if (!policy) throw new Error(`Unknown reward policy ${version}.`);
     policies.set(version, policy);
   }
-  return projectCanonicalRewardsPure(attempts, policies);
+  return policies;
+}
+
+export function projectCanonicalRewards(attempts: ProjectionAttempt[]): CanonicalComponent[] {
+  return projectCanonicalRewardsPure(attempts, loadPolicies(attempts));
 }
 
 function projectionAttempts(learner: Learner): ProjectionAttempt[] {
@@ -140,7 +148,7 @@ function projectionAttempts(learner: Learner): ProjectionAttempt[] {
   // decay, contribute to a streak, or throw an unknown-policy error here (RTM-003).
   // `deletedAt` is intentionally not a predicate: hiding a history row is only
   // a display preference and cannot rewrite canonical accounting.
-  return db.prepare(`
+  return stmt(`
     SELECT id, clientAttemptId, learner, exerciseId, runnerId, score, questionCount,
            completionDate, effectiveCompletedAt, rewardPolicyVersion, subject, topic
     FROM attempts
@@ -152,7 +160,7 @@ function projectionAttempts(learner: Learner): ProjectionAttempt[] {
 }
 
 function latestComponents(attemptId: number) {
-  return db.prepare(`
+  return stmt(`
     SELECT c.componentKey, c.revision, c.canonicalAmount
     FROM attempt_reward_components c
     JOIN (
@@ -175,7 +183,7 @@ export type AppliedProjection = {
 // once. Idempotent: a second call is a no-op because the attempt is already
 // eligible, and the projection itself is revision/idempotency-keyed (RTM-003).
 export function approveHeldRewardAttempt(attemptId: number): AppliedProjection | null {
-  const row = db.prepare(
+  const row = stmt(
     'SELECT learner, rewardSettlementStatus, rewardPolicyVersion, completionDate, subject, topic FROM attempts WHERE id = ? AND protocolVersion = 2'
   ).get(attemptId) as {
     learner: Learner; rewardSettlementStatus: string; rewardPolicyVersion: string | null; completionDate: string | null;
@@ -187,7 +195,7 @@ export function approveHeldRewardAttempt(attemptId: number): AppliedProjection |
     throw new Error(`Cannot approve attempt ${attemptId}: reward policy is unavailable.`);
   }
   return db.transaction(() => {
-    db.prepare("UPDATE attempts SET rewardSettlementStatus = 'eligible' WHERE id = ? AND rewardSettlementStatus <> 'eligible'").run(attemptId);
+    stmt("UPDATE attempts SET rewardSettlementStatus = 'eligible' WHERE id = ? AND rewardSettlementStatus <> 'eligible'").run(attemptId);
     // A held Kiur sprint was skipped by the qualification pass (held rows never
     // set or raise the record), so its sprintQualified is still NULL. Recompute
     // before projecting so it can earn stars, mirroring insertAttempt.
@@ -221,7 +229,7 @@ export type HeldRewardAttempt = {
 
 // Attempts held out of reward settlement, for a parent review surface (RTM2-H03).
 export function listHeldRewardAttempts(): HeldRewardAttempt[] {
-  return db.prepare(`
+  return stmt(`
     SELECT id, learner, completionDate, score, questionCount, exerciseId,
            rewardSettlementStatus AS status,
            COALESCE(reviewReasonCode,
@@ -233,9 +241,9 @@ export function listHeldRewardAttempts(): HeldRewardAttempt[] {
 }
 
 export function getProjectedRewardV2(attemptId: number) {
-  const attempt = db.prepare('SELECT learner FROM attempts WHERE id = ? AND protocolVersion = 2').get(attemptId) as { learner: Learner } | undefined;
+  const attempt = stmt('SELECT learner FROM attempts WHERE id = ? AND protocolVersion = 2').get(attemptId) as { learner: Learner } | undefined;
   if (!attempt) return null;
-  const row = db.prepare(`
+  const row = stmt(`
     SELECT COALESCE(SUM(latest.canonicalAmount), 0) AS awardedAmount
     FROM attempt_reward_components latest
     JOIN (
@@ -265,7 +273,7 @@ export type CanonicalRewardSummary = {
 // result-detail page reports the same total as the history list and the actual
 // balance, instead of the study component alone (RTM4-M01).
 export function getCanonicalRewardSummary(attemptId: number): CanonicalRewardSummary | null {
-  const attempt = db.prepare('SELECT learner FROM attempts WHERE id = ? AND protocolVersion = 2').get(attemptId) as { learner: Learner } | undefined;
+  const attempt = stmt('SELECT learner FROM attempts WHERE id = ? AND protocolVersion = 2').get(attemptId) as { learner: Learner } | undefined;
   if (!attempt) return null;
   const components = (latestComponents(attemptId) as Array<{ componentKey: string; canonicalAmount: number }>)
     .map((row) => ({ componentKey: row.componentKey, amount: rounded(row.canonicalAmount) }))
@@ -277,24 +285,95 @@ export function getCanonicalRewardSummary(attemptId: number): CanonicalRewardSum
   return { attemptId, total, study, streakBonus, ruleRewards, components, balanceAfter: getBalance(attempt.learner) };
 }
 
+type PersistedAttemptState = {
+  rewardRevision: number;
+  study: { awardedAmount: number; ledgerEntryId: number | null; metadataJson: string | null } | null;
+};
+
+type LatestComponent = { componentKey: string; revision: number; canonicalAmount: number; ledgerEntryId: number | null };
+
+// Latest revision of every component of every attempt of the learner, in one
+// read. Per attempt this is exactly `latestComponents(attemptId)` (the
+// (attemptId, componentKey, revision) triple is unique), plus the ledger link
+// that the attempt's study_attempt_rewards row points at.
+function latestComponentsForLearner(learner: Learner) {
+  const rows = stmt(`
+    SELECT c.attemptId, c.componentKey, c.revision, c.canonicalAmount, c.ledgerEntryId
+    FROM attempt_reward_components c
+    JOIN (
+      SELECT r.attemptId, r.componentKey, MAX(r.revision) AS revision
+      FROM attempt_reward_components r
+      JOIN attempts a ON a.id = r.attemptId
+      WHERE a.learner = ?
+      GROUP BY r.attemptId, r.componentKey
+    ) latest ON latest.attemptId = c.attemptId AND latest.componentKey = c.componentKey AND latest.revision = c.revision
+  `).all(learner) as Array<LatestComponent & { attemptId: number }>;
+  const byAttempt = new Map<number, Map<string, LatestComponent>>();
+  for (const row of rows) {
+    const target = byAttempt.get(row.attemptId) ?? new Map<string, LatestComponent>();
+    target.set(row.componentKey, row);
+    byAttempt.set(row.attemptId, target);
+  }
+  return byAttempt;
+}
+
+// What is already stored for each projected attempt, so that unchanged rows are
+// not rewritten (SRV-07).
+function persistedAttemptState(learner: Learner) {
+  const rows = stmt(`
+    SELECT a.id, a.rewardRevision, s.attemptId AS studyAttemptId, s.awardedAmount, s.ledgerEntryId, s.metadataJson
+    FROM attempts a
+    LEFT JOIN study_attempt_rewards s ON s.attemptId = a.id
+    WHERE a.learner = ? AND a.protocolVersion = 2 AND a.rewardSettlementStatus = 'eligible'
+  `).all(learner) as Array<{
+    id: number; rewardRevision: number; studyAttemptId: number | null;
+    awardedAmount: number | null; ledgerEntryId: number | null; metadataJson: string | null;
+  }>;
+  const state = new Map<number, PersistedAttemptState>();
+  for (const row of rows) {
+    state.set(row.id, {
+      rewardRevision: row.rewardRevision,
+      study: row.studyAttemptId === null ? null : {
+        awardedAmount: row.awardedAmount as number,
+        ledgerEntryId: row.ledgerEntryId,
+        metadataJson: row.metadataJson
+      }
+    });
+  }
+  return state;
+}
+
 /** Apply inside the authoritative attempt transaction. Any thrown error must roll
- * back the attempt, components and ledger together. */
+ * back the attempt, components and ledger together.
+ *
+ * The canonical projection is always recomputed in memory over the learner's
+ * whole eligible history (a late offline attempt can revise any later day's
+ * decay, cap or streak, and recomputing everything also repairs any drifted
+ * row), but only what differs from the stored state is written: a component
+ * whose amount is unchanged, an attempt whose rewardRevision already matches,
+ * and a study_attempt_rewards row whose updatable columns already hold the
+ * target values are left untouched. Every skipped write would have stored the
+ * value already there, so the persisted result is identical to rewriting
+ * everything (SRV-07; proven by projectionDifferential.test.ts). */
 export function applyRewardProjectionV2(
   learner: Learner,
   triggerAttemptId: number,
   options: { faultInjector?: (stage: string) => void } = {}
 ): AppliedProjection {
   const attempts = projectionAttempts(learner);
-  const canonical = projectCanonicalRewards(attempts);
+  const policies = loadPolicies(attempts);
+  const canonical = projectCanonicalRewardsPure(attempts, policies);
   const byAttempt = new Map<number, Map<string, CanonicalComponent>>();
   for (const component of canonical) {
     const target = byAttempt.get(component.attemptId) ?? new Map<string, CanonicalComponent>();
     target.set(component.componentKey, component);
     byAttempt.set(component.attemptId, target);
   }
+  const storedComponents = latestComponentsForLearner(learner);
+  const storedState = persistedAttemptState(learner);
   const dates = attempts.map((attempt) => attempt.completionDate).sort();
   const now = new Date().toISOString();
-  const run = db.prepare(`
+  const run = stmt(`
     INSERT INTO reward_projection_runs (learner, fromDate, throughDate, engineVersion, triggerAttemptId, status, createdAt)
     VALUES (?, ?, ?, ?, ?, 'running', ?)
   `).run(learner, dates[0] ?? '0000-00-00', dates.at(-1) ?? '0000-00-00', REWARD_ENGINE_VERSION, triggerAttemptId, now);
@@ -304,11 +383,13 @@ export function applyRewardProjectionV2(
 
   for (const attempt of attempts) {
     const desired = byAttempt.get(attempt.id) ?? new Map<string, CanonicalComponent>();
-    const previousRows = latestComponents(attempt.id);
-    const previous = new Map(previousRows.map((component) => [component.componentKey, component]));
+    const previous = storedComponents.get(attempt.id) ?? new Map<string, LatestComponent>();
     const keys = new Set([...desired.keys(), ...previous.keys()]);
     let maximumRevision = 0;
     let attemptChanged = false;
+    // The latest study component's ledger row, tracked as components are written.
+    let studyLedgerEntryId: number | null = previous.get('study')?.ledgerEntryId ?? null;
+    let studyLedgerUnknown = false;
     for (const key of [...keys].sort()) {
       const before = previous.get(key);
       const target = desired.get(key);
@@ -321,7 +402,7 @@ export function applyRewardProjectionV2(
       const effectiveDate = target?.effectiveDate ?? attempt.completionDate;
       const policyVersion = target?.policyVersion ?? attempt.rewardPolicyVersion;
       const idempotencyKey = `reward:v2:${attempt.id}:${key}:${revision}`;
-      const ledger = db.prepare(`
+      const ledger = stmt(`
         INSERT OR IGNORE INTO point_ledger (
           learner, amount, source, sourceId, description, createdAt, metadataJson,
           effectiveDate, idempotencyKey, rewardRevision
@@ -337,10 +418,10 @@ export function applyRewardProjectionV2(
         idempotencyKey,
         revision
       );
-      const ledgerRow = db.prepare('SELECT id FROM point_ledger WHERE idempotencyKey = ?').get(idempotencyKey) as { id: number } | undefined;
+      const ledgerRow = stmt('SELECT id FROM point_ledger WHERE idempotencyKey = ?').get(idempotencyKey) as { id: number } | undefined;
       if (!ledgerRow || (ledger.changes !== 0 && ledger.changes !== 1)) throw new Error(`Could not persist reward ledger component ${idempotencyKey}.`);
       options.faultInjector?.('after_ledger');
-      db.prepare(`
+      const component = stmt(`
         INSERT OR IGNORE INTO attempt_reward_components (
           attemptId, componentKey, revision, canonicalAmount, previousCanonicalAmount,
           deltaAmount, policyVersion, effectiveDate, ledgerEntryId, projectionRunId, createdAt
@@ -358,12 +439,19 @@ export function applyRewardProjectionV2(
         projectionRunId,
         now
       );
+      if (key === 'study') {
+        if (component.changes === 1) studyLedgerEntryId = ledgerRow.id;
+        else studyLedgerUnknown = true;
+      }
       maximumRevision = Math.max(maximumRevision, revision);
       changedComponents += 1;
       attemptChanged = true;
       options.faultInjector?.('after_component');
     }
-    db.prepare('UPDATE attempts SET rewardRevision = ? WHERE id = ?').run(maximumRevision, attempt.id);
+    const stored = storedState.get(attempt.id);
+    if (stored?.rewardRevision !== maximumRevision) {
+      stmt('UPDATE attempts SET rewardRevision = ? WHERE id = ?').run(maximumRevision, attempt.id);
+    }
     // RTM3-H01: a reprojection triggered by a *later* attempt can revise this
     // earlier attempt's reward. It keeps its id, so the ID-cursor pull would miss
     // it — notify devices to refresh their cached copy. The trigger attempt is
@@ -372,16 +460,31 @@ export function applyRewardProjectionV2(
     if (attemptChanged && attempt.id !== triggerAttemptId) emitAttemptChange(attempt.id);
 
     const study = desired.get('study');
-    const policy = rewardPolicyByVersion(attempt.rewardPolicyVersion);
+    const policy = policies.get(attempt.rewardPolicyVersion);
     if (!policy) throw new Error(`Unknown reward policy ${attempt.rewardPolicyVersion}.`);
-    const studyLedger = db.prepare(`
-      SELECT ledgerEntryId FROM attempt_reward_components
-      WHERE attemptId = ? AND componentKey = 'study'
-      ORDER BY revision DESC LIMIT 1
-    `).get(attempt.id) as { ledgerEntryId: number | null } | undefined;
-    const scorePercent = attempt.questionCount > 0 ? attempt.score / attempt.questionCount : 0;
+    if (studyLedgerUnknown) {
+      // Defensive only: an ignored component insert leaves the latest study row
+      // unknown in memory, so read it the way the stored row is defined.
+      const studyLedger = stmt(`
+        SELECT ledgerEntryId FROM attempt_reward_components
+        WHERE attemptId = ? AND componentKey = 'study'
+        ORDER BY revision DESC LIMIT 1
+      `).get(attempt.id) as { ledgerEntryId: number | null } | undefined;
+      studyLedgerEntryId = studyLedger?.ledgerEntryId ?? null;
+    }
     const studyAmount = study?.amount ?? 0;
-    db.prepare(`
+    const metadataJson = JSON.stringify({ engineVersion: REWARD_ENGINE_VERSION, policyVersion: attempt.rewardPolicyVersion });
+    // An existing row is only ever updated in these three columns; when they
+    // already hold the target values the upsert would be a no-op.
+    const storedStudy = stored?.study;
+    if (
+      storedStudy &&
+      storedStudy.awardedAmount === studyAmount &&
+      storedStudy.ledgerEntryId === studyLedgerEntryId &&
+      storedStudy.metadataJson === metadataJson
+    ) continue;
+    const scorePercent = attempt.questionCount > 0 ? attempt.score / attempt.questionCount : 0;
+    stmt(`
       INSERT INTO study_attempt_rewards (
         attemptId, learner, exerciseKey, score, questionCount, scorePercent,
         baseValueBeforeScore, earnedBeforeCap, awardedAmount, dailyCap,
@@ -404,14 +507,14 @@ export function applyRewardProjectionV2(
       studyAmount,
       policy.learning.dailyCap,
       studyAmount,
-      studyLedger?.ledgerEntryId ?? null,
+      studyLedgerEntryId,
       attempt.effectiveCompletedAt,
-      JSON.stringify({ engineVersion: REWARD_ENGINE_VERSION, policyVersion: attempt.rewardPolicyVersion })
+      metadataJson
     );
   }
 
   options.faultInjector?.('before_complete');
-  db.prepare(`
+  stmt(`
     UPDATE reward_projection_runs SET status = 'applied', detailJson = ?, completedAt = ? WHERE id = ?
   `).run(JSON.stringify({ changedComponents }), now, projectionRunId);
 
@@ -423,3 +526,4 @@ export function applyRewardProjectionV2(
     rewardForTrigger: { awardedAmount: total, balanceAfter: getBalance(learner) }
   };
 }
+
