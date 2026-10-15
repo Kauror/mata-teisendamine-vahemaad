@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import db from '@/lib/db';
+import db, { stmt } from '@/lib/db';
 import { OFFLINE_CAPABILITY_MANIFEST, type OfflineRunnerCapability } from '@/lib/offline/capabilities';
 
 export const REWARD_ENGINE_VERSION = 2;
@@ -106,7 +106,7 @@ export function ensureCurrentRewardPolicy() {
 }
 
 export function rewardPolicyByVersion(version: string): RewardPolicyV2 | null {
-  const row = db.prepare('SELECT policyJson FROM reward_policy_versions WHERE version = ?').get(version) as { policyJson: string } | undefined;
+  const row = stmt('SELECT policyJson FROM reward_policy_versions WHERE version = ?').get(version) as { policyJson: string } | undefined;
   if (!row) return null;
   try {
     const parsed = JSON.parse(row.policyJson) as RewardPolicyV2;

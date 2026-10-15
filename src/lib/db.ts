@@ -1170,9 +1170,37 @@ export function getDatabase(): DatabaseConnection {
 }
 
 export function closeDatabaseForTests() {
+  statementCache.clear();
+  statementCacheOwner = null;
   if (!singleton) return;
   singleton.close();
   singleton = null;
+}
+
+export type CachedStatement = ReturnType<DatabaseConnection['prepare']>;
+
+// Prepared statements keyed by their exact SQL text (SRV-09). `db.prepare`
+// compiles anew on every call; hot paths (the sync/projection loop) use `stmt`
+// so each statement is compiled once per connection. The cache belongs to one
+// connection: it is dropped when the singleton is closed or replaced, so a
+// statement is never run against a closed or different database. Callers must
+// not switch a cached statement into raw/pluck/expand mode, because that state
+// would leak to the next caller.
+const statementCache = new Map<string, CachedStatement>();
+let statementCacheOwner: DatabaseConnection | null = null;
+
+export function stmt(sql: string): CachedStatement {
+  const connection = getDatabase();
+  if (statementCacheOwner !== connection) {
+    statementCache.clear();
+    statementCacheOwner = connection;
+  }
+  let statement = statementCache.get(sql);
+  if (!statement) {
+    statement = connection.prepare(sql);
+    statementCache.set(sql, statement);
+  }
+  return statement;
 }
 
 const db = new Proxy({} as DatabaseConnection, {

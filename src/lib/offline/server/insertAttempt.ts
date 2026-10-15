@@ -1,4 +1,4 @@
-import db from '@/lib/db';
+import db, { stmt } from '@/lib/db';
 import { awardStudyPointsForAttempt, getStudyReward } from '@/lib/learningPoints';
 import {
   findLearningExerciseForAttempt,
@@ -75,7 +75,7 @@ export function setSettlementFaultInjectorForTests(injector: ((stage: string) =>
 }
 
 function existingByClientId(clientAttemptId: string) {
-  return db.prepare('SELECT id, protocolVersion, attemptFingerprint FROM attempts WHERE clientAttemptId = ?').get(clientAttemptId) as { id: number; protocolVersion: number; attemptFingerprint: string | null } | undefined;
+  return stmt('SELECT id, protocolVersion, attemptFingerprint FROM attempts WHERE clientAttemptId = ?').get(clientAttemptId) as { id: number; protocolVersion: number; attemptFingerprint: string | null } | undefined;
 }
 
 function attemptFingerprint(input: InsertAttemptInput, prepared: V2Preparation) {
@@ -284,7 +284,7 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
   // 'stale' note is not a review case and keeps a NULL reason.
   const persistedReviewReasonCode = protocolVersion === 2 && !eligible ? reasonCode ?? null : null;
 
-  const insertRow = db.prepare(`
+  const insertRow = stmt(`
     INSERT INTO attempts (
       createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions,
       learner, subject, topic, exerciseId,

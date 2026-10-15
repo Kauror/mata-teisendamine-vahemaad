@@ -1,4 +1,4 @@
-import db from '@/lib/db';
+import db, { stmt } from '@/lib/db';
 import { learnersForMode as sharedLearnersForMode, taskAppliesOnDate as sharedTaskAppliesOnDate } from '@/lib/shared/taskProjection';
 import { emitTaskChangeForAssignment } from '@/lib/offline/server/taskChanges';
 
@@ -78,7 +78,7 @@ export function learnerName(learner: Learner) {
 }
 
 export function getBalances(): Record<Learner, number> {
-  const rows = db.prepare('SELECT learner, COALESCE(SUM(amount), 0) as balance FROM point_ledger GROUP BY learner').all() as Array<{ learner: Learner; balance: number }>;
+  const rows = stmt('SELECT learner, COALESCE(SUM(amount), 0) as balance FROM point_ledger GROUP BY learner').all() as Array<{ learner: Learner; balance: number }>;
   const balances: Record<Learner, number> = { kiur: 0, kirsi: 0 };
   for (const row of rows) {
     if (row.learner === 'kiur' || row.learner === 'kirsi') balances[row.learner] = Math.max(0, row.balance);
@@ -87,7 +87,7 @@ export function getBalances(): Record<Learner, number> {
 }
 
 export function getBalance(learner: Learner) {
-  const row = db.prepare('SELECT COALESCE(SUM(amount), 0) as balance FROM point_ledger WHERE learner = ?').get(learner) as { balance: number } | undefined;
+  const row = stmt('SELECT COALESCE(SUM(amount), 0) as balance FROM point_ledger WHERE learner = ?').get(learner) as { balance: number } | undefined;
   return Math.max(0, row?.balance ?? 0);
 }
 
