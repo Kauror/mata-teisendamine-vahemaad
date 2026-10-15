@@ -1,9 +1,9 @@
 import { APP_BUILD_ID, OFFLINE_CAPABILITY_MANIFEST, OFFLINE_CAPABILITY_MANIFEST_VERSION, validateOfflineCapabilityManifest } from '@/lib/offline/capabilities';
 import { getStorageHealth, offlineDb } from '@/lib/offline/db';
 import { ensurePersistentStorage, getCursor, getDeviceId, getStoragePersisted } from '@/lib/offline/meta';
-import { attemptRepo, bootstrapRepo, catalogRepo, remediationBundleRepo, snapshotRepo } from '@/lib/offline/repositories';
-import { pingServer } from '@/lib/offline/connection';
-import { syncNow } from '@/lib/offline/syncEngine';
+import { attemptRepo, bootstrapRepo, catalogRepo, remediationActionRepo, remediationBundleRepo, snapshotRepo, taskActionRepo } from '@/lib/offline/repositories';
+import { syncNow, type SyncOutcome } from '@/lib/offline/syncEngine';
+import { shouldRunSync, syncedRecently } from '@/lib/offline/syncPolicy';
 import { GENERATOR_VERSION } from '@/lib/shared/types';
 import { isSupportedRotationAlgorithm } from '@/lib/shared/rotation';
 
@@ -132,9 +132,74 @@ export async function checkOfflineReadiness(): Promise<OfflineReadinessReport> {
 
 // Persistence is an enhancement. A denied request does not abort bootstrap;
 // readiness reports it as a warning while still proving actual read/write.
-export async function prepareOffline(): Promise<void> {
+// Local only: no network, safe offline.
+export async function prepareLocalOffline(): Promise<void> {
   await ensurePersistentStorage();
   await getDeviceId();
-  const ping = await pingServer();
-  if (ping.status === 'reachable') await syncNow('prepare-offline');
+}
+
+async function localPendingCount(): Promise<number> {
+  try {
+    const counts = await Promise.all([attemptRepo.pendingCount(), taskActionRepo.pendingCount(), remediationActionRepo.pendingCount()]);
+    return counts.reduce((sum, count) => sum + count, 0);
+  } catch {
+    // Unknown counts as "something may be waiting": never throttle on it.
+    return Number.POSITIVE_INFINITY;
+  }
+}
+
+export type OfflineSyncRunner = (reason: string) => Promise<SyncOutcome | null>;
+
+export type OfflineBootstrapDeps = {
+  runSync: OfflineSyncRunner;
+  // Date.now() of the last successful cycle seen in this page; null when none
+  // yet or a later cycle failed (see syncedRecently).
+  lastSuccessAt?: () => number | null;
+  pendingCount?: () => Promise<number>;
+  prepareLocal?: () => Promise<void>;
+  now?: () => number;
+};
+
+export type OfflineBootstrapResult = { done: boolean; outcome: SyncOutcome | null };
+
+// Full offline preparation in exactly one network round (OFF-06): local
+// persistence + device id, then ONE push-before-pull cycle. The cycle's own
+// ping decides reachable / unauthorized (auth_blocked) / offline, so there is
+// no separate pre-ping. Done only when that cycle succeeded: the first
+// successful pull writes the bootstrap markers, and a failed or skipped cycle
+// leaves preparation retriggerable (RTM-008).
+//
+// A successful cycle that finished under a minute ago with nothing queued
+// (e.g. the family-login sync right before the first protected page) already
+// is that complete online preparation, so it is reused instead of repeated.
+export async function runOfflineBootstrap(deps: OfflineBootstrapDeps): Promise<OfflineBootstrapResult> {
+  const now = deps.now ?? Date.now;
+  await (deps.prepareLocal ?? prepareLocalOffline)();
+  const lastSuccessAt = deps.lastSuccessAt?.() ?? null;
+  if (lastSuccessAt !== null && syncedRecently({ lastSuccessAt, now: now(), pending: await (deps.pendingCount ?? localPendingCount)() })) {
+    return { done: true, outcome: null };
+  }
+  const outcome = await deps.runSync('startup');
+  return { done: Boolean(outcome?.ok), outcome };
+}
+
+// A catch-up trigger once bootstrap is done (visibility, interval, online
+// event, ...): skipped with no network at all when shouldRunSync says the data
+// is fresh. Pending rows are read only when they can change the decision.
+export async function runCatchUpSync(
+  reason: string,
+  deps: Omit<OfflineBootstrapDeps, 'prepareLocal'>
+): Promise<SyncOutcome | null | 'skipped'> {
+  const now = deps.now ?? Date.now;
+  const lastSuccessAt = deps.lastSuccessAt?.() ?? null;
+  if (lastSuccessAt !== null && !shouldRunSync({ reason, lastSuccessAt, now: now(), pending: await (deps.pendingCount ?? localPendingCount)() })) {
+    return 'skipped';
+  }
+  return deps.runSync(reason);
+}
+
+// One-shot preparation for callers outside OfflineProvider: one ping + one
+// push/pull at most. Returns whether preparation completed.
+export async function prepareOffline(): Promise<boolean> {
+  return (await runOfflineBootstrap({ runSync: syncNow })).done;
 }
