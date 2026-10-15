@@ -155,6 +155,19 @@ describe('karikad in Statistika and the weekly digest', () => {
     }
   });
 
+  it('counts an attempt stamped in a non-Tallinn offset on its Tallinn day', () => {
+    // 2026-07-05 03:30 in Tallinn, written at UTC-05:00 and at UTC-11:00.
+    for (const createdAt of ['2026-07-04T19:30:00-05:00', '2026-07-04T13:30:00-11:00']) {
+      db.prepare(`
+        INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic, protocolVersion, rewardSettlementStatus)
+        VALUES (?, 'Korrutamine', 'Lihtne', 10, 8, 60, '[]', 'kirsi', 'matemaatika', 'korrutamine', 2, 'eligible')
+      `).run(createdAt);
+    }
+    const stats = getStatsOverview(7, TODAY);
+    expect(stats.days.find((entry) => entry.date === '2026-07-05')!.kirsi.exercises).toBe(2);
+    expect(stats.days.find((entry) => entry.date === '2026-07-04')!.kirsi.exercises).toBe(0);
+  });
+
   it('never shows a negative count after a removed trophy', () => {
     attempt('kiur', '2026-07-03');
     recordDailyLeaderboard('2026-07-03');

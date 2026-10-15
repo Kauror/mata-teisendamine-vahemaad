@@ -559,7 +559,11 @@ export function getParentDashboard(date = todayDateString()) {
   return { date, balances: getBalances(), templates, activeTasks, completedTasks, pendingApprovals: getPendingApprovals(date) };
 }
 
-export function getTaskHistory() {
+// Newest first. `limit` -1 means every row (SQLite's "no limit"); `before` is a
+// keyset cursor, the (createdAt, id) of the last row already shown.
+export function getTaskHistory(options: { limit?: number; before?: { at: string; id: number } | null } = {}) {
+  const limit = options.limit ?? -1;
+  const before = options.before ?? null;
   return db.prepare(`
     SELECT
       l.id,
@@ -575,6 +579,8 @@ export function getTaskHistory() {
     FROM point_ledger l
     LEFT JOIN task_instances i ON i.id = l.sourceId AND l.source = 'real_world_task'
     WHERE l.source IN ('real_world_task', 'manual_adjustment', 'daily_task_bonus', 'point_gift')
-    ORDER BY l.createdAt DESC
-  `).all();
+      AND (? IS NULL OR l.createdAt < ? OR (l.createdAt = ? AND l.id < ?))
+    ORDER BY l.createdAt DESC, l.id DESC
+    LIMIT ?
+  `).all(before?.at ?? null, before?.at ?? null, before?.at ?? null, before?.id ?? 0, limit) as Array<{ id: number; createdAt: string } & Record<string, unknown>>;
 }

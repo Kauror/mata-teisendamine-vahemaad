@@ -1,6 +1,7 @@
 import db from '@/lib/db';
 import { addAppDays, appDateRange, isoToAppDate, todayDateString } from '@/lib/appDate';
 import { isKirsiAttempt } from '@/lib/history';
+import { appDayTextBracket, notDatePrefixed } from '@/lib/appDayWindow';
 import { getLeaderboardHistory } from '@/lib/leaderboard';
 import { sprintAttemptQualifies } from '@/lib/sprintReward';
 import { type Learner } from '@/lib/tasks';
@@ -55,17 +56,6 @@ function accuracy(correct: number, questions: number) {
   return questions > 0 ? Math.round((correct / questions) * 100) : 0;
 }
 
-function statsQueryBounds(from: string, to: string) {
-  // Tallinn is UTC+2/+3. A four-hour lower buffer keeps the SQL range safely
-  // outside both DST offsets; the exact app-day check below remains authoritative.
-  const fromInclusive = new Date(`${from}T00:00:00.000Z`);
-  fromInclusive.setUTCHours(fromInclusive.getUTCHours() - 4);
-  return {
-    fromInclusive: fromInclusive.toISOString(),
-    toExclusive: `${addAppDays(to, 1)}T00:00:00.000Z`
-  };
-}
-
 // The day's winner as the trophies record it: the stored daily_leaderboard row,
 // the one source the dashboard trophies and the monthly prize are counted from.
 // A day with no row, or a 0–0 row, had no competition.
@@ -83,9 +73,9 @@ function storedWinners(from: string, to: string) {
 // window applies them on the day they were made, which for a window covering
 // the month to date is the same total.
 function trophyAdjustmentsByDay(from: string, to: string) {
-  const bounds = statsQueryBounds(from, to);
+  const bounds = appDayTextBracket(from, to);
   const rows = db
-    .prepare('SELECT learner, amount, createdAt FROM trophy_adjustments WHERE createdAt >= ? AND createdAt < ?')
+    .prepare(`SELECT learner, amount, createdAt FROM trophy_adjustments WHERE (createdAt >= ? AND createdAt < ?) OR ${notDatePrefixed('createdAt')}`)
     .all(bounds.fromInclusive, bounds.toExclusive) as Array<{ learner: string; amount: number; createdAt: string }>;
   const byDay = new Map<string, Record<Learner, number>>();
   for (const row of rows) {
@@ -115,16 +105,17 @@ export function getStatsOverview(windowDays = 30, today = todayDateString()): St
   const dates = appDateRange(from, today);
   const byDate = new Map<string, { kiur: StatsChildDay; kirsi: StatsChildDay }>();
   for (const date of dates) byDate.set(date, { kiur: emptyChildDay(), kirsi: emptyChildDay() });
-  const queryBounds = statsQueryBounds(from, today);
+  const queryBounds = appDayTextBracket(from, today);
 
-  const attempts = db
-    .prepare(`
-      SELECT id, createdAt, category, learner, subject, topic, score, questionCount
-      FROM attempts
-      WHERE createdAt >= ? AND createdAt < ?
-        AND (protocolVersion <> 2 OR rewardSettlementStatus = 'eligible')
-    `)
-    .all(queryBounds.fromInclusive, queryBounds.toExclusive) as AttemptRow[];
+  // Two queries rather than one OR, so the bracket keeps its createdAt index
+  // seek; the second only scans that index for text not starting with a date.
+  const columns = 'id, createdAt, category, learner, subject, topic, score, questionCount';
+  const eligible = "(protocolVersion <> 2 OR rewardSettlementStatus = 'eligible')";
+  const attempts = [
+    ...db.prepare(`SELECT ${columns} FROM attempts WHERE createdAt >= ? AND createdAt < ? AND ${eligible}`)
+      .all(queryBounds.fromInclusive, queryBounds.toExclusive) as AttemptRow[],
+    ...db.prepare(`SELECT ${columns} FROM attempts WHERE ${notDatePrefixed('createdAt')} AND ${eligible}`).all() as AttemptRow[]
+  ];
 
   for (const attempt of attempts) {
     // A sprint run that does not clear Kiur's threshold earns no trophy, so it

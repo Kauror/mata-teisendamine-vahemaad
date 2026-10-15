@@ -1,5 +1,5 @@
-import db from '@/lib/db';
-import { isoToAppDate, todayDateString } from '@/lib/appDate';
+import { todayDateString } from '@/lib/appDate';
+import { ledgerRowsForAppDays } from '@/lib/appDayWindow';
 import { getActiveLearningStreak } from '@/lib/learningPoints';
 import { getStatsOverview } from '@/lib/stats';
 import { type Learner } from '@/lib/tasks';
@@ -23,14 +23,9 @@ const WINDOW_DAYS = 7;
 // Sum of stars a child gained over the window: every positive ledger entry
 // (exercises, bonuses, gifts received, parent top-ups). Spending and gifts sent
 // are negative and therefore excluded.
+// Bucketed by the day each row was written (createdAt), as it always was.
 function starsEarnedInWindow(learner: Learner, from: string, to: string) {
-  const rows = db
-    .prepare('SELECT amount, createdAt FROM point_ledger WHERE learner = ? AND amount > 0')
-    .all(learner) as Array<{ amount: number; createdAt: string }>;
-  return rows.reduce((total, row) => {
-    const day = isoToAppDate(row.createdAt);
-    return day && day >= from && day <= to ? total + row.amount : total;
-  }, 0);
+  return ledgerRowsForAppDays(learner, from, to).reduce((total, row) => (row.amount > 0 ? total + row.amount : total), 0);
 }
 
 // A rolling 7-day recap for the parent hub: how much each child practised, how

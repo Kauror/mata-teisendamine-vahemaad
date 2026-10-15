@@ -1,5 +1,6 @@
 import db from '@/lib/db';
 import { isoToAppDate, previousAppDate, todayDateString } from '@/lib/appDate';
+import { ledgerRowsForAppDays } from '@/lib/appDayWindow';
 import { type Learner } from '@/lib/tasks';
 
 export type PointsBreakdownItem = {
@@ -70,11 +71,9 @@ export function getYesterdayPointsSummary(learner: Learner, today = todayDateStr
     totals.set(category.key, current);
   };
 
-  const rows = db
-    .prepare("SELECT amount, source, createdAt FROM point_ledger WHERE learner = ? AND source <> 'reward_v2' AND amount > 0 AND createdAt >= ?")
-    .all(learner, windowStart.toISOString()) as Array<{ amount: number; source: string; createdAt: string }>;
-  for (const row of rows) {
-    if (isoToAppDate(row.createdAt) !== yesterday) continue;
+  // Legacy sources are bucketed by the day the row was written.
+  for (const row of ledgerRowsForAppDays(learner, yesterday, yesterday)) {
+    if (row.source === 'reward_v2' || row.amount <= 0) continue;
     const category = SOURCE_CATEGORY[row.source];
     if (category) add(category, row.amount);
   }

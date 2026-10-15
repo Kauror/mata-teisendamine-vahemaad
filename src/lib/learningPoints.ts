@@ -1,5 +1,6 @@
 import db from '@/lib/db';
 import { addAppDays, appDateRange, isoToAppDate, startOfAppWeek } from '@/lib/appDate';
+import { ledgerRowsForAppDays } from '@/lib/appDayWindow';
 import { isKirsiAttempt } from '@/lib/history';
 import { awardLearningStreakRewards, AwardedStreakReward, getStreakRewardsForAttempt } from '@/lib/rewardRules';
 import { sprintAttemptQualifies } from '@/lib/sprintReward';
@@ -193,9 +194,10 @@ function dateOf(value: string) {
   return isoToAppDate(value) ?? value.slice(0, 10);
 }
 
+// The legacy (v1) cap: study_exercise stars written on that app day.
 function dailyLearningEarned(learner: Learner, date: string) {
-  const rows = db.prepare("SELECT amount, createdAt FROM point_ledger WHERE learner = ? AND source = 'study_exercise'").all(learner) as Array<{ amount: number; createdAt: string }>;
-  return rows.reduce((total, row) => (isoToAppDate(row.createdAt) === date ? total + row.amount : total), 0);
+  return ledgerRowsForAppDays(learner, date, date)
+    .reduce((total, row) => (row.source === 'study_exercise' ? total + row.amount : total), 0);
 }
 
 function decayCountToday(learner: Learner, exerciseKey: string, date: string) {
