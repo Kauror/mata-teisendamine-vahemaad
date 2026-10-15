@@ -1,9 +1,9 @@
+import type { DBSchema, IDBPDatabase } from 'idb';
 import { offlineDb, withStorageHealth } from '@/lib/offline/db';
 import type {
   AnyLocalSession,
   ConfirmedAttempt,
   LocalAttempt,
-  LocalRemediationAction,
   LocalTaskAction,
   PreparedRemediationBundle,
   RunnerSessionV3,
@@ -18,6 +18,106 @@ import type { CatalogueGrant, ChildDashboardSnapshot, Learner, OfflineCatalogue 
 // A manual sync ("Sünkrooni nüüd") pushes rows that are still backing off.
 export type PendingDueOptions = { ignoreRetryAt?: boolean };
 
+// ---- Outbox stores ----
+//
+// Every locally created record the server must settle (attempts, task actions)
+// lives in an outbox store with the same lifecycle:
+// 'pending' -> 'syncing' under a short lease -> settled by the server's
+// acknowledgement, or back to 'pending' with a retry time. Expired leases (a
+// tab that died mid-push) are returned to 'pending' at the start of a cycle.
+
+export type OutboxStoreName = 'attempts' | 'taskActions';
+
+export type OutboxRecord = {
+  status: string;
+  syncLeaseUntil?: string;
+  nextRetryAt?: string;
+  retryCount?: number;
+  lastError?: string;
+};
+
+// The three stores share this shape; typing the database through it keeps the
+// generic code free of per-store casts.
+type OutboxStoreSchema = { key: string; value: OutboxRecord; indexes: { byStatus: string } };
+interface OutboxSchema extends DBSchema {
+  attempts: OutboxStoreSchema;
+  taskActions: OutboxStoreSchema;
+}
+
+async function outboxDb(): Promise<IDBPDatabase<OutboxSchema>> {
+  return (await offlineDb()) as unknown as IDBPDatabase<OutboxSchema>;
+}
+
+export type OutboxRepo<Row> = {
+  storeName: OutboxStoreName;
+  idOf(row: Row): string;
+  pendingCount(): Promise<number>;
+  pendingDue(limit: number, now?: Date, options?: PendingDueOptions): Promise<Row[]>;
+  recoverExpiredSyncing(now?: Date): Promise<number>;
+  markSyncing(ids: string[], leaseUntil: string): Promise<void>;
+  returnPending(ids: string[], error: string, nextRetryAt?: string): Promise<void>;
+};
+
+export function outboxRepo<Row extends OutboxRecord>(storeName: OutboxStoreName, idKey: keyof Row & string): OutboxRepo<Row> {
+  return {
+    storeName,
+    idOf: (row) => String(row[idKey]),
+    async pendingCount() {
+      const db = await outboxDb();
+      const [pending, syncing] = await Promise.all([
+        db.countFromIndex(storeName, 'byStatus', 'pending'),
+        db.countFromIndex(storeName, 'byStatus', 'syncing')
+      ]);
+      return pending + syncing;
+    },
+    async pendingDue(limit, now = new Date(), options = {}) {
+      const db = await outboxDb();
+      const nowMs = now.getTime();
+      const tx = db.transaction(storeName);
+      const rows: Row[] = [];
+      let cursor = await tx.store.index('byStatus').openCursor('pending');
+      while (cursor && rows.length < limit) {
+        if (options.ignoreRetryAt || !cursor.value.nextRetryAt || new Date(cursor.value.nextRetryAt).getTime() <= nowMs) rows.push(cursor.value as Row);
+        cursor = await cursor.continue();
+      }
+      await tx.done;
+      return rows;
+    },
+    async recoverExpiredSyncing(now = new Date()) {
+      const db = await outboxDb();
+      const rows = await db.getAllFromIndex(storeName, 'byStatus', 'syncing');
+      const expired = rows.filter((row) => !row.syncLeaseUntil || new Date(row.syncLeaseUntil).getTime() <= now.getTime());
+      if (!expired.length) return 0;
+      const tx = db.transaction(storeName, 'readwrite');
+      await Promise.all(expired.map((row) => tx.store.put({ ...row, status: 'pending', syncLeaseUntil: undefined })));
+      await tx.done;
+      return expired.length;
+    },
+    async markSyncing(ids, leaseUntil) {
+      const db = await outboxDb();
+      const tx = db.transaction(storeName, 'readwrite');
+      for (const id of ids) {
+        const row = await tx.store.get(id);
+        if (row?.status === 'pending') await tx.store.put({ ...row, status: 'syncing', syncLeaseUntil: leaseUntil });
+      }
+      await tx.done;
+    },
+    // Every return counts as a retry. Task actions written before this was
+    // shared have no retryCount yet, hence the fallback.
+    async returnPending(ids, error, nextRetryAt) {
+      const db = await outboxDb();
+      const tx = db.transaction(storeName, 'readwrite');
+      for (const id of ids) {
+        const row = await tx.store.get(id);
+        if (row?.status === 'syncing') {
+          await tx.store.put({ ...row, status: 'pending', syncLeaseUntil: undefined, lastError: error, nextRetryAt, retryCount: (row.retryCount ?? 0) + 1 });
+        }
+      }
+      await tx.done;
+    }
+  };
+}
+
 export const catalogRepo = {
   async put(catalogue: OfflineCatalogue) {
     const db = await offlineDb();
@@ -26,10 +126,6 @@ export const catalogRepo = {
   async get(learner: Learner): Promise<OfflineCatalogue | undefined> {
     const db = await offlineDb();
     return db.get('catalogues', learner);
-  },
-  async all(): Promise<OfflineCatalogue[]> {
-    const db = await offlineDb();
-    return db.getAll('catalogues');
   }
 };
 
@@ -56,14 +152,6 @@ export const sessionRepo = {
   async delete(sessionId: string) {
     const db = await offlineDb();
     await db.delete('sessions', sessionId);
-  },
-  async all(): Promise<AnyLocalSession[]> {
-    const db = await offlineDb();
-    return db.getAll('sessions');
-  },
-  async active(): Promise<AnyLocalSession[]> {
-    const rows = await this.all();
-    return rows.filter((row) => !('schemaVersion' in row) || row.status === 'active' || row.status === 'paused' || row.status === 'finalizing');
   }
 };
 
@@ -108,13 +196,11 @@ export const runnerSessionRepo = {
       await tx.done;
       return updated;
     });
-  },
-  async active(): Promise<RunnerSessionV3[]> {
-    return (await sessionRepo.active()).filter((row): row is RunnerSessionV3 => 'schemaVersion' in row && row.schemaVersion === 3);
   }
 };
 
 export const attemptRepo = {
+  ...outboxRepo<LocalAttempt>('attempts', 'clientAttemptId'),
   async put(attempt: LocalAttempt) {
     const db = await offlineDb();
     await db.put('attempts', attempt);
@@ -126,65 +212,6 @@ export const attemptRepo = {
   async all(): Promise<LocalAttempt[]> {
     const db = await offlineDb();
     return db.getAll('attempts');
-  },
-  async pending(): Promise<LocalAttempt[]> {
-    const db = await offlineDb();
-    const [pending, syncing] = await Promise.all([
-      db.getAllFromIndex('attempts', 'byStatus', 'pending'),
-      db.getAllFromIndex('attempts', 'byStatus', 'syncing')
-    ]);
-    return [...pending, ...syncing];
-  },
-  async pendingCount(): Promise<number> {
-    const db = await offlineDb();
-    const [pending, syncing] = await Promise.all([
-      db.countFromIndex('attempts', 'byStatus', 'pending'),
-      db.countFromIndex('attempts', 'byStatus', 'syncing')
-    ]);
-    return pending + syncing;
-  },
-  async pendingDue(limit: number, now = new Date(), options: PendingDueOptions = {}): Promise<LocalAttempt[]> {
-    const db = await offlineDb();
-    const nowMs = now.getTime();
-    const tx = db.transaction('attempts');
-    const rows: LocalAttempt[] = [];
-    let cursor = await tx.store.index('byStatus').openCursor('pending');
-    while (cursor && rows.length < limit) {
-      if (options.ignoreRetryAt || !cursor.value.nextRetryAt || new Date(cursor.value.nextRetryAt).getTime() <= nowMs) rows.push(cursor.value);
-      cursor = await cursor.continue();
-    }
-    await tx.done;
-    return rows;
-  },
-  async recoverExpiredSyncing(now = new Date()): Promise<number> {
-    const db = await offlineDb();
-    const rows = await db.getAllFromIndex('attempts', 'byStatus', 'syncing');
-    const expired = rows.filter((row) => !row.syncLeaseUntil || new Date(row.syncLeaseUntil).getTime() <= now.getTime());
-    if (!expired.length) return 0;
-    const tx = db.transaction('attempts', 'readwrite');
-    await Promise.all(expired.map((row) => tx.store.put({ ...row, status: 'pending' as const, syncLeaseUntil: undefined })));
-    await tx.done;
-    return expired.length;
-  },
-  async markSyncing(ids: string[], leaseUntil: string): Promise<void> {
-    const db = await offlineDb();
-    const tx = db.transaction('attempts', 'readwrite');
-    for (const id of ids) {
-      const row = await tx.store.get(id);
-      if (row?.status === 'pending') await tx.store.put({ ...row, status: 'syncing', syncLeaseUntil: leaseUntil });
-    }
-    await tx.done;
-  },
-  async returnPending(ids: string[], error: string, nextRetryAt?: string): Promise<void> {
-    const db = await offlineDb();
-    const tx = db.transaction('attempts', 'readwrite');
-    for (const id of ids) {
-      const row = await tx.store.get(id);
-      if (row?.status === 'syncing') {
-        await tx.store.put({ ...row, status: 'pending', syncLeaseUntil: undefined, lastError: error, nextRetryAt, retryCount: row.retryCount + 1 });
-      }
-    }
-    await tx.done;
   },
   async finalize(sessionId: string | undefined, attempt: LocalAttempt): Promise<{ attempt?: LocalAttempt; confirmed?: ConfirmedAttempt; created: boolean }> {
     const db = await offlineDb();
@@ -210,10 +237,6 @@ export const attemptRepo = {
       await tx.done;
       return { attempt, created: true };
     });
-  },
-  async delete(clientAttemptId: string) {
-    const db = await offlineDb();
-    await db.delete('attempts', clientAttemptId);
   }
 };
 
@@ -244,30 +267,10 @@ export const historyRepo = {
   async findByClientId(clientAttemptId: string): Promise<ConfirmedAttempt | undefined> {
     const db = await offlineDb();
     return db.getFromIndex('history', 'byClientAttemptId', clientAttemptId);
-  },
-  async delete(id: number) {
-    const db = await offlineDb();
-    await db.delete('history', id);
-  },
-  async deleteByClientId(clientAttemptId: string) {
-    const db = await offlineDb();
-    const match = await db.getFromIndex('history', 'byClientAttemptId', clientAttemptId);
-    if (match) await db.delete('history', match.id);
-  },
-  async clear() {
-    const db = await offlineDb();
-    await db.clear('history');
   }
 };
 
 export const taskTemplateRepo = {
-  async replaceAll(templates: TaskTemplateRecord[]) {
-    const db = await offlineDb();
-    const tx = db.transaction('taskTemplates', 'readwrite');
-    await tx.store.clear();
-    await Promise.all(templates.map((template) => tx.store.put(template)));
-    await tx.done;
-  },
   async all(): Promise<TaskTemplateRecord[]> {
     const db = await offlineDb();
     return db.getAll('taskTemplates');
@@ -275,140 +278,14 @@ export const taskTemplateRepo = {
 };
 
 export const taskActionRepo = {
+  ...outboxRepo<LocalTaskAction>('taskActions', 'clientActionId'),
   async put(action: LocalTaskAction) {
     const db = await offlineDb();
     await db.put('taskActions', action);
   },
-  async get(clientActionId: string): Promise<LocalTaskAction | undefined> {
-    const db = await offlineDb();
-    return db.get('taskActions', clientActionId);
-  },
   async all(): Promise<LocalTaskAction[]> {
     const db = await offlineDb();
     return db.getAll('taskActions');
-  },
-  async pending(): Promise<LocalTaskAction[]> {
-    const db = await offlineDb();
-    const [pending, syncing] = await Promise.all([
-      db.getAllFromIndex('taskActions', 'byStatus', 'pending'),
-      db.getAllFromIndex('taskActions', 'byStatus', 'syncing')
-    ]);
-    return [...pending, ...syncing];
-  },
-  async pendingCount(): Promise<number> {
-    const db = await offlineDb();
-    const [pending, syncing] = await Promise.all([
-      db.countFromIndex('taskActions', 'byStatus', 'pending'),
-      db.countFromIndex('taskActions', 'byStatus', 'syncing')
-    ]);
-    return pending + syncing;
-  },
-  async pendingDue(limit: number, now = new Date(), options: PendingDueOptions = {}): Promise<LocalTaskAction[]> {
-    const db = await offlineDb();
-    const nowMs = now.getTime();
-    const tx = db.transaction('taskActions');
-    const rows: LocalTaskAction[] = [];
-    let cursor = await tx.store.index('byStatus').openCursor('pending');
-    while (cursor && rows.length < limit) {
-      if (options.ignoreRetryAt || !cursor.value.nextRetryAt || new Date(cursor.value.nextRetryAt).getTime() <= nowMs) rows.push(cursor.value);
-      cursor = await cursor.continue();
-    }
-    await tx.done;
-    return rows;
-  },
-  async recoverExpiredSyncing(now = new Date()): Promise<number> {
-    const db = await offlineDb();
-    const rows = await db.getAllFromIndex('taskActions', 'byStatus', 'syncing');
-    const expired = rows.filter((row) => !row.syncLeaseUntil || new Date(row.syncLeaseUntil).getTime() <= now.getTime());
-    if (!expired.length) return 0;
-    const tx = db.transaction('taskActions', 'readwrite');
-    await Promise.all(expired.map((row) => tx.store.put({ ...row, status: 'pending' as const, syncLeaseUntil: undefined })));
-    await tx.done;
-    return expired.length;
-  },
-  async markSyncing(ids: string[], leaseUntil: string): Promise<void> {
-    const db = await offlineDb();
-    const tx = db.transaction('taskActions', 'readwrite');
-    for (const id of ids) {
-      const row = await tx.store.get(id);
-      if (row?.status === 'pending') await tx.store.put({ ...row, status: 'syncing', syncLeaseUntil: leaseUntil });
-    }
-    await tx.done;
-  },
-  async returnPending(ids: string[], reasonCode: string, nextRetryAt?: string): Promise<void> {
-    const db = await offlineDb();
-    const tx = db.transaction('taskActions', 'readwrite');
-    for (const id of ids) {
-      const row = await tx.store.get(id);
-      if (row?.status === 'syncing') await tx.store.put({ ...row, status: 'pending', syncLeaseUntil: undefined, reasonCode, nextRetryAt });
-    }
-    await tx.done;
-  },
-  async delete(clientActionId: string) {
-    const db = await offlineDb();
-    await db.delete('taskActions', clientActionId);
-  }
-};
-
-export const remediationActionRepo = {
-  async put(action: LocalRemediationAction): Promise<void> {
-    const db = await offlineDb();
-    await withStorageHealth(() => db.put('remediationActions', action));
-  },
-  async get(clientActionId: string): Promise<LocalRemediationAction | undefined> {
-    const db = await offlineDb();
-    return db.get('remediationActions', clientActionId);
-  },
-  async pendingCount(): Promise<number> {
-    const db = await offlineDb();
-    const [pending, syncing] = await Promise.all([
-      db.countFromIndex('remediationActions', 'byStatus', 'pending'),
-      db.countFromIndex('remediationActions', 'byStatus', 'syncing')
-    ]);
-    return pending + syncing;
-  },
-  async pendingDue(limit: number, now = new Date(), options: PendingDueOptions = {}): Promise<LocalRemediationAction[]> {
-    const db = await offlineDb();
-    const nowMs = now.getTime();
-    const tx = db.transaction('remediationActions');
-    const rows: LocalRemediationAction[] = [];
-    let cursor = await tx.store.index('byStatus').openCursor('pending');
-    while (cursor && rows.length < limit) {
-      if (options.ignoreRetryAt || !cursor.value.nextRetryAt || new Date(cursor.value.nextRetryAt).getTime() <= nowMs) rows.push(cursor.value);
-      cursor = await cursor.continue();
-    }
-    await tx.done;
-    return rows;
-  },
-  async recoverExpiredSyncing(now = new Date()): Promise<number> {
-    const db = await offlineDb();
-    const rows = await db.getAllFromIndex('remediationActions', 'byStatus', 'syncing');
-    const expired = rows.filter((row) => !row.syncLeaseUntil || new Date(row.syncLeaseUntil).getTime() <= now.getTime());
-    if (!expired.length) return 0;
-    const tx = db.transaction('remediationActions', 'readwrite');
-    await Promise.all(expired.map((row) => tx.store.put({ ...row, status: 'pending' as const, syncLeaseUntil: undefined })));
-    await tx.done;
-    return expired.length;
-  },
-  async markSyncing(ids: string[], leaseUntil: string): Promise<void> {
-    const db = await offlineDb();
-    const tx = db.transaction('remediationActions', 'readwrite');
-    for (const id of ids) {
-      const row = await tx.store.get(id);
-      if (row?.status === 'pending') await tx.store.put({ ...row, status: 'syncing', syncLeaseUntil: leaseUntil });
-    }
-    await tx.done;
-  },
-  async returnPending(ids: string[], error: string, nextRetryAt?: string): Promise<void> {
-    const db = await offlineDb();
-    const tx = db.transaction('remediationActions', 'readwrite');
-    for (const id of ids) {
-      const row = await tx.store.get(id);
-      if (row?.status === 'syncing') {
-        await tx.store.put({ ...row, status: 'pending', syncLeaseUntil: undefined, lastError: error, nextRetryAt, retryCount: row.retryCount + 1 });
-      }
-    }
-    await tx.done;
   }
 };
 
@@ -484,14 +361,6 @@ export const taskAssignmentRepo = {
 };
 
 export const remediationBundleRepo = {
-  async put(bundle: PreparedRemediationBundle): Promise<void> {
-    const db = await offlineDb();
-    await withStorageHealth(() => db.put('remediationBundles', bundle));
-  },
-  async get(bundleId: string): Promise<PreparedRemediationBundle | undefined> {
-    const db = await offlineDb();
-    return db.get('remediationBundles', bundleId);
-  },
   async preparedFor(learner: Learner): Promise<PreparedRemediationBundle[]> {
     const db = await offlineDb();
     const rows = await db.getAllFromIndex('remediationBundles', 'byLearner', learner);

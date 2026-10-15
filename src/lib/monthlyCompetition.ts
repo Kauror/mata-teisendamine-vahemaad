@@ -65,7 +65,7 @@ type DayRow = { date: string; kiurCount: number; kirsiCount: number; winner: str
 
 // Manual trophy add/remove a parent made within the given month. Trophies are
 // otherwise derived from daily wins, so these adjustments are layered on top.
-// Bucketed by the stored Kiev `month` so it lines up with the daily standings
+// Bucketed by the stored Tallinn `month` so it lines up with the daily standings
 // (createdAt is UTC and would skew rows near a month boundary).
 function trophyAdjustmentsForMonth(month: string): Record<Learner, number> {
   const rows = db

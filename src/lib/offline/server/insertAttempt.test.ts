@@ -1,101 +1,83 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import db from '@/lib/db';
-
-function resetData() {
-  db.pragma('foreign_keys = OFF');
-  db.exec('DELETE FROM point_ledger; DELETE FROM study_attempt_rewards; DELETE FROM streak_bonus_awards; DELETE FROM reward_rule_awards; DELETE FROM mistake_pool; DELETE FROM attempts; DELETE FROM daily_leaderboard;');
-  db.pragma('foreign_keys = ON');
-}
-beforeEach(resetData);
-import { insertAttempt } from '@/lib/offline/server/insertAttempt';
-import { getCurrentCatalogue } from '@/lib/offline/server/catalogVersions';
 import { updateChildLearningExerciseStatus } from '@/lib/learningExercises';
+import { insertAttempt } from '@/lib/offline/server/insertAttempt';
+import { cid, FIXTURE_EXERCISE as EXERCISE, resetAttemptData as resetData, serveGrant, v2Attempt } from '@/lib/offline/server/v2AttemptFixture';
 import { getBalance } from '@/lib/tasks';
 
-function offlinePayload(clientAttemptId: string, completedAt: string, score = 14) {
-  const catalogue = getCurrentCatalogue('kiur');
-  return {
-    clientAttemptId,
-    deviceId: 'device-1',
-    learner: 'kiur',
-    subject: 'matemaatika',
-    topic: 'korrutamine',
-    category: 'Korrutamine',
-    difficulty: 'Lihtne',
-    questionCount: 15,
-    score,
-    elapsedSeconds: 100,
-    questions: [],
-    startedAt: completedAt,
-    completedAt,
-    rawDeviceCompletedAt: completedAt,
-    catalogueVersion: catalogue.version,
-    clientTimeZone: 'Europe/Tallinn',
-    clientUtcOffsetMinutes: 180
-  };
-}
+// insertAttempt only ever writes protocol-v2 attempts (its one production
+// caller is the v2 sync push), so every case here is a real v2 submission.
+
+beforeAll(() => {
+  process.env.OFFLINE_PROTOCOL_V2_ENABLED = '1';
+  vi.useFakeTimers({ toFake: ['Date'] });
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
+beforeEach(() => {
+  resetData();
+  updateChildLearningExerciseStatus(EXERCISE, 'kiur', 'permanent');
+});
 
 describe('insertAttempt', () => {
   it('is idempotent on clientAttemptId (retry returns the original, no duplicate)', () => {
-    const payload = offlinePayload('idem-1', '2026-07-11T09:00:00.000Z');
+    const payload = v2Attempt(serveGrant(), 'idem-1', '2026-07-12T09:00:00.000Z');
     const first = insertAttempt(payload);
     expect(first.status).toBe('created');
 
     const balanceAfterFirst = getBalance('kiur');
+    expect(balanceAfterFirst).toBeGreaterThan(0);
     const retry = insertAttempt(payload);
     expect(retry.status).toBe('duplicate');
     expect(retry.serverAttemptId).toBe(first.serverAttemptId);
 
-    const rows = db.prepare('SELECT COUNT(*) AS c FROM attempts WHERE clientAttemptId = ?').get('idem-1') as { c: number };
+    const rows = db.prepare('SELECT COUNT(*) AS c FROM attempts WHERE clientAttemptId = ?').get(cid('idem-1')) as { c: number };
     expect(rows.c).toBe(1);
     // Duplicate retry must not award again.
     expect(getBalance('kiur')).toBe(balanceAfterFirst);
   });
 
-  it('produces the same final balance regardless of sync order (same day)', () => {
-    // Two distinct same-day attempts on the same exercise → decay applies, but the
-    // total must be order-independent.
-    const a = offlinePayload('order-a', '2026-07-12T08:00:00.000Z');
-    const b = offlinePayload('order-b', '2026-07-12T10:00:00.000Z');
+  it('holds a reused clientAttemptId with different data for review', () => {
+    const served = serveGrant();
+    const first = insertAttempt(v2Attempt(served, 'conflict-1', '2026-07-12T09:00:00.000Z', 14));
+    const changed = insertAttempt(v2Attempt(served, 'conflict-1', '2026-07-12T09:00:00.000Z', 10));
+    expect(changed).toMatchObject({ status: 'needs_review', serverAttemptId: first.serverAttemptId, reasonCode: 'attempt_id_conflict' });
+  });
 
-    insertAttempt(a);
-    insertAttempt(b);
+  it('produces the same final balance regardless of sync order (same day)', () => {
+    // Two distinct same-day attempts on the same exercise: decay applies, but
+    // the total must be order-independent.
+    let served = serveGrant();
+    insertAttempt(v2Attempt(served, 'order-a', '2026-07-12T08:00:00.000Z'));
+    insertAttempt(v2Attempt(served, 'order-b', '2026-07-12T10:00:00.000Z'));
     const forward = getBalance('kiur');
 
     // Wipe and replay in the opposite order.
     resetData();
-    insertAttempt(b);
-    insertAttempt(a);
+    served = serveGrant();
+    insertAttempt(v2Attempt(served, 'order-b', '2026-07-12T10:00:00.000Z'));
+    insertAttempt(v2Attempt(served, 'order-a', '2026-07-12T08:00:00.000Z'));
     const reverse = getBalance('kiur');
 
     expect(reverse).toBe(forward);
     expect(forward).toBeGreaterThan(0);
   });
 
-  it('preserves offline work as history but awards nothing when the exercise is not permitted in that catalogue version', () => {
-    // Version captured while the exercise is active...
-    const payload = offlinePayload('review-1', '2026-07-13T09:00:00.000Z');
-    // ...then the parent hides it, but the attempt still references the old version
-    // where it WAS permitted → accepted normally (historical validation).
-    updateChildLearningExerciseStatus('kiur.math.korrutamine', 'kiur', 'hidden');
-    const result = insertAttempt(payload);
-    expect(result.status).toBe('created');
-    // A brand-new version (post-hide) does not permit it → needs_review, still stored.
-    const hiddenPayload = offlinePayload('review-2', '2026-07-13T10:00:00.000Z');
-    const reviewed = insertAttempt(hiddenPayload);
-    expect(reviewed.status).toBe('needs_review');
-    expect(reviewed.reasonCode).toBe('not_permitted');
-    const stored = db.prepare('SELECT COUNT(*) AS c FROM attempts WHERE clientAttemptId = ?').get('review-2') as { c: number };
-    expect(stored.c).toBe(1);
-  });
+  it('keeps an attempt whose exercise the catalogue version no longer permits, without a reward', () => {
+    // Captured while the exercise is active: accepted against that version.
+    const before = serveGrant();
+    expect(insertAttempt(v2Attempt(before, 'review-1', '2026-07-12T09:00:00.000Z')).status).toBe('created');
 
-  it('rejects an online non-active exercise without inserting (preserves 403 semantics)', () => {
-    updateChildLearningExerciseStatus('kiur.math.mustrid', 'kiur', 'hidden');
-    const before = (db.prepare('SELECT COUNT(*) AS c FROM attempts').get() as { c: number }).c;
-    const result = insertAttempt({ learner: 'kiur', subject: 'matemaatika', topic: 'mustrid', category: 'Segaharjutus', questionCount: 15, score: 5, elapsedSeconds: 10, questions: [] });
-    expect(result.status).toBe('rejected');
-    expect(result.reasonCode).toBe('not_active');
-    const after = (db.prepare('SELECT COUNT(*) AS c FROM attempts').get() as { c: number }).c;
-    expect(after).toBe(before);
+    // The parent hides it; a version served afterwards does not permit it.
+    updateChildLearningExerciseStatus(EXERCISE, 'kiur', 'hidden');
+    const after = serveGrant();
+    expect(after.catalogue.version).not.toBe(before.catalogue.version);
+    const balance = getBalance('kiur');
+    const reviewed = insertAttempt(v2Attempt({ ...after, catalogue: { ...after.catalogue, entries: before.catalogue.entries } }, 'review-2', '2026-07-12T10:00:00.000Z'));
+    expect(reviewed).toMatchObject({ status: 'needs_review', reasonCode: 'not_permitted' });
+    const stored = db.prepare('SELECT rewardSettlementStatus, reviewReasonCode FROM attempts WHERE clientAttemptId = ?').get(cid('review-2'));
+    expect(stored).toEqual({ rewardSettlementStatus: 'needs_review', reviewReasonCode: 'not_permitted' });
+    expect(getBalance('kiur')).toBe(balance);
   });
 });

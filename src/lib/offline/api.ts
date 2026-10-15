@@ -1,4 +1,4 @@
-import { attemptRepo, catalogueGrantRepo, catalogRepo, historyRepo, remediationActionRepo, sessionRepo, snapshotRepo, taskActionRepo, taskAssignmentRepo, taskTemplateRepo } from '@/lib/offline/repositories';
+import { attemptRepo, catalogueGrantRepo, catalogRepo, historyRepo, sessionRepo, snapshotRepo, taskActionRepo, taskAssignmentRepo, taskTemplateRepo } from '@/lib/offline/repositories';
 import { assertNotPeeking, createRunId } from '@/lib/offline/runnerSession';
 import { correctedNow, getDeviceId, getServerOffsetMs } from '@/lib/offline/meta';
 import { syncNow } from '@/lib/offline/syncEngine';
@@ -6,7 +6,6 @@ import type { LocalAttempt, LocalSession, LocalTaskAction } from '@/lib/offline/
 export {
   createRunId,
   ensureRunIdInCurrentUrl,
-  hasActiveRunnerSessions,
   isRunId,
   createRunnerSession,
   loadRunnerSession,
@@ -117,12 +116,6 @@ export async function getDashboardSnapshot(learner: Learner): Promise<ChildDashb
 }
 
 // ---- Sessions ----
-export async function startSession(session: LocalSession): Promise<void> {
-  await sessionRepo.put(session);
-}
-export async function saveSessionProgress(session: LocalSession): Promise<void> {
-  await sessionRepo.put({ ...session, updatedAt: new Date().toISOString() });
-}
 export async function getSession(sessionId: string): Promise<LocalSession | undefined> {
   const row = await sessionRepo.get(sessionId);
   return row && !('schemaVersion' in row) ? row : undefined;
@@ -328,12 +321,8 @@ export async function getMergedExerciseHistory(): Promise<OfflineHistoryItem[]> 
 }
 
 export async function getPendingCount(): Promise<number> {
-  const [attempts, actions, remediationActions] = await Promise.all([
-    attemptRepo.pendingCount(),
-    taskActionRepo.pendingCount(),
-    remediationActionRepo.pendingCount()
-  ]);
-  return attempts + actions + remediationActions;
+  const [attempts, actions] = await Promise.all([attemptRepo.pendingCount(), taskActionRepo.pendingCount()]);
+  return attempts + actions;
 }
 
 // ---- Offline daily tasks ----

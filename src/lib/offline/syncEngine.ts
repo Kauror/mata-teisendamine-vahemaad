@@ -1,9 +1,9 @@
 import { csrfHeaders } from '@/lib/auth/client';
 import { pingServer } from '@/lib/offline/connection';
 import { getCursor, getDeviceId, getServerOffsetMs, type SyncCursor } from '@/lib/offline/meta';
-import { attemptRepo, catalogRepo, catalogueGrantRepo, metaRepo, remediationActionRepo, taskActionRepo } from '@/lib/offline/repositories';
-import type { LocalAttempt, LocalRemediationAction, LocalTaskAction } from '@/lib/offline/records';
-import { applySyncEnvelope } from '@/lib/offline/syncApply';
+import { attemptRepo, catalogRepo, catalogueGrantRepo, metaRepo, taskActionRepo, type OutboxRepo } from '@/lib/offline/repositories';
+import type { LocalAttempt, LocalTaskAction } from '@/lib/offline/records';
+import { applySyncEnvelope, type SyncApplyInput, type SyncApplyResult } from '@/lib/offline/syncApply';
 import { withSyncLock } from '@/lib/offline/syncLock';
 import {
   CLIENT_ACTION_BATCH_SIZE,
@@ -31,10 +31,8 @@ import {
   type OfflineSyncPullResponseV2,
   type OfflineSyncPushRequestV2,
   type OfflineSyncPushResponseV2,
-  type OfflineRemediationActionPayload,
   type OfflineTaskActionPayload,
   type PingResponse,
-  type RemediationActionResult,
   type TaskActionResult
 } from '@/lib/shared/types';
 
@@ -57,7 +55,6 @@ export type SyncOutcome = {
   pulled: number;
   attemptResults?: AttemptResult[];
   taskActionResults?: TaskActionResult[];
-  remediationActionResults?: RemediationActionResult[];
 };
 
 class SyncHttpError extends Error {
@@ -85,18 +82,6 @@ function toActionPayload(action: LocalTaskAction): OfflineTaskActionPayload {
     taskDate: action.taskDate,
     snapshot: action.snapshot,
     completedAt: action.completedAt
-  };
-}
-
-function toRemediationPayload(action: LocalRemediationAction): OfflineRemediationActionPayload {
-  return {
-    clientActionId: action.clientActionId,
-    deviceId: action.deviceId,
-    bundleId: action.bundleId,
-    sessionId: action.sessionId,
-    learner: action.learner,
-    completedAt: action.completedAt,
-    answers: action.answers
   };
 }
 
@@ -175,17 +160,42 @@ function responseProtocols(ping: PingResponse): Set<1 | 2> {
   return new Set(ping.supportedProtocolVersions?.length ? ping.supportedProtocolVersions : [ping.protocolVersion]);
 }
 
-async function postSync<T>(request: unknown, signal: AbortSignal): Promise<T> {
+// The cycle's signal (lock lost, page leaving) cancels every request; the
+// timeout bounds each request alone (OFF-11). A cycle-wide timeout aborted a
+// long backfill on a slow link every time, however steadily it was moving.
+function requestSignal(cycleSignal: AbortSignal): { signal: AbortSignal; done: () => void } {
+  const controller = new AbortController();
+  const onCycleAbort = () => controller.abort(cycleSignal.reason);
+  if (cycleSignal.aborted) onCycleAbort();
+  else cycleSignal.addEventListener('abort', onCycleAbort, { once: true });
+  const timer = setTimeout(() => controller.abort(new DOMException('Sync request timed out.', 'TimeoutError')), SYNC_REQUEST_TIMEOUT_MS);
+  return {
+    signal: controller.signal,
+    done: () => {
+      clearTimeout(timer);
+      cycleSignal.removeEventListener('abort', onCycleAbort);
+    }
+  };
+}
+
+async function postSync<T>(request: unknown, cycleSignal: AbortSignal): Promise<T> {
   const json = JSON.stringify(request);
   if (new TextEncoder().encode(json).byteLength > 1024 * 1024) throw new SyncHttpError(413, { code: 'body_too_large' });
-  const response = await fetch('/api/offline/sync', {
-    method: 'POST',
-    cache: 'no-store',
-    headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-    body: json,
-    signal
-  });
-  const text = await response.text();
+  const { signal, done } = requestSignal(cycleSignal);
+  let response: Response;
+  let text: string;
+  try {
+    response = await fetch('/api/offline/sync', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: json,
+      signal
+    });
+    text = await response.text();
+  } finally {
+    done();
+  }
   let body: unknown = null;
   try {
     body = text ? JSON.parse(text) : null;
@@ -220,12 +230,22 @@ if (typeof window !== 'undefined') {
   window.addEventListener('pageshow', () => { pageLeaving = false; });
 }
 
-async function scheduleRetry(message: string): Promise<string> {
+// What a cycle has achieved so far. A cycle that pushed or pulled something
+// before failing proved the server reachable; it is a slow link, not an outage.
+type SyncCycle = { signal: AbortSignal; pushed: number; pulled: number; pagesApplied: number };
+
+function cycleProgressed(cycle: SyncCycle): boolean {
+  return cycle.pushed > 0 || cycle.pagesApplied > 0;
+}
+
+async function scheduleRetry(message: string, cycle: SyncCycle): Promise<string> {
   if (pageLeaving) return new Date().toISOString();
   const current = await retryState();
-  const retryCount = current.retryCount + 1;
-  const nextRetryAt = new Date(Date.now() + retryDelayMs(current.retryCount)).toISOString();
-  await writeRetryState({ status: 'retry_wait', retryCount, nextRetryAt, lastError: message });
+  // OFF-11: progress restarts the backoff at its shortest delay instead of
+  // growing it, so a big backfill over a slow link keeps moving.
+  const failuresBefore = cycleProgressed(cycle) ? 0 : current.retryCount;
+  const nextRetryAt = new Date(Date.now() + retryDelayMs(failuresBefore)).toISOString();
+  await writeRetryState({ status: 'retry_wait', retryCount: failuresBefore + 1, nextRetryAt, lastError: message });
   return nextRetryAt;
 }
 
@@ -240,206 +260,120 @@ function errorDisposition(error: unknown): SyncFailureDisposition | 'timeout' {
   return 'retryable';
 }
 
-async function returnAttemptBatch(batch: LocalAttempt[], error: string, nextRetryAt?: string) {
-  await attemptRepo.returnPending(batch.map((row) => row.clientAttemptId), error, nextRetryAt);
-}
+// One outbox kind as the push path sees it: its store, how a batch becomes a
+// request, and how the server's per-row results are read and applied.
+type OutboxPush<Row, Result> = {
+  repo: OutboxRepo<Row>;
+  pushKind: OfflineSyncPushRequestV2['pushKind'];
+  // null when a row cannot be sent with this protocol.
+  pending(batch: Row[]): OfflineSyncPushRequestV2['pending'] | null;
+  results(response: OfflineSyncPushResponseV2): Result[];
+  envelope(results: Result[]): Omit<SyncApplyInput, 'serverTime'>;
+  needsReview(id: string, reasonCode: string, message?: string): Result;
+  afterApply?(applied: SyncApplyResult): Promise<void>;
+};
 
-async function returnTaskBatch(batch: LocalTaskAction[], error: string, nextRetryAt?: string) {
-  await taskActionRepo.returnPending(batch.map((row) => row.clientActionId), error, nextRetryAt);
-}
-
-async function returnRemediationBatch(batch: LocalRemediationAction[], error: string, nextRetryAt?: string) {
-  await remediationActionRepo.returnPending(batch.map((row) => row.clientActionId), error, nextRetryAt);
-}
-
-async function handleAttemptPushError(error: unknown, batch: LocalAttempt[]): Promise<never | void> {
-  const disposition = errorDisposition(error);
-  const message = error instanceof Error ? error.message : String(error);
-  if (disposition === 'record_validation' || disposition === 'terminal') {
-    await applySyncEnvelope({
-      serverTime: new Date().toISOString(),
-      attemptResults: batch.map((row) => ({ clientAttemptId: row.clientAttemptId, status: 'needs_review', reasonCode: 'invalid_request', message }))
-    });
-    return;
-  }
-  if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
-    await returnAttemptBatch(batch, message);
-    await blockRetry(disposition, message);
-    throw new StopSyncCycle(message, disposition);
-  }
-  const nextRetryAt = await scheduleRetry(message);
-  await returnAttemptBatch(batch, message, nextRetryAt);
-  throw new StopSyncCycle(message, disposition === 'timeout' ? 'timeout' : 'retryable');
-}
-
-async function handleTaskPushError(error: unknown, batch: LocalTaskAction[]): Promise<never | void> {
-  const disposition = errorDisposition(error);
-  const message = error instanceof Error ? error.message : String(error);
-  if (disposition === 'record_validation' || disposition === 'terminal') {
-    await applySyncEnvelope({
-      serverTime: new Date().toISOString(),
-      taskActionResults: batch.map((row) => ({ clientActionId: row.clientActionId, status: 'needs_review', reasonCode: 'invalid_request', message }))
-    });
-    return;
-  }
-  if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
-    await returnTaskBatch(batch, message);
-    await blockRetry(disposition, message);
-    throw new StopSyncCycle(message, disposition);
-  }
-  const nextRetryAt = await scheduleRetry(message);
-  await returnTaskBatch(batch, message, nextRetryAt);
-  throw new StopSyncCycle(message, disposition === 'timeout' ? 'timeout' : 'retryable');
-}
-
-async function handleRemediationPushError(error: unknown, batch: LocalRemediationAction[]): Promise<never | void> {
-  const disposition = errorDisposition(error);
-  const message = error instanceof Error ? error.message : String(error);
-  if (disposition === 'record_validation' || disposition === 'terminal') {
-    await applySyncEnvelope({
-      serverTime: new Date().toISOString(),
-      remediationActionResults: batch.map((row) => ({ clientActionId: row.clientActionId, status: 'needs_review', reasonCode: 'invalid_request', message }))
-    });
-    return;
-  }
-  if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
-    await returnRemediationBatch(batch, message);
-    await blockRetry(disposition, message);
-    throw new StopSyncCycle(message, disposition);
-  }
-  const nextRetryAt = await scheduleRetry(message);
-  await returnRemediationBatch(batch, message, nextRetryAt);
-  throw new StopSyncCycle(message, disposition === 'timeout' ? 'timeout' : 'retryable');
-}
-
-async function pushAttemptBatch(
-  batch: LocalAttempt[],
-  device: OfflineSyncDevice,
-  signal: AbortSignal,
-  aggregate: AttemptResult[],
-  alreadyMarked = false
-): Promise<number> {
-  if (!batch.length) return 0;
-  if (!alreadyMarked) await attemptRepo.markSyncing(batch.map((row) => row.clientAttemptId), new Date(Date.now() + OUTBOX_LEASE_MS).toISOString());
-  const payloads = batch.map(toV2Payload);
-  if (payloads.some((row) => !row)) {
-    await returnAttemptBatch(batch, 'legacy_protocol_required');
-    return 0;
-  }
-  const request: OfflineSyncPushRequestV2 = {
-    protocolVersion: OFFLINE_PROTOCOL_VERSION,
-    phase: 'push',
-    pushKind: 'attempts',
-    device: { ...device, clientNow: new Date().toISOString() },
-    cursor: cursorV2(await getCursor()),
-    pending: { attempts: payloads as OfflineAttemptPayloadV2[] }
-  };
-  try {
-    const response = await postSync<OfflineSyncPushResponseV2>(request, signal);
-    if (response.protocolVersion !== 2 || response.phase !== 'push') throw new Error('invalid-v2-push-response');
-    aggregate.push(...response.attemptResults);
-    const applied = await applySyncEnvelope({ serverTime: response.serverTime, attemptResults: response.attemptResults });
+const attemptOutbox: OutboxPush<LocalAttempt, AttemptResult> = {
+  repo: attemptRepo,
+  pushKind: 'attempts',
+  pending(batch) {
+    const payloads = batch.map(toV2Payload);
+    return payloads.some((row) => !row) ? null : { attempts: payloads as OfflineAttemptPayloadV2[] };
+  },
+  results: (response) => response.attemptResults,
+  envelope: (attemptResults) => ({ attemptResults }),
+  needsReview: (clientAttemptId, reasonCode, message) => ({ clientAttemptId, status: 'needs_review', reasonCode, message }),
+  async afterApply(applied) {
     for (const id of applied.missingCanonicalAttemptIds) {
       const row = await attemptRepo.get(id);
       if (row) await attemptRepo.put({ ...row, nextRetryAt: new Date(Date.now() + retryDelayMs(row.retryCount)).toISOString() });
     }
-    return response.attemptResults.length;
-  } catch (error) {
-    if (error instanceof SyncHttpError && error.status === 413 && batch.length > 1) {
-      const midpoint = Math.ceil(batch.length / 2);
-      return (await pushAttemptBatch(batch.slice(0, midpoint), device, signal, aggregate, true)) +
-        (await pushAttemptBatch(batch.slice(midpoint), device, signal, aggregate, true));
-    }
-    if (error instanceof SyncHttpError && error.status === 413) {
-      await applySyncEnvelope({
-        serverTime: new Date().toISOString(),
-        attemptResults: [{ clientAttemptId: batch[0].clientAttemptId, status: 'needs_review', reasonCode: 'payload_too_large' }]
-      });
-      return 0;
-    }
-    await handleAttemptPushError(error, batch);
-    return 0;
   }
+};
+
+const taskActionOutbox: OutboxPush<LocalTaskAction, TaskActionResult> = {
+  repo: taskActionRepo,
+  pushKind: 'actions',
+  pending: (batch) => ({ taskActions: batch.map(toActionPayload), remediationActions: [] }),
+  results: (response) => response.taskActionResults,
+  envelope: (taskActionResults) => ({ taskActionResults }),
+  needsReview: (clientActionId, reasonCode, message) => ({ clientActionId, status: 'needs_review', reasonCode, message })
+};
+
+async function returnBatch<Row, Result>(outbox: OutboxPush<Row, Result>, batch: Row[], error: string, nextRetryAt?: string) {
+  await outbox.repo.returnPending(batch.map(outbox.repo.idOf), error, nextRetryAt);
 }
 
-async function pushTaskBatch(
-  batch: LocalTaskAction[],
+async function reviewBatch<Row, Result>(outbox: OutboxPush<Row, Result>, rows: Row[], reasonCode: string, message?: string) {
+  await applySyncEnvelope({
+    serverTime: new Date().toISOString(),
+    ...outbox.envelope(rows.map((row) => outbox.needsReview(outbox.repo.idOf(row), reasonCode, message)))
+  });
+}
+
+async function handlePushError<Row, Result>(outbox: OutboxPush<Row, Result>, error: unknown, batch: Row[], cycle: SyncCycle): Promise<void> {
+  const disposition = errorDisposition(error);
+  const message = error instanceof Error ? error.message : String(error);
+  if (disposition === 'record_validation' || disposition === 'terminal') {
+    await reviewBatch(outbox, batch, 'invalid_request', message);
+    return;
+  }
+  if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
+    await returnBatch(outbox, batch, message);
+    await blockRetry(disposition, message);
+    throw new StopSyncCycle(message, disposition);
+  }
+  const nextRetryAt = await scheduleRetry(message, cycle);
+  await returnBatch(outbox, batch, message, nextRetryAt);
+  throw new StopSyncCycle(message, disposition === 'timeout' ? 'timeout' : 'retryable');
+}
+
+// Pushes one batch and applies the per-row results. A 413 halves the batch
+// (its rows stay leased) until a single row is still too large; that row goes
+// to manual review. Returns how many rows the server acknowledged.
+async function pushBatch<Row, Result>(
+  outbox: OutboxPush<Row, Result>,
+  batch: Row[],
   device: OfflineSyncDevice,
-  signal: AbortSignal,
-  aggregate: TaskActionResult[],
+  cycle: SyncCycle,
+  aggregate: Result[],
   alreadyMarked = false
 ): Promise<number> {
   if (!batch.length) return 0;
-  if (!alreadyMarked) await taskActionRepo.markSyncing(batch.map((row) => row.clientActionId), new Date(Date.now() + OUTBOX_LEASE_MS).toISOString());
-  const request: OfflineSyncPushRequestV2 = {
-    protocolVersion: OFFLINE_PROTOCOL_VERSION,
-    phase: 'push',
-    pushKind: 'actions',
-    device: { ...device, clientNow: new Date().toISOString() },
-    cursor: cursorV2(await getCursor()),
-    pending: { taskActions: batch.map(toActionPayload), remediationActions: [] }
-  };
-  try {
-    const response = await postSync<OfflineSyncPushResponseV2>(request, signal);
-    if (response.protocolVersion !== 2 || response.phase !== 'push') throw new Error('invalid-v2-push-response');
-    aggregate.push(...response.taskActionResults);
-    await applySyncEnvelope({ serverTime: response.serverTime, taskActionResults: response.taskActionResults });
-    return response.taskActionResults.length;
-  } catch (error) {
-    if (error instanceof SyncHttpError && error.status === 413 && batch.length > 1) {
-      const midpoint = Math.ceil(batch.length / 2);
-      return (await pushTaskBatch(batch.slice(0, midpoint), device, signal, aggregate, true)) +
-        (await pushTaskBatch(batch.slice(midpoint), device, signal, aggregate, true));
-    }
-    if (error instanceof SyncHttpError && error.status === 413) {
-      await applySyncEnvelope({
-        serverTime: new Date().toISOString(),
-        taskActionResults: [{ clientActionId: batch[0].clientActionId, status: 'needs_review', reasonCode: 'payload_too_large' }]
-      });
-      return 0;
-    }
-    await handleTaskPushError(error, batch);
+  if (!alreadyMarked) await outbox.repo.markSyncing(batch.map(outbox.repo.idOf), new Date(Date.now() + OUTBOX_LEASE_MS).toISOString());
+  const pending = outbox.pending(batch);
+  if (!pending) {
+    await returnBatch(outbox, batch, 'legacy_protocol_required');
     return 0;
   }
-}
-
-async function pushRemediationBatch(
-  batch: LocalRemediationAction[],
-  device: OfflineSyncDevice,
-  signal: AbortSignal,
-  aggregate: RemediationActionResult[],
-  alreadyMarked = false
-): Promise<number> {
-  if (!batch.length) return 0;
-  if (!alreadyMarked) await remediationActionRepo.markSyncing(batch.map((row) => row.clientActionId), new Date(Date.now() + OUTBOX_LEASE_MS).toISOString());
   const request: OfflineSyncPushRequestV2 = {
     protocolVersion: OFFLINE_PROTOCOL_VERSION,
     phase: 'push',
-    pushKind: 'actions',
+    pushKind: outbox.pushKind,
     device: { ...device, clientNow: new Date().toISOString() },
     cursor: cursorV2(await getCursor()),
-    pending: { taskActions: [], remediationActions: batch.map(toRemediationPayload) }
+    pending
   };
   try {
-    const response = await postSync<OfflineSyncPushResponseV2>(request, signal);
+    const response = await postSync<OfflineSyncPushResponseV2>(request, cycle.signal);
     if (response.protocolVersion !== 2 || response.phase !== 'push') throw new Error('invalid-v2-push-response');
-    aggregate.push(...response.remediationActionResults);
-    await applySyncEnvelope({ serverTime: response.serverTime, remediationActionResults: response.remediationActionResults });
-    return response.remediationActionResults.length;
+    const results = outbox.results(response);
+    aggregate.push(...results);
+    const applied = await applySyncEnvelope({ serverTime: response.serverTime, ...outbox.envelope(results) });
+    await outbox.afterApply?.(applied);
+    cycle.pushed += results.length;
+    return results.length;
   } catch (error) {
     if (error instanceof SyncHttpError && error.status === 413 && batch.length > 1) {
       const midpoint = Math.ceil(batch.length / 2);
-      return (await pushRemediationBatch(batch.slice(0, midpoint), device, signal, aggregate, true)) +
-        (await pushRemediationBatch(batch.slice(midpoint), device, signal, aggregate, true));
+      return (await pushBatch(outbox, batch.slice(0, midpoint), device, cycle, aggregate, true)) +
+        (await pushBatch(outbox, batch.slice(midpoint), device, cycle, aggregate, true));
     }
     if (error instanceof SyncHttpError && error.status === 413) {
-      await applySyncEnvelope({
-        serverTime: new Date().toISOString(),
-        remediationActionResults: [{ clientActionId: batch[0].clientActionId, status: 'needs_review', reasonCode: 'payload_too_large' }]
-      });
+      await reviewBatch(outbox, [batch[0]], 'payload_too_large');
       return 0;
     }
-    await handleRemediationPushError(error, batch);
+    await handlePushError(outbox, error, batch, cycle);
     return 0;
   }
 }
@@ -461,8 +395,7 @@ export async function knownCataloguesForPull(): Promise<Partial<Record<Learner, 
   return known;
 }
 
-async function pullV2(device: OfflineSyncDevice, signal: AbortSignal): Promise<number> {
-  let pulled = 0;
+async function pullV2(device: OfflineSyncDevice, cycle: SyncCycle): Promise<void> {
   let previousCursor = '';
   for (let page = 0; page < MAX_PULL_PAGES_PER_CYCLE; page += 1) {
     const cursor = cursorV2(await getCursor());
@@ -477,7 +410,7 @@ async function pullV2(device: OfflineSyncDevice, signal: AbortSignal): Promise<n
       knownCatalogues: await knownCataloguesForPull(),
       pageSize: { attempts: 300, tombstones: 300, taskChanges: 300, remediationChanges: 300, historyBackfill: 300 }
     };
-    const response = await postSync<OfflineSyncPullResponseV2>(request, signal);
+    const response = await postSync<OfflineSyncPullResponseV2>(request, cycle.signal);
     if (response.protocolVersion !== 2 || response.phase !== 'pull') throw new Error('invalid-v2-pull-response');
     await applySyncEnvelope({
       serverTime: response.serverTime,
@@ -486,8 +419,9 @@ async function pullV2(device: OfflineSyncDevice, signal: AbortSignal): Promise<n
       nextCursor: response.nextCursor,
       resetRequired: Boolean(response.resetRequired)
     });
-    pulled += response.pull.attempts.length;
-    if (!Object.values(response.hasMore).some(Boolean)) return pulled;
+    cycle.pulled += response.pull.attempts.length;
+    cycle.pagesApplied += 1;
+    if (!Object.values(response.hasMore).some(Boolean)) return;
   }
   throw new StopSyncCycle('pull_page_limit', 'retryable');
 }
@@ -496,15 +430,12 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
   const cycleController = new AbortController();
   const onLockAbort = () => cycleController.abort(lockSignal.reason);
   lockSignal.addEventListener('abort', onLockAbort, { once: true });
-  const timeout = setTimeout(() => cycleController.abort(new DOMException('Sync cycle timed out.', 'TimeoutError')), SYNC_REQUEST_TIMEOUT_MS);
+  const cycle: SyncCycle = { signal: cycleController.signal, pushed: 0, pulled: 0, pagesApplied: 0 };
   const aggregateAttempts: AttemptResult[] = [];
   const aggregateActions: TaskActionResult[] = [];
-  const aggregateRemediationActions: RemediationActionResult[] = [];
-  let pushed = 0;
-  let pulled = 0;
 
   try {
-    await Promise.all([attemptRepo.recoverExpiredSyncing(), taskActionRepo.recoverExpiredSyncing(), remediationActionRepo.recoverExpiredSyncing()]);
+    await Promise.all([attemptRepo.recoverExpiredSyncing(), taskActionRepo.recoverExpiredSyncing()]);
     const state = await retryState();
     const manual = isManualSync(reason);
     if (!manual && (state.status === 'auth_blocked' || state.status === 'upgrade_required' || state.status === 'epoch_regression')) {
@@ -534,7 +465,6 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
     const dueOptions = { ignoreRetryAt: manual };
     const dueAttempts = await attemptRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE, new Date(), dueOptions);
     const dueActions = await taskActionRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE, new Date(), dueOptions);
-    const dueRemediationActions = await remediationActionRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE, new Date(), dueOptions);
 
     if (!protocols.has(2)) {
       await blockRetry('upgrade_required', 'No mutually supported offline protocol.');
@@ -543,14 +473,11 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
       const modernAttempts = dueAttempts.filter((row) => toV2Payload(row) !== null);
       const legacyAttempts = dueAttempts.filter((row) => toV2Payload(row) === null);
       for (const batch of chunkRecords(modernAttempts, CLIENT_ATTEMPT_BATCH_SIZE)) {
-        pushed += await pushAttemptBatch(batch, device, cycleController.signal, aggregateAttempts);
+        await pushBatch(attemptOutbox, batch, device, cycle, aggregateAttempts);
       }
-      // All task/remediation actions are pushed only after every attempt batch.
+      // Task actions are pushed only after every attempt batch.
       for (const batch of chunkRecords(dueActions, CLIENT_ACTION_BATCH_SIZE)) {
-        pushed += await pushTaskBatch(batch, device, cycleController.signal, aggregateActions);
-      }
-      for (const batch of chunkRecords(dueRemediationActions, CLIENT_ACTION_BATCH_SIZE)) {
-        pushed += await pushRemediationBatch(batch, device, cycleController.signal, aggregateRemediationActions);
+        await pushBatch(taskActionOutbox, batch, device, cycle, aggregateActions);
       }
       // Preserve pre-v2 outbox rows in IndexedDB for explicit manual review.
       // They cannot be safely upgraded because their immutable runner contract
@@ -561,37 +488,37 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
           attemptResults: legacyAttempts.map((row) => ({ clientAttemptId: row.clientAttemptId, status: 'needs_review', reasonCode: 'legacy_client_upgrade_required' }))
         });
       }
-      pulled += await pullV2(device, cycleController.signal);
+      await pullV2(device, cycle);
     }
 
     await writeRetryState({ status: 'idle', retryCount: 0 });
-    return { ok: true, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+    return { ok: true, pushed: cycle.pushed, pulled: cycle.pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
   } catch (error) {
-    if (error instanceof StopSyncCycle) return { ok: false, reason: error.disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+    const { pushed, pulled } = cycle;
+    if (error instanceof StopSyncCycle) return { ok: false, reason: error.disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('history epoch regressed')) {
       await blockRetry('epoch_regression', message);
-      return { ok: false, reason: 'epoch_regression', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+      return { ok: false, reason: 'epoch_regression', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     if (cycleController.signal.aborted) {
-      await scheduleRetry(message);
-      return { ok: false, reason: 'timeout', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+      await scheduleRetry(message, cycle);
+      return { ok: false, reason: 'timeout', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     // Pull requests use the same HTTP policy as every push path.  Do not turn
     // an authentication/server response into a local IndexedDB failure.
     const disposition = errorDisposition(error);
     if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
       await blockRetry(disposition, message);
-      return { ok: false, reason: disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+      return { ok: false, reason: disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     if (disposition === 'retryable' || disposition === 'timeout') {
-      await scheduleRetry(message);
-      return { ok: false, reason: disposition === 'timeout' ? 'timeout' : 'retryable', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+      await scheduleRetry(message, cycle);
+      return { ok: false, reason: disposition === 'timeout' ? 'timeout' : 'retryable', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     await blockRetry('storage_error', message).catch(() => {});
-    return { ok: false, reason: 'storage_error', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+    return { ok: false, reason: 'storage_error', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
   } finally {
-    clearTimeout(timeout);
     lockSignal.removeEventListener('abort', onLockAbort);
   }
 }

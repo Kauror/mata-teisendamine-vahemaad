@@ -59,7 +59,7 @@ function roundTenths(value: number) {
 export function getYesterdayPointsSummary(learner: Learner, today = todayDateString()): YesterdayPointsSummary {
   const yesterday = previousAppDate(today);
 
-  // Pull a small UTC window that safely brackets "yesterday" in Kiev time, then
+  // Pull a small UTC window that safely brackets "yesterday" in Tallinn time, then
   // bucket precisely by local date in JS.
   const windowStart = new Date(`${yesterday}T00:00:00Z`);
   windowStart.setUTCDate(windowStart.getUTCDate() - 1);

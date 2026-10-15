@@ -206,35 +206,13 @@ function decayCountToday(learner: Learner, exerciseKey: string, date: string) {
 }
 
 function countLearningStreakFrom(dates: Set<string>, startDate: string, frozen: Set<string> = new Set()) {
-  const cursor = new Date(`${startDate}T12:00:00Z`);
   let streak = 0;
-  while (true) {
-    const day = cursor.toISOString().slice(0, 10);
-    if (!dates.has(day) && !frozen.has(day)) break;
-    streak += 1;
-    cursor.setUTCDate(cursor.getUTCDate() - 1);
-  }
+  for (let day = startDate; dates.has(day) || frozen.has(day); day = addAppDays(day, -1)) streak += 1;
   return streak;
 }
 
 export function getCurrentLearningStreak(learner: Learner, today = todayDateString()) {
   return countLearningStreakFrom(studyDates(learner), today);
-}
-
-// The longest run of consecutive study days the child has ever had. Unlike the
-// current streak, this never decreases, so it is the right basis for a
-// "practised a full week" achievement.
-export function getLongestLearningStreak(learner: Learner) {
-  const dates = [...studyDates(learner)].sort();
-  let longest = 0;
-  let run = 0;
-  let previous: string | null = null;
-  for (const day of dates) {
-    run = previous !== null && addAppDays(previous, 1) === day ? run + 1 : 1;
-    if (run > longest) longest = run;
-    previous = day;
-  }
-  return longest;
 }
 
 // Counts distinct study days in the current Monday-Sunday week. A new Monday
@@ -246,18 +224,14 @@ export function getLearningDaysThisWeek(learner: Learner, today = todayDateStrin
 
 // The streak the child is shown. This is the ONLY streak that counts frozen
 // days: getCurrentLearningStreak (which decides the streak bonus and the
-// parent's streak rewards), getLongestLearningStreak and getLearningDaysThisWeek
-// all stay freeze-free, so a bought freeze can never buy stars, a personal
-// record or the perfect-week achievement.
+// parent's streak rewards) and getLearningDaysThisWeek stay freeze-free, so a
+// bought freeze can never buy stars or the perfect-week achievement.
 export function getActiveLearningStreak(learner: Learner, today = todayDateString(), knownStudyDates?: Set<string>) {
   const dates = knownStudyDates ?? studyDates(learner);
   const frozen = frozenDates(learner);
   const todayStreak = countLearningStreakFrom(dates, today, frozen);
   if (todayStreak > 0) return todayStreak;
-
-  const yesterday = new Date(`${today}T12:00:00Z`);
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  return countLearningStreakFrom(dates, yesterday.toISOString().slice(0, 10), frozen);
+  return countLearningStreakFrom(dates, addAppDays(today, -1), frozen);
 }
 
 function hadStudyAttemptBeforeToday(learner: Learner, date: string, attemptId: number) {

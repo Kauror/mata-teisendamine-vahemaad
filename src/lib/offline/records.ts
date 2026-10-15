@@ -112,6 +112,9 @@ export type LocalTaskAction = OfflineTaskActionPayload & {
   resolvedAt?: string;
   syncLeaseUntil?: string;
   nextRetryAt?: string;
+  // Absent on rows queued before the outboxes shared one implementation.
+  retryCount?: number;
+  lastError?: string;
 };
 
 export type LocalRemediationActionStatus = 'pending' | 'syncing' | 'created' | 'duplicate' | 'rejected' | 'needs_review';

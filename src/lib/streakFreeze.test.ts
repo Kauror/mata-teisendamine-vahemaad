@@ -4,8 +4,7 @@ import { addAppDays } from '@/lib/appDate';
 import {
   getActiveLearningStreak,
   getCurrentLearningStreak,
-  getLearningDaysThisWeek,
-  getLongestLearningStreak
+  getLearningDaysThisWeek
 } from '@/lib/learningPoints';
 import {
   FREEZE_PRICE_STARS,
@@ -285,10 +284,6 @@ describe('what a frozen day does NOT count towards', () => {
     // getCurrentLearningStreak decides the 7-day bonus and the parent's streak
     // rewards. A bought freeze must never trigger a payout.
     expect(getCurrentLearningStreak(learner, addAppDays(TODAY, -1))).toBe(0);
-  });
-
-  it('does not extend the personal record', () => {
-    expect(getLongestLearningStreak(learner)).toBe(6);
   });
 
   it('does not count towards the perfect-week achievement', () => {

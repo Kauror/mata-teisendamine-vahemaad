@@ -49,6 +49,9 @@ interface OfflineDB extends DBSchema {
     value: LocalTaskAction;
     indexes: { byStatus: string; byTaskDate: string; byLearner: string; byNextRetryAt: string; byResolvedAt: string };
   }; // key = clientActionId
+  // No client build has ever queued a remediation action (Kordamine settles
+  // through its own server route). The store stays so the schema needs no
+  // version bump; syncApply still applies server results to it.
   remediationActions: {
     key: string;
     value: LocalRemediationAction;
@@ -65,20 +68,13 @@ let dbPromise: Promise<IDBPDatabase<OfflineDB>> | null = null;
 export type StorageHealthState = 'unknown' | 'healthy' | 'blocked' | 'versionchange' | 'terminated' | 'quota_exceeded' | 'error';
 export type StorageHealth = { state: StorageHealthState; changedAt: string; message?: string };
 let storageHealth: StorageHealth = { state: 'unknown', changedAt: new Date(0).toISOString() };
-const storageHealthListeners = new Set<(health: StorageHealth) => void>();
 
 function setStorageHealth(state: StorageHealthState, message?: string) {
   storageHealth = { state, changedAt: new Date().toISOString(), message };
-  storageHealthListeners.forEach((listener) => listener(storageHealth));
 }
 
 export function getStorageHealth(): StorageHealth {
   return storageHealth;
-}
-
-export function subscribeStorageHealth(listener: (health: StorageHealth) => void): () => void {
-  storageHealthListeners.add(listener);
-  return () => storageHealthListeners.delete(listener);
 }
 
 export function recordStorageError(error: unknown): void {
