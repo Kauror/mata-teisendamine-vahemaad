@@ -21,6 +21,13 @@ type SprintRow = {
   score: number;
 };
 
+type StoredSprintRow = SprintRow & {
+  recordBeforeRun: number | null;
+  requiredScore: number | null;
+  sprintQualified: number | null;
+  qualificationRuleVersion: string | null;
+};
+
 function threshold(record: number) {
   return Math.max(1, Math.ceil(record / 2));
 }
@@ -59,20 +66,35 @@ export function qualifySprintsPure(rows: SprintRow[]): Map<number, SprintQualifi
 // independent. Held/review rows never establish or raise the standing record.
 // `deletedAt` is intentionally not a predicate: hiding a history row is only a
 // display preference and must not rewrite the sprint record or qualification.
+//
+// SRV-08: the stored facts are read in the same query and a row is written only
+// when one of them changes, so the usual new-sprint case writes one row instead
+// of every sprint in history while the sync transaction holds the write lock.
 export function recomputeSprintQualifications() {
   const rows = db.prepare(`
-    SELECT id, clientAttemptId, effectiveCompletedAt, createdAt, score
+    SELECT id, clientAttemptId, effectiveCompletedAt, createdAt, score,
+      recordBeforeRun, requiredScore, sprintQualified, qualificationRuleVersion
     FROM attempts
     WHERE learner = 'kiur' AND subject = 'inglise-keel' AND topic = 'sprint'
       AND (COALESCE(protocolVersion, 1) <> 2 OR rewardSettlementStatus = 'eligible')
-  `).all() as SprintRow[];
+  `).all() as StoredSprintRow[];
   const qualifications = qualifySprintsPure(rows);
+  const stored = new Map(rows.map((row) => [row.id, row]));
   const update = db.prepare(`
     UPDATE attempts SET recordBeforeRun = ?, requiredScore = ?, sprintQualified = ?,
       qualificationRuleVersion = ? WHERE id = ?
   `);
   for (const [id, value] of qualifications) {
-    update.run(value.recordBeforeRun, value.requiredScore, value.qualified ? 1 : 0, value.qualificationRuleVersion, id);
+    const sprintQualified = value.qualified ? 1 : 0;
+    const current = stored.get(id);
+    if (
+      current
+      && current.recordBeforeRun === value.recordBeforeRun
+      && current.requiredScore === value.requiredScore
+      && current.sprintQualified === sprintQualified
+      && current.qualificationRuleVersion === value.qualificationRuleVersion
+    ) continue;
+    update.run(value.recordBeforeRun, value.requiredScore, sprintQualified, value.qualificationRuleVersion, id);
   }
   return qualifications;
 }

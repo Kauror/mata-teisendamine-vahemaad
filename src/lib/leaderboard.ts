@@ -1,6 +1,6 @@
 import db from '@/lib/db';
 import { isKirsiAttempt } from '@/lib/history';
-import { sprintAttemptQualifies } from '@/lib/sprintReward';
+import { addAppDays } from '@/lib/appDate';
 import { isoToAppDate, nowIso, todayDateString } from '@/lib/tasks';
 import { reconcileMonthForDate, reconcileMonthlyPrize } from '@/lib/monthlyCompetition';
 
@@ -15,16 +15,19 @@ export type DailyLeaderboardRow = {
 };
 
 type AttemptCountRow = {
-  id: number;
   category: string;
   learner: string | null;
   createdAt: string;
   subject: string | null;
   topic: string | null;
-  score: number;
-  protocolVersion: number;
+  protocolVersion: number | null;
   rewardSettlementStatus: string;
+  // The persisted Kiur sprint qualification (sprintQualification.ts), read in
+  // the same query instead of one lookup per sprint row.
+  sprintQualified: number | null;
 };
+
+const ATTEMPT_COUNT_COLUMNS = 'category, learner, createdAt, subject, topic, protocolVersion, rewardSettlementStatus, sprintQualified';
 
 function winnerOf(kiurCount: number, kirsiCount: number): DailyWinner {
   if (kiurCount === kirsiCount) return 'tie';
@@ -32,9 +35,33 @@ function winnerOf(kiurCount: number, kirsiCount: number): DailyWinner {
 }
 
 function allAttempts(): AttemptCountRow[] {
-  return db
-    .prepare('SELECT id, category, learner, createdAt, subject, topic, score, protocolVersion, rewardSettlementStatus FROM attempts')
-    .all() as AttemptCountRow[];
+  return db.prepare(`SELECT ${ATTEMPT_COUNT_COLUMNS} FROM attempts`).all() as AttemptCountRow[];
+}
+
+// SRV-08: the attempts that can fall on one app date, without reading the whole
+// table. createdAt is text, so the SQL range is on its leading 'YYYY-MM-DD'.
+// A timestamp whose Tallinn date (UTC+2/+3) is `date` carries a written date
+// between date-2 and date+1 for any UTC offset up to ±23:59 (RFC 3339, which
+// protocol v2 enforces); a bare date or an offset-less local time lands inside
+// too. This is wider than the four-hour bracket stats.ts uses because a client
+// may send an offset other than Tallinn's. The exact isoToAppDate check in
+// countsForDate stays authoritative; the window only bounds what is read.
+//
+// A legacy createdAt that does not start with a date would sort outside every
+// date window, so such rows are read separately and go through the same exact
+// date check. That read scans only the createdAt index (no row data) and is
+// empty in practice: every current writer stores an RFC 3339 timestamp.
+export const UNDATED_ATTEMPTS_SQL = `
+  SELECT ${ATTEMPT_COUNT_COLUMNS} FROM attempts WHERE id IN (
+    SELECT id FROM attempts WHERE createdAt NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*'
+  )`;
+
+function attemptsNearDate(date: string): AttemptCountRow[] {
+  const inWindow = db
+    .prepare(`SELECT ${ATTEMPT_COUNT_COLUMNS} FROM attempts WHERE createdAt >= ? AND createdAt < ?`)
+    .all(addAppDays(date, -2), addAppDays(date, 2)) as AttemptCountRow[];
+  const undated = db.prepare(UNDATED_ATTEMPTS_SQL).all() as AttemptCountRow[];
+  return undated.length === 0 ? inWindow : [...inWindow, ...undated];
 }
 
 // An attempt only counts towards the daily competition when it is authoritative.
@@ -55,9 +82,34 @@ function isAuthoritativeAttempt(row: AttemptCountRow) {
 }
 
 // A sprint run that does not clear Kiur's half-of-record threshold earns no
-// trophy, so it must not be counted towards the daily competition either.
+// trophy, so it must not be counted towards the daily competition either. Same
+// rule as sprintAttemptQualifies (sprintReward.ts): a non-sprint attempt always
+// qualifies, a sprint only when its persisted sprintQualified is 1.
+function sprintQualifies(row: AttemptCountRow) {
+  if (row.subject !== 'inglise-keel' || row.topic !== 'sprint') return true;
+  return row.sprintQualified === 1;
+}
+
 function countsTowardsLeaderboard(row: AttemptCountRow) {
-  return isAuthoritativeAttempt(row) && sprintAttemptQualifies(row);
+  return isAuthoritativeAttempt(row) && sprintQualifies(row);
+}
+
+// Kiur/Kirsi counts per app date for the given rows, one date conversion each.
+// `seenDates`, when given, collects the date of every parseable row, counting
+// or not.
+function countByDate(rows: AttemptCountRow[], seenDates?: Set<string>) {
+  const byDate = new Map<string, { kiur: number; kirsi: number }>();
+  for (const row of rows) {
+    const date = isoToAppDate(row.createdAt);
+    if (!date) continue;
+    seenDates?.add(date);
+    if (!countsTowardsLeaderboard(row)) continue;
+    const entry = byDate.get(date) ?? { kiur: 0, kirsi: 0 };
+    if (isKirsiAttempt(row.category, row.learner)) entry.kirsi++;
+    else entry.kiur++;
+    byDate.set(date, entry);
+  }
+  return byDate;
 }
 
 // Counts the exercises each child completed on the given local date, using the
@@ -65,7 +117,7 @@ function countsTowardsLeaderboard(row: AttemptCountRow) {
 function countsForDate(date: string) {
   let kiurCount = 0;
   let kirsiCount = 0;
-  for (const row of allAttempts()) {
+  for (const row of attemptsNearDate(date)) {
     if (isoToAppDate(row.createdAt) !== date) continue;
     if (!countsTowardsLeaderboard(row)) continue;
     if (isKirsiAttempt(row.category, row.learner)) kirsiCount++;
@@ -94,17 +146,7 @@ function backfillFromAttempts() {
   if (backfilled) return;
   const existing = db.prepare('SELECT COUNT(*) AS count FROM daily_leaderboard').get() as { count: number };
   if (existing.count === 0) {
-    const byDate = new Map<string, { kiur: number; kirsi: number }>();
-    for (const row of allAttempts()) {
-      const date = isoToAppDate(row.createdAt);
-      if (!date) continue;
-      if (!countsTowardsLeaderboard(row)) continue;
-      const entry = byDate.get(date) ?? { kiur: 0, kirsi: 0 };
-      if (isKirsiAttempt(row.category, row.learner)) entry.kirsi++;
-      else entry.kiur++;
-      byDate.set(date, entry);
-    }
-
+    const byDate = countByDate(allAttempts());
     const now = nowIso();
     const fill = db.transaction(() => {
       for (const [date, entry] of byDate) {
@@ -145,17 +187,16 @@ export function recordDailyLeaderboard(date = todayDateString()) {
 export function rebuildDailyLeaderboard() {
   const now = nowIso();
   const dates = new Set<string>();
-  for (const row of allAttempts()) {
-    const date = isoToAppDate(row.createdAt);
-    if (date) dates.add(date);
-  }
   const rebuild = db.transaction(() => {
+    // SRV-08: one pass over attempts grouped by app date, not one full scan per
+    // date. Every date with any attempt (counting or not) is rewritten.
+    const counts = countByDate(allAttempts(), dates);
     // Include any date that already has a stored row so a poisoned row with no
     // remaining qualifying attempts is corrected to zero rather than left stale.
     for (const row of db.prepare('SELECT date FROM daily_leaderboard').all() as Array<{ date: string }>) dates.add(row.date);
     for (const date of dates) {
-      const { kiurCount, kirsiCount } = countsForDate(date);
-      upsertLeaderboard(date, kiurCount, kirsiCount, winnerOf(kiurCount, kirsiCount), now);
+      const entry = counts.get(date) ?? { kiur: 0, kirsi: 0 };
+      upsertLeaderboard(date, entry.kiur, entry.kirsi, winnerOf(entry.kiur, entry.kirsi), now);
     }
   });
   rebuild();
