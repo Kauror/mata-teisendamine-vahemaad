@@ -2,6 +2,9 @@ export type EnglishVocabularyWord = {
   id: string;
   english: string;
   estonian: string;
+  // A label this word used to carry. An offline device can still upload a
+  // sprint answered with the old label, and the score verifier must accept it.
+  formerEstonian?: string[];
   category?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
 };
@@ -76,7 +79,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_067', english: 'the', estonian: 'artikkel' },
   { id: 'word_068', english: 'the ABC', estonian: 'tähestik' },
   { id: 'word_069', english: 'shoe, shoes', estonian: 'king, kingad' },
-  { id: 'word_070', english: 'so', estonian: 'nnii' },
+  { id: 'word_070', english: 'so', estonian: 'nii', formerEstonian: ['nnii'] },
   { id: 'word_071', english: 'beautiful', estonian: 'ilus' },
   { id: 'word_072', english: 'Thanks.', estonian: 'Tänan.' },
   { id: 'word_073', english: 'ladybird', estonian: 'lepatriinu' },

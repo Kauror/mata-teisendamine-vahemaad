@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EnglishMatchingBoard, { type EnglishMatchingBoardState } from '@/app/components/EnglishMatchingBoard';
 import Celebration from '@/app/components/Celebration';
-import { ENGLISH_PACKS, shuffle } from '@/lib/englishGame';
+import { ENGLISH_PACKS, pickSprintBoardWords, shuffle } from '@/lib/englishGame';
 import { fetchBestEnglishSprintScore } from '@/lib/englishHistory';
 import type { EnglishVocabularyWord } from '@/lib/englishVocabulary';
 import {
@@ -95,7 +95,7 @@ export default function SprintPage() {
 
   const boardShuffleSeed = runSeed + boardSeed * 10_007;
   const boardLayoutSeed = runSeed + boardSeed * 20_011;
-  const boardWords = useMemo(() => shuffle(wordPool, boardShuffleSeed).slice(0, 5), [wordPool, boardShuffleSeed]);
+  const boardWords = useMemo(() => pickSprintBoardWords(shuffle(wordPool, boardShuffleSeed), 5), [wordPool, boardShuffleSeed]);
 
   useEffect(() => {
     let cancelled = false;
