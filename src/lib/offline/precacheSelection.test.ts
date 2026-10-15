@@ -22,6 +22,8 @@ const loadableManifest = {
   '..\\..\\..\\..\\node_modules\\next\\dist\\client\\index.js -> ../pages/_app': { id: 5553, files: ['static/chunks/5553.1.js'] },
   '..\\..\\..\\..\\node_modules\\next\\dist\\client\\index.js -> ../pages/_error': { id: 1228, files: ['static/chunks/1228.1.js'] },
   'app\\components\\study\\StudyRunner.tsx -> @/app/components/study/ClockStudyMaterial': { id: 7137, files: ['static/chunks/7137.1.js'] },
+  // A plain import() in a runner page (the science pool, the maths generators).
+  'app\\kiur\\loodusopetus\\test\\page.tsx -> @/lib/loodusopetus/runnerTasks': { id: 3340, files: ['static/chunks/3340.1.js'] },
   'lib\\offline\\api.ts -> @/lib/offline/runnerSession': { id: 5214, files: [] }
 };
 
@@ -42,8 +44,9 @@ describe('precache shell selection (WEB-01)', () => {
     ]));
   });
 
-  it('keeps our own lazily imported chunks', () => {
+  it('keeps our own lazily imported chunks, next/dynamic and plain import() alike', () => {
     expect(selected).toContain('static/chunks/7137.1.js');
+    expect(selected).toContain('static/chunks/3340.1.js');
   });
 
   it('leaves out non-shell routes and the pages router client', () => {
