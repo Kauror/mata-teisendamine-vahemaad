@@ -1,7 +1,7 @@
 import { APP_BUILD_ID, OFFLINE_CAPABILITY_MANIFEST, OFFLINE_CAPABILITY_MANIFEST_VERSION, validateOfflineCapabilityManifest } from '@/lib/offline/capabilities';
 import { getStorageHealth, offlineDb } from '@/lib/offline/db';
 import { ensurePersistentStorage, getCursor, getDeviceId, getStoragePersisted } from '@/lib/offline/meta';
-import { attemptRepo, bootstrapRepo, catalogRepo, remediationActionRepo, remediationBundleRepo, snapshotRepo, taskActionRepo } from '@/lib/offline/repositories';
+import { attemptRepo, bootstrapRepo, catalogRepo, remediationBundleRepo, snapshotRepo, taskActionRepo } from '@/lib/offline/repositories';
 import { syncNow, type SyncOutcome } from '@/lib/offline/syncEngine';
 import { shouldRunSync, syncedRecently } from '@/lib/offline/syncPolicy';
 import { GENERATOR_VERSION } from '@/lib/shared/types';
@@ -140,7 +140,7 @@ export async function prepareLocalOffline(): Promise<void> {
 
 async function localPendingCount(): Promise<number> {
   try {
-    const counts = await Promise.all([attemptRepo.pendingCount(), taskActionRepo.pendingCount(), remediationActionRepo.pendingCount()]);
+    const counts = await Promise.all([attemptRepo.pendingCount(), taskActionRepo.pendingCount()]);
     return counts.reduce((sum, count) => sum + count, 0);
   } catch {
     // Unknown counts as "something may be waiting": never throttle on it.

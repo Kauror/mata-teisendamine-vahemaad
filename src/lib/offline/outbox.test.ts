@@ -3,10 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { closeOfflineDbForTests, OFFLINE_DB_NAME, offlineDb } from '@/lib/offline/db';
 import { metaRepo } from '@/lib/offline/repositories';
 import { syncNow } from '@/lib/offline/syncEngine';
-import type { LocalAttempt, LocalRemediationAction, LocalTaskAction } from '@/lib/offline/records';
+import type { LocalAttempt, LocalTaskAction } from '@/lib/offline/records';
 import type { ServerAttempt } from '@/lib/shared/types';
 
-// OFF-12 characterisation: every client outbox follows the same lifecycle
+// OFF-12 characterisation: both client outboxes follow the same lifecycle
 // (pending -> syncing lease -> settled, or back to pending with a retry delay).
 // These tests pin that lifecycle per store through the real sync engine.
 
@@ -42,9 +42,9 @@ function canonical(n: number, clientAttemptId: string): ServerAttempt {
   };
 }
 
-type StoreName = 'attempts' | 'taskActions' | 'remediationActions';
-type AnyRow = LocalAttempt | LocalTaskAction | LocalRemediationAction;
-type PushBody = { pushKind?: string; pending?: { attempts?: { clientAttemptId: string }[]; taskActions?: { clientActionId: string }[]; remediationActions?: { clientActionId: string }[] } };
+type StoreName = 'attempts' | 'taskActions';
+type AnyRow = LocalAttempt | LocalTaskAction;
+type PushBody = { pushKind?: string; pending?: { attempts?: { clientAttemptId: string }[]; taskActions?: { clientActionId: string }[] } };
 
 type OutboxCase = {
   name: string;
@@ -97,24 +97,8 @@ const cases: OutboxCase[] = [
     idsIn: (body) => (body.pending?.taskActions ?? []).map((row) => row.clientActionId),
     success: (ids) => ({ taskActionResults: ids.map((clientActionId) => ({ clientActionId, status: 'applied' })) }),
     settled: { status: 'applied', resolvedAt: SERVER_TIME },
-    // Counted like the other outboxes; the transport error no longer lands in
+    // Counted like attempts; the transport error no longer lands in
     // reasonCode, which is reserved for the server's verdict.
-    retried: { status: 'pending', retryCount: 1, lastError: 'sync-http-500' }
-  },
-  {
-    name: 'remediation actions',
-    store: 'remediationActions',
-    row: (n, extra = {}) => ({
-      clientActionId: id(n),
-      deviceId: '018f47f6-9f2c-7b9a-8a2e-123456789abc',
-      bundleId: 'bundle-1', sessionId: `session-${n}`, learner: 'kiur', completedAt: SERVER_TIME, answers: [],
-      status: 'pending', retryCount: 0, createdLocallyAt: SERVER_TIME,
-      ...extra
-    } as LocalRemediationAction),
-    key: (row) => (row as LocalRemediationAction).clientActionId,
-    idsIn: (body) => (body.pending?.remediationActions ?? []).map((row) => row.clientActionId),
-    success: (ids) => ({ remediationActionResults: ids.map((clientActionId, index) => ({ clientActionId, status: 'created', canonicalAttempt: canonical(200 + index, `remediation-${clientActionId}`) })) }),
-    settled: { status: 'created', resolvedAt: SERVER_TIME },
     retried: { status: 'pending', retryCount: 1, lastError: 'sync-http-500' }
   }
 ];

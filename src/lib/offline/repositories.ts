@@ -4,7 +4,6 @@ import type {
   AnyLocalSession,
   ConfirmedAttempt,
   LocalAttempt,
-  LocalRemediationAction,
   LocalTaskAction,
   PreparedRemediationBundle,
   RunnerSessionV3,
@@ -21,13 +20,13 @@ export type PendingDueOptions = { ignoreRetryAt?: boolean };
 
 // ---- Outbox stores ----
 //
-// Every locally created record the server must settle (attempts, task actions,
-// remediation actions) lives in an outbox store with the same lifecycle:
+// Every locally created record the server must settle (attempts, task actions)
+// lives in an outbox store with the same lifecycle:
 // 'pending' -> 'syncing' under a short lease -> settled by the server's
 // acknowledgement, or back to 'pending' with a retry time. Expired leases (a
 // tab that died mid-push) are returned to 'pending' at the start of a cycle.
 
-export type OutboxStoreName = 'attempts' | 'taskActions' | 'remediationActions';
+export type OutboxStoreName = 'attempts' | 'taskActions';
 
 export type OutboxRecord = {
   status: string;
@@ -43,7 +42,6 @@ type OutboxStoreSchema = { key: string; value: OutboxRecord; indexes: { byStatus
 interface OutboxSchema extends DBSchema {
   attempts: OutboxStoreSchema;
   taskActions: OutboxStoreSchema;
-  remediationActions: OutboxStoreSchema;
 }
 
 async function outboxDb(): Promise<IDBPDatabase<OutboxSchema>> {
@@ -351,18 +349,6 @@ export const taskActionRepo = {
   async delete(clientActionId: string) {
     const db = await offlineDb();
     await db.delete('taskActions', clientActionId);
-  }
-};
-
-export const remediationActionRepo = {
-  ...outboxRepo<LocalRemediationAction>('remediationActions', 'clientActionId'),
-  async put(action: LocalRemediationAction): Promise<void> {
-    const db = await offlineDb();
-    await withStorageHealth(() => db.put('remediationActions', action));
-  },
-  async get(clientActionId: string): Promise<LocalRemediationAction | undefined> {
-    const db = await offlineDb();
-    return db.get('remediationActions', clientActionId);
   }
 };
 

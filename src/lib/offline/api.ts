@@ -1,4 +1,4 @@
-import { attemptRepo, catalogueGrantRepo, catalogRepo, historyRepo, remediationActionRepo, sessionRepo, snapshotRepo, taskActionRepo, taskAssignmentRepo, taskTemplateRepo } from '@/lib/offline/repositories';
+import { attemptRepo, catalogueGrantRepo, catalogRepo, historyRepo, sessionRepo, snapshotRepo, taskActionRepo, taskAssignmentRepo, taskTemplateRepo } from '@/lib/offline/repositories';
 import { assertNotPeeking, createRunId } from '@/lib/offline/runnerSession';
 import { correctedNow, getDeviceId, getServerOffsetMs } from '@/lib/offline/meta';
 import { syncNow } from '@/lib/offline/syncEngine';
@@ -328,12 +328,8 @@ export async function getMergedExerciseHistory(): Promise<OfflineHistoryItem[]> 
 }
 
 export async function getPendingCount(): Promise<number> {
-  const [attempts, actions, remediationActions] = await Promise.all([
-    attemptRepo.pendingCount(),
-    taskActionRepo.pendingCount(),
-    remediationActionRepo.pendingCount()
-  ]);
-  return attempts + actions + remediationActions;
+  const [attempts, actions] = await Promise.all([attemptRepo.pendingCount(), taskActionRepo.pendingCount()]);
+  return attempts + actions;
 }
 
 // ---- Offline daily tasks ----

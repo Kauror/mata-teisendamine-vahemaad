@@ -1,8 +1,8 @@
 import { csrfHeaders } from '@/lib/auth/client';
 import { pingServer } from '@/lib/offline/connection';
 import { getCursor, getDeviceId, getServerOffsetMs, type SyncCursor } from '@/lib/offline/meta';
-import { attemptRepo, catalogRepo, catalogueGrantRepo, metaRepo, remediationActionRepo, taskActionRepo, type OutboxRepo } from '@/lib/offline/repositories';
-import type { LocalAttempt, LocalRemediationAction, LocalTaskAction } from '@/lib/offline/records';
+import { attemptRepo, catalogRepo, catalogueGrantRepo, metaRepo, taskActionRepo, type OutboxRepo } from '@/lib/offline/repositories';
+import type { LocalAttempt, LocalTaskAction } from '@/lib/offline/records';
 import { applySyncEnvelope, type SyncApplyInput, type SyncApplyResult } from '@/lib/offline/syncApply';
 import { withSyncLock } from '@/lib/offline/syncLock';
 import {
@@ -31,10 +31,8 @@ import {
   type OfflineSyncPullResponseV2,
   type OfflineSyncPushRequestV2,
   type OfflineSyncPushResponseV2,
-  type OfflineRemediationActionPayload,
   type OfflineTaskActionPayload,
   type PingResponse,
-  type RemediationActionResult,
   type TaskActionResult
 } from '@/lib/shared/types';
 
@@ -57,7 +55,6 @@ export type SyncOutcome = {
   pulled: number;
   attemptResults?: AttemptResult[];
   taskActionResults?: TaskActionResult[];
-  remediationActionResults?: RemediationActionResult[];
 };
 
 class SyncHttpError extends Error {
@@ -85,18 +82,6 @@ function toActionPayload(action: LocalTaskAction): OfflineTaskActionPayload {
     taskDate: action.taskDate,
     snapshot: action.snapshot,
     completedAt: action.completedAt
-  };
-}
-
-function toRemediationPayload(action: LocalRemediationAction): OfflineRemediationActionPayload {
-  return {
-    clientActionId: action.clientActionId,
-    deviceId: action.deviceId,
-    bundleId: action.bundleId,
-    sessionId: action.sessionId,
-    learner: action.learner,
-    completedAt: action.completedAt,
-    answers: action.answers
   };
 }
 
@@ -280,15 +265,6 @@ const taskActionOutbox: OutboxPush<LocalTaskAction, TaskActionResult> = {
   needsReview: (clientActionId, reasonCode, message) => ({ clientActionId, status: 'needs_review', reasonCode, message })
 };
 
-const remediationActionOutbox: OutboxPush<LocalRemediationAction, RemediationActionResult> = {
-  repo: remediationActionRepo,
-  pushKind: 'actions',
-  pending: (batch) => ({ taskActions: [], remediationActions: batch.map(toRemediationPayload) }),
-  results: (response) => response.remediationActionResults,
-  envelope: (remediationActionResults) => ({ remediationActionResults }),
-  needsReview: (clientActionId, reasonCode, message) => ({ clientActionId, status: 'needs_review', reasonCode, message })
-};
-
 async function returnBatch<Row, Result>(outbox: OutboxPush<Row, Result>, batch: Row[], error: string, nextRetryAt?: string) {
   await outbox.repo.returnPending(batch.map(outbox.repo.idOf), error, nextRetryAt);
 }
@@ -421,12 +397,11 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
   const timeout = setTimeout(() => cycleController.abort(new DOMException('Sync cycle timed out.', 'TimeoutError')), SYNC_REQUEST_TIMEOUT_MS);
   const aggregateAttempts: AttemptResult[] = [];
   const aggregateActions: TaskActionResult[] = [];
-  const aggregateRemediationActions: RemediationActionResult[] = [];
   let pushed = 0;
   let pulled = 0;
 
   try {
-    await Promise.all([attemptRepo.recoverExpiredSyncing(), taskActionRepo.recoverExpiredSyncing(), remediationActionRepo.recoverExpiredSyncing()]);
+    await Promise.all([attemptRepo.recoverExpiredSyncing(), taskActionRepo.recoverExpiredSyncing()]);
     const state = await retryState();
     const manual = isManualSync(reason);
     if (!manual && (state.status === 'auth_blocked' || state.status === 'upgrade_required' || state.status === 'epoch_regression')) {
@@ -456,7 +431,6 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
     const dueOptions = { ignoreRetryAt: manual };
     const dueAttempts = await attemptRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE, new Date(), dueOptions);
     const dueActions = await taskActionRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE, new Date(), dueOptions);
-    const dueRemediationActions = await remediationActionRepo.pendingDue(MAX_DUE_RECORDS_PER_CYCLE, new Date(), dueOptions);
 
     if (!protocols.has(2)) {
       await blockRetry('upgrade_required', 'No mutually supported offline protocol.');
@@ -467,12 +441,9 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
       for (const batch of chunkRecords(modernAttempts, CLIENT_ATTEMPT_BATCH_SIZE)) {
         pushed += await pushBatch(attemptOutbox, batch, device, cycleController.signal, aggregateAttempts);
       }
-      // All task/remediation actions are pushed only after every attempt batch.
+      // Task actions are pushed only after every attempt batch.
       for (const batch of chunkRecords(dueActions, CLIENT_ACTION_BATCH_SIZE)) {
         pushed += await pushBatch(taskActionOutbox, batch, device, cycleController.signal, aggregateActions);
-      }
-      for (const batch of chunkRecords(dueRemediationActions, CLIENT_ACTION_BATCH_SIZE)) {
-        pushed += await pushBatch(remediationActionOutbox, batch, device, cycleController.signal, aggregateRemediationActions);
       }
       // Preserve pre-v2 outbox rows in IndexedDB for explicit manual review.
       // They cannot be safely upgraded because their immutable runner contract
@@ -487,31 +458,31 @@ async function runSyncCycle(reason: string, lockSignal: AbortSignal): Promise<Sy
     }
 
     await writeRetryState({ status: 'idle', retryCount: 0 });
-    return { ok: true, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+    return { ok: true, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
   } catch (error) {
-    if (error instanceof StopSyncCycle) return { ok: false, reason: error.disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+    if (error instanceof StopSyncCycle) return { ok: false, reason: error.disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('history epoch regressed')) {
       await blockRetry('epoch_regression', message);
-      return { ok: false, reason: 'epoch_regression', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+      return { ok: false, reason: 'epoch_regression', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     if (cycleController.signal.aborted) {
       await scheduleRetry(message);
-      return { ok: false, reason: 'timeout', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+      return { ok: false, reason: 'timeout', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     // Pull requests use the same HTTP policy as every push path.  Do not turn
     // an authentication/server response into a local IndexedDB failure.
     const disposition = errorDisposition(error);
     if (disposition === 'auth_blocked' || disposition === 'upgrade_required') {
       await blockRetry(disposition, message);
-      return { ok: false, reason: disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+      return { ok: false, reason: disposition, pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     if (disposition === 'retryable' || disposition === 'timeout') {
       await scheduleRetry(message);
-      return { ok: false, reason: disposition === 'timeout' ? 'timeout' : 'retryable', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+      return { ok: false, reason: disposition === 'timeout' ? 'timeout' : 'retryable', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
     }
     await blockRetry('storage_error', message).catch(() => {});
-    return { ok: false, reason: 'storage_error', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions, remediationActionResults: aggregateRemediationActions };
+    return { ok: false, reason: 'storage_error', pushed, pulled, attemptResults: aggregateAttempts, taskActionResults: aggregateActions };
   } finally {
     clearTimeout(timeout);
     lockSignal.removeEventListener('abort', onLockAbort);

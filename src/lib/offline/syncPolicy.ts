@@ -75,7 +75,7 @@ export function historyEpochDecision(localEpoch: number, serverEpoch: number): H
 // page succeeded under a minute ago and nothing is waiting locally, another
 // ping + pull adds nothing, so those triggers are skipped. Manual syncs, any
 // other reason (startup, reconnect retries, result screens) and any pending
-// row (attempts, task actions, remediation) always run.
+// row (attempts, task actions) always run.
 export const SYNC_THROTTLE_MS = 60_000;
 const THROTTLED_SYNC_REASONS: ReadonlySet<string> = new Set(['visibility', 'interval', 'online-event']);
 

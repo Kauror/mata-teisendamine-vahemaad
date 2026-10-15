@@ -49,6 +49,9 @@ interface OfflineDB extends DBSchema {
     value: LocalTaskAction;
     indexes: { byStatus: string; byTaskDate: string; byLearner: string; byNextRetryAt: string; byResolvedAt: string };
   }; // key = clientActionId
+  // No client build has ever queued a remediation action (Kordamine settles
+  // through its own server route). The store stays so the schema needs no
+  // version bump; syncApply still applies server results to it.
   remediationActions: {
     key: string;
     value: LocalRemediationAction;
