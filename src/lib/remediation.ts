@@ -19,6 +19,7 @@ import { ensureCurrentRewardPolicy, REWARD_ENGINE_VERSION, rewardPolicyByVersion
 import { applyRewardProjectionV2, getCanonicalRewardSummary } from '@/lib/server/rewards/projection';
 import { getBalance, Learner, nowIso } from '@/lib/tasks';
 import { isQuestionVisual } from '@/lib/types';
+import { isFigureLabelling } from '@/lib/visualLabels';
 
 export { REMEDIATION_RENDERER_TYPES } from '@/lib/shared/remediationQuestion';
 export type { RemediationQuestion, RemediationRendererType } from '@/lib/shared/remediationQuestion';
@@ -59,6 +60,7 @@ type SavedQuestion = {
   clockMinutes?: 0 | 15 | 30 | 45;
   visual?: string;
   visualKnownDegrees?: number;
+  visualLabels?: string;
 };
 
 type PromptSnapshot = RemediationQuestion & {
@@ -337,6 +339,7 @@ function buildSnapshot(input: SnapshotInput): PromptSnapshot | null {
     clockMinutes: input.question.type === 'clock' ? input.question.clockMinutes : undefined,
     promptVisual: isQuestionVisual(input.question.visual) ? input.question.visual : undefined,
     promptVisualKnownDegrees: input.question.visualKnownDegrees,
+    promptVisualLabels: isFigureLabelling(input.question.visualLabels) ? input.question.visualLabels : undefined,
     choices,
     originalQuestionData: input.question
   };
@@ -506,6 +509,9 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
     clockMinutes: original.type === 'clock' ? original.clockMinutes ?? snapshot.clockMinutes : snapshot.clockMinutes,
     promptVisual: rawVisual,
     promptVisualKnownDegrees: original.visualKnownDegrees ?? snapshot.promptVisualKnownDegrees,
+    // The figure's lettering decides which letter is right, so it travels with
+    // the drawing; absent (v1/v2 questions) means the original lettering.
+    promptVisualLabels: isFigureLabelling(original.visualLabels) ? original.visualLabels : isFigureLabelling(snapshot.promptVisualLabels) ? snapshot.promptVisualLabels : undefined,
     choices
   };
 }

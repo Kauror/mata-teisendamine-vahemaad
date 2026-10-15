@@ -83,6 +83,8 @@ export type RemediationQuestion = {
   // its drawing, so the drawing travels with the question.
   promptVisual?: QuestionVisual;
   promptVisualKnownDegrees?: number;
+  // Which letter stands where on a lettered figure (see visualLabels.ts).
+  promptVisualLabels?: string;
   // 'science_choice' only. Everything shown is re-read from the task dataset by
   // id at session build time, so nothing here can drift out of step with it.
   scienceTaskId?: string;

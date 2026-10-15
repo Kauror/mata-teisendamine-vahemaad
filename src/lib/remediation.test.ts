@@ -172,6 +172,16 @@ describe('question visuals', () => {
     const question = startRemediationSession('kiur').questions
       .find((item) => item.promptText === 'Milline sirglõik on raadius?');
     expect(question?.promptVisual).toBe('radius-demo');
+    expect(question?.promptVisualLabels).toBeUndefined();
+  });
+
+  it('replays a v3 figure with its own lettering, so the right letter stays right', () => {
+    // v3 letters the figure per question: here the radius carries C.
+    captureMath([...Array.from({ length: 11 }, (_, index) => numericMistake(index + 1)), { ...radiusQuestion, correctAnswer: 2, visualLabels: 'CAB', userAnswer: 'A' }]);
+    const question = startRemediationSession('kiur').questions
+      .find((item) => item.promptText === 'Milline sirglõik on raadius?');
+    expect(question?.promptVisualLabels).toBe('CAB');
+    expect(question?.correctAnswerLabel).toBe('C');
   });
 
   it('carries the sector angle a question asks about', () => {
