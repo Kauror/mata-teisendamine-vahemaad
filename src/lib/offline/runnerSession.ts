@@ -1,3 +1,4 @@
+import { readPeekMode } from '@/app/components/usePeekMode';
 import { getStorageHealth } from '@/lib/offline/db';
 import { runnerSessionRepo } from '@/lib/offline/repositories';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
@@ -6,7 +7,7 @@ import { GENERATOR_VERSION, ROTATION_ALGORITHM_VERSION, type Learner } from '@/l
 export const RUNNER_SESSION_SCHEMA_VERSION = 3 as const;
 
 export type RunnerStorageFailure = {
-  code: 'storage_unavailable' | 'quota_exceeded' | 'storage_blocked' | 'session_missing';
+  code: 'storage_unavailable' | 'quota_exceeded' | 'storage_blocked' | 'session_missing' | 'peek_read_only';
   message: string;
   recoverable: boolean;
 };
@@ -31,6 +32,19 @@ export function runnerStorageFailure(error: unknown): RunnerStorageFailure {
     return { code: 'storage_blocked', message: 'Sulge teised äpi aknad ja proovi uuesti.', recoverable: true };
   }
   return { code: 'storage_unavailable', message: 'Harjutust ei saa praegu turvaliselt seadmesse salvestada.', recoverable: true };
+}
+
+// A parent looking at a child's screen must not leave anything behind: no run
+// to resume, no result in the child's history. Every runner starts through
+// createRunnerSession and saves through finalizeRunnerSession, so both refuse.
+export const PEEK_RUN_FAILURE: RunnerStorageFailure = {
+  code: 'peek_read_only',
+  message: 'Vaatlusrežiimis harjutust lapse eest ei alustata ega salvestata. Vajuta «Vaata nagu laps», kui tahad proovida.',
+  recoverable: false
+};
+
+export function assertNotPeeking() {
+  if (readPeekMode()) throw new RunnerStorageError(PEEK_RUN_FAILURE);
 }
 
 export function isRunId(value: string | null | undefined): value is string {
@@ -146,6 +160,7 @@ export async function createRunnerSession<
   if (!isRunId(runId)) throw new Error('Runner runId must be an RFC 4122 version 4 UUID.');
   const existing = await loadRunnerSession<Question, Answer, RunnerState, Feedback>(runId);
   if (existing) return existing;
+  assertNotPeeking();
   const session = makeRunnerSession({ ...input, runId });
   try {
     await runnerSessionRepo.put(session);

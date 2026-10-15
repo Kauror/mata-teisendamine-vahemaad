@@ -1,5 +1,5 @@
 import { attemptRepo, catalogueGrantRepo, catalogRepo, historyRepo, remediationActionRepo, sessionRepo, snapshotRepo, taskActionRepo, taskAssignmentRepo, taskTemplateRepo } from '@/lib/offline/repositories';
-import { createRunId } from '@/lib/offline/runnerSession';
+import { assertNotPeeking, createRunId } from '@/lib/offline/runnerSession';
 import { correctedNow, getDeviceId, getServerOffsetMs } from '@/lib/offline/meta';
 import { syncNow } from '@/lib/offline/syncEngine';
 import type { LocalAttempt, LocalSession, LocalTaskAction } from '@/lib/offline/records';
@@ -239,6 +239,7 @@ export type FinalizeRunnerSessionInput = Omit<CompleteAttemptInput, 'sessionId' 
 };
 
 export async function finalizeRunnerSession(input: FinalizeRunnerSessionInput): Promise<CompleteAttemptResult> {
+  assertNotPeeking();
   return completeAttempt({ ...input, sessionId: input.runId, clientAttemptId: input.runId });
 }
 
