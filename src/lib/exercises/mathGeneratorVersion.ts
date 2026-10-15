@@ -22,11 +22,15 @@ export const MATH_GENERATOR_VERSION_V1 = '2026-07-1';
 // in a mixed session, «Võrdle raadiuseid» with both outcomes, deduplicated
 // Kirsi clock bank.
 export const MATH_GENERATOR_VERSION_V2 = 'math-2026-10';
+// Ring: «Leia raadius/läbimõõt» and «Punkti asukoht» letter the figure per
+// question (question.visualLabels), so the answer is not always the same letter
+// or place; «Leia arvutusviga» is about half «Vale» with generated rows.
+export const MATH_GENERATOR_VERSION_V3 = 'math-2026-10b';
 
-export const MATH_GENERATOR_VERSIONS = [MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2] as const;
+export const MATH_GENERATOR_VERSIONS = [MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3] as const;
 export type MathGeneratorVersion = (typeof MATH_GENERATOR_VERSIONS)[number];
 
-export const MATH_GENERATOR_VERSION: MathGeneratorVersion = MATH_GENERATOR_VERSION_V2;
+export const MATH_GENERATOR_VERSION: MathGeneratorVersion = MATH_GENERATOR_VERSION_V3;
 
 export function isSupportedMathGeneratorVersion(value: unknown): value is MathGeneratorVersion {
   return typeof value === 'string' && (MATH_GENERATOR_VERSIONS as readonly string[]).includes(value);

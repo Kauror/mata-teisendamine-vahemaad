@@ -137,7 +137,7 @@ function ShapeReviewVisual({ question }: { question: RemediationQuestion }) {
   if (!question.promptVisual) return null;
   return (
     <div className='remediation-shape-visual'>
-      <NamedShapeVisual visual={question.promptVisual} knownDegrees={question.promptVisualKnownDegrees} />
+      <NamedShapeVisual visual={question.promptVisual} knownDegrees={question.promptVisualKnownDegrees} labels={question.promptVisualLabels} />
     </div>
   );
 }

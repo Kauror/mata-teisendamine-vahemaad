@@ -73,6 +73,10 @@ export type GeneratedQuestion = {
   orderingDirection?: 'asc' | 'desc';
   visual?: QuestionVisual;
   visualKnownDegrees?: number;
+  // The letters drawn on a lettered figure, one per fixed place in the drawing
+  // (see VISUAL_LABEL_DEFAULTS in visualLabels.ts). Absent = the figure's
+  // original lettering, which is what every v1/v2 question shows.
+  visualLabels?: string;
   clockHour?: number;
   clockMinutes?: 0 | 15 | 30 | 45;
   clockType?: 'full-hour' | 'half-hour' | 'quarter-hour';
