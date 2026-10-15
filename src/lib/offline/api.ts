@@ -6,7 +6,6 @@ import type { LocalAttempt, LocalSession, LocalTaskAction } from '@/lib/offline/
 export {
   createRunId,
   ensureRunIdInCurrentUrl,
-  hasActiveRunnerSessions,
   isRunId,
   createRunnerSession,
   loadRunnerSession,
@@ -117,12 +116,6 @@ export async function getDashboardSnapshot(learner: Learner): Promise<ChildDashb
 }
 
 // ---- Sessions ----
-export async function startSession(session: LocalSession): Promise<void> {
-  await sessionRepo.put(session);
-}
-export async function saveSessionProgress(session: LocalSession): Promise<void> {
-  await sessionRepo.put({ ...session, updatedAt: new Date().toISOString() });
-}
 export async function getSession(sessionId: string): Promise<LocalSession | undefined> {
   const row = await sessionRepo.get(sessionId);
   return row && !('schemaVersion' in row) ? row : undefined;

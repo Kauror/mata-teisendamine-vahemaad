@@ -97,7 +97,7 @@ export async function checkOfflineReadiness(): Promise<OfflineReadinessReport> {
 
   const remediationRequirements = (['kiur', 'kirsi'] as const).filter((learner) => remediationAdvertised[learner]);
   const remediationPrepared = remediationRequirements.length === 0 || (await Promise.all(remediationRequirements.map((learner) => remediationBundleRepo.preparedFor(learner)))).every((rows) => rows.length > 0);
-  const pendingAttempts = (await attemptRepo.pending()).length;
+  const pendingAttempts = await attemptRepo.pendingCount();
   const cacheComplete = Boolean(worker?.cacheComplete);
   const dashboardsPresent = Boolean(kiurSnapshot && kirsiSnapshot);
   // Only runners that promise offline start are part of the offline-ready

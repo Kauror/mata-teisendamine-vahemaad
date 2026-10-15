@@ -68,20 +68,13 @@ let dbPromise: Promise<IDBPDatabase<OfflineDB>> | null = null;
 export type StorageHealthState = 'unknown' | 'healthy' | 'blocked' | 'versionchange' | 'terminated' | 'quota_exceeded' | 'error';
 export type StorageHealth = { state: StorageHealthState; changedAt: string; message?: string };
 let storageHealth: StorageHealth = { state: 'unknown', changedAt: new Date(0).toISOString() };
-const storageHealthListeners = new Set<(health: StorageHealth) => void>();
 
 function setStorageHealth(state: StorageHealthState, message?: string) {
   storageHealth = { state, changedAt: new Date().toISOString(), message };
-  storageHealthListeners.forEach((listener) => listener(storageHealth));
 }
 
 export function getStorageHealth(): StorageHealth {
   return storageHealth;
-}
-
-export function subscribeStorageHealth(listener: (health: StorageHealth) => void): () => void {
-  storageHealthListeners.add(listener);
-  return () => storageHealthListeners.delete(listener);
 }
 
 export function recordStorageError(error: unknown): void {

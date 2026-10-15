@@ -72,16 +72,6 @@ export async function getCursor(): Promise<SyncCursor> {
     lastAttemptedSyncAt: cursor.lastAttemptedSyncAt
   };
 }
-export async function setCursor(cursor: SyncCursor): Promise<void> {
-  await setMeta(CURSOR_KEY, cursor);
-}
-
-export async function getAppVersion(): Promise<string> {
-  return getMeta<string>('appVersion', 'dev');
-}
-export async function setAppVersion(version: string): Promise<void> {
-  await setMeta('appVersion', version);
-}
 
 // Request durable storage where supported; record the result for diagnostics.
 export async function ensurePersistentStorage(): Promise<boolean> {

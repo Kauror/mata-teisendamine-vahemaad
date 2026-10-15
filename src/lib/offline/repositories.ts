@@ -126,10 +126,6 @@ export const catalogRepo = {
   async get(learner: Learner): Promise<OfflineCatalogue | undefined> {
     const db = await offlineDb();
     return db.get('catalogues', learner);
-  },
-  async all(): Promise<OfflineCatalogue[]> {
-    const db = await offlineDb();
-    return db.getAll('catalogues');
   }
 };
 
@@ -156,14 +152,6 @@ export const sessionRepo = {
   async delete(sessionId: string) {
     const db = await offlineDb();
     await db.delete('sessions', sessionId);
-  },
-  async all(): Promise<AnyLocalSession[]> {
-    const db = await offlineDb();
-    return db.getAll('sessions');
-  },
-  async active(): Promise<AnyLocalSession[]> {
-    const rows = await this.all();
-    return rows.filter((row) => !('schemaVersion' in row) || row.status === 'active' || row.status === 'paused' || row.status === 'finalizing');
   }
 };
 
@@ -208,9 +196,6 @@ export const runnerSessionRepo = {
       await tx.done;
       return updated;
     });
-  },
-  async active(): Promise<RunnerSessionV3[]> {
-    return (await sessionRepo.active()).filter((row): row is RunnerSessionV3 => 'schemaVersion' in row && row.schemaVersion === 3);
   }
 };
 
@@ -227,14 +212,6 @@ export const attemptRepo = {
   async all(): Promise<LocalAttempt[]> {
     const db = await offlineDb();
     return db.getAll('attempts');
-  },
-  async pending(): Promise<LocalAttempt[]> {
-    const db = await offlineDb();
-    const [pending, syncing] = await Promise.all([
-      db.getAllFromIndex('attempts', 'byStatus', 'pending'),
-      db.getAllFromIndex('attempts', 'byStatus', 'syncing')
-    ]);
-    return [...pending, ...syncing];
   },
   async finalize(sessionId: string | undefined, attempt: LocalAttempt): Promise<{ attempt?: LocalAttempt; confirmed?: ConfirmedAttempt; created: boolean }> {
     const db = await offlineDb();
@@ -260,10 +237,6 @@ export const attemptRepo = {
       await tx.done;
       return { attempt, created: true };
     });
-  },
-  async delete(clientAttemptId: string) {
-    const db = await offlineDb();
-    await db.delete('attempts', clientAttemptId);
   }
 };
 
@@ -294,30 +267,10 @@ export const historyRepo = {
   async findByClientId(clientAttemptId: string): Promise<ConfirmedAttempt | undefined> {
     const db = await offlineDb();
     return db.getFromIndex('history', 'byClientAttemptId', clientAttemptId);
-  },
-  async delete(id: number) {
-    const db = await offlineDb();
-    await db.delete('history', id);
-  },
-  async deleteByClientId(clientAttemptId: string) {
-    const db = await offlineDb();
-    const match = await db.getFromIndex('history', 'byClientAttemptId', clientAttemptId);
-    if (match) await db.delete('history', match.id);
-  },
-  async clear() {
-    const db = await offlineDb();
-    await db.clear('history');
   }
 };
 
 export const taskTemplateRepo = {
-  async replaceAll(templates: TaskTemplateRecord[]) {
-    const db = await offlineDb();
-    const tx = db.transaction('taskTemplates', 'readwrite');
-    await tx.store.clear();
-    await Promise.all(templates.map((template) => tx.store.put(template)));
-    await tx.done;
-  },
   async all(): Promise<TaskTemplateRecord[]> {
     const db = await offlineDb();
     return db.getAll('taskTemplates');
@@ -330,25 +283,9 @@ export const taskActionRepo = {
     const db = await offlineDb();
     await db.put('taskActions', action);
   },
-  async get(clientActionId: string): Promise<LocalTaskAction | undefined> {
-    const db = await offlineDb();
-    return db.get('taskActions', clientActionId);
-  },
   async all(): Promise<LocalTaskAction[]> {
     const db = await offlineDb();
     return db.getAll('taskActions');
-  },
-  async pending(): Promise<LocalTaskAction[]> {
-    const db = await offlineDb();
-    const [pending, syncing] = await Promise.all([
-      db.getAllFromIndex('taskActions', 'byStatus', 'pending'),
-      db.getAllFromIndex('taskActions', 'byStatus', 'syncing')
-    ]);
-    return [...pending, ...syncing];
-  },
-  async delete(clientActionId: string) {
-    const db = await offlineDb();
-    await db.delete('taskActions', clientActionId);
   }
 };
 
@@ -424,14 +361,6 @@ export const taskAssignmentRepo = {
 };
 
 export const remediationBundleRepo = {
-  async put(bundle: PreparedRemediationBundle): Promise<void> {
-    const db = await offlineDb();
-    await withStorageHealth(() => db.put('remediationBundles', bundle));
-  },
-  async get(bundleId: string): Promise<PreparedRemediationBundle | undefined> {
-    const db = await offlineDb();
-    return db.get('remediationBundles', bundleId);
-  },
   async preparedFor(learner: Learner): Promise<PreparedRemediationBundle[]> {
     const db = await offlineDb();
     const rows = await db.getAllFromIndex('remediationBundles', 'byLearner', learner);

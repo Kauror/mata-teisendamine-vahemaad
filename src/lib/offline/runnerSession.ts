@@ -190,7 +190,3 @@ export async function patchRunnerSession<Session extends RunnerSessionV3>(runId:
       : runnerStorageFailure(error), error);
   }
 }
-
-export async function hasActiveRunnerSessions(): Promise<boolean> {
-  return (await runnerSessionRepo.active()).length > 0;
-}
