@@ -50,7 +50,7 @@ describe('shared mathematics answer verification', () => {
   });
   it('never reads a numeric option label as an option index', () => {
     const counting = {
-      id: 'count', category: 'Loendamine', difficulty: 'Lihtne', question: 'Mitu?', correctAnswer: 2,
+      id: 'count', category: 'Arvutamine', difficulty: 'Lihtne', question: 'Mitu?', correctAnswer: 2,
       kind: 'choice', choiceOptions: ['2', '18', '17']
     } satisfies GeneratedQuestion;
     expect(verifyGeneratedMathAnswer(counting, '17')).toBe(true);
