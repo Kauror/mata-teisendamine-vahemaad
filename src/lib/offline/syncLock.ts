@@ -5,8 +5,12 @@ import { syncLeaseRepo } from '@/lib/offline/repositories';
 // the fallback is a renewable IndexedDB lease rather than a per-tab boolean.
 
 export const SYNC_LEASE_NAME = 'harjutaja-sync';
-export const SYNC_LEASE_DURATION_MS = 60_000;
-export const SYNC_LEASE_RENEW_MS = 15_000;
+// Short, often-renewed lease: a page closed or reloaded mid-sync (a child shutting
+// the app right after an exercise) cannot release it, and until it expires every
+// sync on this phone answers "locked". 60 s held results back for a minute or
+// more; 20 s with a 5 s renewal keeps a live sync safe and frees a dead one fast.
+export const SYNC_LEASE_DURATION_MS = 20_000;
+export const SYNC_LEASE_RENEW_MS = 5_000;
 
 export type SyncLockContext = { signal: AbortSignal; owner: string };
 
@@ -25,9 +29,24 @@ function expiresAt(): string {
   return new Date(Date.now() + SYNC_LEASE_DURATION_MS).toISOString();
 }
 
+// The lease this page holds, so leaving the page can hand it back at once. The
+// write may not finish while the page goes away; expiry is the backstop.
+let heldLeaseOwner: string | null = null;
+let pagehideHooked = false;
+
+function releaseOnPagehide() {
+  if (pagehideHooked || typeof window === 'undefined') return;
+  pagehideHooked = true;
+  window.addEventListener('pagehide', () => {
+    if (heldLeaseOwner) void syncLeaseRepo.release(SYNC_LEASE_NAME, heldLeaseOwner).catch(() => {});
+  });
+}
+
 async function withIndexedDbLease<T>(fn: (context: SyncLockContext) => Promise<T>): Promise<T | null> {
   const owner = leaseOwner();
   if (!(await syncLeaseRepo.tryAcquire(SYNC_LEASE_NAME, owner, expiresAt()))) return null;
+  heldLeaseOwner = owner;
+  releaseOnPagehide();
 
   const controller = new AbortController();
   let leaseLost = false;
@@ -53,6 +72,7 @@ async function withIndexedDbLease<T>(fn: (context: SyncLockContext) => Promise<T
   } finally {
     finished = true;
     clearInterval(timer);
+    if (heldLeaseOwner === owner) heldLeaseOwner = null;
     await syncLeaseRepo.release(SYNC_LEASE_NAME, owner).catch(() => {});
   }
 }

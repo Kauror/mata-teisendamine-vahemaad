@@ -6,6 +6,7 @@ import { isOnlineHint } from '@/lib/offline/connection';
 import { SYNC_COMPLETE_EVENT, syncNow, type SyncCompleteDetail, type SyncOutcome } from '@/lib/offline/syncEngine';
 import { createReconnectRetry, type ReconnectRetry } from '@/lib/offline/reconnectRetry';
 import { getPendingCount } from '@/lib/offline/api';
+import { PENDING_FOLLOW_UP_MS, shouldFollowUpPending } from '@/lib/offline/syncPolicy';
 import { getCursor } from '@/lib/offline/meta';
 import { prepareLocalOffline, runCatchUpSync, runOfflineBootstrap } from '@/lib/offline/readiness';
 import { isInstallFailure, newestWaitingWorker, UPDATE_CHECK_MIN_INTERVAL_MS } from '@/lib/offline/swUpdate';
@@ -78,6 +79,9 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const runnerTabIdRef = useRef<string | null>(null);
   const reconnectRetryRef = useRef<ReconnectRetry | null>(null);
   const reconnectRunRef = useRef<() => void>(() => {});
+  // Follow-up syncs for results still queued after a cycle (see syncPolicy).
+  const followUpTimerRef = useRef<number | null>(null);
+  const followUpCountRef = useRef(0);
 
   const refreshPending = useCallback(async () => {
     try {
@@ -200,6 +204,18 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       const detail = (event as CustomEvent<SyncCompleteDetail>).detail;
       if (detail?.outcome) applyOutcome(detail.outcome);
       void refreshPending();
+      if (!detail?.outcome) return;
+      const outcome = detail.outcome;
+      void getPendingCount().then((pending) => {
+        if (pending <= 0) { followUpCountRef.current = 0; return; }
+        if (followUpTimerRef.current !== null) return;
+        if (!shouldFollowUpPending({ outcomeReason: outcome.reason ?? 'unknown', ok: outcome.ok, pending, followUps: followUpCountRef.current })) return;
+        followUpCountRef.current += 1;
+        followUpTimerRef.current = window.setTimeout(() => {
+          followUpTimerRef.current = null;
+          void sync('pending-follow-up');
+        }, PENDING_FOLLOW_UP_MS);
+      }).catch(() => {});
     };
     const onRevision = () => { void refreshPending(); };
     window.addEventListener(SYNC_COMPLETE_EVENT, onComplete);
@@ -210,8 +226,10 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener(SYNC_COMPLETE_EVENT, onComplete);
       window.removeEventListener('offline-data-revision', onRevision);
       channel?.close();
+      if (followUpTimerRef.current !== null) window.clearTimeout(followUpTimerRef.current);
+      followUpTimerRef.current = null;
     };
-  }, [applyOutcome, refreshPending]);
+  }, [applyOutcome, refreshPending, sync]);
 
   // Register the service worker + prepare offline, then run an initial sync.
   useEffect(() => {

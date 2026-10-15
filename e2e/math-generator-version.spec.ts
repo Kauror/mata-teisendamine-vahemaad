@@ -1,3 +1,4 @@
+import { navigateStable } from './navigation';
 import { expect, test, type Page } from './test';
 import { generateKiurMathSession } from '../src/lib/exercises/kiurMath';
 import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1 } from '../src/lib/exercises/mathGeneratorVersion';
@@ -102,7 +103,9 @@ async function visibleOptions(page: Page) {
 }
 
 async function openRunner(page: Page, url: string) {
-  await page.goto(url);
+  // navigateStable: the login flow can still be settling with its own
+  // navigation to "/", which would interrupt a plain goto (seen in WebKit).
+  await navigateStable(page, url);
   await expect(page.locator('.question-text')).toBeVisible({ timeout: 20_000 });
 }
 

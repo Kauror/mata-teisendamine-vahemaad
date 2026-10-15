@@ -90,3 +90,18 @@ export function shouldRunSync(input: SyncThrottleInput & { reason: string }): bo
   if (isManualSync(input.reason) || !THROTTLED_SYNC_REASONS.has(input.reason)) return true;
   return !syncedRecently(input);
 }
+
+// A cycle can end with results still queued: a navigation aborted the push
+// (WebKit cancels in-flight requests on a page change), or the rows were
+// mid-lease when it started. Nothing else would send them before the next
+// trigger, which can be minutes away, so a short follow-up goes — a few times
+// at most, so rows that are backing off never cause a loop.
+export const PENDING_FOLLOW_UP_MS = 3_000;
+export const PENDING_FOLLOW_UP_LIMIT = 5;
+
+export function shouldFollowUpPending(input: { outcomeReason: string; ok: boolean; pending: number; followUps: number }) {
+  if (input.pending <= 0 || input.followUps >= PENDING_FOLLOW_UP_LIMIT) return false;
+  // No point while the server is unreachable, the session expired or the
+  // device needs attention: those have their own recovery paths.
+  return input.ok || input.outcomeReason === 'locked' || input.outcomeReason === 'timeout' || input.outcomeReason === 'unknown';
+}

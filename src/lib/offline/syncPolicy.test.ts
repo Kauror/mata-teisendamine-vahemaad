@@ -13,6 +13,7 @@ import {
   shouldRunSync,
   syncedRecently
 } from '@/lib/offline/syncPolicy';
+import { PENDING_FOLLOW_UP_LIMIT, shouldFollowUpPending } from '@/lib/offline/syncPolicy';
 
 describe('sync HTTP failure policy', () => {
   it.each([408, 429, 500, 502, 503])('keeps HTTP %i retryable', (status) => {
@@ -88,5 +89,21 @@ describe('catch-up sync throttle (OFF-06)', () => {
 
   it('does not trust a success stamped in the future (clock change)', () => {
     expect(syncedRecently({ lastSuccessAt: now + 5_000, now, pending: 0 })).toBe(false);
+  });
+});
+
+describe('follow-up sync for results still queued', () => {
+  it('follows up after a successful or interrupted cycle while results wait', () => {
+    expect(shouldFollowUpPending({ outcomeReason: 'ok', ok: true, pending: 1, followUps: 0 })).toBe(true);
+    expect(shouldFollowUpPending({ outcomeReason: 'locked', ok: false, pending: 2, followUps: 1 })).toBe(true);
+    expect(shouldFollowUpPending({ outcomeReason: 'timeout', ok: false, pending: 1, followUps: 4 })).toBe(true);
+  });
+
+  it('stops when nothing waits, after the limit, or when the server cannot take it', () => {
+    expect(shouldFollowUpPending({ outcomeReason: 'ok', ok: true, pending: 0, followUps: 0 })).toBe(false);
+    expect(shouldFollowUpPending({ outcomeReason: 'ok', ok: true, pending: 1, followUps: PENDING_FOLLOW_UP_LIMIT })).toBe(false);
+    for (const reason of ['offline', 'auth_blocked', 'retry_wait', 'storage_error', 'upgrade_required']) {
+      expect(shouldFollowUpPending({ outcomeReason: reason, ok: false, pending: 1, followUps: 0 })).toBe(false);
+    }
   });
 });
