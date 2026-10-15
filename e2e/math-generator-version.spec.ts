@@ -165,10 +165,7 @@ test('a run paused on the old generator resumes identically and is accepted with
         request.onsuccess = () => { resolve({ leases: request.result, locks: 'locks' in navigator, now: new Date().toISOString() }); open.result.close(); };
       };
     }));
-    console.log(`SYNC TRAIL
-${[...new Set(trail)].join('
-')}
-LEASE ${JSON.stringify(lease)}`);
+    console.log(['SYNC TRAIL', ...new Set(trail), `LEASE ${JSON.stringify(lease)}`].join('\n'));
     throw error;
   });
 });
