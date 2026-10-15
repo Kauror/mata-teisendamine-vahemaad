@@ -79,6 +79,13 @@ test('the school card fits an iPhone mini without sideways scrolling', async ({ 
   await expect(card.getByRole('list', { name: 'Kirsi täna' })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+  // "10.00–10.45" stays on one line, even with the phone's larger text size.
+  await page.evaluate(() => { document.documentElement.style.fontSize = '120%'; document.querySelectorAll<HTMLElement>('.school-now-list').forEach((list) => { list.style.fontSize = '1.2em'; }); });
+  const timeLines = await card.locator('.school-now-list li > span:first-child').evaluateAll((spans) => spans.map((span) => {
+    const style = getComputedStyle(span);
+    return Math.round(span.getBoundingClientRect().height / parseFloat(style.lineHeight === 'normal' ? String(parseFloat(style.fontSize) * 1.4) : style.lineHeight));
+  }));
+  expect(timeLines.every((lines) => lines === 1)).toBe(true);
   const cardBox = await card.boundingBox();
   const nameBox = await kirsi.locator('.school-now-what').boundingBox();
   expect((nameBox?.x ?? 0) + (nameBox?.width ?? 0)).toBeLessThanOrEqual((cardBox?.x ?? 0) + (cardBox?.width ?? 0));
