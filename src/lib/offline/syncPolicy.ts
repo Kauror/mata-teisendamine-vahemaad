@@ -61,3 +61,32 @@ export function historyEpochDecision(localEpoch: number, serverEpoch: number): H
   if (serverEpoch > localEpoch) return 'reset_confirmed';
   return 'keep';
 }
+
+// OFF-06: catch-up triggers (tab back in view, the periodic interval, the
+// browser's 'online' event) fire often on a phone. When the last cycle in this
+// page succeeded under a minute ago and nothing is waiting locally, another
+// ping + pull adds nothing, so those triggers are skipped. Manual syncs, any
+// other reason (startup, reconnect retries, result screens) and any pending
+// row (attempts, task actions, remediation) always run.
+export const SYNC_THROTTLE_MS = 60_000;
+const THROTTLED_SYNC_REASONS: ReadonlySet<string> = new Set(['visibility', 'interval', 'online-event']);
+
+export type SyncThrottleInput = {
+  // Date.now() when the most recent finished cycle ended successfully; null
+  // when there was none yet or a later cycle failed / the device went offline.
+  lastSuccessAt: number | null;
+  now: number;
+  // Locally queued rows; a failed read must be passed as Infinity, not 0.
+  pending: number;
+};
+
+export function syncedRecently({ lastSuccessAt, now, pending }: SyncThrottleInput): boolean {
+  if (pending !== 0 || lastSuccessAt === null || !Number.isFinite(lastSuccessAt)) return false;
+  const age = now - lastSuccessAt;
+  return age >= 0 && age < SYNC_THROTTLE_MS;
+}
+
+export function shouldRunSync(input: SyncThrottleInput & { reason: string }): boolean {
+  if (isManualSync(input.reason) || !THROTTLED_SYNC_REASONS.has(input.reason)) return true;
+  return !syncedRecently(input);
+}

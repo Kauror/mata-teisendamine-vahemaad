@@ -1,13 +1,13 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { pingServer, isOnlineHint } from '@/lib/offline/connection';
+import { isOnlineHint } from '@/lib/offline/connection';
 import { SYNC_COMPLETE_EVENT, syncNow, type SyncCompleteDetail, type SyncOutcome } from '@/lib/offline/syncEngine';
 import { createReconnectRetry, type ReconnectRetry } from '@/lib/offline/reconnectRetry';
 import { getPendingCount } from '@/lib/offline/api';
 import { getCursor } from '@/lib/offline/meta';
-import { prepareOffline } from '@/lib/offline/readiness';
+import { prepareLocalOffline, runCatchUpSync, runOfflineBootstrap } from '@/lib/offline/readiness';
 import { isInstallFailure, newestWaitingWorker, UPDATE_CHECK_MIN_INTERVAL_MS } from '@/lib/offline/swUpdate';
 import {
   RUNNER_HEARTBEAT_INTERVAL_MS,
@@ -65,6 +65,13 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   // offline preparation is not permanently skipped (RTM-008).
   const bootstrapDoneRef = useRef(false);
   const bootstrapInFlightRef = useRef(false);
+  // Local preparation (persistent storage + device id) has run in this page,
+  // so any successful cycle from here on completes the bootstrap.
+  const localPreparedRef = useRef(false);
+  // Date.now() when the latest finished cycle succeeded; null when none yet,
+  // when a later cycle failed or the browser reported going offline. Drives
+  // the 60 s catch-up throttle (OFF-06).
+  const lastSuccessAtRef = useRef<number | null>(null);
   const registrationStartedRef = useRef(false);
   const updateActivationStartedRef = useRef(false);
   const activationTimeoutRef = useRef<number | null>(null);
@@ -89,19 +96,31 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     if (outcome.reason === 'locked') return;
     const offline = outcome.reason === 'offline';
     setOnline(!offline);
+    // An expired session (auth_blocked) is a reachable server: online stays true.
     setSyncState(outcome.ok ? 'healthy' : (outcome.reason as OfflineSyncState) ?? 'unknown');
-    reconnectRetryRef.current?.report(offline ? 'offline' : 'reachable');
+    if (outcome.ok) {
+      lastSuccessAtRef.current = Date.now();
+      // Whoever ran it (a result screen, a manual sync), a successful cycle
+      // after local preparation is a complete online preparation.
+      if (localPreparedRef.current) bootstrapDoneRef.current = true;
+    } else {
+      lastSuccessAtRef.current = null;
+    }
+    // While a bootstrap runs, it reports itself once its in-flight flag has
+    // cleared, so the scheduled retry never fires into it and gets dropped.
+    if (!bootstrapInFlightRef.current) reconnectRetryRef.current?.report(offline ? 'offline' : 'reachable');
   }, []);
 
-  const sync = useCallback(async (reason: string) => {
-    if (syncingRef.current) return;
+  // Returns the cycle's outcome, or null when this provider already has one
+  // running. The outcome also reaches applyOutcome through SYNC_COMPLETE_EVENT.
+  const sync = useCallback(async (reason: string): Promise<SyncOutcome | null> => {
+    if (syncingRef.current) return null;
     syncingRef.current = true;
     setSyncing(true);
     try {
-      // The outcome reaches applyOutcome through SYNC_COMPLETE_EVENT.
-      await syncNow(reason);
+      return await syncNow(reason);
     } catch {
-      /* transient */
+      return null; /* transient */
     } finally {
       syncingRef.current = false;
       setSyncing(false);
@@ -109,39 +128,54 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshPending]);
 
-  // Full offline preparation: local persistence + device id (safe offline) and,
-  // when the server is reachable, an initial sync. Marked "done" only after a
-  // complete online preparation, so a transient startup outage retries later via
-  // the quick reconnect retries and the online/visibility/interval triggers
-  // instead of being skipped forever (RTM-008).
+  const syncForContext = useCallback(async (reason: string) => { await sync(reason); }, [sync]);
+
+  // Full offline preparation: local persistence + device id (safe offline),
+  // then ONE sync cycle whose own ping decides reachable / auth_blocked /
+  // offline (OFF-06: a cold start is 1 ping + 1 push/pull, not 4 + 2). Marked
+  // "done" only after a successful cycle — the first successful pull writes
+  // the bootstrap markers — so a transient startup outage or an expired
+  // session retries later via the quick reconnect retries and the
+  // online/visibility/interval triggers instead of being skipped (RTM-008).
   const runBootstrap = useCallback(async () => {
     if (bootstrapDoneRef.current || bootstrapInFlightRef.current) return;
     bootstrapInFlightRef.current = true;
-    let unreachable = false;
+    let report: 'offline' | 'reachable' | null = null;
     try {
-      const ping = await pingServer();
-      if (ping.status === 'unauthorized') {
-        // The server answered: this is an expired session, not an outage.
-        setOnline(true);
-        setSyncState('auth_blocked');
-      } else {
-        unreachable = ping.status !== 'reachable';
-        setOnline(!unreachable);
-      }
-      await prepareOffline();
-      if (ping.status === 'reachable') {
-        await sync('startup');
-        bootstrapDoneRef.current = true;
-      }
+      const result = await runOfflineBootstrap({
+        runSync: sync,
+        lastSuccessAt: () => lastSuccessAtRef.current,
+        prepareLocal: async () => {
+          await prepareLocalOffline();
+          localPreparedRef.current = true;
+        }
+      });
+      if (result.done) bootstrapDoneRef.current = true;
+      if (result.outcome && result.outcome.reason !== 'locked') report = result.outcome.reason === 'offline' ? 'offline' : 'reachable';
     } catch {
       /* leave bootstrapDoneRef false so a later trigger retries preparation */
     } finally {
       bootstrapInFlightRef.current = false;
       // Reported only after the in-flight flag clears, so the scheduled retry
       // can never fire into a bootstrap that is still running and be dropped.
-      reconnectRetryRef.current?.report(unreachable ? 'offline' : 'reachable');
+      if (report) reconnectRetryRef.current?.report(report);
     }
   }, [sync]);
+
+  // Catch-up triggers (online event, tab visible again, interval). Until the
+  // bootstrap is complete they retry it (it carries the one sync); afterwards
+  // they sync unless the last cycle succeeded < 60 s ago with nothing queued.
+  const catchUp = useCallback(async (reason: string) => {
+    if (!bootstrapDoneRef.current) {
+      await runBootstrap();
+      return;
+    }
+    try {
+      await runCatchUpSync(reason, { runSync: sync, lastSuccessAt: () => lastSuccessAtRef.current });
+    } catch {
+      /* transient */
+    }
+  }, [runBootstrap, sync]);
 
   reconnectRunRef.current = () => {
     if (!bootstrapDoneRef.current) void runBootstrap();
@@ -240,16 +274,20 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 
   // Catch-up triggers: back online, tab becomes visible, and a gentle interval.
   useEffect(() => {
-    // If startup preparation never completed (e.g. the first ping failed), retry
-    // the full bootstrap here before syncing; runBootstrap no-ops once done.
-    const onOnline = () => { void runBootstrap(); void sync('online-event'); checkForUpdate(); };
-    const onOffline = () => setOnline(false);
-    const onVisible = () => { if (document.visibilityState === 'visible') { void runBootstrap(); void sync('visibility'); checkForUpdate(); } };
+    // If startup preparation never completed (e.g. the first ping failed),
+    // catchUp retries the full bootstrap instead of a plain sync.
+    const onOnline = () => { void catchUp('online-event'); checkForUpdate(); };
+    const onOffline = () => {
+      setOnline(false);
+      // Coming back online must re-check, however recent the last sync was.
+      lastSuccessAtRef.current = null;
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') { void catchUp('visibility'); checkForUpdate(); } };
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     document.addEventListener('visibilitychange', onVisible);
     const interval = window.setInterval(() => {
-      if (document.visibilityState === 'visible' && isOnlineHint()) { void runBootstrap(); void sync('interval'); checkForUpdate(); }
+      if (document.visibilityState === 'visible' && isOnlineHint()) { void catchUp('interval'); checkForUpdate(); }
     }, PERIODIC_SYNC_MS);
     return () => {
       window.removeEventListener('online', onOnline);
@@ -257,7 +295,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       document.removeEventListener('visibilitychange', onVisible);
       window.clearInterval(interval);
     };
-  }, [sync, runBootstrap, checkForUpdate]);
+  }, [catchUp, checkForUpdate]);
 
   // A durable runner session can remain in IndexedDB after a tab is abandoned.
   // Track only tabs that are actually on a runner route, with a short lease so
@@ -394,8 +432,15 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     };
   }, [activateNewestWorker, hasLiveRunner, updateAvailable, updateBlocked]);
 
+  // A stable value: consumers re-render only when a field they get changes,
+  // not on every render of the provider.
+  const value = useMemo<OfflineContextValue>(
+    () => ({ online, syncing, pendingCount, syncState, lastSyncAt, updateAvailable, updateBlocked, updating, serviceWorkerError, sync: syncForContext, applyUpdate, refreshPending }),
+    [online, syncing, pendingCount, syncState, lastSyncAt, updateAvailable, updateBlocked, updating, serviceWorkerError, syncForContext, applyUpdate, refreshPending]
+  );
+
   return (
-    <OfflineContext.Provider value={{ online, syncing, pendingCount, syncState, lastSyncAt, updateAvailable, updateBlocked, updating, serviceWorkerError, sync, applyUpdate, refreshPending }}>
+    <OfflineContext.Provider value={value}>
       {children}
     </OfflineContext.Provider>
   );

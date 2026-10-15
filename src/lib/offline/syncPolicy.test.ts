@@ -4,11 +4,14 @@ import {
   CLIENT_ATTEMPT_BATCH_SIZE,
   SYNC_RETRY_MAX_MS,
   SYNC_RETRY_MIN_MS,
+  SYNC_THROTTLE_MS,
   chunkRecords,
   classifySyncHttpStatus,
   historyEpochDecision,
   isManualSync,
-  retryDelayMs
+  retryDelayMs,
+  shouldRunSync,
+  syncedRecently
 } from '@/lib/offline/syncPolicy';
 
 describe('sync HTTP failure policy', () => {
@@ -58,5 +61,32 @@ describe('history epoch safety', () => {
     expect(historyEpochDecision(4, 3)).toBe('stop_regression');
     expect(historyEpochDecision(4, 4)).toBe('keep');
     expect(historyEpochDecision(4, 7)).toBe('reset_confirmed');
+  });
+});
+
+describe('catch-up sync throttle (OFF-06)', () => {
+  const now = 1_000_000;
+  const fresh = now - 30_000;
+
+  it.each(['visibility', 'interval', 'online-event'])('skips %s within 60 s of a success with nothing pending', (reason) => {
+    expect(shouldRunSync({ reason, lastSuccessAt: fresh, now, pending: 0 })).toBe(false);
+  });
+
+  it('runs once the last success is 60 s old, or when there was none / the last cycle failed', () => {
+    expect(shouldRunSync({ reason: 'visibility', lastSuccessAt: now - SYNC_THROTTLE_MS, now, pending: 0 })).toBe(true);
+    expect(shouldRunSync({ reason: 'visibility', lastSuccessAt: null, now, pending: 0 })).toBe(true);
+  });
+
+  it('always runs with pending rows, including an unknown count', () => {
+    expect(shouldRunSync({ reason: 'visibility', lastSuccessAt: fresh, now, pending: 1 })).toBe(true);
+    expect(shouldRunSync({ reason: 'interval', lastSuccessAt: fresh, now, pending: Number.POSITIVE_INFINITY })).toBe(true);
+  });
+
+  it.each(['manual', 'manual:sync-now', 'startup', 'reconnect-retry', 'attempt-complete', 'task-complete'])('always runs %s', (reason) => {
+    expect(shouldRunSync({ reason, lastSuccessAt: fresh, now, pending: 0 })).toBe(true);
+  });
+
+  it('does not trust a success stamped in the future (clock change)', () => {
+    expect(syncedRecently({ lastSuccessAt: now + 5_000, now, pending: 0 })).toBe(false);
   });
 });
