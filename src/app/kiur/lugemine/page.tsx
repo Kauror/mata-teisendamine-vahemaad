@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { completedTodayFromHistory, ClientCompletionAttempt } from '@/lib/clientExerciseCompletion';
 import { shuffleWithSeed as shuffle } from '@/lib/random';
 import { formatStars } from '@/lib/formatStars';
-import { getValidKiurReadingTasks, KiurReadingTask } from '@/lib/kiurReadingTasks';
+import type { KiurReadingTask } from '@/lib/kiurReadingTasks';
 import {
   createRunnerSession,
   ensureRunIdInCurrentUrl,
@@ -65,8 +65,13 @@ type Reward = {
   capReached: boolean;
 } | null;
 
-function buildSession() {
-  const validTasks = getValidKiurReadingTasks();
+// The text bank is large, so the page loads it after it opens (a precached
+// chunk offline) and validates it once.
+function loadValidKiurReadingTasks() {
+  return import('@/lib/kiurReadingTasks').then((bank) => bank.getValidKiurReadingTasks());
+}
+
+function buildSession(validTasks: KiurReadingTask[]) {
   const seed = Date.now() + Math.floor(Math.random() * 100000);
   return shuffle(validTasks, seed)
     .slice(0, Math.min(RUN_LENGTH, validTasks.length))
@@ -92,6 +97,7 @@ export default function KiurReadingPage() {
   const [saved, setSaved] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [doneToday, setDoneToday] = useState(false);
+  const [validTasks, setValidTasks] = useState<KiurReadingTask[] | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [storageError, setStorageError] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -109,6 +115,16 @@ export default function KiurReadingPage() {
 
   // null (still asking) counts as not active, as the old initial false did.
   const readingActive = useExerciseActive({ learner: 'kiur', exerciseId: 'kiur.reading.loe-ja-vasta', subject: 'lugemine', topic: 'loe-ja-vasta', category: 'Lugemine - loe ja vasta' });
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadValidKiurReadingTasks()
+      .catch(() => [])
+      .then((tasks) => {
+        if (!cancelled) setValidTasks(tasks);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     void getMergedExerciseHistory()
@@ -205,7 +221,7 @@ export default function KiurReadingPage() {
       window.location.assign('/kiur/lugemine');
       return;
     }
-    const nextSession = buildSession();
+    const nextSession = buildSession(validTasks ?? []);
     if (!nextSession.length) return;
     startingRef.current = true;
     try {
@@ -314,7 +330,7 @@ export default function KiurReadingPage() {
   }
 
   if (phase === 'start') {
-    const hasTasks = readingActive && getValidKiurReadingTasks().length > 0;
+    const hasTasks = readingActive && (validTasks?.length ?? 0) > 0;
     return (
       <main className='container english-page kiur-reading-page'>
         <section className='practice-shell english-shell reading-intro-shell kiur-reading-shell'>
