@@ -170,7 +170,7 @@ export function dayEndsAt(learner: Learner, weekday: number): number | null {
 }
 
 export type NowState =
-  | { kind: 'lesson' | 'club'; item: ScheduleItem; minutesLeft: number; progress: number }
+  | { kind: 'lesson' | 'club'; item: ScheduleItem; minutesLeft: number }
   | { kind: 'break' }
   | { kind: 'home' };
 
@@ -182,15 +182,7 @@ export function nowState(learner: Learner, clock: AppClock): NowState {
   if (!isSchoolDate(clock.date)) return { kind: 'home' };
   const items = scheduleFor(learner, clock.weekday);
   const current = items.find((item) => clock.minutes >= item.start && clock.minutes < item.end);
-  if (current) {
-    const length = current.end - current.start;
-    return {
-      kind: current.kind,
-      item: current,
-      minutesLeft: current.end - clock.minutes,
-      progress: Math.round(((clock.minutes - current.start) / length) * 100)
-    };
-  }
+  if (current) return { kind: current.kind, item: current, minutesLeft: current.end - clock.minutes };
   const next = items.find((item) => item.start > clock.minutes);
   const end = schoolEndsAt(learner, clock.weekday);
   const started = items.length > 0 && clock.minutes >= items[0].start;
@@ -203,6 +195,42 @@ export function hasMoreToday(learner: Learner, clock: AppClock): boolean {
   if (!isSchoolDate(clock.date)) return false;
   const end = dayEndsAt(learner, clock.weekday);
   return end !== null && clock.minutes < end;
+}
+
+// When the home card first appears the evening before school: on a day off
+// (Sunday, the last day of a holiday) only from this time, so a whole weekend
+// is not spent looking at Monday.
+export const EVENING_BEFORE_SCHOOL = 18 * 60;
+
+// The home card is shown on school days, and on the evening of a day off whose
+// next day is a school day.
+export function showSchoolCard(clock: AppClock): boolean {
+  if (isSchoolDate(clock.date)) return true;
+  return clock.minutes >= EVENING_BEFORE_SCHOOL && isSchoolDate(addAppDays(clock.date, 1));
+}
+
+export function firstLessonStart(learner: Learner, weekday: number): number | null {
+  return scheduleFor(learner, weekday).find((item) => item.kind === 'lesson')?.start ?? null;
+}
+
+export type SchoolStartHint = { when: 'today' | 'tomorrow'; minutes: number };
+
+// "Kool algab 8.15" before today's first lesson, or "Kool algab homme 9.05"
+// once the child's day is over (last lesson or club) and tomorrow is a school
+// day. Per child: their first lesson varies. Only while the child is home.
+export function schoolStartHint(learner: Learner, clock: AppClock): SchoolStartHint | null {
+  const tomorrowHint = (): SchoolStartHint | null => {
+    const tomorrow = addAppDays(clock.date, 1);
+    if (!isSchoolDate(tomorrow)) return null;
+    const minutes = firstLessonStart(learner, weekdayOf(tomorrow));
+    return minutes === null ? null : { when: 'tomorrow', minutes };
+  };
+  if (!isSchoolDate(clock.date)) return showSchoolCard(clock) ? tomorrowHint() : null;
+  if (nowState(learner, clock).kind !== 'home') return null;
+  const first = firstLessonStart(learner, clock.weekday);
+  if (first !== null && clock.minutes < first) return { when: 'today', minutes: first };
+  const end = dayEndsAt(learner, clock.weekday);
+  return end !== null && clock.minutes >= end ? tomorrowHint() : null;
 }
 
 export type TimetableTab = 'today' | 'next' | 'week';

@@ -7,6 +7,10 @@ test.beforeEach(async ({ page }) => authenticateFamily(page));
 // Wednesday 14 October 2026 is a school day; Tallinn is UTC+3 that week.
 const WEDNESDAY_1020 = new Date('2026-10-14T07:20:00Z');
 const WEDNESDAY_1300 = new Date('2026-10-14T10:00:00Z');
+// Wednesday 14 October 2026, 21:00 in Tallinn: both days are over, Thursday is a school day.
+const WEDNESDAY_2100 = new Date('2026-10-14T18:00:00Z');
+// Sunday 18 October 2026, 18:30 in Tallinn: the evening before a school week.
+const SUNDAY_1830 = new Date('2026-10-18T15:30:00Z');
 // Tuesday 27 October 2026 falls in the autumn holiday.
 const HOLIDAY_1100 = new Date('2026-10-27T09:00:00Z');
 
@@ -21,6 +25,8 @@ test('the home page shows the lesson each child is in', async ({ page }) => {
   await expect(kiur).toContainText('Matemaatika');
   await expect(kiur).toContainText('10.00–10.45 · veel 25 min');
   await expect(kirsi).toContainText('Eesti keel');
+  // The compact card has no progress bar.
+  await expect(card.locator('.school-bar')).toHaveCount(0);
 
   const toggle = kiur.getByRole('button', { name: /tunniplaan/ });
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -28,10 +34,54 @@ test('the home page shows the lesson each child is in', async ({ page }) => {
   const today = kiur.getByRole('list', { name: 'Kiur täna' });
   await expect(today.getByRole('listitem')).toHaveCount(6);
   await expect(today.locator('[aria-current="time"]')).toContainText('Matemaatika');
+  await kiur.getByRole('button', { name: /Peida/ }).click();
+  await expect(today).toHaveCount(0);
 
   // The two buttons on each child's card.
   await expect(page.getByRole('link', { name: 'Harjutused', exact: true }).first()).toHaveAttribute('href', '/kiur');
   await expect(page.getByRole('link', { name: 'Tunniplaan' }).first()).toHaveAttribute('href', '/kiur/tunniplaan');
+});
+
+test('the home page says when school starts tomorrow once the day is over', async ({ page }) => {
+  await page.clock.setFixedTime(WEDNESDAY_2100);
+  await navigateStable(page, '/');
+
+  const card = page.getByRole('region', { name: 'Lapsed koolis' });
+  const kiur = card.getByRole('group', { name: 'Kiur' });
+  const kirsi = card.getByRole('group', { name: 'Kirsi' });
+  await expect(kiur).toContainText('Kodus');
+  await expect(kiur).toContainText('Kool algab homme 8.15');
+  await expect(kirsi).toContainText('Kool algab homme 9.05');
+  // Nothing left today, so no list to open.
+  await expect(card.getByRole('button', { name: /tunniplaan/ })).toHaveCount(0);
+});
+
+test('the home page shows the school card on Sunday evening', async ({ page }) => {
+  await page.clock.setFixedTime(SUNDAY_1830);
+  await navigateStable(page, '/');
+
+  const card = page.getByRole('region', { name: 'Lapsed koolis' });
+  await expect(card.getByRole('group', { name: 'Kiur' })).toContainText('Kool algab homme 9.05');
+  await expect(card.getByRole('group', { name: 'Kirsi' })).toContainText('Kool algab homme 9.05');
+});
+
+test('the school card fits an iPhone mini without sideways scrolling', async ({ page }) => {
+  // Monday 12 October, 12:10 in Tallinn: Kirsi is in the longest-named lesson.
+  await page.clock.setFixedTime(new Date('2026-10-12T09:10:00Z'));
+  await page.setViewportSize({ width: 375, height: 667 });
+  await navigateStable(page, '/');
+
+  const card = page.getByRole('region', { name: 'Lapsed koolis' });
+  const kirsi = card.getByRole('group', { name: 'Kirsi' });
+  await expect(kirsi).toContainText('Tehnoloogiline avastusõpe');
+  await expect(kirsi).toContainText('12.00–12.45 · veel 35 min');
+  await kirsi.getByRole('button', { name: /tunniplaan/ }).click();
+  await expect(card.getByRole('list', { name: 'Kirsi täna' })).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  const cardBox = await card.boundingBox();
+  const nameBox = await kirsi.locator('.school-now-what').boundingBox();
+  expect((nameBox?.x ?? 0) + (nameBox?.width ?? 0)).toBeLessThanOrEqual((cardBox?.x ?? 0) + (cardBox?.width ?? 0));
 });
 
 test('the home page has no school card during a holiday', async ({ page }) => {

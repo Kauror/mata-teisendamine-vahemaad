@@ -14,6 +14,9 @@ import {
   SCHOOL_TIMETABLE,
   scheduleFor,
   schoolEndsAt,
+  schoolStartHint,
+  showSchoolCard,
+  weekdayOf,
   type AppClock
 } from '@/lib/schoolTimetable';
 
@@ -115,5 +118,63 @@ describe('the timetable page', () => {
     expect(clubsLeftToday('kiur', tuesday(20))).toEqual([]);
     expect(hasMoreToday('kiur', tuesday(19, 59))).toBe(true);
     expect(hasMoreToday('kiur', tuesday(20))).toBe(false);
+  });
+});
+
+describe('the home card and its "Kool algab" line', () => {
+  const at = (date: string, hours: number, minutes = 0): AppClock => ({ date, weekday: weekdayOf(date), minutes: hours * 60 + minutes });
+
+  it('says when school starts tomorrow once the day is over, per child (Wed 21:00)', () => {
+    const clock = wed(21);
+    expect(showSchoolCard(clock)).toBe(true);
+    expect(schoolStartHint('kiur', clock)).toEqual({ when: 'tomorrow', minutes: 8 * 60 + 15 });
+    expect(schoolStartHint('kirsi', clock)).toEqual({ when: 'tomorrow', minutes: 9 * 60 + 5 });
+  });
+
+  it('says when school starts today in the morning (Thu 07:45)', () => {
+    const clock: AppClock = { date: '2026-10-15', weekday: 3, minutes: 7 * 60 + 45 };
+    expect(showSchoolCard(clock)).toBe(true);
+    expect(schoolStartHint('kiur', clock)).toEqual({ when: 'today', minutes: 8 * 60 + 15 });
+    expect(schoolStartHint('kirsi', clock)).toEqual({ when: 'today', minutes: 9 * 60 + 5 });
+  });
+
+  it('says nothing about Saturday on Friday evening', () => {
+    const clock: AppClock = { date: '2026-10-16', weekday: 4, minutes: 20 * 60 };
+    expect(showSchoolCard(clock)).toBe(true);
+    expect(schoolStartHint('kiur', clock)).toBeNull();
+    expect(schoolStartHint('kirsi', clock)).toBeNull();
+  });
+
+  it('appears on Sunday from 18:00 with the Monday start', () => {
+    expect(showSchoolCard(at('2026-10-18', 17, 59))).toBe(false);
+    expect(schoolStartHint('kiur', at('2026-10-18', 17, 59))).toBeNull();
+    const evening = at('2026-10-18', 18);
+    expect(showSchoolCard(evening)).toBe(true);
+    // Kiur has no first lesson on Mondays.
+    expect(schoolStartHint('kiur', evening)).toEqual({ when: 'tomorrow', minutes: 9 * 60 + 5 });
+    expect(schoolStartHint('kirsi', evening)).toEqual({ when: 'tomorrow', minutes: 9 * 60 + 5 });
+  });
+
+  it('appears on the last evening of a holiday, not inside it', () => {
+    const lastEvening = at('2026-11-01', 18, 30);
+    expect(showSchoolCard(lastEvening)).toBe(true);
+    expect(schoolStartHint('kirsi', lastEvening)).toEqual({ when: 'tomorrow', minutes: 9 * 60 + 5 });
+    for (const clock of [at('2026-10-28', 10), at('2026-10-28', 19)]) {
+      expect(showSchoolCard(clock)).toBe(false);
+      expect(schoolStartHint('kiur', clock)).toBeNull();
+    }
+  });
+
+  it('gives no hint while a child is at an evening club (Kiur, Tue 19:00)', () => {
+    const clock: AppClock = { date: '2026-10-13', weekday: 1, minutes: 19 * 60 };
+    expect(nowState('kiur', clock).kind).toBe('club');
+    expect(schoolStartHint('kiur', clock)).toBeNull();
+    // Kirsi's day ended at 13.45 and Wednesday is a school day.
+    expect(schoolStartHint('kirsi', clock)).toEqual({ when: 'tomorrow', minutes: 9 * 60 + 5 });
+  });
+
+  it('gives no hint while lessons are on or in the gap before an evening club', () => {
+    expect(schoolStartHint('kiur', wed(10, 20))).toBeNull();
+    expect(schoolStartHint('kiur', { date: '2026-10-13', weekday: 1, minutes: 16 * 60 })).toBeNull();
   });
 });
