@@ -6,6 +6,7 @@ import {
   MATH_GENERATOR_VERSION,
   MATH_GENERATOR_VERSION_V1,
   MATH_GENERATOR_VERSION_V2,
+  MATH_GENERATOR_VERSION_V3,
   MATH_GENERATOR_VERSIONS,
   isSupportedMathGeneratorVersion,
   type MathGeneratorVersion
@@ -85,7 +86,7 @@ function verify(questions: GeneratedQuestion[], seed: number, generatorVersion: 
 
 describe('maths generator versions', () => {
   it('starts new sessions on the current version, which the runner contract names', () => {
-    expect(MATH_GENERATOR_VERSION).toBe(MATH_GENERATOR_VERSION_V2);
+    expect(MATH_GENERATOR_VERSION).toBe(MATH_GENERATOR_VERSION_V3);
     expect(getOfflineRunnerCapability('math')?.generatorVersion).toBe(MATH_GENERATOR_VERSION);
     expect(generateKiurMathSession('ring-ja-ringjoon', 'Segaharjutus', 'Lihtne', 15, 7)).toEqual(generateKiurMathSession('ring-ja-ringjoon', 'Segaharjutus', 'Lihtne', 15, 7, MATH_GENERATOR_VERSION));
     expect(generateKirsiSession('Kellaaeg', 15, 7)).toEqual(generateKirsiSession('Kellaaeg', 15, 7, MATH_GENERATOR_VERSION));
@@ -95,6 +96,8 @@ describe('maths generator versions', () => {
     expect(MATH_GENERATOR_VERSIONS).toContain(MATH_GENERATOR_VERSION_V1);
     expect(MATH_GENERATOR_VERSION_V1).toBe('2026-07-1');
     expect(isSupportedMathGeneratorVersion('2026-07-1')).toBe(true);
+    expect(MATH_GENERATOR_VERSIONS).toEqual(['2026-07-1', 'math-2026-10', 'math-2026-10b']);
+    expect(isSupportedMathGeneratorVersion('math-2026-10')).toBe(true);
     expect(isSupportedMathGeneratorVersion('math-1999')).toBe(false);
   });
 
@@ -109,6 +112,14 @@ describe('maths generator versions', () => {
   it.each(SESSIONS.filter((session) => session.name !== 'jagamine').map((session) => [session.name, session] as const))('v2 %s differs from v1, so the version really selects the generator', (_name, session) => {
     expect(digest(session, MATH_GENERATOR_VERSION_V2)).not.toBe(digest(session, MATH_GENERATOR_VERSION_V1));
   });
+
+  // v3 changes only Ring's lettered figures and «Leia arvutusviga»; the other
+  // sessions are v2's, byte for byte.
+  it.each(SESSIONS.map((session) => [session.name, session] as const))('v3 %s changes exactly the sessions it should', (name, session) => {
+    const changed = name === 'ring' || name === 'arvud';
+    if (changed) expect(digest(session, MATH_GENERATOR_VERSION_V3)).not.toBe(V2_DIGESTS[name]);
+    else expect(digest(session, MATH_GENERATOR_VERSION_V3)).toBe(V2_DIGESTS[name]);
+  });
 });
 
 describe('server replay by version', () => {
@@ -119,11 +130,38 @@ describe('server replay by version', () => {
     }
   });
 
+  it('verifies an attempt generated with the previous version (v2) after the change', () => {
+    for (let seed = 1; seed <= 25; seed += 1) {
+      for (const topic of ['ring-ja-ringjoon', 'arvud-10000-piires']) {
+        const v2 = generateKiurMathSession(topic, 'Segaharjutus', 'Lihtne', 15, seed, MATH_GENERATOR_VERSION_V2);
+        expect(verify(v2, seed, MATH_GENERATOR_VERSION_V2, topic).score).toBe(15);
+      }
+    }
+  });
+
   it('verifies an attempt generated with the new version', () => {
     for (let seed = 1; seed <= 25; seed += 1) {
-      const v2 = generateKiurMathSession('ring-ja-ringjoon', 'Segaharjutus', 'Lihtne', 15, seed);
-      expect(verify(v2, seed, MATH_GENERATOR_VERSION).score).toBe(15);
+      for (const topic of ['ring-ja-ringjoon', 'arvud-10000-piires']) {
+        const v3 = generateKiurMathSession(topic, 'Segaharjutus', 'Lihtne', 15, seed);
+        expect(verify(v3, seed, MATH_GENERATOR_VERSION, topic).score).toBe(15);
+      }
     }
+  });
+
+  it('does not verify a v3 attempt as if it were v2', () => {
+    // Seeds where a lettered figure or «Leia arvutusviga» differs between the
+    // versions: a v3 attempt answered right must not verify as v2.
+    let rejected = 0;
+    for (let seed = 1; seed <= 25; seed += 1) {
+      const v3 = generateKiurMathSession('ring-ja-ringjoon', 'Segaharjutus', 'Lihtne', 15, seed, MATH_GENERATOR_VERSION_V3);
+      try {
+        if (verify(v3, seed, MATH_GENERATOR_VERSION_V2).score < 15) rejected += 1;
+      } catch (error) {
+        expect(error).toBeInstanceOf(AttemptContractError);
+        rejected += 1;
+      }
+    }
+    expect(rejected).toBeGreaterThan(0);
   });
 
   it('verifies Kirsi clock attempts of both versions', () => {

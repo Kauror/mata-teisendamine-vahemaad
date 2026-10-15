@@ -3,7 +3,8 @@ import { generateSession as generateLengthSession } from '@/lib/exercises/length
 import { isKiurLengthTopic } from '@/lib/kiurMathTopics';
 import { kiurTextProblemPool } from '@/lib/kiurTextProblems';
 import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
-import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { FIGURE_LETTERS } from '@/lib/visualLabels';
 
 const rInt = randomInt;
 const pick = pickRandom;
@@ -219,6 +220,7 @@ function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: M
     if (cat === 'Numbri väärtus') return digitValueV2(cat, d, rng, i);
     if (cat === 'Ümardamine') return roundingV2(cat, d, rng, i);
   }
+  if (cat === 'Leia arvutusviga' && v !== MATH_GENERATOR_VERSION_V1 && v !== MATH_GENERATOR_VERSION_V2) return calculationCheckV3(cat, d, rng, i);
 
   if (cat === 'Liida sajalised') {
     const a = rInt(rng, 20, 95) * 100;
@@ -321,6 +323,59 @@ function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: M
   return { id: `n15-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Millist arvu näitavad plokid? ${parts.join(', ')}.`, correctAnswer: n, explanation: `${t} tuhandelist, ${s} sajalist, ${k} kümnelist ja ${y} ühelist teeb kokku ${n}.`, visual: 'place-value-blocks' };
 }
 
+// v3 «Leia arvutusviga». v1/v2 picked from four fixed rows, three of them right,
+// so «Õige» was the answer 75 % of the time. Here a fair coin decides, the
+// arithmetic is generated (a round 4-digit number plus or minus whole hundreds
+// or whole thousands), and a wrong row carries exactly one typical slip:
+// hundreds and thousands mixed up, the carry or borrow forgotten, or one
+// hundred/thousand miscounted.
+function calculationCheckV3(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+  const add = rInt(rng, 0, 1) === 0;
+  const thousands = rInt(rng, 0, 2) === 0;
+  const unit = thousands ? 1000 : 100;
+  const k = thousands ? rInt(rng, 1, 5) : rInt(rng, 1, 9);
+  const b = k * unit;
+  const a = add ? rInt(rng, 12, Math.floor((9900 - b) / 100)) * 100 : rInt(rng, Math.ceil((b + 1200) / 100), 98) * 100;
+  const correct = add ? a + b : a - b;
+  const right = rInt(rng, 0, 1) === 0;
+  let shown = correct;
+  if (!right) {
+    const inRange = (value: number) => value >= 1000 && value <= 9900 && value !== correct;
+    const carries = !thousands && (add ? (a % 1000) + b >= 1000 : (a % 1000) < b);
+    // The same digit read in the wrong place: 3000 taken as 3 hundreds, 300 as 3 thousands.
+    const swapped = thousands ? b / 10 : b * 10;
+    const slips = [
+      add ? a + swapped : a - swapped,
+      ...(carries ? [add ? correct - 1000 : correct + 1000] : []),
+      correct + unit,
+      correct - unit
+    ].filter(inRange);
+    shown = pick(rng, slips);
+  }
+  const unitWord = thousands ? 'tuhandelist' : 'sajalist';
+  const explanation = right
+    ? `${b} tähendab ${k} ${unitWord}. ${add ? 'Liitsime' : 'Lahutasime'} ${k} ${unitWord}: ${a} ${add ? '+' : '-'} ${b} = ${correct}.`
+    : `${b} tähendab ${k} ${unitWord}. Õige vastus on ${correct}.`;
+  return { id: `n14-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Kas arvutus on õige? ${a} ${add ? '+' : '-'} ${b} = ${shown}`, correctAnswer: right ? 0 : 1, kind: 'choice', choiceOptions: ['Õige', 'Vale'], explanation };
+}
+
+// v3 lettered figures. v1/v2 drew the same lettering every time, so «Leia
+// raadius» was always A, «Leia läbimõõt» always B and «Kus asub punkt A?»
+// always «ringi sees». Here every question letters its figure with a random
+// permutation of A, B, C (question.visualLabels, see visualLabels.ts) and the
+// answer is wherever the asked-for letter landed.
+function letteredFigureV3(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+  const labels = shuffleWithRng(rng, [...FIGURE_LETTERS]).join('');
+  const letterIndex = (letter: string) => FIGURE_LETTERS.indexOf(letter as (typeof FIGURE_LETTERS)[number]);
+  if (cat === 'Leia raadius') return { id: `cr-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: 'Milline sirglõik on raadius?', correctAnswer: letterIndex(labels[0]), kind: 'choice', choiceOptions: [...FIGURE_LETTERS], explanation: 'Raadius ühendab keskpunkti ringjoone punktiga.', visual: 'radius-demo', visualLabels: labels };
+  if (cat === 'Leia läbimõõt') return { id: `cd-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: 'Milline sirglõik on läbimõõt?', correctAnswer: letterIndex(labels[0]), kind: 'choice', choiceOptions: [...FIGURE_LETTERS], explanation: 'Läbimõõt läbib keskpunkti ja ühendab ringjoone kahte punkti.', visual: 'diameter-demo', visualLabels: labels };
+  // 'Punkti asukoht': labels = letters on [inside, on, outside].
+  const asked = pick(rng, FIGURE_LETTERS);
+  const place = labels.indexOf(asked);
+  const explanation = place === 0 ? 'Punkt on ringi sees, kui see asub ringjoonega piiratud ala sees.' : place === 1 ? 'Punkt ringjoone peal asub täpselt piirjoonel.' : 'Punkt on ringist väljas, kui see jääb ringjoonest väljapoole.';
+  return { id: `cp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `Kus asub punkt ${asked}?`, correctAnswer: place, kind: 'choice', choiceOptions: ['ringi sees', 'ringjoone peal', 'ringist väljas'], explanation, visual: 'point-position', visualLabels: labels };
+}
+
 // v2 «Võrdle raadiuseid». v1 always set the mm radius to exactly the cm radius,
 // so the answer was always «Jah» / «sama suured». Here both questions also have
 // a «different» outcome, and the yes/no question is a fair coin.
@@ -344,6 +399,7 @@ function compareRadiiV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: number):
 function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
   if (cat === 'Võrdle raadiuseid' && v !== MATH_GENERATOR_VERSION_V1) return compareRadiiV2(cat, d, rng, i);
   const unit = pick(rng, ['cm', 'mm'] as const);
+  if ((cat === 'Leia raadius' || cat === 'Leia läbimõõt' || cat === 'Punkti asukoht') && v !== MATH_GENERATOR_VERSION_V1 && v !== MATH_GENERATOR_VERSION_V2) return letteredFigureV3(cat, d, rng, i);
   if (cat === 'Ring või ringjoon') {
     const variants = [
       { q: 'Kas kirjeldus käib ringi või ringjoone kohta? See on joon, mis piirab ringi.', a: 'Ringjoon', e: 'Ringjoon on ainult piirjoon ehk ringi piirav joon.', v: 'ring-outline' as const },
@@ -569,7 +625,9 @@ export function generateKiurMathSession(topic: string, category: string, difficu
   const plan = v === MATH_GENERATOR_VERSION_V1 ? mixedPlan : mixedPlanV2;
   const types = category === 'Segaharjutus' ? plan(rng, count, topicTypes) : Array.from({ length: count }, () => category as TopicCategory);
   // v1 keyed on the answer too, so «Kus asub punkt A?» could repeat with the
-  // same text; v2 treats the same visible question as a repeat.
+  // same text; v2 treats the same visible question as a repeat. v3 keeps v2's
+  // key on purpose: the figure's lettering does not make «Kus asub punkt A?»
+  // a new question for the child.
   const signature = v === MATH_GENERATOR_VERSION_V1
     ? (q: GeneratedQuestion) => `${q.kind}|${q.question}|${q.correctAnswer}`
     : (q: GeneratedQuestion) => `${q.kind}|${q.question}|${q.visual ?? ''}|${q.visualKnownDegrees ?? ''}`;
