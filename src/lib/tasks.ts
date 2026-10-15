@@ -26,6 +26,7 @@ export type PendingApproval = {
   points: number;
   assignmentMode: AssignmentMode;
   completedAt: string | null;
+  date: string; // the task instance's own day, 'YYYY-MM-DD'
 };
 
 export type ParentTaskTemplate = {
@@ -459,21 +460,26 @@ export function rejectTaskAssignment(assignmentId: number) {
   return reject();
 }
 
-export function getPendingApprovals(date = todayDateString()): PendingApproval[] {
-  ensureTaskInstancesForDate(date);
+// Every assignment still awaiting the parent, from any day, oldest task day
+// first. A pending item from an earlier day must stay visible: otherwise it can
+// never be approved and also blocks that day's joint bonus forever. Approval
+// settles it against its own task day (see approveTaskAssignment).
+export function getPendingApprovals(today = todayDateString()): PendingApproval[] {
+  ensureTaskInstancesForDate(today);
   return db.prepare(`
     SELECT
       a.id as assignmentId,
       a.learner,
       a.completedAt,
+      i.date,
       i.titleSnapshot as title,
       i.pointsSnapshot as points,
       i.assignmentModeSnapshot as assignmentMode
     FROM task_instance_assignments a
     JOIN task_instances i ON i.id = a.taskInstanceId
-    WHERE a.status = 'pending_approval' AND i.date = ?
-    ORDER BY a.completedAt ASC, a.id ASC
-  `).all(date) as PendingApproval[];
+    WHERE a.status = 'pending_approval'
+    ORDER BY i.date ASC, a.completedAt ASC, a.id ASC
+  `).all() as PendingApproval[];
 }
 
 export function manualPointAdjustment(learner: Learner, amount: number, reason: string) {
