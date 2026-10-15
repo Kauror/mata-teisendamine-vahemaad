@@ -198,13 +198,3 @@ export function groupHistoryByMonth<T>(items: T[], dateOf: (item: T) => string, 
   }
   return { recentDays, months: [...months.values()] };
 }
-
-export function groupAttemptsByDay<T extends AttemptLike>(items: T[]) {
-  const map = new Map<string, T[]>();
-  items.forEach((item) => {
-    const key = dayLabel(item.createdAt);
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)?.push(item);
-  });
-  return map;
-}

@@ -226,7 +226,7 @@ export function getChildDashboard(learner: Learner, date = todayDateString()) {
   `).all(learner, date) as Array<Omit<ChildTask, 'requiresApproval'> & { requiresApproval: number }>;
   const tasks: ChildTask[] = rows.map((row) => ({ ...row, requiresApproval: Boolean(row.requiresApproval) }));
 
-  return { learner, balance, streak: 0, tasks };
+  return { learner, balance, tasks };
 }
 
 export type TaskTemplateInput = {

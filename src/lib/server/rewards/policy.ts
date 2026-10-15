@@ -229,19 +229,3 @@ export function runnerContractForGrant(grant: CatalogueGrantContract, runnerId: 
   // per-runner contract snapshot column was populated.
   return OFFLINE_CAPABILITY_MANIFEST.runners.find((contract) => contract.runnerId === runnerId) ?? null;
 }
-
-export function freezeRewardCutoverBaseline() {
-  const current = db.prepare('SELECT status FROM reward_cutover_state WHERE id = 1').get() as { status: string } | undefined;
-  if (current?.status !== 'not_started') return current?.status ?? null;
-  const balances = Object.fromEntries((db.prepare(`
-    SELECT learner, COALESCE(SUM(amount), 0) AS balance FROM point_ledger GROUP BY learner
-  `).all() as Array<{ learner: string; balance: number }>).map((row) => [row.learner, row.balance]));
-  const lastLedger = (db.prepare('SELECT COALESCE(MAX(id), 0) AS id FROM point_ledger').get() as { id: number }).id;
-  const now = new Date().toISOString();
-  db.prepare(`
-    UPDATE reward_cutover_state
-    SET cutoverAt = ?, baselineLedgerId = ?, baselineBalancesJson = ?, status = 'frozen', updatedAt = ?
-    WHERE id = 1 AND status = 'not_started'
-  `).run(now, lastLedger, JSON.stringify(balances), now);
-  return 'frozen';
-}
