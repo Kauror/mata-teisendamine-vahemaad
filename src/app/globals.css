@@ -220,12 +220,15 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
   .metric-tooltip:hover .metric-tooltip-content{opacity:1;visibility:visible;transform:translate(-50%,0)}
 }
 @media (max-width:640px){
-  .child-overview .metric-tooltip:first-child .metric-tooltip-content,.daily-summary .metric-tooltip:first-child .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child .metric-tooltip-content{left:0;transform:translateY(-4px)}
-  .child-overview .metric-tooltip:first-child:focus-within .metric-tooltip-content,.daily-summary .metric-tooltip:first-child:focus-within .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child:focus-within .metric-tooltip-content{transform:translateY(0)}
+  /* On the home cards the badges sit beside the name, at the right of the row,
+     so only the last one needs the right-edge treatment; a left-anchored first
+     tooltip would run past the screen and scroll the page sideways. */
+  .daily-summary .metric-tooltip:first-child .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child .metric-tooltip-content{left:0;transform:translateY(-4px)}
+  .daily-summary .metric-tooltip:first-child:focus-within .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child:focus-within .metric-tooltip-content{transform:translateY(0)}
   @media (hover:hover) and (pointer:fine){
-    .child-overview .metric-tooltip:first-child:hover .metric-tooltip-content,.daily-summary .metric-tooltip:first-child:hover .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child:hover .metric-tooltip-content{transform:translateY(0)}
+    .daily-summary .metric-tooltip:first-child:hover .metric-tooltip-content,.achievement-strip .metric-tooltip:first-child:hover .metric-tooltip-content{transform:translateY(0)}
   }
-  .child-overview .metric-tooltip:first-child .metric-tooltip-content::before,.daily-summary .metric-tooltip:first-child .metric-tooltip-content::before,.achievement-strip .metric-tooltip:first-child .metric-tooltip-content::before{left:22px}
+  .daily-summary .metric-tooltip:first-child .metric-tooltip-content::before,.achievement-strip .metric-tooltip:first-child .metric-tooltip-content::before{left:22px}
   /* :last-child, not :nth-child(3): the summary row grows a fourth pill when a
      streak freeze is held, and the right-edge treatment belongs to whichever
      pill actually sits at the right edge. */
