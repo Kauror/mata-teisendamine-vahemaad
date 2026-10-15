@@ -47,6 +47,25 @@ export function exerciseWord(count: number) {
   return count === 1 ? 'harjutus' : 'harjutust';
 }
 
+// Parent-screen counts: chores ("tegevus"), shop items ("ese"), streak prizes
+// ("auhind") and history rows ("kirje"). Same rule as above — nominative after
+// exactly 1, partitive otherwise.
+export function taskWord(count: number) {
+  return count === 1 ? 'tegevus' : 'tegevust';
+}
+
+export function itemWord(count: number) {
+  return count === 1 ? 'ese' : 'eset';
+}
+
+export function prizeWord(count: number) {
+  return count === 1 ? 'auhind' : 'auhinda';
+}
+
+export function entryWord(count: number) {
+  return count === 1 ? 'kirje' : 'kirjet';
+}
+
 // What the tug-of-war bar says out loud. The bar itself only shows two numbers,
 // so this sentence is the whole story for anyone using a screen reader — it is
 // both the tooltip and the accessible name.

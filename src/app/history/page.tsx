@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatElapsed } from '@/lib/validation';
-import { compactTopicLabel, dayLabel, groupHistoryByMonth, HELD_REWARD_MESSAGE, isHeldReward, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, dayLabel, entryWord, groupHistoryByMonth, HELD_REWARD_MESSAGE, isHeldReward, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import { getMergedExerciseHistory } from '@/lib/offline/api';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
@@ -250,7 +250,7 @@ export default function HistoryPage() {
 
   const summary = (items: HistoryItem[]) => {
     const groupAvg = avgPercent(items.filter((item): item is ExerciseHistory => item.kind === 'exercise'));
-    return `${items.length} kirjet · Keskmine ${groupAvg === null ? '—' : `${groupAvg}%`} · ⭐ ${formatStars(earnedStars(items))}`;
+    return `${items.length} ${entryWord(items.length)} · Keskmine ${groupAvg === null ? '—' : `${groupAvg}%`} · ⭐ ${formatStars(earnedStars(items))}`;
   };
 
   const renderDays = (days: Map<string, HistoryItem[]>) => Array.from(days.entries()).map(([day, items]) => {

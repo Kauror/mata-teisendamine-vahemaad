@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { dayWord, exerciseWord, groupHistoryByMonth, questionWord, starWord, subjectLabel, todayStandings, todayStandingsSummary, trophyWord } from '@/lib/history';
+import { dayWord, entryWord, exerciseWord, groupHistoryByMonth, itemWord, prizeWord, questionWord, starWord, subjectLabel, todayStandings, taskWord, todayStandingsSummary, trophyWord } from '@/lib/history';
 import { LEARNING_EXERCISE_SUBJECT_LABELS } from '@/lib/shared/types';
 
 // Estonian takes the nominative after exactly 1 and the partitive after every
@@ -12,6 +12,10 @@ describe('Estonian number words', () => {
     expect(questionWord(1)).toBe('ülesanne');
     expect(trophyWord(1)).toBe('karikas');
     expect(dayWord(1)).toBe('päev');
+    expect(taskWord(1)).toBe('tegevus');
+    expect(itemWord(1)).toBe('ese');
+    expect(prizeWord(1)).toBe('auhind');
+    expect(entryWord(1)).toBe('kirje');
   });
 
   it('uses the partitive for zero and for more than one', () => {
@@ -20,6 +24,10 @@ describe('Estonian number words', () => {
       expect(questionWord(count)).toBe('ülesannet');
       expect(trophyWord(count)).toBe('karikat');
       expect(dayWord(count)).toBe('päeva');
+      expect(taskWord(count)).toBe('tegevust');
+      expect(itemWord(count)).toBe('eset');
+      expect(prizeWord(count)).toBe('auhinda');
+      expect(entryWord(count)).toBe('kirjet');
     }
   });
 
