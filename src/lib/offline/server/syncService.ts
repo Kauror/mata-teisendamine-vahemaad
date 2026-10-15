@@ -1,24 +1,28 @@
-import { getBalance, nowIso, type Learner } from '@/lib/tasks';
+import { getBalance, nowIso, todayDateString, type Learner } from '@/lib/tasks';
 import { getActiveLearningStreak } from '@/lib/learningPoints';
 import { getMonthlyTrophies } from '@/lib/monthlyCompetition';
 import { insertAttempt } from '@/lib/offline/server/insertAttempt';
-import { getCurrentCatalogue } from '@/lib/offline/server/catalogVersions';
+import { currentCatalogueVersion, getCurrentCatalogue } from '@/lib/offline/server/catalogVersions';
 import { applyOfflineTaskAction, getSyncTaskAssignments, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
 import { getHistoryEpoch, getTombstonePageAfter } from '@/lib/offline/server/tombstones';
 import { getTaskChangesAfter, MAX_TASK_CHANGES_PER_SYNC } from '@/lib/offline/server/taskChanges';
 import { getChangedAttemptIdsAfter, MAX_ATTEMPT_CHANGES_PER_SYNC } from '@/lib/offline/server/attemptChanges';
 import { canonicalAttemptById, canonicalAttemptsAfter, canonicalAttemptsByIds } from '@/lib/server/attempts/canonicalAttempts';
-import { grantCatalogueContract } from '@/lib/server/rewards/policy';
+import { catalogueGrantForDevice, currentRewardPolicyVersion, grantCatalogueContract, grantContractIsCurrent } from '@/lib/server/rewards/policy';
 import {
   validateAttemptRecordV2,
   validateRemediationActionRecordV2,
   validateTaskActionRecordV2
 } from '@/lib/server/http/requestValidation';
 import {
+  CATALOGUE_RESEND_REMAINING_DAYS,
   GENERATOR_VERSION,
   LEGACY_RUNNER_VERSION,
   MAX_HISTORY_PULL_PER_SYNC,
+  MIN_PULL_PAGE_SIZE,
+  ROTATION_ALGORITHM_VERSION,
   type AttemptResult,
+  type CatalogueGrant,
   type ChildDashboardSnapshot,
   type OfflineCatalogue,
   type OfflineSyncPullRequestV2,
@@ -97,22 +101,50 @@ export function runSyncPushV2(request: OfflineSyncPushRequestV2): OfflineSyncPus
   return { protocolVersion: 2, phase: 'push', serverTime, attemptResults, taskActionResults, remediationActionResults };
 }
 
+const LEARNERS: Learner[] = ['kiur', 'kirsi'];
+const RESEND_REMAINING_MS = CATALOGUE_RESEND_REMAINING_DAYS * 86_400_000;
+
+// Honour the client's page size within [MIN_PULL_PAGE_SIZE, max].
+function clampPageSize(requested: number | undefined, max: number): number {
+  if (!Number.isInteger(requested)) return max;
+  return Math.min(max, Math.max(MIN_PULL_PAGE_SIZE, requested as number));
+}
+
+function nearExpiry(validUntil: string | undefined, nowMs: number): boolean {
+  const until = validUntil ? new Date(validUntil).getTime() : Number.NaN;
+  return !Number.isFinite(until) || until - nowMs < RESEND_REMAINING_MS;
+}
+
+// OFF-07: whether this device must be (re)sent a learner's catalogue + grant.
+// A delta-aware client reports what it holds (knownCatalogues); an older client
+// is judged by its cursor. Either way the server's own grant row for this
+// device must exist, carry the current contract and have at least half of its
+// window left: that row is what the device's offline attempts are validated
+// against, so it may never lapse while the device keeps syncing.
+function catalogueNeedsSend(
+  learner: Learner,
+  currentVersion: string,
+  request: OfflineSyncPullRequestV2,
+  expectedContract: Parameters<typeof grantContractIsCurrent>[1],
+  nowMs: number
+): boolean {
+  const known = request.knownCatalogues;
+  const clientVersion = known ? known[learner]?.catalogueVersion : request.cursor.catalogueVersions?.[learner];
+  if (clientVersion !== currentVersion) return true;
+  if (known && nearExpiry(known[learner]?.validUntil, nowMs)) return true;
+  const row = catalogueGrantForDevice(learner, currentVersion, request.device.deviceId);
+  if (!row || nearExpiry(row.validUntil, nowMs)) return true;
+  return !grantContractIsCurrent(row, expectedContract);
+}
+
 export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPullResponseV2 {
   const serverTime = nowIso();
-  const catalogues = { kiur: getCurrentCatalogue('kiur'), kirsi: getCurrentCatalogue('kirsi') } as Record<Learner, OfflineCatalogue>;
-  const grants = {
-    kiur: grantCatalogueContract({
-      learner: 'kiur', catalogueVersion: catalogues.kiur.version, deviceId: request.device.deviceId,
-      generatorVersion: GENERATOR_VERSION, runnerVersion: LEGACY_RUNNER_VERSION,
-      rotationVersion: catalogues.kiur.algorithmVersion, issuedAt: catalogues.kiur.issuedAt, validUntil: catalogues.kiur.validUntil
-    }),
-    kirsi: grantCatalogueContract({
-      learner: 'kirsi', catalogueVersion: catalogues.kirsi.version, deviceId: request.device.deviceId,
-      generatorVersion: GENERATOR_VERSION, runnerVersion: LEGACY_RUNNER_VERSION,
-      rotationVersion: catalogues.kirsi.algorithmVersion, issuedAt: catalogues.kirsi.issuedAt, validUntil: catalogues.kirsi.validUntil
-    })
-  };
-  const pulledAttempts = canonicalAttemptsAfter(request.cursor.lastServerAttemptId, MAX_HISTORY_PULL_PER_SYNC);
+  const nowMs = new Date(serverTime).getTime();
+  const attemptLimit = clampPageSize(request.pageSize?.attempts, MAX_HISTORY_PULL_PER_SYNC);
+  const tombstoneLimit = clampPageSize(request.pageSize?.tombstones, MAX_HISTORY_PULL_PER_SYNC);
+  const taskChangeLimit = clampPageSize(request.pageSize?.taskChanges, MAX_TASK_CHANGES_PER_SYNC);
+
+  const pulledAttempts = canonicalAttemptsAfter(request.cursor.lastServerAttemptId, attemptLimit);
   const lastServerAttemptId = pulledAttempts.reduce((max, row) => Math.max(max, row.id), request.cursor.lastServerAttemptId);
 
   // RTM3-H01: re-deliver attempts whose settlement/reward changed after they were
@@ -125,12 +157,59 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
   const changedAttempts = canonicalAttemptsByIds(changedIds);
   const attempts = [...pulledAttempts, ...changedAttempts];
 
-  const tombstonePage = getTombstonePageAfter(request.cursor.lastTombstoneId);
+  const tombstonePage = getTombstonePageAfter(request.cursor.lastTombstoneId, tombstoneLimit);
   const tombstones = tombstonePage.tombstones;
-  const taskChanges = getTaskChangesAfter(request.cursor.lastTaskChangeId, MAX_TASK_CHANGES_PER_SYNC);
+  const taskChanges = getTaskChangesAfter(request.cursor.lastTaskChangeId, taskChangeLimit);
   const lastTombstoneId = tombstones.reduce((max, row) => Math.max(max, row.tombstoneId), request.cursor.lastTombstoneId);
   const lastTaskChangeId = taskChanges.reduce((max, row) => Math.max(max, row.changeId), request.cursor.lastTaskChangeId);
   const epoch = getHistoryEpoch();
+
+  const hasMore = {
+    // Keep paging while either fresh attempts or attempt-update notices remain.
+    attempts: pulledAttempts.length >= attemptLimit || attemptChangeCursor.attemptIds.length >= MAX_ATTEMPT_CHANGES_PER_SYNC,
+    tombstones: tombstonePage.hasMore,
+    taskChanges: taskChanges.length >= taskChangeLimit,
+    remediationChanges: false,
+    historyBackfill: false
+  };
+  const lastPage = !Object.values(hasMore).some(Boolean);
+
+  // OFF-07: catalogues and grants only when this device lacks them or they are
+  // due a refresh (see catalogueNeedsSend). The current version is a read-only
+  // hash; the window refresh and the grant upsert happen only when sending.
+  const expectedContract = {
+    rewardPolicyVersion: currentRewardPolicyVersion(),
+    generatorVersion: GENERATOR_VERSION,
+    runnerVersion: LEGACY_RUNNER_VERSION,
+    rotationVersion: ROTATION_ALGORITHM_VERSION
+  };
+  const catalogueVersions: Partial<Record<Learner, string>> = {};
+  const catalogues: Partial<Record<Learner, OfflineCatalogue>> = {};
+  const grants: Partial<Record<Learner, CatalogueGrant>> = {};
+  for (const learner of LEARNERS) {
+    const current = currentCatalogueVersion(learner);
+    catalogueVersions[learner] = current.version;
+    if (!catalogueNeedsSend(learner, current.version, request, expectedContract, nowMs)) continue;
+    const catalogue = getCurrentCatalogue(learner, current);
+    catalogues[learner] = catalogue;
+    grants[learner] = grantCatalogueContract({
+      learner, catalogueVersion: catalogue.version, deviceId: request.device.deviceId,
+      generatorVersion: GENERATOR_VERSION, runnerVersion: LEGACY_RUNNER_VERSION,
+      rotationVersion: catalogue.algorithmVersion, issuedAt: catalogue.issuedAt, validUntil: catalogue.validUntil
+    });
+  }
+  const anyCatalogue = Object.keys(catalogues).length > 0;
+
+  // OFF-07: the projections (dashboards, templates, today's assignments) are
+  // computed once per pull, on its final page, after every feed has been paged.
+  // Earlier pages omit them, which the client reads as "unchanged".
+  const taskDate = todayDateString();
+  const finalPageSnapshots = lastPage ? {
+    dashboards: { kiur: dashboardFor('kiur'), kirsi: dashboardFor('kirsi') },
+    taskTemplates: getSyncTaskTemplates(),
+    taskAssignments: getSyncTaskAssignments(taskDate),
+    taskAssignmentDates: [taskDate]
+  } : {};
 
   return {
     protocolVersion: 2,
@@ -142,21 +221,11 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
       tombstones,
       taskChanges,
       remediationChanges: [],
-      catalogues,
-      catalogueGrants: grants,
-      dashboards: { kiur: dashboardFor('kiur'), kirsi: dashboardFor('kirsi') },
-      taskTemplates: getSyncTaskTemplates(),
-      taskAssignments: getSyncTaskAssignments(),
+      ...(anyCatalogue ? { catalogues, catalogueGrants: grants } : {}),
+      ...finalPageSnapshots,
       remediationBundles: []
     },
-    hasMore: {
-      // Keep paging while either fresh attempts or attempt-update notices remain.
-      attempts: pulledAttempts.length >= MAX_HISTORY_PULL_PER_SYNC || attemptChangeCursor.attemptIds.length >= MAX_ATTEMPT_CHANGES_PER_SYNC,
-      tombstones: tombstonePage.hasMore,
-      taskChanges: taskChanges.length >= MAX_TASK_CHANGES_PER_SYNC,
-      remediationChanges: false,
-      historyBackfill: false
-    },
+    hasMore,
     nextCursor: {
       ...request.cursor,
       lastServerAttemptId,
@@ -164,7 +233,7 @@ export function runSyncPullV2(request: OfflineSyncPullRequestV2): OfflineSyncPul
       lastTaskChangeId,
       lastAttemptChangeId: attemptChangeCursor.lastChangeId,
       historyEpoch: epoch,
-      catalogueVersions: { kiur: catalogues.kiur.version, kirsi: catalogues.kirsi.version },
+      catalogueVersions,
       syncedAt: serverTime
     }
   };

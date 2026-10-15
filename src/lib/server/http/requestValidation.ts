@@ -236,6 +236,18 @@ export function parseOfflineSyncRequest(value: unknown): OfflineSyncRequestV2 {
         }
       }
     }
+    // OFF-07: optional; decides only whether the catalogue is resent.
+    if (value.knownCatalogues !== undefined) {
+      if (!object(value.knownCatalogues)) issues.push('knownCatalogues is invalid');
+      else {
+        for (const [key, known] of Object.entries(value.knownCatalogues)) {
+          if ((key !== 'kiur' && key !== 'kirsi') || !object(known) ||
+            !boundedString(known.catalogueVersion, 1, 128) || !boundedString(known.validUntil, 1, 64)) {
+            issues.push(`knownCatalogues.${key} is invalid`);
+          }
+        }
+      }
+    }
   } else {
     issues.push('phase is invalid');
   }

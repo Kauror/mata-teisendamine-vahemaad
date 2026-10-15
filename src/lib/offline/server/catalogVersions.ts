@@ -64,11 +64,18 @@ function addDaysIso(iso: string, days: number) {
   return new Date(new Date(iso).getTime() + days * 86400000).toISOString();
 }
 
+// The current version hash without persisting anything or moving the offline
+// window. The sync pull uses it to decide whether a device already holds the
+// current catalogue (OFF-07); only an actual serve refreshes the window.
+export function currentCatalogueVersion(learner: Learner): { version: string; entries: CatalogueEntry[] } {
+  const entries = entriesForLearner(learner);
+  return { version: contentHash(learner, entries), entries };
+}
+
 // Current catalogue for a learner, persisting the version if new and refreshing
 // the offline window on each serve.
-export function getCurrentCatalogue(learner: Learner): OfflineCatalogue {
-  const entries = entriesForLearner(learner);
-  const version = contentHash(learner, entries);
+export function getCurrentCatalogue(learner: Learner, current = currentCatalogueVersion(learner)): OfflineCatalogue {
+  const { entries, version } = current;
   const now = nowIso();
   const existing = db.prepare('SELECT issuedAt FROM offline_catalog_versions WHERE learner = ? AND version = ?').get(learner, version) as { issuedAt: string } | undefined;
   const issuedAt = existing?.issuedAt ?? now;

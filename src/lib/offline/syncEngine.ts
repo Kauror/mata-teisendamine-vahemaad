@@ -1,7 +1,7 @@
 import { csrfHeaders } from '@/lib/auth/client';
 import { pingServer } from '@/lib/offline/connection';
 import { getCursor, getDeviceId, getServerOffsetMs, type SyncCursor } from '@/lib/offline/meta';
-import { attemptRepo, metaRepo, remediationActionRepo, taskActionRepo } from '@/lib/offline/repositories';
+import { attemptRepo, catalogRepo, catalogueGrantRepo, metaRepo, remediationActionRepo, taskActionRepo } from '@/lib/offline/repositories';
 import type { LocalAttempt, LocalRemediationAction, LocalTaskAction } from '@/lib/offline/records';
 import { applySyncEnvelope } from '@/lib/offline/syncApply';
 import { withSyncLock } from '@/lib/offline/syncLock';
@@ -20,6 +20,8 @@ import {
   APP_VERSION,
   OFFLINE_PROTOCOL_VERSION,
   type AttemptResult,
+  type KnownCatalogueGrant,
+  type Learner,
   type OfflineAttemptPayload,
   type OfflineAttemptPayloadV2,
   type OfflineSyncCursorV2,
@@ -431,6 +433,23 @@ async function pushRemediationBatch(
   }
 }
 
+// OFF-07: what this device actually holds, read from the stores rather than the
+// cursor, so a catalogue lost locally is re-requested. A learner counts only
+// when its grant matches the catalogue version; validUntil is the earlier of
+// the two, so the server refreshes before either lapses offline.
+export async function knownCataloguesForPull(): Promise<Partial<Record<Learner, KnownCatalogueGrant>>> {
+  const known: Partial<Record<Learner, KnownCatalogueGrant>> = {};
+  for (const learner of ['kiur', 'kirsi'] as const) {
+    const [catalogue, grant] = await Promise.all([catalogRepo.get(learner), catalogueGrantRepo.get(learner)]);
+    if (!catalogue || !grant || grant.catalogueVersion !== catalogue.version) continue;
+    known[learner] = {
+      catalogueVersion: catalogue.version,
+      validUntil: new Date(catalogue.validUntil).getTime() <= new Date(grant.validUntil).getTime() ? catalogue.validUntil : grant.validUntil
+    };
+  }
+  return known;
+}
+
 async function pullV2(device: OfflineSyncDevice, signal: AbortSignal): Promise<number> {
   let pulled = 0;
   let previousCursor = '';
@@ -444,6 +463,7 @@ async function pullV2(device: OfflineSyncDevice, signal: AbortSignal): Promise<n
       phase: 'pull',
       device: { ...device, clientNow: new Date().toISOString() },
       cursor,
+      knownCatalogues: await knownCataloguesForPull(),
       pageSize: { attempts: 300, tombstones: 300, taskChanges: 300, remediationChanges: 300, historyBackfill: 300 }
     };
     const response = await postSync<OfflineSyncPullResponseV2>(request, signal);

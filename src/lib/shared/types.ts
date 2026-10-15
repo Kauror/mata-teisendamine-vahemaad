@@ -79,6 +79,12 @@ export const LEGACY_RUNNER_VERSION = 'legacy-v1';
 // Offline validity windows (days).
 export const CATALOGUE_REFRESH_AFTER_DAYS = 21;
 export const CATALOGUE_VALID_DAYS = 30;
+// OFF-07: an unchanged catalogue + grant is resent once less than half of its
+// validity window is left (15 of 30 days). That is earlier than the device's
+// refreshAfter warning (validUntil − 9 days), so a child whose device syncs at
+// all never sees the reconnect warning, and an offline child keeps at least 15
+// days of permission from the moment its device last synced.
+export const CATALOGUE_RESEND_REMAINING_DAYS = CATALOGUE_VALID_DAYS / 2;
 
 // The value that finalizes into a server attempt. Generated and stored locally
 // first (IndexedDB), then uploaded; safe to retry because clientAttemptId is
@@ -283,8 +289,20 @@ export type OfflineSyncPushRequestV2 = OfflineSyncRequestV2Base & {
   };
 };
 
+// What a device actually holds for one learner: the catalogue version it has a
+// matching grant for, and the earlier of the catalogue's and grant's validUntil.
+export type KnownCatalogueGrant = {
+  catalogueVersion: string;
+  validUntil: string;
+};
+
 export type OfflineSyncPullRequestV2 = OfflineSyncRequestV2Base & {
   phase: 'pull';
+  // OFF-07: sent by delta-aware clients (its presence, even `{}`, is the
+  // signal). The server resends a learner's catalogue + grant when this is
+  // missing, names another version, or is near expiry. Clients that predate it
+  // are judged by cursor.catalogueVersions and the server's own grant row.
+  knownCatalogues?: Partial<Record<Learner, KnownCatalogueGrant>>;
   pageSize?: {
     attempts?: number;
     tombstones?: number;
@@ -305,6 +323,23 @@ export type OfflineSyncPushResponseV2 = {
   remediationActionResults: RemediationActionResult[];
 };
 
+// OFF-07 envelope contract. The four feeds (attempts … remediationChanges) are
+// always present and cursor-paged. Every snapshot section below is optional and
+// an omitted (undefined) section means "unchanged — keep what you have", never
+// "empty":
+// - catalogues / catalogueGrants / dashboards are per-learner upserts; a learner
+//   missing from the record is unchanged. The server sends a learner's
+//   catalogue + grant only when the device lacks that version or its grant is
+//   near expiry (CATALOGUE_RESEND_REMAINING_DAYS).
+// - taskTemplates is an authoritative snapshot: present (even `[]`) replaces
+//   the local set, so `[]` clears it.
+// - taskAssignments is an authoritative snapshot per date. taskAssignmentDates
+//   names the dates it covers, so `taskAssignments: []` with
+//   `taskAssignmentDates: ['2026-10-15']` clears that day. Without the dates
+//   (older servers) only dates present in the rows are replaced.
+// dashboards, taskTemplates and taskAssignments are sent only on the final page
+// of a pull (no hasMore flag set). Servers before OFF-07 sent every section on
+// every page, which this contract also accepts.
 export type OfflineSyncPullDataV2 = {
   attempts: ServerAttempt[];
   tombstones: AttemptTombstone[];
@@ -315,6 +350,7 @@ export type OfflineSyncPullDataV2 = {
   dashboards?: Partial<Record<Learner, ChildDashboardSnapshot>>;
   taskTemplates?: import('@/lib/shared/taskProjection').SyncTaskTemplate[];
   taskAssignments?: unknown[];
+  taskAssignmentDates?: string[];
   remediationBundles?: unknown[];
   notices?: unknown;
 };
@@ -381,3 +417,6 @@ export const CLIENT_PENDING_ACTIONS_PER_SYNC = 50;
 export const MAX_PENDING_ATTEMPTS_PER_SYNC = 50;
 export const MAX_PENDING_ACTIONS_PER_SYNC = 100;
 export const MAX_HISTORY_PULL_PER_SYNC = 300;
+// Lower bound for a client-requested pull page size: smaller pages would only
+// multiply round trips (and hit MAX_PULL_PAGES_PER_CYCLE sooner).
+export const MIN_PULL_PAGE_SIZE = 50;

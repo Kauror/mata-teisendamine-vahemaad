@@ -7,7 +7,8 @@ import { runSyncPullV2, runSyncPushV2 } from '@/lib/offline/server/syncService';
 import { writeTombstone } from '@/lib/offline/server/tombstones';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import type { GeneratedQuestion } from '@/lib/types';
-import type { OfflineSyncCursorV2, OfflineSyncDevice } from '@/lib/shared/types';
+import type { OfflineSyncCursorV2, OfflineSyncDevice, OfflineSyncPullRequestV2, OfflineSyncPullResponseV2 } from '@/lib/shared/types';
+import { parseOfflineSyncRequest, PublicRequestError } from '@/lib/server/http/requestValidation';
 
 const deviceId = '018f47f6-9f2c-7b9a-8a2e-123456789abc';
 
@@ -292,5 +293,187 @@ describe('protocol-v2 attempt writes', () => {
       .run('2026-07-13T10:00:00.000Z', '2026-07-13T10:00:00.000Z', 'hidden-attempt', '2026-07-13T11:00:00.000Z');
     const pull = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor() });
     expect(pull.pull.attempts.find((row) => row.clientAttemptId === 'hidden-attempt')).toBeUndefined();
+  });
+});
+
+// OFF-07: a pull page carries only what the device lacks. Catalogues + grants go
+// once (or when near expiry / contract drift); dashboards, task templates and
+// today's assignments go on the final page only.
+describe('slim pull pages (OFF-07)', () => {
+  const DAY = 86_400_000;
+  const inDays = (days: number) => new Date(Date.now() + days * DAY).toISOString();
+
+  function seedAttempts(count: number) {
+    const insert = db.prepare(`INSERT INTO attempts (createdAt, completedAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, clientAttemptId, protocolVersion, rewardSettlementStatus)
+      VALUES (?, ?, 'Teisendamine', 'Lihtne', 10, 9, 60, '[]', 'kiur', 'matemaatika', ?, 2, 'eligible')`);
+    db.transaction(() => {
+      for (let index = 0; index < count; index += 1) insert.run('2026-07-13T10:00:00.000Z', '2026-07-13T10:00:00.000Z', `backfill-${index}`);
+    })();
+  }
+
+  type Known = NonNullable<OfflineSyncPullRequestV2['knownCatalogues']>;
+
+  // Pages until no hasMore flag is set. With `known`, behaves like a delta-aware
+  // client (reports what it was handed); without, like a pre-OFF-07 client.
+  function pullAll(start: OfflineSyncCursorV2, known: Known | undefined) {
+    const pages: OfflineSyncPullResponseV2[] = [];
+    let current = start;
+    for (let page = 0; page < 10; page += 1) {
+      const response = runSyncPullV2({
+        protocolVersion: 2, phase: 'pull', device: device(), cursor: current,
+        ...(known ? { knownCatalogues: { ...known } } : {})
+      });
+      pages.push(response);
+      for (const catalogue of Object.values(response.pull.catalogues ?? {})) {
+        if (catalogue && known) known[catalogue.learner] = { catalogueVersion: catalogue.version, validUntil: catalogue.validUntil };
+      }
+      current = response.nextCursor;
+      if (!Object.values(response.hasMore).some(Boolean)) break;
+    }
+    return pages;
+  }
+
+  function knownFrom(response: OfflineSyncPullResponseV2): Known {
+    const catalogues = response.pull.catalogues!;
+    return {
+      kiur: { catalogueVersion: catalogues.kiur!.version, validUntil: catalogues.kiur!.validUntil },
+      kirsi: { catalogueVersion: catalogues.kirsi!.version, validUntil: catalogues.kirsi!.validUntil }
+    };
+  }
+
+  it('sends catalogues and grants once and the projections only on the last page of a backfill', () => {
+    seedAttempts(700);
+    const pages = pullAll(cursor(), {});
+
+    expect(pages).toHaveLength(3);
+    expect(pages.map((page) => page.pull.attempts.length)).toEqual([300, 300, 100]);
+    expect(Object.keys(pages[0].pull.catalogues ?? {}).sort()).toEqual(['kirsi', 'kiur']);
+    expect(Object.keys(pages[0].pull.catalogueGrants ?? {}).sort()).toEqual(['kirsi', 'kiur']);
+    for (const page of pages.slice(1)) {
+      expect(page.pull.catalogues).toBeUndefined();
+      expect(page.pull.catalogueGrants).toBeUndefined();
+    }
+    for (const page of pages.slice(0, 2)) {
+      expect(page.pull.dashboards).toBeUndefined();
+      expect(page.pull.taskTemplates).toBeUndefined();
+      expect(page.pull.taskAssignments).toBeUndefined();
+      expect(page.pull.taskAssignmentDates).toBeUndefined();
+    }
+    const last = pages[2].pull;
+    expect(Object.keys(last.dashboards ?? {}).sort()).toEqual(['kirsi', 'kiur']);
+    expect(Array.isArray(last.taskTemplates)).toBe(true);
+    expect(Array.isArray(last.taskAssignments)).toBe(true);
+    expect(last.taskAssignmentDates).toHaveLength(1);
+    // Every page still advertises the current versions in the cursor.
+    for (const page of pages) expect(page.nextCursor.catalogueVersions).toEqual(pages[0].nextCursor.catalogueVersions);
+  });
+
+  it('sends no catalogue to a client that already holds the current versions', () => {
+    const first = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor(), knownCatalogues: {} });
+    const known = knownFrom(first);
+
+    const steady = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: first.nextCursor, knownCatalogues: known });
+    expect(steady.pull.catalogues).toBeUndefined();
+    expect(steady.pull.catalogueGrants).toBeUndefined();
+    // A single-page pull is also the last page: projections are present.
+    expect(steady.pull.dashboards).toBeDefined();
+
+    // A learner the client does not report (e.g. its store was lost) is resent alone.
+    const partial = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: first.nextCursor, knownCatalogues: { kiur: known.kiur } });
+    expect(Object.keys(partial.pull.catalogues ?? {})).toEqual(['kirsi']);
+    expect(Object.keys(partial.pull.catalogueGrants ?? {})).toEqual(['kirsi']);
+
+    // A changed pool is a new version and is sent.
+    updateChildLearningExerciseStatus('kiur.math.mootuhikud-pikkused', 'kiur', 'hidden');
+    const changed = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: first.nextCursor, knownCatalogues: known });
+    expect(Object.keys(changed.pull.catalogues ?? {})).toEqual(['kiur']);
+    expect(changed.pull.catalogues!.kiur!.version).not.toBe(known.kiur!.catalogueVersion);
+  });
+
+  it('refreshes a grant once less than half of its window is left', () => {
+    const first = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor(), knownCatalogues: {} });
+    const known = (kiurDays: number): Known => ({
+      kiur: { catalogueVersion: first.pull.catalogues!.kiur!.version, validUntil: inDays(kiurDays) },
+      kirsi: { catalogueVersion: first.pull.catalogues!.kirsi!.version, validUntil: inDays(29) }
+    });
+
+    expect(runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: first.nextCursor, knownCatalogues: known(16) }).pull.catalogues).toBeUndefined();
+
+    const refreshed = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: first.nextCursor, knownCatalogues: known(14) });
+    expect(Object.keys(refreshed.pull.catalogueGrants ?? {})).toEqual(['kiur']);
+    expect(new Date(refreshed.pull.catalogueGrants!.kiur!.validUntil).getTime()).toBeGreaterThan(Date.now() + 29 * DAY);
+    const row = db.prepare('SELECT validUntil FROM catalogue_grants WHERE learner = ? AND deviceId = ?').get('kiur', deviceId) as { validUntil: string };
+    expect(row.validUntil).toBe(refreshed.pull.catalogueGrants!.kiur!.validUntil);
+
+    // The server's own row is checked too: it is what offline attempts are
+    // validated against, so it must not lapse even if the client reports a long window.
+    db.prepare('UPDATE catalogue_grants SET validUntil = ? WHERE learner = ?').run(inDays(10), 'kirsi');
+    const serverSide = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: first.nextCursor, knownCatalogues: known(29) });
+    expect(Object.keys(serverSide.pull.catalogueGrants ?? {})).toEqual(['kirsi']);
+  });
+
+  it('refreshes a grant whose contract drifted even with a long window left', () => {
+    const first = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor(), knownCatalogues: {} });
+    // As if the row predates a deploy that changed the runner contracts.
+    db.prepare('UPDATE catalogue_grants SET runnerContractsJson = ? WHERE learner = ?').run('[]', 'kiur');
+
+    const pull = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: first.nextCursor, knownCatalogues: knownFrom(first) });
+    expect(Object.keys(pull.pull.catalogueGrants ?? {})).toEqual(['kiur']);
+    const row = db.prepare('SELECT runnerContractsJson FROM catalogue_grants WHERE learner = ?').get('kiur') as { runnerContractsJson: string };
+    expect(row.runnerContractsJson).not.toBe('[]');
+
+    // A parent's reward-policy edit changes the expected policy version.
+    const before = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: first.nextCursor, knownCatalogues: knownFrom(first) });
+    expect(before.pull.catalogueGrants).toBeUndefined();
+    db.prepare(`INSERT INTO reward_rules (type, thresholdDays, rewardStars, learnerScope, enabled, createdAt, updatedAt)
+      VALUES ('learning_streak', 3, 2, 'both', 1, ?, ?)`).run(new Date().toISOString(), new Date().toISOString());
+    const after = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: first.nextCursor, knownCatalogues: knownFrom(first) });
+    expect(Object.keys(after.pull.catalogueGrants ?? {}).sort()).toEqual(['kirsi', 'kiur']);
+    expect(after.pull.catalogueGrants!.kiur!.rewardPolicyVersion).not.toBe(first.pull.catalogueGrants!.kiur!.rewardPolicyVersion);
+  });
+
+  it('honours the client page size within safe bounds', () => {
+    seedAttempts(260);
+    const small = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor(), pageSize: { attempts: 100 } });
+    expect(small.pull.attempts).toHaveLength(100);
+    expect(small.hasMore.attempts).toBe(true);
+    expect(small.pull.dashboards).toBeUndefined();
+
+    const tiny = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor(), pageSize: { attempts: 1 } });
+    expect(tiny.pull.attempts).toHaveLength(50);
+
+    const huge = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor(), pageSize: { attempts: 500 } });
+    expect(huge.pull.attempts).toHaveLength(260);
+    expect(huge.hasMore.attempts).toBe(false);
+  });
+
+  // Deploy window: a client from before OFF-07 sends no knownCatalogues and
+  // echoes cursor.catalogueVersions. It is judged by that cursor plus the
+  // server's grant row, and every omitted section is one its syncApply already
+  // skips when undefined.
+  it('serves a pre-OFF-07 client from its cursor and the server grant row', () => {
+    seedAttempts(350);
+    const pages = pullAll(cursor(), undefined);
+    expect(pages).toHaveLength(2);
+    expect(pages[0].pull.catalogues).toBeDefined();
+    expect(pages[1].pull.catalogues).toBeUndefined();
+    expect(pages[0].pull.dashboards).toBeUndefined();
+    expect(pages[1].pull.dashboards).toBeDefined();
+
+    const steady = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: pages[1].nextCursor });
+    expect(steady.pull.catalogues).toBeUndefined();
+
+    db.prepare('UPDATE catalogue_grants SET validUntil = ? WHERE learner = ?').run(inDays(14), 'kiur');
+    const nearExpiry = runSyncPullV2({ protocolVersion: 2, phase: 'pull', device: device(), cursor: pages[1].nextCursor });
+    expect(Object.keys(nearExpiry.pull.catalogues ?? {})).toEqual(['kiur']);
+  });
+
+  it('rejects a malformed knownCatalogues field', () => {
+    expect(() => parseOfflineSyncRequest({
+      protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor(), knownCatalogues: { kiur: { catalogueVersion: 5 } }
+    })).toThrow(PublicRequestError);
+    expect(parseOfflineSyncRequest({
+      protocolVersion: 2, phase: 'pull', device: device(), cursor: cursor(), knownCatalogues: { kiur: { catalogueVersion: 'abc', validUntil: inDays(20) } }
+    })).toMatchObject({ phase: 'pull' });
   });
 });
