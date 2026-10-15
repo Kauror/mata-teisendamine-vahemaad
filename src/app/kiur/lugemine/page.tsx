@@ -13,16 +13,17 @@ import {
   getCatalogueContract,
   getLocalAttempt,
   getMergedExerciseHistory,
-  isExercisePermittedOffline,
   isRunId,
   loadRunnerSession,
-  patchRunnerSession,
   runnerStorageFailure
 } from '@/lib/offline/api';
 import type { CatalogueContract } from '@/lib/offline/api';
 import type { RunnerSessionV3 } from '@/lib/offline/records';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
-import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
+import { useRunnerAutosave, useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
+import { useExerciseActive } from '@/lib/offline/useExerciseActive';
+import { contractFromSession, runnerFinalizeContract } from '@/lib/offline/runnerContract';
+import RunnerPausedScreen from '@/lib/offline/RunnerPausedScreen';
 
 const RUN_LENGTH = 5;
 
@@ -90,14 +91,12 @@ export default function KiurReadingPage() {
   const [reward, setReward] = useState<Reward>(null);
   const [saved, setSaved] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
-  const [readingActive, setReadingActive] = useState(false);
   const [doneToday, setDoneToday] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [storageError, setStorageError] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const startedAtRef = useRef(new Date().toISOString());
   const seedRef = useRef<number | string>(0);
-  const snapshotRef = useRef<Partial<ReadingSession>>({});
   const contractRef = useRef<CatalogueContract | null>(null);
   const answerLockedRef = useRef(false);
   // A double tap on "Alusta" must not start two runs: both taps share the run
@@ -108,15 +107,8 @@ export default function KiurReadingPage() {
   const runCount = session.length;
   const isCorrect = Boolean(current && selectedAnswer === current.correctAnswer);
 
-  useEffect(() => {
-    void fetch('/api/learning-exercises/active?learner=kiur')
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((body) => setReadingActive(Array.isArray(body.exerciseIds) && body.exerciseIds.includes('kiur.reading.loe-ja-vasta')))
-      .catch(async () => {
-        const permitted = await isExercisePermittedOffline('kiur', { exerciseId: 'kiur.reading.loe-ja-vasta', subject: 'lugemine', topic: 'loe-ja-vasta', category: 'Lugemine - loe ja vasta' }).catch(() => false);
-        setReadingActive(permitted);
-      });
-  }, []);
+  // null (still asking) counts as not active, as the old initial false did.
+  const readingActive = useExerciseActive({ learner: 'kiur', exerciseId: 'kiur.reading.loe-ja-vasta', subject: 'lugemine', topic: 'loe-ja-vasta', category: 'Lugemine - loe ja vasta' });
 
   useEffect(() => {
     void getMergedExerciseHistory()
@@ -144,15 +136,7 @@ export default function KiurReadingPage() {
       const state = existing.runnerState;
       startedAtRef.current = existing.startedAt;
       seedRef.current = existing.seed ?? 0;
-      contractRef.current = {
-        catalogueVersion: existing.catalogueVersion ?? '',
-        rewardPolicyVersion: existing.rewardPolicyVersion ?? 'legacy-v1',
-        generatorVersion: existing.generatorVersion,
-        runnerVersion: existing.runnerVersion,
-        algorithmVersion: existing.rotationVersion ?? 1,
-        rotationVersion: existing.rotationVersion ?? 1,
-        dailyLimit: 0
-      };
+      contractRef.current = contractFromSession(existing);
       setSession(existing.questions);
       setIndex(existing.currentIndex);
       setPhase(existing.currentPhase as Phase);
@@ -169,19 +153,19 @@ export default function KiurReadingPage() {
     return () => { cancelled = true; };
   }, []);
 
-  snapshotRef.current = {
+  const snapshotRef = useRunnerAutosave<ReadingSession>({
     currentIndex: index,
     currentPhase: phase,
     answers: reviewItems,
     activeElapsedMs: elapsedSeconds * 1000,
     runnerState: { score, selectedAnswer, reviewItems, showStopConfirm },
     status: storageError ? 'paused' : 'active'
-  };
-
-  useEffect(() => {
-    if (!sessionReady || !runId || phase === 'start' || phase === 'result' || saved || storageError) return;
-    void patchRunnerSession<ReadingSession>(runId, snapshotRef.current).catch((error) => setStorageError(runnerStorageFailure(error).message));
-  }, [index, phase, reviewItems, runId, saved, score, selectedAnswer, sessionReady, showStopConfirm, storageError]);
+  }, {
+    enabled: sessionReady && phase !== 'start' && phase !== 'result' && !saved && !storageError,
+    runId,
+    setStorageError,
+    changes: [index, phase, reviewItems, runId, saved, score, selectedAnswer, sessionReady, showStopConfirm, storageError]
+  });
 
   useVisibleElapsedTimer(sessionReady && !saved && !storageError && phase !== 'start' && phase !== 'result', setElapsedSeconds);
   useRunnerCheckpoint<ReadingSession>({ enabled: sessionReady && phase !== 'start' && !saved, runId, snapshotRef, setStorageError });
@@ -191,25 +175,17 @@ export default function KiurReadingPage() {
     setSaved(true);
 
     void (async () => {
-      const contract = contractRef.current;
-      const capability = getOfflineRunnerCapability('kiur-reading');
-      if (!contract || !capability) throw new Error('Harjutuse võrguühenduseta leping puudub.');
       const outcome = await finalizeRunnerSession({
+        ...runnerFinalizeContract('kiur-reading', contractRef.current),
         runId,
         seed: seedRef.current,
-        runnerId: capability.runnerId,
         questionIds: session.map((task) => task.id),
-        rewardPolicyVersion: contract.rewardPolicyVersion,
-        generatorVersion: capability.generatorVersion,
-        runnerVersion: capability.runnerVersion,
-        rotationVersion: capability.rotationVersion,
         learner: 'kiur',
         subject: 'lugemine',
         topic: 'loe-ja-vasta',
         category: 'Lugemine - loe ja vasta',
         difficulty: 'Loe ja vasta',
         exerciseId: 'kiur.reading.loe-ja-vasta',
-        catalogueVersion: contract.catalogueVersion,
         startedAt: startedAtRef.current,
         questionCount: runCount,
         score,
@@ -330,16 +306,7 @@ export default function KiurReadingPage() {
   };
 
   if (storageError) {
-    return (
-      <main className='container english-page kiur-reading-page'>
-        <section className='practice-shell english-shell kiur-reading-shell' role='alert'>
-          <h1>Harjutus on peatatud</h1>
-          <p>{storageError}</p>
-          <button type='button' className='start-button' onClick={() => window.location.reload()}>Proovi salvestust uuesti</button>
-          <Link className='practice-back-button' href='/kiur'>Tagasi harjutuste juurde</Link>
-        </section>
-      </main>
-    );
+    return <RunnerPausedScreen variant='practice' mainClassName='container english-page kiur-reading-page' shellClassName='practice-shell english-shell kiur-reading-shell' message={storageError} backHref='/kiur' />;
   }
 
   if (!sessionReady) {
