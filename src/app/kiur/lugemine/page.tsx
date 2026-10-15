@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { completedTodayFromHistory, ClientCompletionAttempt } from '@/lib/clientExerciseCompletion';
-import { shuffle } from '@/lib/englishGame';
+import { shuffleWithSeed as shuffle } from '@/lib/random';
 import { formatStars } from '@/lib/formatStars';
 import { getValidKiurReadingTasks, KiurReadingTask } from '@/lib/kiurReadingTasks';
 import {

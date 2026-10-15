@@ -2,6 +2,7 @@
 // into the service-worker template, writing public/sw.js. Run AFTER `next build`.
 import fs from 'node:fs';
 import path from 'node:path';
+import { selectFontFiles, selectShellFiles } from './precache-selection.mjs';
 
 const root = process.cwd();
 const nextDir = path.join(root, '.next');
@@ -17,32 +18,29 @@ function readBuildId() {
   }
 }
 
-function walk(dir, baseUrl, acc) {
-  if (!fs.existsSync(dir)) return acc;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    const url = `${baseUrl}/${entry.name}`;
-    if (entry.isDirectory()) walk(full, url, acc);
-    else if (/\.(?:js|css|woff2?|ttf|otf|png|jpe?g|svg|webp|avif|json)$/.test(entry.name)) acc.push(url);
-  }
-  return acc;
+function readJson(file) {
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-const capabilities = JSON.parse(fs.readFileSync(capabilitiesPath, 'utf8'));
+const capabilities = readJson(capabilitiesPath);
 const buildId = readBuildId();
-const allowedShellRoutes = new Set(capabilities.shellRoutes);
-const staticAssets = walk(path.join(nextDir, 'static'), '/_next/static', []).filter((url) => {
-  const marker = '/chunks/app/';
-  const start = url.indexOf(marker);
-  if (start < 0) return true; // shared hashed runtime/framework chunks
-  const appChunk = url.slice(start + marker.length);
-  if (appChunk.startsWith('layout-') || appChunk.startsWith('layout/')) return true;
-  if (appChunk.startsWith('page-')) return allowedShellRoutes.has('/');
-  const pageMarker = appChunk.lastIndexOf('/page-');
-  if (pageMarker < 0) return false;
-  const route = `/${appChunk.slice(0, pageMarker)}`.replace('/page', '/');
-  return allowedShellRoutes.has(route);
+
+// Only what the App Router shell loads (see scripts/precache-selection.mjs).
+const shellFiles = selectShellFiles({
+  appBuildManifest: readJson(path.join(nextDir, 'app-build-manifest.json')).pages,
+  loadableManifest: readJson(path.join(nextDir, 'react-loadable-manifest.json')),
+  shellRoutes: capabilities.shellRoutes
 });
+const cssTexts = shellFiles.filter((file) => file.endsWith('.css')).map((file) => fs.readFileSync(path.join(nextDir, file), 'utf8'));
+const fontUrls = selectFontFiles(cssTexts);
+// Images imported by components are emitted next to the fonts; keep them.
+const mediaDir = path.join(nextDir, 'static', 'media');
+const mediaUrls = fs.existsSync(mediaDir)
+  ? fs.readdirSync(mediaDir).filter((name) => /\.(?:png|jpe?g|svg|webp|avif)$/.test(name)).map((name) => `/_next/static/media/${name}`)
+  : [];
+const staticAssets = [...new Set([...shellFiles.map((file) => `/_next/${file}`), ...fontUrls, ...mediaUrls])].sort();
+const missingFiles = staticAssets.filter((url) => !url.startsWith('/_next/static/') || !fs.existsSync(path.join(nextDir, url.slice('/_next/'.length))));
+if (missingFiles.length) throw new Error(`Precache entries missing from .next/static: ${missingFiles.join(', ')}`);
 const runnerRoutes = capabilities.runners.flatMap((runner) => [runner.route, ...(runner.alternateRoutes ?? [])]);
 const missingRunnerRoutes = runnerRoutes.filter((route) => !capabilities.shellRoutes.includes(route));
 if (missingRunnerRoutes.length) throw new Error(`Offline runner routes missing from shell manifest: ${missingRunnerRoutes.join(', ')}`);

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { shuffle } from '@/lib/englishGame';
+import { shuffleWithSeed as shuffle } from '@/lib/random';
 import { formatStars } from '@/lib/formatStars';
 import { KIRSI_FIRST_SOUND_TASKS, KirsiFirstSoundTask } from '@/lib/kirsiFirstSoundTasks';
 import {

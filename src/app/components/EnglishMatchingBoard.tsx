@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { EnglishVocabularyWord } from '@/lib/englishVocabulary';
-import { shuffle } from '@/lib/englishGame';
+import type { EnglishVocabularyWord } from '@/lib/englishVocabulary';
+import { shuffleWithSeed as shuffle } from '@/lib/random';
 
 type EnglishMatchingBoardProps = {
   words: EnglishVocabularyWord[];

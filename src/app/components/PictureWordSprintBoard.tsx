@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { shuffle } from '@/lib/englishGame';
+import { shuffleWithSeed as shuffle } from '@/lib/random';
 import { KirsiReadingPair } from '@/lib/kirsiReadingPairs';
 
 type PictureWordSprintBoardProps = {

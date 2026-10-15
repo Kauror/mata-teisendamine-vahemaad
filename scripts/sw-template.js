@@ -44,6 +44,45 @@ async function fetchRequired(cache, path, kind) {
   await cache.put(path, response.clone());
 }
 
+// /_next/static paths are content-hashed (or carry the build id), so the same
+// path always holds the same bytes: a copy an earlier build already verified
+// and cached is reused instead of downloaded again on every deploy.
+const STATIC_CACHE_PREFIX = 'harjutaja-static-';
+const INSTALL_CONCURRENCY = 5;
+
+async function staticCachesNewestFirst() {
+  const keys = await caches.keys();
+  return keys.filter((key) => key.startsWith(STATIC_CACHE_PREFIX)).reverse();
+}
+
+async function reusableCopy(cacheNames, path) {
+  if (!path.startsWith('/_next/static/')) return null;
+  for (const name of cacheNames) {
+    const cached = await (await caches.open(name)).match(path);
+    if (cached && validResponse(cached, path, 'static')) return cached;
+  }
+  return null;
+}
+
+// Runs every task with at most `limit` in flight. The first failure rejects
+// the whole run and stops further tasks from starting.
+async function runLimited(tasks, limit) {
+  let next = 0;
+  let failed = false;
+  async function lane() {
+    while (!failed && next < tasks.length) {
+      const task = tasks[next++];
+      try {
+        await task();
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, lane));
+}
+
 async function cacheStatus(buildId = BUILD_ID) {
   const staticCache = await caches.open('harjutaja-static-' + buildId);
   const shellCache = await caches.open('harjutaja-shell-' + buildId);
@@ -64,9 +103,16 @@ self.addEventListener('install', (event) => {
     const shellCache = await caches.open(SHELL_CACHE);
     // Any missing/redirected/invalid required response rejects installation. A
     // complete marker is written only after every item has been verified.
-    for (const path of PRECACHE) await fetchRequired(staticCache, path, 'static');
-    for (const path of PUBLIC_ASSETS) await fetchRequired(staticCache, path, 'asset');
-    for (const path of SHELL_ROUTES) await fetchRequired(shellCache, path, 'shell');
+    const reusable = await staticCachesNewestFirst();
+    await runLimited([
+      ...PRECACHE.map((path) => async () => {
+        const copy = await reusableCopy(reusable, path);
+        if (copy) await staticCache.put(path, copy);
+        else await fetchRequired(staticCache, path, 'static');
+      }),
+      ...PUBLIC_ASSETS.map((path) => () => fetchRequired(staticCache, path, 'asset')),
+      ...SHELL_ROUTES.map((path) => () => fetchRequired(shellCache, path, 'shell'))
+    ], INSTALL_CONCURRENCY);
     await shellCache.put(COMPLETE_MARKER, new Response(JSON.stringify({
       buildId: BUILD_ID,
       manifestVersion: CAPABILITY_MANIFEST.manifestVersion,
