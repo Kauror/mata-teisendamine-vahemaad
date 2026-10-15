@@ -21,10 +21,16 @@ export function normalizeMathAnswer(value: unknown) {
     .replace(/\s+/g, ' ');
   for (const [pattern, replacement] of UNIT_ALIASES) normalized = normalized.replace(pattern, replacement);
   return normalized
-    .replace(/\s+ja\s+/g, ' ')
+    // A child separates parts with "ja", a comma or just a space, and may end
+    // with a full stop; none of these change what the answer says. Decimal
+    // commas became points above, so only separator commas are left here.
+    .replace(/[.!]+$/, '')
+    .replace(/\s*,\s*|\s+ja\s+/g, ' ')
     .replace(/([+-]?\d+(?:\.\d+)?)\s+(?=(?:mm|cm|dm|km|m|kg|g)\b)/g, '$1')
     .replace(/(mm|cm|dm|km|kg|m|g)(?=[+-]?\d)/g, '$1 ')
     .replace(/\s+/g, ' ')
+    // "9-6+2-5=0" and "9 - 6 + 2 - 5 = 0" are the same equation.
+    .replace(/\s*([=+×:<>-])\s*/g, '$1')
     .trim();
 }
 

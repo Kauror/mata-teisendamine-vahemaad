@@ -29,6 +29,7 @@ import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import { useRunnerCheckpoint, useVisibleElapsedTimer } from '@/lib/offline/useRunnerLifecycle';
 import { buildMathQuestionResults, mathChoiceLabels, type MathAnswerSnapshot } from '@/lib/mathResults';
 import { verifyMathTextAnswer } from '@/lib/shared/answerVerification';
+import { composeTextAnswer, textAnswerFields, textAnswerValues } from '@/lib/textAnswerFields';
 
 type ActiveLearningExercise = {
   id?: string;
@@ -64,26 +65,6 @@ function normalizeNumberEntry(value: string) {
   const compact = value.replace(/\s/g, '').replace(',', '.');
   if (!/^\d*(?:\.\d*)?$/.test(compact)) return null;
   return compact.replace('.', ',');
-}
-
-type TextAnswerField = { unit: string };
-
-function textAnswerFields(question: GeneratedQuestion): TextAnswerField[] | null {
-  const answer = question.correctAnswerText;
-  if (!answer || /[:=+]/.test(answer) || /\d\s*-\s*\d/.test(answer) || /\b(vähem|rohkem|võrdsed|kell)\b/i.test(answer)) return null;
-  const numberMatches = answer.match(/\d+(?:[,.]\d+)?/g) ?? [];
-  const matches = [...answer.matchAll(/(\d+(?:[,.]\d+)?)\s*([A-Za-zõäöüšžÕÄÖÜŠŽ]+)\b/g)];
-  if (!numberMatches.length || matches.length !== numberMatches.length) return null;
-  return matches.map((match) => ({ unit: match[2] }));
-}
-
-function textAnswerValues(answer: string, fields: TextAnswerField[]) {
-  const values = answer.match(/\d+(?:[,.]\d+)?/g) ?? [];
-  return fields.map((_, index) => values[index] ?? '');
-}
-
-function composeTextAnswer(fields: TextAnswerField[], values: string[]) {
-  return fields.map((field, index) => `${values[index] ?? ''} ${field.unit}`.trim()).join(' ').trim();
 }
 
 function testTopicLabel(topic: string, category: string, isKirsiMath: boolean) {
