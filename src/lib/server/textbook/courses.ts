@@ -3,6 +3,7 @@ import type { Learner } from '@/lib/shared/types';
 import { PREVIEW_LEARNER, type TextbookLearner, type TextbookScope } from '@/lib/textbook/api';
 import { publishable, type UnitValidation } from '@/lib/textbook/validator';
 import type { Course, Unit } from '@/lib/textbook/types';
+import { textbookImageExists } from '@/lib/server/textbook/imageFiles';
 
 // Where the server reads course content from. Production: the repo registry
 // (src/content/textbook/registry.ts). Tests swap in their own courses — e.g. a
@@ -56,7 +57,7 @@ let validationCache = new WeakMap<Unit, UnitValidation>();
 export function validationFor(unit: Unit, course: Course): UnitValidation {
   const cached = validationCache.get(unit);
   if (cached) return cached;
-  const result = publishable(unit, course);
+  const result = publishable(unit, course, { imageExists: (src) => textbookImageExists(src) });
   validationCache.set(unit, result);
   return result;
 }

@@ -68,6 +68,20 @@ export type TableBlock = BlockBase & {
 // region labels; `description` overrides the registry's accessible text.
 export type DiagramBlock = BlockBase & { type: 'diagram'; diagramId: string; description?: string; caption?: string };
 export type CaptionBlock = BlockBase & { type: 'caption'; text: string };
+// A real photograph (never a drawn copy of a textbook picture), served from
+// the app's own public folder under /textbook-images/ — no hotlinking. The
+// intrinsic `width`/`height` reserve the space before the file loads. `alt`
+// says in Estonian what the photo shows; `credit` names its author/owner.
+// Online only: the offline precache never includes these files.
+export type ImageBlock = BlockBase & {
+  type: 'image';
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  credit: string;
+  caption?: string;
+};
 export type ExternalResourceType = 'article' | 'gallery' | 'video' | 'interactive';
 // Optional further reading. Rendered as a plain link; no third-party script is
 // ever loaded and a resource is never required for unlocking or tested.
@@ -103,14 +117,19 @@ export type ContentBlock =
   | TableBlock
   | DiagramBlock
   | CaptionBlock
+  | ImageBlock
   | ExternalResourceBlock
   | EnrichmentBlock;
 
 export type ContentBlockType = ContentBlock['type'];
 
 export const CONTENT_BLOCK_TYPES: readonly ContentBlockType[] = [
-  'heading', 'paragraph', 'list', 'definition', 'keyFact', 'comparison', 'table', 'diagram', 'caption', 'externalResource', 'enrichment'
+  'heading', 'paragraph', 'list', 'definition', 'keyFact', 'comparison', 'table', 'diagram', 'caption', 'image', 'externalResource', 'enrichment'
 ];
+
+// Where an image block's file may live: a local file in public/textbook-images/
+// with a lowercase name and a web image extension.
+export const TEXTBOOK_IMAGE_PATTERN = /^\/textbook-images\/[a-z0-9][a-z0-9-]{0,99}\.(?:webp|jpg|jpeg|png|avif)$/u;
 
 /* ---------------------------------------------------------------- lessons */
 

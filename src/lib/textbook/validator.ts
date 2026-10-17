@@ -11,6 +11,7 @@ import {
   COGNITIVE_LEVELS,
   CONTENT_BLOCK_TYPES,
   ID_PATTERN,
+  TEXTBOOK_IMAGE_PATTERN,
   type AnswerSpec,
   type AnswerType,
   type CognitiveLevel,
@@ -37,6 +38,8 @@ export type ValidationIssue = {
 export type UnitStats = {
   lessons: number;
   requiredLessons: number;
+  sections: number;
+  blocks: number;
   objectives: number;
   requiredObjectives: number;
   questions: number;
@@ -70,7 +73,12 @@ export type CourseValidation = {
   valid: boolean;
 };
 
-export type ValidatorOptions = { diagrams?: DiagramLookup };
+export type ValidatorOptions = {
+  diagrams?: DiagramLookup;
+  // Does an image block's local file exist? Only the server and the CLI can
+  // look at the disk; without this the file itself is not checked.
+  imageExists?: (src: string) => boolean;
+};
 
 const LEVEL_LABELS: Record<CognitiveLevel, string> = {
   factual: 'faktiteadmise',
@@ -172,7 +180,7 @@ function validateSource(source: SourceRef, out: Collector, path: string, label: 
   }
 }
 
-function validateBlock(block: ContentBlock, out: Collector, path: string, diagrams: DiagramLookup) {
+function validateBlock(block: ContentBlock, out: Collector, path: string, diagrams: DiagramLookup, imageExists?: (src: string) => boolean) {
   const label = `Plokk ${q(block.id ?? '?')}`;
   if (!CONTENT_BLOCK_TYPES.includes(block.type)) {
     out.error('block_type', `${label}: tundmatu sisuploki liik ${q(String((block as { type?: unknown }).type))}.`, path);
@@ -207,6 +215,17 @@ function validateBlock(block: ContentBlock, out: Collector, path: string, diagra
       break;
     case 'diagram':
       if (!diagrams(block.diagramId)) out.error('diagram_unknown', `${label}: joonist ${q(block.diagramId)} ei ole joonisteregistris.`, path);
+      break;
+    case 'image':
+      if (blank(block.src) || !TEXTBOOK_IMAGE_PATTERN.test(block.src)) {
+        out.error('block_image_src', `${label}: pilt peab olema rakenduse oma kaustas /textbook-images/ (nt /textbook-images/nimi.webp).`, path);
+      } else if (imageExists && !imageExists(block.src)) {
+        out.error('block_image_missing', `${label}: pildifaili ${q(block.src)} ei leitud kaustast public/.`, path);
+      }
+      if (blank(block.alt) || block.alt.trim().length < 10) out.error('block_image_alt', `${label}: pildil peab olema sisukas eestikeelne kirjeldus (alt-tekst).`, path);
+      if (blank(block.credit)) out.error('block_image_credit', `${label}: pildi autor või allikas puudub.`, path);
+      if (!Number.isInteger(block.width) || !Number.isInteger(block.height) || block.width < 1 || block.height < 1) out.error('block_image_size', `${label}: pildi laius ja kõrgus peavad olema positiivsed täisarvud.`, path);
+      if (block.caption !== undefined && blank(block.caption)) out.error('block_empty', `${label}: pildiallkiri on tühi.`, path);
       break;
     case 'externalResource':
       if (blank(block.title) || blank(block.intro) || blank(block.publisher)) out.error('block_resource_fields', `${label}: välisallika pealkiri, tutvustus või väljaandja puudub.`, path);
@@ -371,6 +390,8 @@ function emptyStats(): UnitStats {
   return {
     lessons: 0,
     requiredLessons: 0,
+    sections: 0,
+    blocks: 0,
     objectives: 0,
     requiredObjectives: 0,
     questions: 0,
@@ -412,6 +433,7 @@ function buildabilityMessage(result: Exclude<TestBuildability, { ok: true }>, se
 // course-wide question ID uniqueness).
 export function validateUnit(unit: Unit, course: Pick<Course, 'id' | 'settings' | 'units'>, options: ValidatorOptions = {}): UnitValidation {
   const diagrams = options.diagrams ?? defaultDiagramLookup;
+  const imageExists = options.imageExists;
   const out = new Collector();
   const settings = course.settings;
   const stats = emptyStats();
@@ -488,6 +510,7 @@ export function validateUnit(unit: Unit, course: Pick<Course, 'id' | 'settings' 
     lesson.sections.forEach((section, sectionIndex) => {
       const sectionPath = `${path}.sections[${sectionIndex}]`;
       sectionIds.push(section.id);
+      stats.sections += 1;
       if (blank(section.id) || !ID_PATTERN.test(section.id)) out.error('section_id_invalid', `${lessonLabel}: osa tunnus on vigane.`, sectionPath);
       if (!Array.isArray(section.blocks) || section.blocks.length === 0) {
         out.error('section_empty', `${lessonLabel}: osa ${q(section.id ?? '?')} on tühi.`, sectionPath);
@@ -495,9 +518,10 @@ export function validateUnit(unit: Unit, course: Pick<Course, 'id' | 'settings' 
       }
       section.blocks.forEach((block, blockIndex) => {
         blockIds.push(block.id);
+        stats.blocks += 1;
         const blockPath = `${sectionPath}.blocks[${blockIndex}]`;
         if (blank(block.id) || !ID_PATTERN.test(block.id)) out.error('block_id_invalid', `${lessonLabel}: sisuploki tunnus on vigane.`, blockPath);
-        validateBlock(block, out, blockPath, diagrams);
+        validateBlock(block, out, blockPath, diagrams, imageExists);
       });
     });
   });

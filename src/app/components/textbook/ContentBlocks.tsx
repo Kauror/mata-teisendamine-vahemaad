@@ -1,7 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import type { ContentBlock, ExternalResourceBlock, ExternalResourceType, QuestionContext, RichText, SourceRef } from '@/lib/textbook/types';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { ContentBlock, ExternalResourceBlock, ExternalResourceType, ImageBlock, QuestionContext, RichText, SourceRef } from '@/lib/textbook/types';
 import { DiagramView } from '@/app/components/textbook/diagrams';
 
 // Declarative lesson content → React. Content is data, never HTML: every
@@ -69,6 +69,32 @@ export function ExternalResourceCard({ block }: { block: ExternalResourceBlock }
   );
 }
 
+// A local photograph. width/height reserve its space (no layout jump), it
+// loads lazily, and if the file cannot be loaded the whole figure disappears
+// instead of showing a broken picture — reading never depends on it.
+export function ImageFigure({ block }: { block: ImageBlock }) {
+  const [failed, setFailed] = useState(false);
+  const image = useRef<HTMLImageElement>(null);
+  // An error before hydration fires no React onError: check once on mount.
+  useEffect(() => {
+    const node = image.current;
+    if (node && node.complete && node.naturalWidth === 0 && node.currentSrc) setFailed(true);
+  }, []);
+  if (failed) return null;
+  return (
+    <figure className='tb-photo'>
+      {/* A plain <img>: the file is a pre-optimised local WebP, so the Next image optimiser adds nothing. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img ref={image} className='tb-photo-img' src={block.src} alt={block.alt} width={block.width} height={block.height} loading='lazy' decoding='async' onError={() => setFailed(true)} />
+      <figcaption>
+        {block.caption ? <span className='tb-photo-caption'>{block.caption}</span> : null}
+        <span className='tb-photo-credit'>Foto: {block.credit}</span>
+      </figcaption>
+      {block.source ? <SourceMarker source={block.source} /> : null}
+    </figure>
+  );
+}
+
 function BlockBody({ block }: { block: ContentBlock }): ReactNode {
   switch (block.type) {
     case 'heading':
@@ -118,6 +144,8 @@ function BlockBody({ block }: { block: ContentBlock }): ReactNode {
       );
     case 'caption':
       return <p className='tb-caption'>{block.text}</p>;
+    case 'image':
+      return <ImageFigure block={block} />;
     case 'externalResource':
       return <ExternalResourceCard block={block} />;
     case 'enrichment': {
@@ -154,7 +182,7 @@ export function ContentBlockView({ block }: { block: ContentBlock }) {
   return (
     <div className='tb-block' data-block-type={block.type} data-block-id={block.id}>
       <BlockBody block={block} />
-      {block.source && block.type !== 'externalResource' ? <SourceMarker source={block.source} /> : null}
+      {block.source && block.type !== 'externalResource' && block.type !== 'image' ? <SourceMarker source={block.source} /> : null}
     </div>
   );
 }
