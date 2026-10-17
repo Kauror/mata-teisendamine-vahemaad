@@ -8,6 +8,7 @@ import {
   BEACH_EYE_POINT, BEACH_HORIZON, BEACH_X, FAR_SHIP_X, HEIGHT_SEA, NEAR_SHIP_X, SHIP_EYE, SHIP_HORIZON, SHIP_HULL_TOP, SHIP_MAST_TOP, SHIP_SEA,
   TOWER_EYE_POINT, TOWER_HORIZON, TOWER_X
 } from '@/app/components/textbook/diagrams/horizonGeometry';
+import { U14_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit14/layout';
 
 // How the label fit is measured: CI renders SVG text in DejaVu Sans (no
 // Nunito there), about 17 % wider than a phone. estimateTextWidth sums real
@@ -21,7 +22,8 @@ const COMPONENT_FILES: Record<string, string> = {
   'u10-ancient-earth': 'AncientEarthDiagram.tsx',
   'u10-lunar-eclipse': 'LunarEclipseDiagram.tsx',
   'u10-ship-horizon': 'ShipHorizonDiagram.tsx',
-  'u10-observer-height': 'ObserverHeightDiagram.tsx'
+  'u10-observer-height': 'ObserverHeightDiagram.tsx',
+  ...U14_DIAGRAM_FILES
 };
 
 // The narrowest picture a phone draws: 360 px screen − page, card and diagram
