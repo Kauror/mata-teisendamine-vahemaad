@@ -1010,6 +1010,173 @@ function addEnglishVocabularyStudiedWords(connection: DatabaseConnection) {
   }
 }
 
+// The textbook framework (Õpiku õppetükid, docs/textbook-framework.md).
+// Content lives in the repo; this stores only publication, manual unlocks and
+// progress. Every progress table takes the learner 'preview' too — the
+// parent's isolated preview learner — and ONLY these tables do: the learner
+// CHECKs of every existing table stay 'kiur'/'kirsi', so a preview run can
+// never land in attempts, the ledger, the leaderboard or history.
+function addTextbookFramework(connection: DatabaseConnection) {
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS textbook_unit_publication (
+      courseId TEXT NOT NULL,
+      unitId TEXT NOT NULL,
+      published INTEGER NOT NULL DEFAULT 0 CHECK (published IN (0, 1)),
+      publishedAt TEXT,
+      publishedContentVersion TEXT,
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (courseId, unitId)
+    );
+
+    -- A parent override that opens a unit early. It never records a pass.
+    CREATE TABLE IF NOT EXISTS textbook_manual_unlocks (
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'preview')),
+      courseId TEXT NOT NULL,
+      unitId TEXT NOT NULL,
+      unlocked INTEGER NOT NULL DEFAULT 0 CHECK (unlocked IN (0, 1)),
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (learner, courseId, unitId)
+    );
+
+    CREATE TABLE IF NOT EXISTS textbook_lesson_reads (
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'preview')),
+      courseId TEXT NOT NULL,
+      unitId TEXT NOT NULL,
+      lessonId TEXT NOT NULL,
+      contentVersion TEXT NOT NULL,
+      firstCompletedAt TEXT NOT NULL,
+      lastCompletedAt TEXT NOT NULL,
+      completions INTEGER NOT NULL DEFAULT 1,
+      PRIMARY KEY (learner, courseId, unitId, lessonId)
+    );
+
+    -- Per learner and unit: practice completion and the FIRST pass (the record;
+    -- later passes only count). Never revoked by content changes.
+    CREATE TABLE IF NOT EXISTS textbook_unit_progress (
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'preview')),
+      courseId TEXT NOT NULL,
+      unitId TEXT NOT NULL,
+      practiceCompletedAt TEXT,
+      practiceRuns INTEGER NOT NULL DEFAULT 0,
+      firstPassedAt TEXT,
+      passedSessionId TEXT,
+      passedScore INTEGER,
+      passedTotal INTEGER,
+      passedContentVersion TEXT,
+      passedAttemptId INTEGER,
+      passCount INTEGER NOT NULL DEFAULT 0,
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (learner, courseId, unitId),
+      FOREIGN KEY (passedAttemptId) REFERENCES attempts(id)
+    );
+
+    -- A practice run: the frozen PracticeState (pool, queue, answers) plus the
+    -- objective texts at start. 'targeted' runs follow a failed test.
+    CREATE TABLE IF NOT EXISTS textbook_practice_sessions (
+      id TEXT PRIMARY KEY,
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'preview')),
+      courseId TEXT NOT NULL,
+      unitId TEXT NOT NULL,
+      mode TEXT NOT NULL CHECK (mode IN ('normal', 'targeted')),
+      status TEXT NOT NULL CHECK (status IN ('active', 'completed', 'abandoned')),
+      contentVersion TEXT NOT NULL,
+      afterTestSessionId TEXT,
+      stateJson TEXT NOT NULL,
+      objectivesJson TEXT NOT NULL,
+      lastFeedbackJson TEXT,
+      revision INTEGER NOT NULL DEFAULT 0,
+      lastActionId TEXT,
+      startedAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      completedAt TEXT
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_textbook_practice_active
+      ON textbook_practice_sessions(learner, courseId, unitId) WHERE status = 'active';
+    CREATE INDEX IF NOT EXISTS idx_textbook_practice_unit
+      ON textbook_practice_sessions(learner, courseId, unitId, mode, status);
+
+    -- A final test: the frozen TestRunState (20 questions, option order, keys)
+    -- and the learner's saved answers. Keys never leave the server unsubmitted.
+    CREATE TABLE IF NOT EXISTS textbook_test_sessions (
+      id TEXT PRIMARY KEY,
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'preview')),
+      courseId TEXT NOT NULL,
+      unitId TEXT NOT NULL,
+      attemptNumber INTEGER NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('active', 'submitted')),
+      contentVersion TEXT NOT NULL,
+      stateJson TEXT NOT NULL,
+      objectivesJson TEXT NOT NULL,
+      revision INTEGER NOT NULL DEFAULT 0,
+      lastActionId TEXT,
+      correct INTEGER,
+      total INTEGER,
+      passed INTEGER CHECK (passed IN (0, 1)),
+      attemptId INTEGER,
+      startedAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      submittedAt TEXT,
+      UNIQUE (learner, courseId, unitId, attemptNumber),
+      FOREIGN KEY (attemptId) REFERENCES attempts(id)
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_textbook_test_active
+      ON textbook_test_sessions(learner, courseId, unitId) WHERE status = 'active';
+
+    -- Every submitted round, permanently.
+    CREATE TABLE IF NOT EXISTS textbook_test_rounds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sessionId TEXT NOT NULL UNIQUE,
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'preview')),
+      courseId TEXT NOT NULL,
+      unitId TEXT NOT NULL,
+      attemptNumber INTEGER NOT NULL,
+      contentVersion TEXT NOT NULL,
+      correct INTEGER NOT NULL,
+      total INTEGER NOT NULL,
+      requiredCorrect INTEGER NOT NULL,
+      passed INTEGER NOT NULL CHECK (passed IN (0, 1)),
+      questionIdsJson TEXT NOT NULL,
+      missedObjectiveIdsJson TEXT NOT NULL,
+      submittedAt TEXT NOT NULL,
+      FOREIGN KEY (sessionId) REFERENCES textbook_test_sessions(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_textbook_test_rounds_unit
+      ON textbook_test_rounds(learner, courseId, unitId, id);
+
+    -- Weak areas per learning objective (real learners only).
+    CREATE TABLE IF NOT EXISTS textbook_objective_stats (
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'preview')),
+      courseId TEXT NOT NULL,
+      unitId TEXT NOT NULL,
+      objectiveId TEXT NOT NULL,
+      practiceCorrect INTEGER NOT NULL DEFAULT 0,
+      practiceWrong INTEGER NOT NULL DEFAULT 0,
+      testCorrect INTEGER NOT NULL DEFAULT 0,
+      testWrong INTEGER NOT NULL DEFAULT 0,
+      missCount INTEGER NOT NULL DEFAULT 0,
+      lastMissedAt TEXT,
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (learner, courseId, unitId, objectiveId)
+    );
+
+    -- The canonical learning attempt a passed test settled (once per unit per
+    -- app day). One row per test session at most: the idempotency anchor.
+    CREATE TABLE IF NOT EXISTS textbook_rewards (
+      sessionId TEXT PRIMARY KEY,
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi')),
+      courseId TEXT NOT NULL,
+      unitId TEXT NOT NULL,
+      attemptId INTEGER NOT NULL UNIQUE,
+      completionDate TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (sessionId) REFERENCES textbook_test_sessions(id),
+      FOREIGN KEY (attemptId) REFERENCES attempts(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_textbook_rewards_day
+      ON textbook_rewards(learner, courseId, unitId, completionDate);
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -1080,6 +1247,12 @@ const migrations: Migration[] = [
     up: (connection) => {
       connection.exec('CREATE INDEX IF NOT EXISTS idx_store_purchases_item ON store_purchases(storeItemId, purchasedAt)');
     }
+  },
+  {
+    id: 12,
+    name: 'textbook_framework',
+    checksumSource: 'textbook_framework:v1:2026-10-17',
+    up: addTextbookFramework
   }
 ];
 
