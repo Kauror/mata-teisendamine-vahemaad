@@ -72,6 +72,10 @@ export function hasPeekOptOutCookie(cookieHeader: string | null | undefined) {
 export function isChildWritePath(pathname: string) {
   return pathname === '/api/english/sessions'
     || pathname.startsWith('/api/english/sessions/')
+    // Textbook reading, practice and test writes. The parent preview lives
+    // under /api/parent/textbook/preview and is the parent's own, so it is not
+    // listed here.
+    || pathname.startsWith('/api/textbook/')
     || pathname === '/api/tasks/complete'
     || pathname === '/api/remediation'
     || pathname.startsWith('/api/remediation/')
