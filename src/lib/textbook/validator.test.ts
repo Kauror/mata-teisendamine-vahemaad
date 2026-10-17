@@ -4,6 +4,7 @@ import { TEXTBOOK_COURSES } from '@/content/textbook/registry';
 import { textbookDemoCourse } from '@/content/textbook/textbook-demo';
 import { publishable, validateCourse, validateUnit } from '@/lib/textbook/validator';
 import type { Course, Unit } from '@/lib/textbook/types';
+import { diagramRegionIds } from '@/lib/textbook/diagramRegistry';
 
 const demo = textbookDemoCourse;
 const codes = (issues: Array<{ code: string }>) => issues.map((issue) => issue.code);
@@ -30,12 +31,14 @@ describe('shipped content', () => {
     }
   });
 
-  it('Unit 10 is ready and publishable without warnings; units 11–22 stay metadata-only drafts', () => {
+  it('Units 10 and 12 are ready and publishable without warnings; the other units stay metadata-only drafts', () => {
     const result = validateCourse(loodusopetusOpikCourse, { imageExists: () => true });
     expect(result.errors).toEqual([]);
     expect(result.valid).toBe(true);
     expect(result.units.map((unit) => unit.unitNumber)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
-    const [unit10, ...drafts] = result.units;
+    const unit10 = result.units[0];
+    const drafts = result.units.filter((unit) => loodusopetusOpikCourse.units.find((item) => item.id === unit.unitId)?.status === 'draft');
+    expect(drafts.map((unit) => unit.unitNumber)).toEqual([11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
     expect(unit10.errors).toEqual([]);
     expect(unit10.warnings).toEqual([]);
     expect(unit10.publishable).toBe(true);
@@ -51,7 +54,7 @@ describe('shipped content', () => {
       expect(codes(unit.errors)).toEqual(['unit_draft', 'unit_no_content']);
       expect(unit.errors[0].message).toMatch(/mustand/u);
     }
-    for (const unit of loodusopetusOpikCourse.units.slice(1)) {
+    for (const unit of loodusopetusOpikCourse.units.filter((item) => item.number !== 10 && item.number !== 12)) {
       expect(unit.status).toBe('draft');
       expect(unit.lessons).toEqual([]);
       expect(unit.questions).toEqual([]);
@@ -59,6 +62,32 @@ describe('shipped content', () => {
     }
     expect(loodusopetusOpikCourse.settings).toMatchObject({ testLength: 20, passNumerator: 95, passDenominator: 100, levelDistribution: { factual: 8, understanding: 7, application: 5 } });
     expect(loodusopetusOpikCourse.learners).toEqual(['kiur']);
+  });
+
+  it('Unit 12 "Kaart": ready, publishable without warnings, all six answer types, 20-question tests buildable', () => {
+    const unit12 = loodusopetusOpikCourse.units.find((unit) => unit.number === 12)!;
+    expect(unit12).toMatchObject({ id: 'lo-opik-u12', status: 'ready', contentVersion: '2026-10-17.1', pages: { from: 50, to: 53 } });
+    const result = validateUnit(unit12, loodusopetusOpikCourse, { imageExists: () => true });
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.publishable).toBe(true);
+    expect(result.buildability?.ok).toBe(true);
+    expect(result.stats).toMatchObject({
+      lessons: 4, requiredLessons: 4, sections: 15, blocks: 62, objectives: 8, requiredObjectives: 8,
+      questions: 94, practiceQuestions: 94, testQuestions: 94, testVariantGroups: 68,
+      testLevels: { factual: 29, understanding: 29, application: 36 },
+      answerTypes: { single_choice: 65, multiple_selection: 5, matching: 5, grouping: 4, ordering: 3, diagram_hotspot: 12 }
+    });
+    // Every hotspot answer names a region its diagram draws.
+    const diagrams = new Set<string>();
+    for (const question of unit12.questions) {
+      if (question.answer.type !== 'diagram_hotspot') continue;
+      diagrams.add(question.answer.diagramId);
+      expect(diagramRegionIds(question.answer.diagramId), question.id).toContain(question.answer.correctRegionId);
+    }
+    expect([...diagrams].sort()).toEqual(['u12-aerial-vs-map', 'u12-globe-flatmap', 'u12-legend-town', 'u12-orange-peel']);
+    // All IDs are ASCII (the validator's ID rule).
+    expect(JSON.stringify(unit12.questions.map((question) => question.id))).toMatch(/^[\x00-\x7f]*$/);
   });
 
   it('Unit 10 is not publishable when its photo file is missing', () => {

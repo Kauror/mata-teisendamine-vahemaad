@@ -22,7 +22,7 @@ import { childHandlers } from '@/lib/server/textbook/http';
 // DB-backed tests of the textbook server (SPEC B12 1–19 server side, A5, A7).
 // A child course "opik-test" is a real-learner copy of the two demo units
 // plus a metadata-only draft, so the child flow can be exercised without
-// touching the real course (Unit 10 is ready but unpublished, 11–22 are drafts).
+// touching the real course (Units 10 and 12 are ready but unpublished, the rest are drafts).
 
 const COURSE_ID = 'opik-test';
 const WATER = 'demo-vesi';
@@ -388,6 +388,7 @@ describe('parent controls', () => {
     expect(real.units).toHaveLength(13);
     expect(real.units[0]).toMatchObject({ number: 10, contentStatus: 'ready', published: false, validation: { publishable: true } });
     expect(real.units[1]).toMatchObject({ number: 11, contentStatus: 'draft', published: false, validation: { publishable: false } });
+    expect(real.units[2]).toMatchObject({ number: 12, contentStatus: 'ready', published: false, validation: { publishable: true } });
     expect(overview.courses[1]).toMatchObject({ previewOnly: true, learners: [] });
     expect(overview.courses[1].units.every((unit) => unit.progress.length === 0 && unit.validation.publishable)).toBe(true);
     const water = overview.courses[2].units[0];
@@ -507,8 +508,8 @@ describe('preview isolation (A5, A6)', () => {
     playTest(kiur(), COURSE_ID, WATER, 0);
     const view = getCourseOverview(preview(), COURSE_ID);
     expect(view.units.map((unit) => [unit.unitId, unit.status])).toEqual([[WATER, 'start_learning'], [PLANT, 'locked']]);
-    // The real course: ready Unit 10 is in the preview, nothing is published for Kiur.
-    expect(getCourseOverview(preview(), 'loodusopetus-opik').units.map((unit) => [unit.unitId, unit.status])).toEqual([['lo-opik-u10', 'start_learning']]);
+    // The real course: ready Units 10 and 12 are in the preview (12 opens after 10), nothing is published for Kiur.
+    expect(getCourseOverview(preview(), 'loodusopetus-opik').units.map((unit) => [unit.unitId, unit.status])).toEqual([['lo-opik-u10', 'start_learning'], ['lo-opik-u12', 'locked']]);
     expect(getCourseOverview(kiur(), 'loodusopetus-opik').units).toEqual([]);
     expectCode(() => getUnitDetail(kiur(), 'loodusopetus-opik', 'lo-opik-u10'), 'forbidden');
   });
@@ -526,7 +527,8 @@ describe('preview isolation (A5, A6)', () => {
     expect(failed.result).toMatchObject({ correct: 18, total: 20, passed: false, reward: null });
     finishPractice(preview(), REAL, U10);
     const passed = playTest(preview(), REAL, U10, 1);
-    expect(passed.result).toMatchObject({ correct: 19, total: 20, passed: true, reward: null, nextUnitOpened: false });
+    // Passing opens the next ready unit of the preview (Unit 12; Unit 11 is a draft).
+    expect(passed.result).toMatchObject({ correct: 19, total: 20, passed: true, reward: null, nextUnitOpened: true });
     // The two tests froze 20 distinct-group questions each.
     for (const view of [failed.session, passed.session]) {
       const groups = testState(view.sessionId).snapshot.questions.map((frozen) => frozen.question.variantGroupId);
@@ -534,7 +536,43 @@ describe('preview isolation (A5, A6)', () => {
     }
     expect(realFootprint()).toEqual(before);
     expect(getCourseOverview(kiur(), REAL).units).toEqual([]);
-    expect(getCourseOverview(preview(), REAL).units.map((unit) => unit.unitId)).toEqual([U10]);
+    expect(getCourseOverview(preview(), REAL).units.map((unit) => unit.unitId)).toEqual([U10, 'lo-opik-u12']);
+  });
+
+  it('runs the real Unit 12 in the preview after Unit 10: read, practise with mistakes, 18/20 fails, targeted practice, 19/20 passes; Kiur sees nothing', () => {
+    useCourse(makeCourse());
+    const before = realFootprint();
+    const REAL = 'loodusopetus-opik';
+    const U10 = 'lo-opik-u10';
+    const U12 = 'lo-opik-u12';
+    // The preview keeps the child's order: Unit 12 opens when Unit 10 is passed.
+    expectCode(() => getUnitDetail(preview(), REAL, U12), 'locked');
+    readyForTest(preview(), REAL, U10);
+    expect(playTest(preview(), REAL, U10, 0).result).toMatchObject({ passed: true, nextUnitOpened: true, nextUnit: { unitId: U12 } });
+    expect(getCourseOverview(preview(), REAL).units.map((unit) => [unit.unitId, unit.status])).toEqual([[U10, 'passed'], [U12, 'start_learning']]);
+
+    const detail = getUnitDetail(preview(), REAL, U12);
+    expect(detail.lessons).toHaveLength(4);
+    readAll(preview(), REAL, U12);
+    finishPractice(preview(), REAL, U12, 3);
+    const failed = playTest(preview(), REAL, U12, 2);
+    expect(failed.result).toMatchObject({ correct: 18, total: 20, passed: false, reward: null });
+    finishPractice(preview(), REAL, U12);
+    const passed = playTest(preview(), REAL, U12, 1);
+    // Unit 13 is a draft, so nothing further opens.
+    expect(passed.result).toMatchObject({ correct: 19, total: 20, passed: true, reward: null, nextUnitOpened: false });
+    // Each test: 20 questions from 20 variant groups, 8/7/5, all eight objectives.
+    for (const view of [failed.session, passed.session]) {
+      const questions = testState(view.sessionId).snapshot.questions.map((frozen) => frozen.question);
+      expect(new Set(questions.map((question) => question.variantGroupId)).size).toBe(20);
+      const levels = { factual: 0, understanding: 0, application: 0 };
+      for (const question of questions) levels[question.cognitiveLevel] += 1;
+      expect(levels).toEqual({ factual: 8, understanding: 7, application: 5 });
+      expect(new Set(questions.map((question) => question.primaryObjectiveId)).size).toBe(8);
+    }
+    expect(realFootprint()).toEqual(before);
+    expect(getCourseOverview(kiur(), REAL).units).toEqual([]);
+    expectCode(() => getUnitDetail(kiur(), REAL, U12), 'forbidden');
   });
 
   it('"Lähtesta eelvaade" removes only preview rows (A7)', () => {

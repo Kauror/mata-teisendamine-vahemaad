@@ -13,6 +13,10 @@ parent preview shows it already). Units 11–22 are **metadata-only drafts**
 corrected textbook text. A preview-only demo course (`textbook-demo`) shows the whole flow
 to the parent.
 
+Unit 12 "Kaart" (`unit12.ts`: 4 lessons, 15 sections, 8 objectives, 94
+questions, 4 diagrams, no photos) is also `ready` and unpublished. The preview
+keeps the child's unit order, so there it opens once Unit 10 is passed.
+
 ## Architecture
 
 | Phase | What | Where |
@@ -124,7 +128,10 @@ that every marker lies in its region.
 3. **Lessons.** Keep the textbook wording. One section ≈ one phone screen. Link
    each required objective to a required lesson (`objectiveIds`).
 4. **New diagram?** Add its ID and regions to `diagramRegistry.ts` (and ask for
-   the SVG component in the UI layer).
+   the SVG component in the UI layer). A unit's diagrams can live in their own
+   files (as Unit 12's do): registry data in `src/lib/textbook/diagrams/unitNN.ts`,
+   components and layout in `src/app/components/textbook/diagrams/unitNN/`,
+   each spread into `diagramRegistry.ts`, `diagramLayout.ts` and `diagrams/index.tsx`.
 5. **Questions.** Per required objective: at least 2 practice questions, and
    several distinct variant groups of test questions across the three levels.
    Aim for 10–15 practice and 30–40 test-eligible questions in ≥ 30 groups.
