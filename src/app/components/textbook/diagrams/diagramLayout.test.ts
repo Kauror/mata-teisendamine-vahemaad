@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DIAGRAMS } from '@/lib/textbook/diagramRegistry';
-import { DIAGRAM_LAYOUTS, MARKER_RADIUS, estimateTextWidth, labelExtent } from '@/app/components/textbook/diagrams/diagramLayout';
+import { DIAGRAM_LAYOUTS, MARKER_RADIUS, estimateTextWidth, labelBottom, labelExtent } from '@/app/components/textbook/diagrams/diagramLayout';
+import { UNIT11_COMPONENT_FILES } from '@/app/components/textbook/diagrams/unit11/layout';
 import { aboveSightLine, above, surfacePoint } from '@/app/components/textbook/diagrams/curvedSurface';
 import {
   BEACH_EYE_POINT, BEACH_HORIZON, BEACH_X, FAR_SHIP_X, HEIGHT_SEA, NEAR_SHIP_X, SHIP_EYE, SHIP_HORIZON, SHIP_HULL_TOP, SHIP_MAST_TOP, SHIP_SEA,
@@ -21,7 +22,8 @@ const COMPONENT_FILES: Record<string, string> = {
   'u10-ancient-earth': 'AncientEarthDiagram.tsx',
   'u10-lunar-eclipse': 'LunarEclipseDiagram.tsx',
   'u10-ship-horizon': 'ShipHorizonDiagram.tsx',
-  'u10-observer-height': 'ObserverHeightDiagram.tsx'
+  'u10-observer-height': 'ObserverHeightDiagram.tsx',
+  ...UNIT11_COMPONENT_FILES
 };
 
 // The narrowest picture a phone draws: 360 px screen − page, card and diagram
@@ -60,6 +62,7 @@ describe('textbook diagrams', () => {
           const extent = labelExtent(label, text);
           expect(extent.left, `${diagram.id}/${region.id} "${text}" left`).toBeGreaterThanOrEqual(EDGE);
           expect(extent.right, `${diagram.id}/${region.id} "${text}" right`).toBeLessThanOrEqual(layout.width - EDGE);
+          expect(labelBottom(label, text), `${diagram.id}/${region.id} "${text}" last line`).toBeLessThanOrEqual(layout.height);
         }
         expect(label.y - label.fontSize).toBeGreaterThanOrEqual(0);
         expect(label.y).toBeLessThanOrEqual(layout.height);

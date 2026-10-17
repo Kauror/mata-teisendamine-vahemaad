@@ -1,3 +1,5 @@
+import { UNIT11_LAYOUTS } from '@/app/components/textbook/diagrams/unit11/layout';
+
 // Where each registered diagram puts its region labels and hotspot markers,
 // as data, so a unit test can prove every label fits inside the picture at
 // the font widths CI renders with (DejaVu Sans Bold: CI has no Nunito and its
@@ -12,6 +14,8 @@ export type LabelLayout = {
   fontSize: number;
   // Drawn on a dark shape: uses the light ink.
   onShape?: boolean;
+  // Wrap onto further lines (LABEL_LINE_HEIGHT em apart) wider than this; y is the first baseline.
+  wrap?: number;
 };
 export type MarkerLayout = { x: number; y: number };
 export type RegionLayout = { label: LabelLayout; marker: MarkerLayout };
@@ -99,7 +103,9 @@ export const DIAGRAM_LAYOUTS: Record<string, DiagramLayout> = {
       { text: 'silmapiir', label: { x: 6, y: 250, anchor: 'start', fontSize: NOTE_FONT_SIZE, onShape: true } },
       { text: 'silmapiir', label: { x: 334, y: 268, anchor: 'end', fontSize: NOTE_FONT_SIZE, onShape: true } }
     ]
-  }
+  },
+  // Later units keep their layouts next to their components (diagrams/unitNN/layout.ts).
+  ...UNIT11_LAYOUTS
 };
 
 // DejaVu Sans Bold advance widths in em (font units / 2048), for the letters
@@ -121,9 +127,28 @@ export function estimateTextWidth(text: string, fontSize: number): number {
   return (units / 2048) * fontSize * 1.05;
 }
 
-// Horizontal extent of a label as drawn.
+export const LABEL_LINE_HEIGHT = 1.15;
+
+// The lines a label is drawn on: one, unless `wrap` is set and the text is wider.
+export function labelLines(label: LabelLayout, text: string): string[] {
+  if (!label.wrap) return [text];
+  const lines: string[] = [];
+  for (const word of text.split(' ')) {
+    const last = lines[lines.length - 1];
+    if (last !== undefined && estimateTextWidth(`${last} ${word}`, label.fontSize) <= label.wrap) lines[lines.length - 1] = `${last} ${word}`;
+    else lines.push(word);
+  }
+  return lines;
+}
+
+// Baseline of a label's last line.
+export function labelBottom(label: LabelLayout, text: string): number {
+  return label.y + (labelLines(label, text).length - 1) * label.fontSize * LABEL_LINE_HEIGHT;
+}
+
+// Horizontal extent of a label as drawn (its widest line).
 export function labelExtent(label: LabelLayout, text: string): { left: number; right: number } {
-  const width = estimateTextWidth(text, label.fontSize);
+  const width = Math.max(...labelLines(label, text).map((line) => estimateTextWidth(line, label.fontSize)));
   if (label.anchor === 'start') return { left: label.x, right: label.x + width };
   if (label.anchor === 'end') return { left: label.x - width, right: label.x };
   return { left: label.x - width / 2, right: label.x + width / 2 };

@@ -159,6 +159,9 @@
   --tb-dia-hull:#92400e; --tb-dia-hull-line:#451a03; --tb-dia-sail:#fff; --tb-dia-sail-line:#64748b; --tb-dia-flag:#dc2626; --tb-dia-person:#0b1b45;
   --tb-dia-sight:#7c3aed; --tb-dia-sight-far:#db2777; --tb-dia-hidden:#64748b; --tb-dia-sand:#fde68a; --tb-dia-sand-line:#ca8a04; --tb-dia-rock:#a8a29e; --tb-dia-rock-line:#57534e;
   --tb-dia-tower:#f8fafc; --tb-dia-tower-line:#475569; --tb-dia-tower-band:#dc2626;
+  /* Unit 11 "Gloobus" diagrams. */
+  --tb-dia-relief-mid:#e9c46a; --tb-dia-relief-high:#9a5b2a; --tb-dia-pol-sea:#bfdbfe; --tb-dia-pol-a:#f9a8d4; --tb-dia-pol-b:#fde047; --tb-dia-pol-c:#c4b5fd; --tb-dia-pol-d:#fdba74;
+  --tb-dia-tint-a:#dbeafe; --tb-dia-tint-b:#fef3c7; --tb-dia-grid:#1e3a8a; --tb-dia-key-line:#dc2626; --tb-dia-estonia:#facc15;
   --tb-photo-bg:#020617;
 }
 /* Subject accents. The card stays white and the icon tile carries the colour,
@@ -1537,6 +1540,25 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-diagram-rock{fill:var(--tb-dia-rock);stroke:var(--tb-dia-rock-line);stroke-width:1.5}
 .tb-diagram-tower{fill:var(--tb-dia-tower);stroke:var(--tb-dia-tower-line);stroke-width:1.5;stroke-linejoin:round}
 .tb-diagram-tower-band{fill:var(--tb-dia-tower-band)}
+/* Unit 11 "Gloobus". */
+.tb-diagram-relief-mid{fill:var(--tb-dia-relief-mid)}
+.tb-diagram-relief-high{fill:var(--tb-dia-relief-high)}
+.tb-diagram-pol-sea{fill:var(--tb-dia-pol-sea)}
+.tb-diagram-pol-a{fill:var(--tb-dia-pol-a)}
+.tb-diagram-pol-b{fill:var(--tb-dia-pol-b)}
+.tb-diagram-pol-c{fill:var(--tb-dia-pol-c)}
+.tb-diagram-pol-d{fill:var(--tb-dia-pol-d)}
+.tb-diagram-border{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:1.5;stroke-linejoin:round}
+.tb-diagram-tint-a{fill:var(--tb-dia-tint-a)}
+.tb-diagram-tint-b{fill:var(--tb-dia-tint-b)}
+.tb-diagram-axis{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;stroke-dasharray:8 5;stroke-linecap:round}
+.tb-diagram-pole{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:2.5}
+.tb-diagram-rotation{fill:none;stroke:var(--tb-dia-ink);stroke-width:2;stroke-linecap:round}
+.tb-diagram-rotation-head{fill:var(--tb-dia-ink)}
+.tb-diagram-key-line{fill:none;stroke:var(--tb-dia-key-line);stroke-width:5;stroke-linecap:round}
+.tb-diagram-grid-line{fill:none;stroke:var(--tb-dia-grid);stroke-width:2.5;stroke-linecap:round}
+.tb-diagram-grid-line.tb-diagram-grid-faint{stroke-width:1.5;opacity:.6}
+.tb-diagram-estonia{fill:var(--tb-dia-estonia);stroke:var(--tb-dia-ink);stroke-width:2}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}

@@ -2,7 +2,7 @@
 
 import type { KeyboardEvent, ReactNode } from 'react';
 import { getDiagram, type DiagramDefinition } from '@/lib/textbook/diagramRegistry';
-import { DIAGRAM_LAYOUTS, MARKER_FONT_SIZE, MARKER_RADIUS } from '@/app/components/textbook/diagrams/diagramLayout';
+import { DIAGRAM_LAYOUTS, LABEL_LINE_HEIGHT, MARKER_FONT_SIZE, MARKER_RADIUS, labelLines, type LabelLayout } from '@/app/components/textbook/diagrams/diagramLayout';
 
 // Shared frame for the registered diagrams. `lesson` mode shows the real
 // region labels; `hotspot` mode hides them and draws only the neutral letter
@@ -65,6 +65,13 @@ export function DiagramNotes({ diagramId, mode }: { diagramId: string; mode: Dia
   );
 }
 
+// A label's text: plain, or one <tspan> per line when its layout wraps it.
+function LabelText({ label, text }: { label: LabelLayout; text: string }) {
+  const lines = labelLines(label, text);
+  if (lines.length === 1) return <>{text}</>;
+  return <>{lines.map((line, index) => <tspan key={index} x={label.x} dy={index === 0 ? undefined : `${LABEL_LINE_HEIGHT}em`}>{line}</tspan>)}</>;
+}
+
 // One region: its drawing, an invisible hit area of at least 44 × 44, and its
 // label or marker. In hotspot mode it is a button.
 export function DiagramRegion({ diagramId, regionId, props, hit, children }: {
@@ -108,7 +115,7 @@ export function DiagramRegion({ diagramId, regionId, props, hit, children }: {
       {children}
       {showLabel ? (
         <text className={layout.label.onShape ? 'tb-diagram-label tb-diagram-label-light' : 'tb-diagram-label'} x={layout.label.x} y={layout.label.y} textAnchor={layout.label.anchor} fontSize={layout.label.fontSize}>
-          {props.mode === 'reveal' ? `${region.marker} – ${region.label}` : region.label}
+          <LabelText label={layout.label} text={props.mode === 'reveal' ? `${region.marker} – ${region.label}` : region.label} />
         </text>
       ) : (
         <g className='tb-diagram-marker'>

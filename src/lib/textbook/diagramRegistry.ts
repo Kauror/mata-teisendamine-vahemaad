@@ -1,3 +1,5 @@
+import { UNIT11_DIAGRAMS } from '@/lib/textbook/diagrams/unit11';
+
 // The diagrams content may reference — data only. Every `diagram` block,
 // `diagram` question context and `diagram_hotspot` question names one of these
 // IDs, and the validator refuses anything else. The React SVG component for
@@ -107,7 +109,9 @@ export const DIAGRAMS: readonly DiagramDefinition[] = [
       { id: 'beach', label: 'rannalt', marker: 'A', position: 'vasakpoolne vaatluskoht' },
       { id: 'tower', label: 'tornist', marker: 'B', position: 'parempoolne vaatluskoht' }
     ]
-  }
+  },
+  // Later units keep their diagrams in their own file (src/lib/textbook/diagrams/).
+  ...UNIT11_DIAGRAMS
 ];
 
 const BY_ID = new Map(DIAGRAMS.map((diagram) => [diagram.id, diagram]));
