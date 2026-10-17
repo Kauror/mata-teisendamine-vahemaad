@@ -102,8 +102,9 @@ test('Kiur gets one Loodusõpetus card, to the textbook, only while a unit is pu
     await expect(scienceCards()).toHaveCount(1);
     await expect(scienceCards()).toHaveAttribute('href', '/kiur/loodusopetus');
 
-    await scienceCards().click();
-    await expect(page).toHaveURL(/\/kiur\/loodusopetus$/);
+    // Kiur's page can open with the "yesterday" popup over it, so the card is
+    // checked by its target (above) and the page is opened directly.
+    await navigateStable(page, '/kiur/loodusopetus');
     await expect(page.getByRole('heading', { name: /Loodusõpetus/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /Alusta harjutust/ })).toHaveCount(0);
     await expect(page.getByRole('link', { name: /Õpiku õppetükid/ })).toHaveAttribute('href', '/kiur/loodusopetus/opik');
