@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DIAGRAMS } from '@/lib/textbook/diagramRegistry';
-import { DIAGRAM_LAYOUTS, MARKER_RADIUS, estimateTextWidth, labelExtent } from '@/app/components/textbook/diagrams/diagramLayout';
+import { DIAGRAM_LAYOUTS, MARKER_RADIUS, estimateTextWidth, labelBottom, labelExtent } from '@/app/components/textbook/diagrams/diagramLayout';
+import { UNIT11_COMPONENT_FILES } from '@/app/components/textbook/diagrams/unit11/layouts';
+import { UNIT12_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit12/layouts';
+import { UNIT13_COMPONENT_FILES } from '@/app/components/textbook/diagrams/unit13/layouts';
+import { U14_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit14/layouts';
 import { aboveSightLine, above, surfacePoint } from '@/app/components/textbook/diagrams/curvedSurface';
 import {
   BEACH_EYE_POINT, BEACH_HORIZON, BEACH_X, FAR_SHIP_X, HEIGHT_SEA, NEAR_SHIP_X, SHIP_EYE, SHIP_HORIZON, SHIP_HULL_TOP, SHIP_MAST_TOP, SHIP_SEA,
@@ -21,7 +25,11 @@ const COMPONENT_FILES: Record<string, string> = {
   'u10-ancient-earth': 'AncientEarthDiagram.tsx',
   'u10-lunar-eclipse': 'LunarEclipseDiagram.tsx',
   'u10-ship-horizon': 'ShipHorizonDiagram.tsx',
-  'u10-observer-height': 'ObserverHeightDiagram.tsx'
+  'u10-observer-height': 'ObserverHeightDiagram.tsx',
+  ...UNIT11_COMPONENT_FILES,
+  ...UNIT12_DIAGRAM_FILES,
+  ...UNIT13_COMPONENT_FILES,
+  ...U14_DIAGRAM_FILES
 };
 
 // The narrowest picture a phone draws: 360 px screen − page, card and diagram
@@ -60,6 +68,7 @@ describe('textbook diagrams', () => {
           const extent = labelExtent(label, text);
           expect(extent.left, `${diagram.id}/${region.id} "${text}" left`).toBeGreaterThanOrEqual(EDGE);
           expect(extent.right, `${diagram.id}/${region.id} "${text}" right`).toBeLessThanOrEqual(layout.width - EDGE);
+          expect(labelBottom(label, text), `${diagram.id}/${region.id} "${text}" last line`).toBeLessThanOrEqual(layout.height);
         }
         expect(label.y - label.fontSize).toBeGreaterThanOrEqual(0);
         expect(label.y).toBeLessThanOrEqual(layout.height);
@@ -146,6 +155,26 @@ describe('textbook diagrams', () => {
       expect(point.x).toBeLessThan(356);
       expect(point.y).toBeLessThan(266);
       expect(Math.abs(surfacePoint(HEIGHT_SEA, point.x).y - point.y)).toBeLessThan(0.01);
+    }
+  });
+
+  it('never lets two labels or notes of one unit diagram overlap (feedback text "B – leht" included)', () => {
+    type Box = { name: string; left: number; right: number; top: number; bottom: number };
+    for (const diagram of DIAGRAMS.filter((item) => !item.demo)) {
+      const layout = DIAGRAM_LAYOUTS[diagram.id];
+      const boxes: Box[] = [
+        ...diagram.regions.map((region) => {
+          const label = layout.regions[region.id].label;
+          return { name: region.id, ...labelExtent(label, `${region.marker} – ${region.label}`), top: label.y - label.fontSize, bottom: label.y };
+        }),
+        ...(layout.notes ?? []).map((note) => ({ name: `note "${note.text}"`, ...labelExtent(note.label, note.text), top: note.label.y - note.label.fontSize, bottom: note.label.y }))
+      ];
+      for (const [index, box] of boxes.entries()) {
+        for (const other of boxes.slice(index + 1)) {
+          const overlap = box.left < other.right && other.left < box.right && box.top < other.bottom && other.top < box.bottom;
+          expect(overlap, `${diagram.id}: ${box.name} overlaps ${other.name}`).toBe(false);
+        }
+      }
     }
   });
 

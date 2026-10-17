@@ -92,11 +92,9 @@ describe('childExerciseCards study-page routing', () => {
     expect(card?.route).toBe('/opi/mootuhikud-pikkused');
   });
 
-  it('routes the fixed science card to its canonical study page', () => {
-    // Science is a fixed card (route overridden after merge); the study rewrite must still apply.
-    const cards = childExerciseCards('kiur', []);
-    const card = cards.find((c) => c.id === 'kiur.science.loodusopetus');
-    expect(card?.route).toBe('/opi/loodusopetus');
+  it('gives the archived science exercise no card, so nothing links to its study page', () => {
+    // The study page and runner stay (archived for reuse); only the card is gone.
+    expect(childExerciseCards('kiur', []).find((c) => c.id === 'kiur.science.loodusopetus')).toBeUndefined();
   });
 
   it('still routes an ordinary maths exercise straight to the runner', () => {

@@ -1,3 +1,4 @@
+import { isArchivedExercise } from '@/lib/childExerciseCards';
 import db from '@/lib/db';
 import { KIUR_MATH_TOPICS } from '@/lib/kiurMathTopics';
 import { nowIso, todayDateString, type Learner } from '@/lib/tasks';
@@ -117,6 +118,8 @@ const STATIC_LEARNING_EXERCISES: LearningExerciseCatalogEntry[] = [
     routePath: '/kiur/lugemine',
     sortOrder: 600
   },
+  // Archived (FIXED_CHILD_EXERCISES in childExerciseCards.ts): still synced so
+  // its row and status survive, but left out of getLearningExerciseCatalog.
   {
     id: 'kiur.science.loodusopetus',
     title: 'Loodusõpetus',
@@ -224,7 +227,17 @@ export function syncLearningExerciseCatalog() {
   catalogSynced = true;
 }
 
+// The catalogue every consumer sees: child pages, the daily rotation, the
+// parent's library and the offline catalogue. Archived exercises
+// (FIXED_CHILD_EXERCISES `archived: true`) are left out, so they cannot be shown
+// or re-enabled; their rows and the parent's last status stay in the database.
 export function getLearningExerciseCatalog() {
+  return getFullLearningExerciseCatalog().filter((exercise) => !isArchivedExercise(exercise.id));
+}
+
+// Including archived exercises: only for resolving which exercise a recorded
+// attempt belongs to, so an archived exercise's attempts keep their identity.
+function getFullLearningExerciseCatalog() {
   syncLearningExerciseCatalog();
   const rows = db.prepare(`
     SELECT
@@ -283,7 +296,7 @@ export function findLearningExerciseForAttempt(input: {
   topic: string;
   category: string;
 }) {
-  return getLearningExerciseCatalog().find((exercise) => {
+  return getFullLearningExerciseCatalog().find((exercise) => {
     if (!exercise.learnerScope.includes(input.learner)) return false;
     if (exercise.subject !== input.subject) return false;
 
@@ -303,7 +316,7 @@ export function isLearningExerciseActiveForAttempt(input: {
   category: string;
 }) {
   const exercise = findLearningExerciseForAttempt(input);
-  if (!exercise) return false;
+  if (!exercise || isArchivedExercise(exercise.id)) return false;
   const status = exercise.childStatus[input.learner];
   return status === 'rotation' || status === 'permanent';
 }

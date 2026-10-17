@@ -159,6 +159,18 @@
   --tb-dia-hull:#92400e; --tb-dia-hull-line:#451a03; --tb-dia-sail:#fff; --tb-dia-sail-line:#64748b; --tb-dia-flag:#dc2626; --tb-dia-person:#0b1b45;
   --tb-dia-sight:#7c3aed; --tb-dia-sight-far:#db2777; --tb-dia-hidden:#64748b; --tb-dia-sand:#fde68a; --tb-dia-sand-line:#ca8a04; --tb-dia-rock:#a8a29e; --tb-dia-rock-line:#57534e;
   --tb-dia-tower:#f8fafc; --tb-dia-tower-line:#475569; --tb-dia-tower-band:#dc2626;
+  /* Unit 11 "Gloobus" diagrams. */
+  --tb-dia-relief-mid:#e9c46a; --tb-dia-relief-high:#9a5b2a; --tb-dia-pol-sea:#bfdbfe; --tb-dia-pol-a:#f9a8d4; --tb-dia-pol-b:#fde047; --tb-dia-pol-c:#c4b5fd; --tb-dia-pol-d:#fdba74;
+  --tb-dia-tint-a:#dbeafe; --tb-dia-tint-b:#fef3c7; --tb-dia-grid:#1e3a8a; --tb-dia-key-line:#dc2626; --tb-dia-estonia:#facc15;
+  /* Unit 12 "Kaart" diagrams. */
+  --tb-u12-water:#93c5fd; --tb-u12-water-line:#2563eb; --tb-u12-land:#86efac; --tb-u12-land-line:#15803d; --tb-u12-grid:#1e3a8a; --tb-u12-stand:#78716c; --tb-u12-stand-line:#44403c;
+  --tb-u12-paper:#fffdf5; --tb-u12-paper-line:#94a3b8; --tb-u12-shadow:#1c1917; --tb-u12-road:#fff; --tb-u12-road-line:#94a3b8;
+  --tb-u12-building:#9ca3af; --tb-u12-building-line:#4b5563; --tb-u12-park:#bbf7d0; --tb-u12-park-line:#16a34a; --tb-u12-tree:#15803d; --tb-u12-symbol:#9f1239;
+  --tb-u12-bridge:#f5f5f4; --tb-u12-bridge-line:#292524; --tb-u12-blank:#cbd5e1;
+  --tb-u12-orange:#f97316; --tb-u12-orange-line:#c2410c; --tb-u12-orange-light:#fdba74; --tb-u12-pith:#fff7ed; --tb-u12-stem:#713f12; --tb-u12-leaf:#22c55e;
+  --tb-u12-table:#ead7b7; --tb-u12-table-line:#b08d57;
+  --tb-u12-aerial-ground:#6f8f4e; --tb-u12-aerial-field:#a3a65a; --tb-u12-aerial-grass:#5d7f3f; --tb-u12-aerial-water:#2f6f7e; --tb-u12-aerial-bank:#4a5a35; --tb-u12-aerial-road:#c2bcb0;
+  --tb-u12-roof-0:#b45309; --tb-u12-roof-1:#78716c; --tb-u12-roof-2:#a8a29e; --tb-u12-roof-landmark:#991b1b; --tb-u12-ridge:#fef3c7; --tb-u12-crown:#2f5d2a; --tb-u12-crown-light:#5f8f45;
   --tb-photo-bg:#020617;
 }
 /* Subject accents. The card stays white and the icon tile carries the colour,
@@ -1537,6 +1549,131 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-diagram-rock{fill:var(--tb-dia-rock);stroke:var(--tb-dia-rock-line);stroke-width:1.5}
 .tb-diagram-tower{fill:var(--tb-dia-tower);stroke:var(--tb-dia-tower-line);stroke-width:1.5;stroke-linejoin:round}
 .tb-diagram-tower-band{fill:var(--tb-dia-tower-band)}
+/* Unit 11 "Gloobus". */
+.tb-diagram-relief-mid{fill:var(--tb-dia-relief-mid)}
+.tb-diagram-relief-high{fill:var(--tb-dia-relief-high)}
+.tb-diagram-pol-sea{fill:var(--tb-dia-pol-sea)}
+.tb-diagram-pol-a{fill:var(--tb-dia-pol-a)}
+.tb-diagram-pol-b{fill:var(--tb-dia-pol-b)}
+.tb-diagram-pol-c{fill:var(--tb-dia-pol-c)}
+.tb-diagram-pol-d{fill:var(--tb-dia-pol-d)}
+.tb-diagram-border{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:1.5;stroke-linejoin:round}
+.tb-diagram-tint-a{fill:var(--tb-dia-tint-a)}
+.tb-diagram-tint-b{fill:var(--tb-dia-tint-b)}
+.tb-diagram-axis{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;stroke-dasharray:8 5;stroke-linecap:round}
+.tb-diagram-pole{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:2.5}
+.tb-diagram-rotation{fill:none;stroke:var(--tb-dia-ink);stroke-width:2;stroke-linecap:round}
+.tb-diagram-rotation-head{fill:var(--tb-dia-ink)}
+.tb-diagram-key-line{fill:none;stroke:var(--tb-dia-key-line);stroke-width:5;stroke-linecap:round}
+.tb-diagram-grid-line{fill:none;stroke:var(--tb-dia-grid);stroke-width:2.5;stroke-linecap:round}
+.tb-diagram-grid-line.tb-diagram-grid-faint{stroke-width:1.5;opacity:.6}
+.tb-diagram-estonia{fill:var(--tb-dia-estonia);stroke:var(--tb-dia-ink);stroke-width:2}
+/* Unit 12 "Kaart". */
+.tb-u12-water{fill:var(--tb-u12-water);stroke:var(--tb-u12-water-line);stroke-width:1.5}
+.tb-u12-land{fill:var(--tb-u12-land);stroke:var(--tb-u12-land-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u12-graticule{fill:none;stroke:var(--tb-u12-grid);stroke-width:1;opacity:.3}
+.tb-u12-globe-shade{fill:var(--tb-dia-earth-night);opacity:.2}
+.tb-u12-globe-edge{fill:none;stroke:var(--tb-u12-water-line);stroke-width:2}
+.tb-u12-stand{fill:var(--tb-u12-stand);stroke:var(--tb-u12-stand-line);stroke-width:1.5}
+.tb-u12-stand-line{fill:none;stroke:var(--tb-u12-stand-line);stroke-width:4;stroke-linecap:round}
+.tb-u12-sheet-shadow{fill:var(--tb-u12-shadow);opacity:.15}
+.tb-u12-sheet-edge{fill:none;stroke:var(--tb-u12-paper-line);stroke-width:2;stroke-linejoin:round}
+.tb-u12-fold{fill:none;stroke:var(--tb-u12-paper);stroke-width:1.5;opacity:.8}
+.tb-u12-orange{fill:var(--tb-u12-orange);stroke:var(--tb-u12-orange-line);stroke-width:2}
+.tb-u12-orange-light{fill:var(--tb-u12-orange-light);opacity:.6}
+.tb-u12-orange-dots{stroke:var(--tb-u12-orange-line);stroke-width:2.5;stroke-linecap:round;opacity:.5}
+.tb-u12-stem{stroke:var(--tb-u12-stem);stroke-width:4;stroke-linecap:round}
+.tb-u12-stem-dot{fill:var(--tb-u12-stem)}
+.tb-u12-leaf{fill:var(--tb-u12-leaf);stroke:var(--tb-u12-land-line);stroke-width:1.5}
+.tb-u12-table{fill:var(--tb-u12-table);stroke:var(--tb-u12-table-line);stroke-width:1.5}
+.tb-u12-table-grain{fill:none;stroke:var(--tb-u12-table-line);stroke-width:1;opacity:.4}
+.tb-u12-table-shadow{fill:var(--tb-u12-shadow);opacity:.12}
+.tb-u12-pith{fill:none;stroke:var(--tb-u12-orange-line);stroke-width:6;stroke-linejoin:round}
+.tb-u12-peel{fill:var(--tb-u12-orange);stroke:var(--tb-u12-pith);stroke-width:2.5;stroke-linejoin:round}
+.tb-u12-panel-edge{fill:none;stroke:var(--tb-dia-panel-line);stroke-width:2}
+.tb-u12-aerial-ground{fill:var(--tb-u12-aerial-ground)}
+.tb-u12-aerial-field{fill:var(--tb-u12-aerial-field);opacity:.8}
+.tb-u12-aerial-grass{fill:var(--tb-u12-aerial-grass)}
+.tb-u12-aerial-bank{fill:none;stroke:var(--tb-u12-aerial-bank);stroke-width:24;stroke-linecap:round}
+.tb-u12-aerial-water{fill:none;stroke:var(--tb-u12-aerial-water);stroke-width:18;stroke-linecap:round}
+.tb-u12-aerial-road{fill:none;stroke:var(--tb-u12-aerial-road);stroke-width:9}
+.tb-u12-aerial-bridge{fill:var(--tb-u12-aerial-road);stroke:var(--tb-u12-aerial-bank);stroke-width:1}
+.tb-u12-aerial-shadow{fill:var(--tb-u12-shadow);opacity:.35}
+.tb-u12-roof-0{fill:var(--tb-u12-roof-0)}
+.tb-u12-roof-1{fill:var(--tb-u12-roof-1)}
+.tb-u12-roof-2{fill:var(--tb-u12-roof-2)}
+.tb-u12-roof-landmark{fill:var(--tb-u12-roof-landmark)}
+.tb-u12-landmark-dome{fill:var(--tb-u12-roof-2);stroke:var(--tb-u12-ridge);stroke-width:1}
+.tb-u12-ridge{fill:none;stroke:var(--tb-u12-ridge);stroke-width:1.2;opacity:.7}
+.tb-u12-crown{fill:var(--tb-u12-crown)}
+.tb-u12-crown-light{fill:var(--tb-u12-crown-light)}
+.tb-u12-paper{fill:var(--tb-u12-paper)}
+.tb-u12-map-frame{stroke:var(--tb-u12-paper-line);stroke-width:1.5}
+.tb-u12-river{fill:none;stroke:var(--tb-u12-water);stroke-width:16;stroke-linecap:butt}
+.tb-u12-river.tb-u12-river-wide{stroke-width:22}
+.tb-u12-road-casing{fill:none;stroke:var(--tb-u12-road-line);stroke-width:12}
+.tb-u12-road{fill:none;stroke:var(--tb-u12-road);stroke-width:9}
+.tb-u12-building{fill:var(--tb-u12-building);stroke:var(--tb-u12-building-line);stroke-width:1.2}
+.tb-u12-park{fill:var(--tb-u12-park);stroke:var(--tb-u12-park-line);stroke-width:1.2}
+.tb-u12-park-path{fill:none;stroke:var(--tb-u12-paper);stroke-width:3;stroke-dasharray:4 3}
+.tb-u12-tree{fill:var(--tb-u12-tree);opacity:.75}
+.tb-u12-symbol{fill:var(--tb-u12-symbol)}
+.tb-u12-symbol-mark{fill:none;stroke:var(--tb-u12-paper);stroke-width:1.8;stroke-linejoin:round}
+.tb-u12-bridge{fill:var(--tb-u12-bridge)}
+.tb-u12-bridge-rail{fill:none;stroke:var(--tb-u12-bridge-line);stroke-width:2.5}
+.tb-u12-water-swatch{fill:var(--tb-u12-water)}
+.tb-u12-legend-water{fill:none;stroke:var(--tb-u12-water);stroke-width:12}
+.tb-u12-legend-box{fill:var(--tb-u12-paper);stroke:var(--tb-u12-paper-line);stroke-width:1.5}
+.tb-u12-legend-word{font-family:var(--font-display);font-weight:800;fill:var(--tb-dia-ink)}
+.tb-u12-legend-blank{fill:var(--tb-u12-blank)}
+/* Unit 13 "Kaardi mõõtkava" diagrams (existing palette tokens only). The
+   numbers drawn in a scale picture stay visible in hotspot questions. */
+.tb-u13-value{font-family:var(--font-display);font-weight:800;fill:var(--tb-dia-ink)}
+.tb-u13-tick-label{font-family:var(--font-display);font-weight:750;fill:var(--tb-dia-note)}
+.tb-u13-map-sea{fill:var(--tb-dia-globe-light)}
+.tb-u13-ink{fill:var(--tb-dia-ink)}
+.tb-u13-paper{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u13-line{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;stroke-linecap:round}
+.tb-u13-thin{fill:none;stroke:var(--tb-dia-ink);stroke-width:2;stroke-linecap:round}
+.tb-u13-road{fill:none;stroke:var(--tb-dia-soil);stroke-width:4;stroke-dasharray:9 6;stroke-linecap:round}
+.tb-u13-street{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:6;stroke-linecap:square}
+.tb-u13-small-road{fill:none;stroke:var(--tb-dia-soil);stroke-width:2;stroke-linecap:round}
+.tb-u13-inset{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:3 2}
+.tb-u13-place{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:2.5}
+/* Unit 14 "Kaartide mitmekesisus": fictional maps (existing diagram tokens only). */
+.tb-u14-sea{fill:var(--tb-dia-globe-light)}
+.tb-u14-panel{stroke:var(--tb-dia-sea-line);stroke-width:1.5}
+.tb-u14-land{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:2;stroke-linejoin:round}
+.tb-u14-mountain{fill:var(--tb-dia-soil);stroke:var(--tb-dia-soil-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u14-snow{fill:var(--tb-dia-ink-light)}
+.tb-u14-river{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:5;stroke-linecap:round}
+.tb-u14-river.tb-u14-river-thin{stroke-width:3.5}
+.tb-u14-water{fill:var(--tb-dia-sea);stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-u14-country-base{fill:var(--tb-dia-tower)}
+.tb-u14-country-right{fill:var(--tb-dia-petal);fill-opacity:.3}
+.tb-u14-country-left{fill:var(--tb-dia-sand)}
+.tb-u14-coast{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:2;stroke-linejoin:round}
+.tb-u14-border{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;stroke-dasharray:9 6}
+.tb-u14-capital{fill:var(--tb-dia-flag);stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-linejoin:round}
+.tb-u14-city{fill:var(--tb-dia-ink);stroke:var(--tb-dia-ink-light);stroke-width:2}
+.tb-u14-frame{fill:var(--tb-dia-tower)}
+.tb-u14-map-frame{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:1.5}
+.tb-u14-heading{font-family:var(--font-display);font-weight:800;fill:var(--tb-dia-ink)}
+.tb-u14-pop{stroke:var(--tb-dia-tower-line);stroke-width:1}
+.tb-u14-pop-a{fill:var(--tb-dia-panel-line)}
+.tb-u14-pop-c{fill:var(--tb-dia-sea)}
+.tb-u14-pop-b{fill:var(--tb-dia-sea-line)}
+.tb-u14-pop-pattern{stroke:none}
+.tb-u14-pattern-dot{fill:var(--tb-dia-sea-line)}
+.tb-u14-pattern-line{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:1.6;stroke-opacity:.6}
+.tb-u14-pop-edge{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:3;stroke-linejoin:round}
+.tb-u14-letter{font-family:var(--font-display);font-weight:900;fill:var(--tb-dia-ink);paint-order:stroke;stroke:var(--tb-dia-sky);stroke-width:3px;stroke-linejoin:round}
+.tb-u14-letter.tb-u14-letter-light{fill:var(--tb-dia-ink-light);stroke:none}
+.tb-u14-legend-text{font-family:var(--font-display);font-weight:750;fill:var(--tb-dia-ink)}
+/* The region fill covers its tap area here, so the choice is outlined on the shape itself. */
+.tb-region[data-selected="true"] .tb-u14-pop,.tb-region[data-selected="true"] .tb-u14-panel{stroke:var(--tb-dia-selected);stroke-width:4}
+.tb-region[data-correct="true"] .tb-u14-pop,.tb-region[data-correct="true"] .tb-u14-panel{stroke:var(--tb-dia-correct);stroke-width:4}
+.tb-region[data-wrong="true"] .tb-u14-pop,.tb-region[data-wrong="true"] .tb-u14-panel{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}

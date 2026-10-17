@@ -185,7 +185,7 @@ async function finishPracticeInUi(page: Page, keys: Map<string, Question>, seen:
     const id = await currentQuestionId(page);
     seen.push(id);
     await answerInUi(page, keys.get(id)!, true);
-    await page.getByRole('button', { name: 'Kontrolli' }).click();
+    await page.getByRole('button', { name: 'Kontrolli', exact: true }).click();
     await expect(page.locator('.tb-feedback')).toBeVisible();
   }
   throw new Error('practice did not finish');
@@ -289,7 +289,7 @@ test('preview practice: immediate feedback, correction and resume', async ({ pag
   const firstId = await currentQuestionId(page);
   const first = keys.get(firstId)!;
   await answerInUi(page, first, false);
-  await page.getByRole('button', { name: 'Kontrolli' }).click();
+  await page.getByRole('button', { name: 'Kontrolli', exact: true }).click();
   const feedback = page.locator('.tb-feedback');
   await expect(feedback).toHaveAttribute('data-correct', 'false');
   await expect(feedback).toContainText('Pole päris õige');
@@ -312,7 +312,7 @@ test('preview practice: immediate feedback, correction and resume', async ({ pag
     const id = await currentQuestionId(page);
     seen.push(id);
     await answerInUi(page, keys.get(id)!, true);
-    await page.getByRole('button', { name: 'Kontrolli' }).click();
+    await page.getByRole('button', { name: 'Kontrolli', exact: true }).click();
     await expect(page.locator('.tb-feedback')).toHaveAttribute('data-correct', 'true');
     await page.getByRole('button', { name: 'Edasi' }).click();
   }
@@ -443,9 +443,9 @@ test('parent panel: drafts cannot be published, questions with answers, preview 
   await apiPost(page, `${PREVIEW_API}/courses/${DEMO}/units/${WATER}/lessons/${water.lessons[0].id}/complete`, { actionId: actionId() });
 
   await page.getByRole('button', { name: /Loodusõpetuse õppetükid/ }).click();
-  // Unit 11 is a metadata-only draft (Unit 10 is ready content, so it is not used here: it would publish).
-  const draft = page.locator('.tb-admin-unit[data-unit-id="lo-opik-u11"]');
-  await expect(draft).toContainText('Gloobus');
+  // Unit 22 is a metadata-only draft (Units 10–14 are ready content, so they are not used here: they would publish).
+  const draft = page.locator('.tb-admin-unit[data-unit-id="lo-opik-u22"]');
+  await expect(draft).toContainText('Loodusõnnetused');
   await expect(draft.locator('.tb-admin-chip').first()).toHaveText('Mustand');
   await draft.getByRole('button', { name: 'Avalda' }).click();
   await expect(draft.locator('.tb-admin-problems')).toContainText('Avaldada ei saa');
@@ -470,6 +470,8 @@ test('parent panel: drafts cannot be published, questions with answers, preview 
 });
 
 test('the child course list never shows demo units', async ({ page }) => {
+  // Several child routes compile on first use under `next dev`, now with five units of content.
+  test.setTimeout(90_000);
   await navigateStable(page, '/kiur/loodusopetus');
   await page.getByRole('link', { name: /Õpiku õppetükid/ }).click();
   await expect(page).toHaveURL(/\/kiur\/loodusopetus\/opik$/);
@@ -481,7 +483,7 @@ test('the child course list never shows demo units', async ({ page }) => {
   expect(course.ok()).toBe(true);
   const overview = await course.json() as { units: Array<{ unitId: string }> };
   expect(overview.units.some((unit) => unit.unitId.startsWith('demo-'))).toBe(false);
-  // Nothing of the real course is published yet (Unit 10 is ready but waits for the parent).
+  // Nothing of the real course is published yet (Units 10–14 are ready but wait for the parent).
   expect(overview.units).toEqual([]);
   expect((await page.request.get(`/api/textbook/courses/${DEMO}`)).ok()).toBe(false);
   expect((await page.request.get(`/api/textbook/courses/loodusopetus-opik/units/${WATER}`)).ok()).toBe(false);

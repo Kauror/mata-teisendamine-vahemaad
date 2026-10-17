@@ -16,6 +16,7 @@ export default function ChildExerciseGrid({
   initialExercises,
   remediationHref,
   remediationCount,
+  loodusopetusHref,
   completedExerciseIds,
   completedExerciseCounts
 }: {
@@ -23,6 +24,9 @@ export default function ChildExerciseGrid({
   initialExercises: ChildExerciseCard[];
   remediationHref?: string;
   remediationCount?: number;
+  // The Loodusõpetus page (the textbook course), once a unit is published for
+  // this child. Always shown, outside the daily exercise rotation.
+  loodusopetusHref?: string;
   // Kept so an older caller still marks cards done; one id means one attempt.
   completedExerciseIds?: string[];
   completedExerciseCounts?: Record<string, number>;
@@ -44,6 +48,15 @@ export default function ChildExerciseGrid({
     <section className='child-exercise-section' aria-labelledby={`${learner}-exercise-title`}>
       <h2 id={`${learner}-exercise-title`}>Harjutused</h2>
       <div className='child-exercise-grid'>
+        {loodusopetusHref ? (
+          <Link className='child-exercise-card' data-accent='teal' href={loodusopetusHref}>
+            <span className='child-exercise-icon' aria-hidden>🔬</span>
+            <span className='child-exercise-copy'>
+              <strong>Loodusõpetus</strong>
+              <small>Õpiku õppetükid: loe, harjuta ja tee test.</small>
+            </span>
+          </Link>
+        ) : null}
         {exercises.map((exercise) => (
           <Link key={exercise.id} className='child-exercise-card' data-accent={exercise.accent} href={exercise.route}>
             {doneCounts[exercise.id] ? (
@@ -76,7 +89,7 @@ export default function ChildExerciseGrid({
           </Link>
         ) : null}
       </div>
-      {exercises.length === 0 && !remediationHref ? <p className='recent-empty'>Harjutusi ei ole praegu aktiivne.</p> : null}
+      {exercises.length === 0 && !remediationHref && !loodusopetusHref ? <p className='recent-empty'>Harjutusi ei ole praegu aktiivne.</p> : null}
     </section>
   );
 }

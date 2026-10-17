@@ -8,7 +8,15 @@ The first course is Kiur's `loodusopetus-opik` ("Loodusõpetus – Õpiku
 õppetükid"). Unit 10 "Maa kuju" has its full content (`unit10.ts`: 4 lessons,
 12 sections, 6 objectives, 54 questions, 4 diagrams, 1 NASA photo); it is
 `ready` but stays unpublished for Kiur until the parent switches it on (the
-parent preview shows it already). Units 11–22 are **metadata-only drafts**
+parent preview shows it already). Unit 11 "Gloobus" (`unit11.ts`: 4 lessons,
+11 sections, 7 objectives, 74 questions, 4 diagrams) is likewise `ready` and
+unpublished, and so is Unit 12 "Kaart" (`unit12.ts`: 4 lessons, 15 sections,
+8 objectives, 94 questions, 4 diagrams, no photos), Unit 13 "Kaardi mõõtkava"
+(`unit13.ts`: 4 lessons, 15 sections, 8 objectives, 117 questions, 4 diagrams)
+and Unit 14 "Kaartide mitmekesisus" (`unit14.ts`: 4 lessons, 13 sections,
+8 objectives, 108 questions, 4 diagrams). The preview keeps the child's unit
+order: each ready unit opens there once the ready unit before it is passed.
+Units 15–22 are **metadata-only drafts**
 (number, title, pages); their lessons and questions are written later from the
 corrected textbook text. A preview-only demo course (`textbook-demo`) shows the whole flow
 to the parent.
@@ -110,7 +118,11 @@ neutral "Joonisel on tähtedega märgitud kohad A, B, C." Diagrams must read at
 375 px; no canvas, no heavy libraries. Positions of labels, markers and
 lesson-only `notes` ("Maa vari") live in `diagramLayout.ts`; its unit test
 checks label fit at DejaVu widths, ≥ 44 px tap areas on a 360 px phone and
-that every marker lies in its region.
+that every marker lies in its region. A long label may set `wrap` (max width)
+to break onto further lines. From Unit 11 on, a unit keeps its diagrams in its
+own files — registry data in `src/lib/textbook/diagrams/unitNN.ts`, components
+and layout in `src/app/components/textbook/diagrams/unitNN/` — spread into
+`DIAGRAMS`, `DIAGRAM_LAYOUTS` and `DIAGRAM_COMPONENTS` with one line each.
 
 ## Adding a new unit (step by step)
 
