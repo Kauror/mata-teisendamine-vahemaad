@@ -13,7 +13,8 @@ import {
 // Unit 11 "Gloobus": the content names only registered diagrams and regions,
 // the schematics are geometrically honest (orthographic projection), every
 // marker sits on what it marks, and no component draws text of its own.
-// (Hotspot rendering itself is checked in e2e/textbook-unit11.spec.ts.)
+// (Hotspot answer secrecy is checked for every ready unit in
+// ../hotspotNeutrality.test.ts and on the real page in e2e/textbook-real-units.spec.ts.)
 
 const IDS = ['u11-globe-types', 'u11-axis-poles', 'u11-equator-parallels', 'u11-meridians-estonia'];
 const marker = (diagramId: string, regionId: string) => DIAGRAM_LAYOUTS[diagramId].regions[regionId].marker;
