@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DIAGRAMS } from '@/lib/textbook/diagramRegistry';
 import { DIAGRAM_LAYOUTS, MARKER_RADIUS, estimateTextWidth, labelExtent } from '@/app/components/textbook/diagrams/diagramLayout';
+import { UNIT12_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit12/layout';
 import { aboveSightLine, above, surfacePoint } from '@/app/components/textbook/diagrams/curvedSurface';
 import {
   BEACH_EYE_POINT, BEACH_HORIZON, BEACH_X, FAR_SHIP_X, HEIGHT_SEA, NEAR_SHIP_X, SHIP_EYE, SHIP_HORIZON, SHIP_HULL_TOP, SHIP_MAST_TOP, SHIP_SEA,
@@ -21,7 +22,8 @@ const COMPONENT_FILES: Record<string, string> = {
   'u10-ancient-earth': 'AncientEarthDiagram.tsx',
   'u10-lunar-eclipse': 'LunarEclipseDiagram.tsx',
   'u10-ship-horizon': 'ShipHorizonDiagram.tsx',
-  'u10-observer-height': 'ObserverHeightDiagram.tsx'
+  'u10-observer-height': 'ObserverHeightDiagram.tsx',
+  ...UNIT12_DIAGRAM_FILES
 };
 
 // The narrowest picture a phone draws: 360 px screen − page, card and diagram
