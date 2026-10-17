@@ -69,6 +69,22 @@ describe('practice on the demo units', () => {
 });
 
 describe('correction rules', () => {
+  it('tells the child the topic comes back when a question for it was already planned', () => {
+    // Two planned questions on the same objective: a wrong first answer adds no
+    // extra correction, but the topic still comes back, and the child is told.
+    const planned: Question[] = [
+      fixtureQuestion({ id: 'p1', objective: 'o1', group: 'g1' }),
+      fixtureQuestion({ id: 'p2', objective: 'o1', group: 'g2' })
+    ];
+    const plannedUnit = fixtureUnit(planned, ['o1']);
+    const state = createPracticeState({ courseId: 'c1', unit: plannedUnit, settings: { practiceTarget: 2 }, seed: 1 });
+    expect(state.queue).toHaveLength(2);
+    const first = currentPracticeQuestion(state)!.question;
+    const result = recordPracticeAnswer(state, first.id, WRONG);
+    expect(result.feedback.correctionScheduled).toBe(true);
+    expect(result.state.queue.some((entry) => entry.objectiveId === 'o1')).toBe(true);
+  });
+
   // Objective o1 has three questions in two groups; o2 has two.
   const pool: Question[] = [
     fixtureQuestion({ id: 'a1', objective: 'o1', group: 'ga' }),

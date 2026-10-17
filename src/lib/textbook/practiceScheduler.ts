@@ -310,9 +310,11 @@ export function recordPracticeAnswer(state: PracticeState, questionId: string, r
     const correction = pickCorrection(working, objectiveId, questionId, queue);
     if (correction) {
       queue = insertAt(queue, CORRECTION_GAP, { questionId: correction.question.id, objectiveId, reason: 'correction' });
-      correctionScheduled = true;
     }
   }
+  // What the child is told: this topic comes back later. True whether the
+  // question was added just now or was already planned for the objective.
+  correctionScheduled = !grade.correct && tracked && !wasSatisfied && queue.some((entry) => entry.objectiveId === objectiveId);
 
   // Safety net: an unsatisfied objective always has a queued question.
   for (const id of state.objectiveIds) {
