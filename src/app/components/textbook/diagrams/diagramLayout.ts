@@ -15,11 +15,16 @@ export type LabelLayout = {
 };
 export type MarkerLayout = { x: number; y: number };
 export type RegionLayout = { label: LabelLayout; marker: MarkerLayout };
-export type DiagramLayout = { width: number; height: number; regions: Record<string, RegionLayout> };
+// A small explanatory caption inside the picture that is not a region label
+// ("Maa vari", "silmapiir"). Notes are shown in lessons and after answering,
+// never in a hotspot question, where they could point at the answer.
+export type NoteLayout = { text: string; label: LabelLayout };
+export type DiagramLayout = { width: number; height: number; regions: Record<string, RegionLayout>; notes?: NoteLayout[] };
 
 export const MARKER_RADIUS = 13;
 export const MARKER_FONT_SIZE = 14;
 export const LABEL_FONT_SIZE = 15;
+export const NOTE_FONT_SIZE = 13;
 
 export const DIAGRAM_LAYOUTS: Record<string, DiagramLayout> = {
   'demo-water-cycle': {
@@ -41,6 +46,59 @@ export const DIAGRAM_LAYOUTS: Record<string, DiagramLayout> = {
       stem: { label: { x: 116, y: 124, anchor: 'end', fontSize: LABEL_FONT_SIZE }, marker: { x: 130, y: 198 } },
       root: { label: { x: 176, y: 266, anchor: 'start', fontSize: LABEL_FONT_SIZE, onShape: true }, marker: { x: 130, y: 258 } }
     }
+  },
+  // Unit 10 "Maa kuju". Three stacked panels, 150 units tall each.
+  'u10-ancient-earth': {
+    width: 360,
+    height: 480,
+    regions: {
+      'flat-disk': { label: { x: 180, y: 146, anchor: 'middle', fontSize: 16 }, marker: { x: 180, y: 74 } },
+      turtle: { label: { x: 180, y: 306, anchor: 'middle', fontSize: 16 }, marker: { x: 180, y: 226 } },
+      globe: { label: { x: 180, y: 466, anchor: 'middle', fontSize: 16 }, marker: { x: 180, y: 398 } }
+    },
+    notes: [
+      { text: 'muistne ettekujutus', label: { x: 16, y: 24, anchor: 'start', fontSize: NOTE_FONT_SIZE } },
+      { text: 'muistne lugu', label: { x: 16, y: 184, anchor: 'start', fontSize: NOTE_FONT_SIZE } },
+      { text: 'tänapäeva teadmine', label: { x: 16, y: 344, anchor: 'start', fontSize: NOTE_FONT_SIZE } }
+    ]
+  },
+  // Dark space background: every text uses the light ink.
+  'u10-lunar-eclipse': {
+    width: 380,
+    height: 245,
+    regions: {
+      sun: { label: { x: 55, y: 204, anchor: 'middle', fontSize: 16, onShape: true }, marker: { x: 55, y: 198 } },
+      earth: { label: { x: 190, y: 204, anchor: 'middle', fontSize: 16, onShape: true }, marker: { x: 190, y: 198 } },
+      moon: { label: { x: 320, y: 204, anchor: 'middle', fontSize: 16, onShape: true }, marker: { x: 320, y: 198 } }
+    },
+    notes: [
+      { text: 'Päikese valgus', label: { x: 132, y: 62, anchor: 'middle', fontSize: NOTE_FONT_SIZE, onShape: true } },
+      { text: 'Maa vari', label: { x: 300, y: 86, anchor: 'middle', fontSize: NOTE_FONT_SIZE, onShape: true } }
+    ]
+  },
+  'u10-ship-horizon': {
+    width: 380,
+    height: 260,
+    regions: {
+      observer: { label: { x: 6, y: 158, anchor: 'start', fontSize: LABEL_FONT_SIZE }, marker: { x: 32, y: 152 } },
+      'near-ship': { label: { x: 128, y: 100, anchor: 'middle', fontSize: LABEL_FONT_SIZE }, marker: { x: 128, y: 95 } },
+      'far-ship': { label: { x: 376, y: 118, anchor: 'end', fontSize: LABEL_FONT_SIZE }, marker: { x: 350, y: 122 } }
+    },
+    notes: [
+      { text: 'vaatesiht', label: { x: 262, y: 168, anchor: 'middle', fontSize: NOTE_FONT_SIZE } }
+    ]
+  },
+  'u10-observer-height': {
+    width: 360,
+    height: 270,
+    regions: {
+      beach: { label: { x: 102, y: 132, anchor: 'middle', fontSize: LABEL_FONT_SIZE }, marker: { x: 104, y: 126 } },
+      tower: { label: { x: 226, y: 110, anchor: 'start', fontSize: LABEL_FONT_SIZE }, marker: { x: 246, y: 104 } }
+    },
+    notes: [
+      { text: 'silmapiir', label: { x: 6, y: 250, anchor: 'start', fontSize: NOTE_FONT_SIZE, onShape: true } },
+      { text: 'silmapiir', label: { x: 334, y: 268, anchor: 'end', fontSize: NOTE_FONT_SIZE, onShape: true } }
+    ]
   }
 };
 

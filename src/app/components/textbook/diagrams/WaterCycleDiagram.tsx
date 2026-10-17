@@ -9,7 +9,7 @@ const ID = 'demo-water-cycle';
 // falling from it; a river on the land carries the water back to the sea.
 export default function WaterCycleDiagram(props: DiagramProps) {
   return (
-    <DiagramSvg diagramId={ID} description={props.description}>
+    <DiagramSvg diagramId={ID} mode={props.mode} description={props.description}>
       <defs>
         <marker id='tb-wc-arrow' markerWidth='8' markerHeight='8' refX='4' refY='4' orient='auto'>
           <path d='M1 1 L7 4 L1 7 z' className='tb-diagram-arrowhead' />

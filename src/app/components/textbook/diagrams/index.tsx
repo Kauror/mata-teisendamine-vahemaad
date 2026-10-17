@@ -3,7 +3,11 @@
 import type { ComponentType } from 'react';
 import { getDiagram } from '@/lib/textbook/diagramRegistry';
 import type { DiagramProps } from '@/app/components/textbook/diagrams/DiagramFrame';
+import AncientEarthDiagram from '@/app/components/textbook/diagrams/AncientEarthDiagram';
+import LunarEclipseDiagram from '@/app/components/textbook/diagrams/LunarEclipseDiagram';
+import ObserverHeightDiagram from '@/app/components/textbook/diagrams/ObserverHeightDiagram';
 import PlantPartsDiagram from '@/app/components/textbook/diagrams/PlantPartsDiagram';
+import ShipHorizonDiagram from '@/app/components/textbook/diagrams/ShipHorizonDiagram';
 import WaterCycleDiagram from '@/app/components/textbook/diagrams/WaterCycleDiagram';
 
 export type { DiagramMode, DiagramProps } from '@/app/components/textbook/diagrams/DiagramFrame';
@@ -12,7 +16,11 @@ export type { DiagramMode, DiagramProps } from '@/app/components/textbook/diagra
 // The validator refuses content naming any other ID.
 export const DIAGRAM_COMPONENTS: Record<string, ComponentType<DiagramProps>> = {
   'demo-water-cycle': WaterCycleDiagram,
-  'demo-plant-parts': PlantPartsDiagram
+  'demo-plant-parts': PlantPartsDiagram,
+  'u10-ancient-earth': AncientEarthDiagram,
+  'u10-lunar-eclipse': LunarEclipseDiagram,
+  'u10-ship-horizon': ShipHorizonDiagram,
+  'u10-observer-height': ObserverHeightDiagram
 };
 
 export function DiagramView({ diagramId, ...props }: DiagramProps & { diagramId: string }) {

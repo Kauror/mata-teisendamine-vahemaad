@@ -152,6 +152,14 @@
   --tb-dia-petal:#f472b6; --tb-dia-petal-line:#be185d; --tb-dia-centre:#facc15; --tb-dia-root:#fde68a;
   --tb-dia-ink:#0b1b45; --tb-dia-ink-light:#fff; --tb-dia-marker:#fff; --tb-dia-marker-line:#0b1b45;
   --tb-dia-selected:#6366f1; --tb-dia-correct:#16a34a; --tb-dia-wrong:#dc2626;
+  /* Unit 10 "Maa kuju" diagrams. */
+  --tb-dia-panel-line:#bfdbfe; --tb-dia-note:#475569; --tb-dia-space:#1e293b; --tb-dia-space-shadow:#020617; --tb-dia-shadow-line:#94a3b8;
+  --tb-dia-sunlight:#fde68a; --tb-dia-earth-sea:#2563eb; --tb-dia-earth-land:#22c55e; --tb-dia-earth-night:#0f172a; --tb-dia-globe-light:#93c5fd;
+  --tb-dia-moon-eclipse:#b45309; --tb-dia-moon-line:#fcd34d; --tb-dia-turtle:#65a30d; --tb-dia-turtle-line:#3f6212; --tb-dia-elephant:#9ca3af; --tb-dia-elephant-line:#4b5563;
+  --tb-dia-hull:#92400e; --tb-dia-hull-line:#451a03; --tb-dia-sail:#fff; --tb-dia-sail-line:#64748b; --tb-dia-flag:#dc2626; --tb-dia-person:#0b1b45;
+  --tb-dia-sight:#7c3aed; --tb-dia-sight-far:#db2777; --tb-dia-hidden:#64748b; --tb-dia-sand:#fde68a; --tb-dia-sand-line:#ca8a04; --tb-dia-rock:#a8a29e; --tb-dia-rock-line:#57534e;
+  --tb-dia-tower:#f8fafc; --tb-dia-tower-line:#475569; --tb-dia-tower-band:#dc2626;
+  --tb-photo-bg:#020617;
 }
 /* Subject accents. The card stays white and the icon tile carries the colour,
    so text keeps full contrast and the icon is what tells cards apart. */
@@ -1491,6 +1499,50 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-region[data-selected="true"] .tb-diagram-marker text{fill:var(--tb-dia-ink-light)}
 .tb-region[data-correct="true"] .tb-region-hit{stroke:var(--tb-dia-correct);stroke-width:3;fill:var(--tb-good-bg);fill-opacity:.5}
 .tb-region[data-wrong="true"] .tb-region-hit{stroke:var(--tb-dia-wrong);stroke-width:3;stroke-dasharray:6 4}
+.tb-diagram-note{font-family:var(--font-display);font-weight:750;fill:var(--tb-dia-note);paint-order:stroke;stroke:var(--tb-dia-sky);stroke-width:3px;stroke-linejoin:round}
+.tb-diagram-note.tb-diagram-note-light{fill:var(--tb-dia-ink-light);stroke:none}
+/* Unit 10 "Maa kuju". */
+.tb-diagram-panel{fill:var(--tb-dia-sky);stroke:var(--tb-dia-panel-line);stroke-width:2}
+.tb-diagram-earth-sea{fill:var(--tb-dia-earth-sea)}
+.tb-diagram-earth-land{fill:var(--tb-dia-earth-land)}
+.tb-diagram-earth-night{fill:var(--tb-dia-earth-night);opacity:.55}
+.tb-diagram-globe-light{fill:var(--tb-dia-globe-light);opacity:.45}
+.tb-diagram-earth-shade{fill:var(--tb-dia-earth-night);opacity:.35}
+.tb-diagram-earth-edge{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-diagram-disk-side{fill:var(--tb-dia-soil);stroke:var(--tb-dia-soil-line);stroke-width:1.5}
+.tb-diagram-wave{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:2;stroke-linecap:round;opacity:.8}
+.tb-diagram-turtle{fill:var(--tb-dia-turtle);stroke:var(--tb-dia-turtle-line);stroke-width:2}
+.tb-diagram-turtle-pattern{fill:none;stroke:var(--tb-dia-turtle-line);stroke-width:1.5}
+.tb-diagram-elephant{fill:var(--tb-dia-elephant);stroke:var(--tb-dia-elephant-line);stroke-width:1.5}
+.tb-diagram-tree{fill:var(--tb-dia-leaf-line)}
+.tb-diagram-space{fill:var(--tb-dia-space)}
+.tb-diagram-sunlight{fill:var(--tb-dia-sunlight);opacity:.16}
+.tb-diagram-light-ray{fill:none;stroke:var(--tb-dia-sunlight);stroke-width:3;stroke-linecap:round}
+.tb-diagram-light-head{fill:var(--tb-dia-sunlight)}
+.tb-diagram-umbra{fill:var(--tb-dia-space-shadow);opacity:.85;stroke:var(--tb-dia-shadow-line);stroke-width:1.5;stroke-dasharray:5 4}
+.tb-diagram-moon-eclipsed{fill:var(--tb-dia-moon-eclipse);stroke:var(--tb-dia-moon-line);stroke-width:1.5}
+.tb-diagram-hull{fill:var(--tb-dia-hull);stroke:var(--tb-dia-hull-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-diagram-mast{stroke:var(--tb-dia-hull-line);stroke-width:2.5;stroke-linecap:round}
+.tb-diagram-sail{fill:var(--tb-dia-sail);stroke:var(--tb-dia-sail-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-diagram-flag{fill:var(--tb-dia-flag)}
+.tb-diagram-ghost path,.tb-diagram-ghost line{fill:none;stroke:var(--tb-dia-hidden);stroke-width:1.5;stroke-dasharray:3 3}
+.tb-diagram-hidden-zone{fill:var(--tb-dia-hidden);opacity:.18}
+.tb-diagram-person{fill:none;stroke:var(--tb-dia-person);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.tb-diagram-person-head{fill:var(--tb-dia-person)}
+.tb-diagram-sight{fill:none;stroke:var(--tb-dia-sight);stroke-width:2.5;stroke-dasharray:7 5;stroke-linecap:round}
+.tb-diagram-sight.tb-diagram-sight-far{stroke:var(--tb-dia-sight-far);stroke-dasharray:2 5}
+.tb-diagram-horizon-dot{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-sight);stroke-width:2.5}
+.tb-diagram-horizon-dot.tb-diagram-sight-far{stroke:var(--tb-dia-sight-far)}
+.tb-diagram-sand{fill:var(--tb-dia-sand);stroke:var(--tb-dia-sand-line);stroke-width:1.5}
+.tb-diagram-rock{fill:var(--tb-dia-rock);stroke:var(--tb-dia-rock-line);stroke-width:1.5}
+.tb-diagram-tower{fill:var(--tb-dia-tower);stroke:var(--tb-dia-tower-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-diagram-tower-band{fill:var(--tb-dia-tower-band)}
+/* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
+.tb-photo{margin:0;display:grid;gap:6px}
+.tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}
+.tb-photo figcaption{display:grid;gap:2px;text-align:center}
+.tb-photo-caption{color:var(--tb-text);font-size:14px;font-weight:650}
+.tb-photo-credit{color:var(--tb-muted);font-size:12.5px;font-weight:700}
 
 /* Questions and the six answer controls. */
 .tb-question{display:grid;gap:12px;padding:16px;border-radius:var(--tb-radius);background:var(--tb-surface);border:var(--card-border);box-shadow:var(--card-shadow);min-width:0}

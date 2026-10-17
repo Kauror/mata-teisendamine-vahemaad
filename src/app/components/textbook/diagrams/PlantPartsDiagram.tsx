@@ -9,7 +9,7 @@ const ID = 'demo-plant-parts';
 // The stem is drawn first, so a tap on a leaf lands on the leaf.
 export default function PlantPartsDiagram(props: DiagramProps) {
   return (
-    <DiagramSvg diagramId={ID} description={props.description}>
+    <DiagramSvg diagramId={ID} mode={props.mode} description={props.description}>
       <rect className='tb-diagram-sky' x='0' y='0' width='260' height='216' />
       <rect className='tb-diagram-soil' x='0' y='216' width='260' height='84' />
       <path className='tb-diagram-soil-line' d='M0 216 H260' />

@@ -28,17 +28,40 @@ export function diagramDefinition(id: string): DiagramDefinition {
   return definition;
 }
 
-export function DiagramSvg({ diagramId, description, children }: { diagramId: string; description?: string; children: ReactNode }) {
+// In a hotspot question the picture's description would name what is where
+// (the answer), so it is replaced by a neutral one that lists the markers only.
+export function neutralDiagramDescription(definition: DiagramDefinition): string {
+  return `Joonisel on tähtedega märgitud kohad ${definition.regions.map((region) => region.marker).join(', ')}.`;
+}
+
+export function DiagramSvg({ diagramId, mode, description, children }: { diagramId: string; mode?: DiagramMode; description?: string; children: ReactNode }) {
   const definition = diagramDefinition(diagramId);
   const layout = DIAGRAM_LAYOUTS[diagramId];
   const titleId = `tb-diagram-${diagramId}-title`;
   const descId = `tb-diagram-${diagramId}-desc`;
+  const text = mode === 'hotspot' ? neutralDiagramDescription(definition) : description ?? definition.description;
   return (
     <svg className='tb-diagram-svg' viewBox={`0 0 ${layout.width} ${layout.height}`} role='group' aria-labelledby={titleId} aria-describedby={descId} data-diagram-id={diagramId}>
       <title id={titleId}>{definition.title}</title>
-      <desc id={descId}>{description ?? definition.description}</desc>
+      <desc id={descId}>{text}</desc>
       {children}
     </svg>
+  );
+}
+
+// The layout's explanatory notes ("Maa vari", "silmapiir"): lessons and
+// feedback only, never in a hotspot question.
+export function DiagramNotes({ diagramId, mode }: { diagramId: string; mode: DiagramMode }) {
+  const notes = DIAGRAM_LAYOUTS[diagramId]?.notes ?? [];
+  if (mode === 'hotspot' || notes.length === 0) return null;
+  return (
+    <g className='tb-diagram-notes' aria-hidden='true'>
+      {notes.map((note, index) => (
+        <text key={index} className={note.label.onShape ? 'tb-diagram-note tb-diagram-note-light' : 'tb-diagram-note'} x={note.label.x} y={note.label.y} textAnchor={note.label.anchor} fontSize={note.label.fontSize}>
+          {note.text}
+        </text>
+      ))}
+    </g>
   );
 }
 
