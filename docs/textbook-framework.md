@@ -10,7 +10,10 @@ The first course is Kiur's `loodusopetus-opik` ("Loodusõpetus – Õpiku
 `ready` but stays unpublished for Kiur until the parent switches it on (the
 parent preview shows it already). Unit 11 "Gloobus" (`unit11.ts`: 4 lessons,
 11 sections, 7 objectives, 74 questions, 4 diagrams) is likewise `ready` and
-unpublished. Units 12–22 are **metadata-only drafts**
+unpublished, and so is Unit 12 "Kaart" (`unit12.ts`: 4 lessons, 15 sections,
+8 objectives, 94 questions, 4 diagrams, no photos). The preview keeps the
+child's unit order: each ready unit opens there once the ready unit before it
+is passed. Units 13–22 are **metadata-only drafts**
 (number, title, pages); their lessons and questions are written later from the
 corrected textbook text. A preview-only demo course (`textbook-demo`) shows the whole flow
 to the parent.

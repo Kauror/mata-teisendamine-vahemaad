@@ -4,6 +4,7 @@ import { TEXTBOOK_COURSES } from '@/content/textbook/registry';
 import { textbookDemoCourse } from '@/content/textbook/textbook-demo';
 import { publishable, validateCourse, validateUnit } from '@/lib/textbook/validator';
 import type { Course, Unit } from '@/lib/textbook/types';
+import { diagramRegionIds } from '@/lib/textbook/diagramRegistry';
 
 const demo = textbookDemoCourse;
 const codes = (issues: Array<{ code: string }>) => issues.map((issue) => issue.code);
@@ -30,31 +31,34 @@ describe('shipped content', () => {
     }
   });
 
-  it('Units 10 and 11 are ready and publishable without warnings; units 12–22 stay metadata-only drafts', () => {
+  it('Units 10–12 are ready and publishable without warnings; Units 13–22 stay metadata-only drafts', () => {
     const result = validateCourse(loodusopetusOpikCourse, { imageExists: () => true });
     expect(result.errors).toEqual([]);
     expect(result.valid).toBe(true);
     expect(result.units.map((unit) => unit.unitNumber)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
-    const [unit10, unit11, ...drafts] = result.units;
-    expect(unit10.errors).toEqual([]);
-    expect(unit10.warnings).toEqual([]);
-    expect(unit10.publishable).toBe(true);
-    expect(unit10.buildability?.ok).toBe(true);
+    const status = new Map(loodusopetusOpikCourse.units.map((unit) => [unit.id, unit.status]));
+    const ready = result.units.filter((unit) => status.get(unit.unitId) === 'ready');
+    const drafts = result.units.filter((unit) => status.get(unit.unitId) === 'draft');
+    expect(ready.map((unit) => unit.unitNumber)).toEqual([10, 11, 12]);
+    expect(ready.length + drafts.length).toBe(result.units.length);
+    // Every ready unit: no errors or warnings, publishable, tests buildable (each unit's details: its own test).
+    for (const unit of ready) {
+      expect(unit, unit.unitId).toMatchObject({ errors: [], warnings: [], publishable: true, buildability: { ok: true } });
+      expect(Object.values(unit.stats.answerTypes).every((count) => count > 0), unit.unitId).toBe(true);
+    }
+    const unit10 = ready[0];
+    expect(unit10.unitNumber).toBe(10);
     expect(unit10.stats).toMatchObject({
       lessons: 4, requiredLessons: 4, sections: 12, blocks: 37, objectives: 6, requiredObjectives: 6,
       questions: 54, practiceQuestions: 54, testQuestions: 54, testVariantGroups: 39,
       testLevels: { factual: 19, understanding: 20, application: 15 }
     });
-    expect(Object.values(unit10.stats.answerTypes).every((count) => count > 0)).toBe(true);
-    // Unit 11 in detail: src/lib/textbook/unit11Content.test.ts.
-    expect(unit11).toMatchObject({ unitNumber: 11, errors: [], warnings: [], publishable: true });
     for (const unit of drafts) {
       expect(unit.publishable).toBe(false);
       expect(codes(unit.errors)).toEqual(['unit_draft', 'unit_no_content']);
       expect(unit.errors[0].message).toMatch(/mustand/u);
     }
-    for (const unit of loodusopetusOpikCourse.units.slice(2)) {
-      expect(unit.status).toBe('draft');
+    for (const unit of loodusopetusOpikCourse.units.filter((item) => item.status === 'draft')) {
       expect(unit.lessons).toEqual([]);
       expect(unit.questions).toEqual([]);
       expect(unit.objectives).toEqual([]);
@@ -63,8 +67,34 @@ describe('shipped content', () => {
     expect(loodusopetusOpikCourse.learners).toEqual(['kiur']);
   });
 
+  it('Unit 12 "Kaart": ready, publishable without warnings, all six answer types, 20-question tests buildable', () => {
+    const unit12 = loodusopetusOpikCourse.units.find((unit) => unit.number === 12)!;
+    expect(unit12).toMatchObject({ id: 'lo-opik-u12', status: 'ready', contentVersion: '2026-10-17.1', pages: { from: 50, to: 53 } });
+    const result = validateUnit(unit12, loodusopetusOpikCourse, { imageExists: () => true });
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.publishable).toBe(true);
+    expect(result.buildability?.ok).toBe(true);
+    expect(result.stats).toMatchObject({
+      lessons: 4, requiredLessons: 4, sections: 15, blocks: 62, objectives: 8, requiredObjectives: 8,
+      questions: 94, practiceQuestions: 94, testQuestions: 94, testVariantGroups: 68,
+      testLevels: { factual: 29, understanding: 29, application: 36 },
+      answerTypes: { single_choice: 65, multiple_selection: 5, matching: 5, grouping: 4, ordering: 3, diagram_hotspot: 12 }
+    });
+    // Every hotspot answer names a region its diagram draws.
+    const diagrams = new Set<string>();
+    for (const question of unit12.questions) {
+      if (question.answer.type !== 'diagram_hotspot') continue;
+      diagrams.add(question.answer.diagramId);
+      expect(diagramRegionIds(question.answer.diagramId), question.id).toContain(question.answer.correctRegionId);
+    }
+    expect([...diagrams].sort()).toEqual(['u12-aerial-vs-map', 'u12-globe-flatmap', 'u12-legend-town', 'u12-orange-peel']);
+    // All IDs are ASCII (the validator's ID rule).
+    expect(JSON.stringify(unit12.questions.map((question) => question.id))).toMatch(/^[\x00-\x7f]*$/);
+  });
+
   it('Unit 10 is not publishable when its photo file is missing', () => {
-    const unit10 = loodusopetusOpikCourse.units[0];
+    const unit10 = loodusopetusOpikCourse.units.find((unit) => unit.number === 10)!;
     const result = validateUnit(unit10, loodusopetusOpikCourse, { imageExists: () => false });
     expect(codes(result.errors)).toEqual(['block_image_missing']);
     expect(result.publishable).toBe(false);

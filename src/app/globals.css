@@ -162,6 +162,15 @@
   /* Unit 11 "Gloobus" diagrams. */
   --tb-dia-relief-mid:#e9c46a; --tb-dia-relief-high:#9a5b2a; --tb-dia-pol-sea:#bfdbfe; --tb-dia-pol-a:#f9a8d4; --tb-dia-pol-b:#fde047; --tb-dia-pol-c:#c4b5fd; --tb-dia-pol-d:#fdba74;
   --tb-dia-tint-a:#dbeafe; --tb-dia-tint-b:#fef3c7; --tb-dia-grid:#1e3a8a; --tb-dia-key-line:#dc2626; --tb-dia-estonia:#facc15;
+  /* Unit 12 "Kaart" diagrams. */
+  --tb-u12-water:#93c5fd; --tb-u12-water-line:#2563eb; --tb-u12-land:#86efac; --tb-u12-land-line:#15803d; --tb-u12-grid:#1e3a8a; --tb-u12-stand:#78716c; --tb-u12-stand-line:#44403c;
+  --tb-u12-paper:#fffdf5; --tb-u12-paper-line:#94a3b8; --tb-u12-shadow:#1c1917; --tb-u12-road:#fff; --tb-u12-road-line:#94a3b8;
+  --tb-u12-building:#9ca3af; --tb-u12-building-line:#4b5563; --tb-u12-park:#bbf7d0; --tb-u12-park-line:#16a34a; --tb-u12-tree:#15803d; --tb-u12-symbol:#9f1239;
+  --tb-u12-bridge:#f5f5f4; --tb-u12-bridge-line:#292524; --tb-u12-blank:#cbd5e1;
+  --tb-u12-orange:#f97316; --tb-u12-orange-line:#c2410c; --tb-u12-orange-light:#fdba74; --tb-u12-pith:#fff7ed; --tb-u12-stem:#713f12; --tb-u12-leaf:#22c55e;
+  --tb-u12-table:#ead7b7; --tb-u12-table-line:#b08d57;
+  --tb-u12-aerial-ground:#6f8f4e; --tb-u12-aerial-field:#a3a65a; --tb-u12-aerial-grass:#5d7f3f; --tb-u12-aerial-water:#2f6f7e; --tb-u12-aerial-bank:#4a5a35; --tb-u12-aerial-road:#c2bcb0;
+  --tb-u12-roof-0:#b45309; --tb-u12-roof-1:#78716c; --tb-u12-roof-2:#a8a29e; --tb-u12-roof-landmark:#991b1b; --tb-u12-ridge:#fef3c7; --tb-u12-crown:#2f5d2a; --tb-u12-crown-light:#5f8f45;
   --tb-photo-bg:#020617;
 }
 /* Subject accents. The card stays white and the icon tile carries the colour,
@@ -1559,6 +1568,64 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-diagram-grid-line{fill:none;stroke:var(--tb-dia-grid);stroke-width:2.5;stroke-linecap:round}
 .tb-diagram-grid-line.tb-diagram-grid-faint{stroke-width:1.5;opacity:.6}
 .tb-diagram-estonia{fill:var(--tb-dia-estonia);stroke:var(--tb-dia-ink);stroke-width:2}
+/* Unit 12 "Kaart". */
+.tb-u12-water{fill:var(--tb-u12-water);stroke:var(--tb-u12-water-line);stroke-width:1.5}
+.tb-u12-land{fill:var(--tb-u12-land);stroke:var(--tb-u12-land-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u12-graticule{fill:none;stroke:var(--tb-u12-grid);stroke-width:1;opacity:.3}
+.tb-u12-globe-shade{fill:var(--tb-dia-earth-night);opacity:.2}
+.tb-u12-globe-edge{fill:none;stroke:var(--tb-u12-water-line);stroke-width:2}
+.tb-u12-stand{fill:var(--tb-u12-stand);stroke:var(--tb-u12-stand-line);stroke-width:1.5}
+.tb-u12-stand-line{fill:none;stroke:var(--tb-u12-stand-line);stroke-width:4;stroke-linecap:round}
+.tb-u12-sheet-shadow{fill:var(--tb-u12-shadow);opacity:.15}
+.tb-u12-sheet-edge{fill:none;stroke:var(--tb-u12-paper-line);stroke-width:2;stroke-linejoin:round}
+.tb-u12-fold{fill:none;stroke:var(--tb-u12-paper);stroke-width:1.5;opacity:.8}
+.tb-u12-orange{fill:var(--tb-u12-orange);stroke:var(--tb-u12-orange-line);stroke-width:2}
+.tb-u12-orange-light{fill:var(--tb-u12-orange-light);opacity:.6}
+.tb-u12-orange-dots{stroke:var(--tb-u12-orange-line);stroke-width:2.5;stroke-linecap:round;opacity:.5}
+.tb-u12-stem{stroke:var(--tb-u12-stem);stroke-width:4;stroke-linecap:round}
+.tb-u12-stem-dot{fill:var(--tb-u12-stem)}
+.tb-u12-leaf{fill:var(--tb-u12-leaf);stroke:var(--tb-u12-land-line);stroke-width:1.5}
+.tb-u12-table{fill:var(--tb-u12-table);stroke:var(--tb-u12-table-line);stroke-width:1.5}
+.tb-u12-table-grain{fill:none;stroke:var(--tb-u12-table-line);stroke-width:1;opacity:.4}
+.tb-u12-table-shadow{fill:var(--tb-u12-shadow);opacity:.12}
+.tb-u12-pith{fill:none;stroke:var(--tb-u12-orange-line);stroke-width:6;stroke-linejoin:round}
+.tb-u12-peel{fill:var(--tb-u12-orange);stroke:var(--tb-u12-pith);stroke-width:2.5;stroke-linejoin:round}
+.tb-u12-panel-edge{fill:none;stroke:var(--tb-dia-panel-line);stroke-width:2}
+.tb-u12-aerial-ground{fill:var(--tb-u12-aerial-ground)}
+.tb-u12-aerial-field{fill:var(--tb-u12-aerial-field);opacity:.8}
+.tb-u12-aerial-grass{fill:var(--tb-u12-aerial-grass)}
+.tb-u12-aerial-bank{fill:none;stroke:var(--tb-u12-aerial-bank);stroke-width:24;stroke-linecap:round}
+.tb-u12-aerial-water{fill:none;stroke:var(--tb-u12-aerial-water);stroke-width:18;stroke-linecap:round}
+.tb-u12-aerial-road{fill:none;stroke:var(--tb-u12-aerial-road);stroke-width:9}
+.tb-u12-aerial-bridge{fill:var(--tb-u12-aerial-road);stroke:var(--tb-u12-aerial-bank);stroke-width:1}
+.tb-u12-aerial-shadow{fill:var(--tb-u12-shadow);opacity:.35}
+.tb-u12-roof-0{fill:var(--tb-u12-roof-0)}
+.tb-u12-roof-1{fill:var(--tb-u12-roof-1)}
+.tb-u12-roof-2{fill:var(--tb-u12-roof-2)}
+.tb-u12-roof-landmark{fill:var(--tb-u12-roof-landmark)}
+.tb-u12-landmark-dome{fill:var(--tb-u12-roof-2);stroke:var(--tb-u12-ridge);stroke-width:1}
+.tb-u12-ridge{fill:none;stroke:var(--tb-u12-ridge);stroke-width:1.2;opacity:.7}
+.tb-u12-crown{fill:var(--tb-u12-crown)}
+.tb-u12-crown-light{fill:var(--tb-u12-crown-light)}
+.tb-u12-paper{fill:var(--tb-u12-paper)}
+.tb-u12-map-frame{stroke:var(--tb-u12-paper-line);stroke-width:1.5}
+.tb-u12-river{fill:none;stroke:var(--tb-u12-water);stroke-width:16;stroke-linecap:butt}
+.tb-u12-river.tb-u12-river-wide{stroke-width:22}
+.tb-u12-road-casing{fill:none;stroke:var(--tb-u12-road-line);stroke-width:12}
+.tb-u12-road{fill:none;stroke:var(--tb-u12-road);stroke-width:9}
+.tb-u12-building{fill:var(--tb-u12-building);stroke:var(--tb-u12-building-line);stroke-width:1.2}
+.tb-u12-park{fill:var(--tb-u12-park);stroke:var(--tb-u12-park-line);stroke-width:1.2}
+.tb-u12-park-path{fill:none;stroke:var(--tb-u12-paper);stroke-width:3;stroke-dasharray:4 3}
+.tb-u12-tree{fill:var(--tb-u12-tree);opacity:.75}
+.tb-u12-symbol{fill:var(--tb-u12-symbol)}
+.tb-u12-symbol-mark{fill:none;stroke:var(--tb-u12-paper);stroke-width:1.8;stroke-linejoin:round}
+.tb-u12-bridge{fill:var(--tb-u12-bridge)}
+.tb-u12-bridge-rail{fill:none;stroke:var(--tb-u12-bridge-line);stroke-width:2.5}
+.tb-u12-water-swatch{fill:var(--tb-u12-water)}
+.tb-u12-legend-water{fill:none;stroke:var(--tb-u12-water);stroke-width:12}
+.tb-u12-legend-box{fill:var(--tb-u12-paper);stroke:var(--tb-u12-paper-line);stroke-width:1.5}
+.tb-u12-legend-word{font-family:var(--font-display);font-weight:800;fill:var(--tb-dia-ink)}
+.tb-u12-legend-blank{fill:var(--tb-u12-blank)}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}

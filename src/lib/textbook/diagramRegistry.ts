@@ -1,4 +1,5 @@
 import { UNIT11_DIAGRAMS } from '@/lib/textbook/diagrams/unit11';
+import { UNIT12_DIAGRAMS } from '@/lib/textbook/diagrams/unit12';
 
 // The diagrams content may reference — data only. Every `diagram` block,
 // `diagram` question context and `diagram_hotspot` question names one of these
@@ -111,7 +112,8 @@ export const DIAGRAMS: readonly DiagramDefinition[] = [
     ]
   },
   // Later units keep their diagrams in their own file (src/lib/textbook/diagrams/).
-  ...UNIT11_DIAGRAMS
+  ...UNIT11_DIAGRAMS,
+  ...UNIT12_DIAGRAMS
 ];
 
 const BY_ID = new Map(DIAGRAMS.map((diagram) => [diagram.id, diagram]));
