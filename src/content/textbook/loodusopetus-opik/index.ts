@@ -1,15 +1,17 @@
-// Kiur's textbook course "Loodusõpetus – Õpiku õppetükid". Units 10–22 are
-// METADATA-ONLY drafts: number, title and textbook pages. Their lessons,
-// objectives and questions will be authored later from the corrected textbook
-// text — never invent them here. A draft can never be published (the
-// validator reports `unit_draft`).
+// Kiur's textbook course "Loodusõpetus – Õpiku õppetükid". Unit 10 has its
+// full authored content (./unit10.ts). Units 11–22 are METADATA-ONLY drafts:
+// number, title and textbook pages. Their lessons, objectives and questions
+// will be authored later from the corrected textbook text — never invent them
+// here. A draft can never be published (the validator reports `unit_draft`).
+// A 'ready' unit is still unpublished for the child until the parent switches
+// it on in the parent area; the parent preview shows it right away.
 
 import { DEFAULT_COURSE_SETTINGS, type Course, type Unit } from '@/lib/textbook/types';
+import { unit10 } from '@/content/textbook/loodusopetus-opik/unit10';
 
 export const LOODUSOPETUS_OPIK_COURSE_ID = 'loodusopetus-opik';
 
 const DRAFTS: ReadonlyArray<{ number: number; title: string; from: number; to: number; note?: string }> = [
-  { number: 10, title: 'Maa kuju', from: 44, to: 47 },
   { number: 11, title: 'Gloobus', from: 48, to: 49 },
   { number: 12, title: 'Kaart', from: 50, to: 53 },
   { number: 13, title: 'Kaardi mõõtkava', from: 54, to: 57 },
@@ -24,7 +26,7 @@ const DRAFTS: ReadonlyArray<{ number: number; title: string; from: number; to: n
   { number: 22, title: 'Loodusõnnetused', from: 82, to: 83, note: 'Õpiku tekst võib olla puudulik.' }
 ];
 
-const units: Unit[] = DRAFTS.map((draft) => ({
+const drafts: Unit[] = DRAFTS.map((draft) => ({
   id: `lo-opik-u${draft.number}`,
   courseId: LOODUSOPETUS_OPIK_COURSE_ID,
   number: draft.number,
@@ -36,6 +38,8 @@ const units: Unit[] = DRAFTS.map((draft) => ({
   lessons: [],
   questions: []
 }));
+
+const units: Unit[] = [unit10, ...drafts];
 
 export const loodusopetusOpikCourse: Course = {
   id: LOODUSOPETUS_OPIK_COURSE_ID,

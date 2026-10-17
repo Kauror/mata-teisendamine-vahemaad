@@ -30,22 +30,42 @@ describe('shipped content', () => {
     }
   });
 
-  it('the 13 textbook drafts (units 10–22) are metadata only and not publishable', () => {
-    const result = validateCourse(loodusopetusOpikCourse);
+  it('Unit 10 is ready and publishable without warnings; units 11–22 stay metadata-only drafts', () => {
+    const result = validateCourse(loodusopetusOpikCourse, { imageExists: () => true });
     expect(result.errors).toEqual([]);
+    expect(result.valid).toBe(true);
     expect(result.units.map((unit) => unit.unitNumber)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
-    for (const unit of result.units) {
+    const [unit10, ...drafts] = result.units;
+    expect(unit10.errors).toEqual([]);
+    expect(unit10.warnings).toEqual([]);
+    expect(unit10.publishable).toBe(true);
+    expect(unit10.buildability?.ok).toBe(true);
+    expect(unit10.stats).toMatchObject({
+      lessons: 4, requiredLessons: 4, sections: 12, blocks: 37, objectives: 6, requiredObjectives: 6,
+      questions: 54, practiceQuestions: 54, testQuestions: 54, testVariantGroups: 39,
+      testLevels: { factual: 19, understanding: 20, application: 15 }
+    });
+    expect(Object.values(unit10.stats.answerTypes).every((count) => count > 0)).toBe(true);
+    for (const unit of drafts) {
       expect(unit.publishable).toBe(false);
       expect(codes(unit.errors)).toEqual(['unit_draft', 'unit_no_content']);
       expect(unit.errors[0].message).toMatch(/mustand/u);
     }
-    for (const unit of loodusopetusOpikCourse.units) {
+    for (const unit of loodusopetusOpikCourse.units.slice(1)) {
+      expect(unit.status).toBe('draft');
       expect(unit.lessons).toEqual([]);
       expect(unit.questions).toEqual([]);
       expect(unit.objectives).toEqual([]);
     }
-    expect(loodusopetusOpikCourse.settings.testLength).toBe(20);
+    expect(loodusopetusOpikCourse.settings).toMatchObject({ testLength: 20, passNumerator: 95, passDenominator: 100, levelDistribution: { factual: 8, understanding: 7, application: 5 } });
     expect(loodusopetusOpikCourse.learners).toEqual(['kiur']);
+  });
+
+  it('Unit 10 is not publishable when its photo file is missing', () => {
+    const unit10 = loodusopetusOpikCourse.units[0];
+    const result = validateUnit(unit10, loodusopetusOpikCourse, { imageExists: () => false });
+    expect(codes(result.errors)).toEqual(['block_image_missing']);
+    expect(result.publishable).toBe(false);
   });
 
   it('every registered course passes course-level checks', () => {
@@ -187,6 +207,23 @@ describe('crafted bad units', () => {
     const result = validateCourse(course);
     expect(codes(result.errors)).toEqual(expect.arrayContaining(['course_preview_learners', 'settings_distribution_sum', 'unit_order']));
     expect(result.valid).toBe(false);
+  });
+
+  it('image blocks: local path, alt text, credit and size', () => {
+    const withImage = (image: Record<string, unknown>, options = {}) => {
+      const unit = structuredClone(demo.units[0]);
+      unit.lessons[0].sections[0].blocks.push({ id: 'img-1', type: 'image', src: '/textbook-images/foto.webp', alt: 'Foto Maast kosmosest.', width: 900, height: 900, credit: 'NASA', ...image } as never);
+      return validateUnit(unit, { ...demo, units: [unit, demo.units[1]] }, options);
+    };
+    expect(withImage({}).errors).toEqual([]);
+    expect(codes(withImage({ src: 'https://example.com/foto.webp' }).errors)).toEqual(['block_image_src']);
+    expect(codes(withImage({ src: '/textbook-images/../secret.webp' }).errors)).toEqual(['block_image_src']);
+    expect(codes(withImage({ src: '/textbook-images/foto.gif' }).errors)).toEqual(['block_image_src']);
+    expect(codes(withImage({ alt: ' ' }).errors)).toEqual(['block_image_alt']);
+    expect(codes(withImage({ credit: '' }).errors)).toEqual(['block_image_credit']);
+    expect(codes(withImage({ width: 0 }).errors)).toEqual(['block_image_size']);
+    expect(codes(withImage({}, { imageExists: () => false }).errors)).toEqual(['block_image_missing']);
+    expect(withImage({}, { imageExists: (src: string) => src === '/textbook-images/foto.webp' }).errors).toEqual([]);
   });
 
   it('publishable() is the parent-facing alias', () => {

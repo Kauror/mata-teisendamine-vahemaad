@@ -5,9 +5,12 @@ Läbitud**. Adding a unit or a whole subject means adding structured TypeScript
 content — no new engine code, no HTML.
 
 The first course is Kiur's `loodusopetus-opik` ("Loodusõpetus – Õpiku
-õppetükid"). Its units 10–22 are registered as **metadata-only drafts** (number,
-title, pages); their lessons and questions are written later from the corrected
-textbook text. A preview-only demo course (`textbook-demo`) shows the whole flow
+õppetükid"). Unit 10 "Maa kuju" has its full content (`unit10.ts`: 4 lessons,
+12 sections, 6 objectives, 54 questions, 4 diagrams, 1 NASA photo); it is
+`ready` but stays unpublished for Kiur until the parent switches it on (the
+parent preview shows it already). Units 11–22 are **metadata-only drafts**
+(number, title, pages); their lessons and questions are written later from the
+corrected textbook text. A preview-only demo course (`textbook-demo`) shows the whole flow
 to the parent.
 
 ## Architecture
@@ -62,7 +65,11 @@ Course { id, title, subject, learners, previewOnly, settings, units[] }
 
 `heading`, `paragraph`, `list`, `definition`, `keyFact` ("Jäta meelde!"),
 `comparison` (2–3 columns), `table`, `diagram` (registered ID), `caption`,
-`externalResource` (https link, publisher, type article/gallery/video/interactive,
+`image` (a real photo: `src` under `/textbook-images/` in `public/`, Estonian
+`alt`, `credit`, intrinsic `width`/`height`, optional `caption`; lazy-loaded,
+hidden if it fails to load, never precached for offline; the server and
+`content:validate` refuse publication when the file is missing — `block_image_missing`;
+keep files small, e.g. ≤ 900 px WebP under ~150 kB), `externalResource` (https link, publisher, type article/gallery/video/interactive,
 "what to observe"; `qr` reserved, renders nothing), `enrichment`
 (`extra` = "Lisateadmine", `fun_fact` = "Huvitav fakt").
 
@@ -98,7 +105,12 @@ one React SVG component per ID that draws exactly those regions, each tappable
 with its region ID. In hotspot questions the labels are hidden (the label is the
 answer): the picture shows markers, and an accessible list of region buttons
 ("A – kõige ülemine osa") is offered. `toClientQuestion` sends only markers and
-positions. Diagrams must read at 375 px; no canvas, no heavy libraries.
+positions — and in hotspot mode the SVG's own description is replaced by a
+neutral "Joonisel on tähtedega märgitud kohad A, B, C." Diagrams must read at
+375 px; no canvas, no heavy libraries. Positions of labels, markers and
+lesson-only `notes` ("Maa vari") live in `diagramLayout.ts`; its unit test
+checks label fit at DejaVu widths, ≥ 44 px tap areas on a 360 px phone and
+that every marker lies in its region.
 
 ## Adding a new unit (step by step)
 
