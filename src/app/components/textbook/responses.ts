@@ -111,6 +111,22 @@ export function assignGroup(draft: AnswerDraft, itemId: string, groupId: string)
   return { type: 'grouping', assignments };
 }
 
+// Move one item to a new index (a drag-and-drop drop); the index is clamped.
+export function moveItemTo(order: readonly string[], itemId: string, index: number): string[] {
+  const from = order.indexOf(itemId);
+  if (from < 0) return [...order];
+  const rest = order.filter((id) => id !== itemId);
+  const target = Math.min(Math.max(Math.round(index), 0), rest.length);
+  return [...rest.slice(0, target), itemId, ...rest.slice(target)];
+}
+
+// Where a dragged row lands: how many of the OTHER rows (their vertical
+// midpoints, in list order, measured before the drag) lie above the dragged
+// row's current centre.
+export function dropIndex(otherMidpoints: readonly number[], draggedCentre: number): number {
+  return otherMidpoints.filter((midpoint) => midpoint < draggedCentre).length;
+}
+
 // Move one item up (delta −1) or down (+1); out-of-range moves change nothing.
 export function moveItem(order: readonly string[], itemId: string, delta: -1 | 1): string[] {
   const index = order.indexOf(itemId);
@@ -218,6 +234,6 @@ export const ANSWER_HINTS: Record<AnswerSpec['type'], string> = {
   multiple_selection: 'Vali kõik sobivad vastused.',
   matching: 'Vali rida ja siis sellele sobiv vaste.',
   grouping: 'Vali iga sõna juurest, kuhu rühma see kuulub.',
-  ordering: 'Tõsta ridu nuppudega üles või alla.',
-  diagram_hotspot: 'Puuduta joonisel õiget kohta või vali täht nimekirjast.'
+  ordering: 'Lohista rida ⠿ sangast või tõsta nuppudega üles ja alla.',
+  diagram_hotspot: 'Puuduta joonisel õiget kohta või vali täht.'
 };

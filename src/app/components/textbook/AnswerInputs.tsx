@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { ClientAnswerView, ClientQuestion } from '@/lib/textbook/api';
 import type { AnswerResponse } from '@/lib/textbook/types';
 import { QuestionContextView } from '@/app/components/textbook/ContentBlocks';
@@ -8,16 +8,18 @@ import { DiagramView } from '@/app/components/textbook/diagrams';
 import {
   ANSWER_HINTS,
   assignGroup,
+  dropIndex,
   moveItem,
+  moveItemTo,
   nextOpenPrompt,
   pairPrompt,
   toggleOption,
   type AnswerDraft
 } from '@/app/components/textbook/responses';
 
-// The six answer controls. Every one works by tapping buttons (no drag-only
-// interaction anywhere), carries stable IDs in data attributes and sends only
-// IDs. `disabled` freezes the control (after "Kontrolli" in practice).
+// The six answer controls. Every one works by tapping buttons (ordering can
+// also be dragged, but its ▲▼ buttons always work — nothing is drag-only),
+// carries stable IDs in data attributes and sends only IDs. `disabled` freezes the control (after "Kontrolli" in practice).
 
 type InputProps<T extends ClientAnswerView['type']> = {
   questionId: string;
@@ -172,29 +174,120 @@ function GroupingInput({ view, value, onChange, disabled }: InputProps<'grouping
   );
 }
 
+type OrderingDrag = {
+  id: string;
+  pointerId: number;
+  startY: number;
+  dy: number;
+  // Measured at pointer-down: the dragged row and the others' midpoints.
+  top: number;
+  height: number;
+  otherMidpoints: number[];
+  target: number;
+  moved: boolean;
+};
+
+// A drag must travel this far before it counts (a tap on the handle is not a drag).
+const DRAG_SLOP_PX = 4;
+
+// ▲▼ buttons, or drag a row by its ⠿ handle (pointer events: touch and
+// mouse). While dragging, the row is lifted and a line marks where it lands.
+// A finished drag counts as acting on the question, like a button move.
 function OrderingInput({ view, value, onChange, disabled }: InputProps<'ordering'>) {
   const order = value?.type === 'ordering' ? value.order : view.items.map((item) => item.id);
   const [announcement, setAnnouncement] = useState('');
+  const [drag, setDrag] = useState<OrderingDrag | null>(null);
+  const dragRef = useRef<OrderingDrag | null>(null);
+  const listRef = useRef<HTMLOListElement>(null);
   const textOf = (id: string) => view.items.find((item) => item.id === id)?.text ?? id;
-  const move = (id: string, delta: -1 | 1) => {
-    const next = moveItem(order, id, delta);
+  const commit = (next: string[], id: string) => {
     onChange({ type: 'ordering', order: next });
     setAnnouncement(`„${textOf(id)}“ on nüüd kohal ${next.indexOf(id) + 1}.`);
   };
+  const move = (id: string, delta: -1 | 1) => commit(moveItem(order, id, delta), id);
+
+  const update = (next: OrderingDrag | null) => {
+    dragRef.current = next;
+    setDrag(next);
+  };
+
+  const startDrag = (id: string) => (event: ReactPointerEvent<HTMLSpanElement>) => {
+    if (disabled || dragRef.current || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    const rows = Array.from(listRef.current?.querySelectorAll<HTMLElement>('[data-item-id]') ?? []);
+    const own = rows.find((row) => row.dataset.itemId === id);
+    if (!own) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rect = own.getBoundingClientRect();
+    const otherMidpoints = rows.filter((row) => row !== own).map((row) => {
+      const box = row.getBoundingClientRect();
+      return box.top + box.height / 2;
+    });
+    update({ id, pointerId: event.pointerId, startY: event.clientY, dy: 0, top: rect.top, height: rect.height, otherMidpoints, target: order.indexOf(id), moved: false });
+  };
+
+  const moveDrag = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    const current = dragRef.current;
+    if (!current || current.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const dy = event.clientY - current.startY;
+    const moved = current.moved || Math.abs(dy) > DRAG_SLOP_PX;
+    const target = dropIndex(current.otherMidpoints, current.top + current.height / 2 + dy);
+    update({ ...current, dy, moved, target });
+  };
+
+  const endDrag = (cancelled: boolean) => (event: ReactPointerEvent<HTMLSpanElement>) => {
+    const current = dragRef.current;
+    if (!current || current.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    update(null);
+    if (!cancelled && current.moved) commit(moveItemTo(order, current.id, current.target), current.id);
+  };
+
+  // The drop marker: a line above or below the row the dragged one lands next to.
+  const from = drag ? order.indexOf(drag.id) : -1;
+  const dropMarker = (id: string, index: number): 'before' | 'after' | undefined => {
+    if (!drag || !drag.moved || drag.id === id || drag.target === from) return undefined;
+    if (drag.target < from && index === drag.target) return 'before';
+    if (drag.target > from && index === drag.target) return 'after';
+    return undefined;
+  };
+
   return (
     <div className='tb-ordering'>
       {view.firstLabel ? <p className='tb-ordering-end'>⬆ {view.firstLabel}</p> : null}
-      <ol className='tb-ordering-list'>
-        {order.map((id, index) => (
-          <li key={id} className='tb-ordering-item' data-item-id={id}>
-            <span className='tb-pair-number' aria-hidden>{index + 1}</span>
-            <span className='tb-ordering-text'>{textOf(id)}</span>
-            <span className='tb-ordering-moves'>
-              <button type='button' className='tb-move' data-move='up' disabled={disabled || index === 0} aria-label={`Tõsta „${textOf(id)}“ üles`} onClick={() => move(id, -1)}>▲</button>
-              <button type='button' className='tb-move' data-move='down' disabled={disabled || index === order.length - 1} aria-label={`Tõsta „${textOf(id)}“ alla`} onClick={() => move(id, 1)}>▼</button>
-            </span>
-          </li>
-        ))}
+      <ol className='tb-ordering-list' ref={listRef} data-dragging={drag?.moved ? 'true' : undefined}>
+        {order.map((id, index) => {
+          const lifted = drag?.id === id && drag.moved;
+          return (
+            <li
+              key={id}
+              className='tb-ordering-item'
+              data-item-id={id}
+              data-lifted={lifted ? 'true' : undefined}
+              data-drop={dropMarker(id, index)}
+              style={lifted ? { transform: `translateY(${drag.dy}px)` } : undefined}
+            >
+              <span
+                className='tb-drag-handle'
+                data-drag-handle={id}
+                aria-hidden
+                data-disabled={disabled ? 'true' : undefined}
+                onPointerDown={startDrag(id)}
+                onPointerMove={moveDrag}
+                onPointerUp={endDrag(false)}
+                onPointerCancel={endDrag(true)}
+                onLostPointerCapture={endDrag(true)}
+              >⠿</span>
+              <span className='tb-pair-number' aria-hidden>{index + 1}</span>
+              <span className='tb-ordering-text'>{textOf(id)}</span>
+              <span className='tb-ordering-moves'>
+                <button type='button' className='tb-move' data-move='up' disabled={disabled || index === 0} aria-label={`Tõsta „${textOf(id)}“ üles`} onClick={() => move(id, -1)}>▲</button>
+                <button type='button' className='tb-move' data-move='down' disabled={disabled || index === order.length - 1} aria-label={`Tõsta „${textOf(id)}“ alla`} onClick={() => move(id, 1)}>▼</button>
+              </span>
+            </li>
+          );
+        })}
       </ol>
       {view.lastLabel ? <p className='tb-ordering-end'>⬇ {view.lastLabel}</p> : null}
       {value?.type !== 'ordering' ? (
@@ -222,11 +315,11 @@ function DiagramHotspotInput({ view, value, onChange, disabled }: InputProps<'di
             className='tb-hotspot-button'
             data-region-button={region.id}
             aria-pressed={selected === region.id}
+            aria-label={`Vali ${region.marker}`}
             disabled={disabled}
             onClick={() => pick(region.id)}
           >
-            <span className='tb-pair-number' aria-hidden>{region.marker}</span>
-            <span>{region.marker}{region.position ? ` – ${region.position}` : ''}</span>
+            {region.marker}
           </button>
         ))}
       </div>

@@ -141,6 +141,10 @@
   --tb-reading-size:17px;
   /* 36px tall controls + 4px each side = 44px. */
   --tb-small-control:36px; --tb-small-bleed:-4px;
+  /* Test question chips: 28px visible, 8px bleed each side = 44px target. */
+  --tb-chip:28px; --tb-chip-bleed:-8px;
+  /* Ordering drag: the lifted row and the drop marker. */
+  --tb-drag-shadow:0 10px 24px rgba(11,27,69,.18); --tb-drop-line:#6366f1;
   /* Diagram palette. */
   --tb-dia-sky:#eff6ff; --tb-dia-sun:#fbbf24; --tb-dia-sun-line:#d97706; --tb-dia-sea:#3b82f6; --tb-dia-sea-line:#1d4ed8;
   --tb-dia-cloud:#fff; --tb-dia-cloud-line:#94a3b8; --tb-dia-rain:#2563eb; --tb-dia-land:#bbf7d0; --tb-dia-land-line:#16a34a;
@@ -1522,18 +1526,39 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-ordering-end{margin:0;color:var(--tb-muted);font-size:14px;font-weight:850}
 .tb-ordering-confirm{justify-self:start}
 .tb-ordering-list{margin:0;padding:0;list-style:none;display:grid;gap:8px}
-.tb-ordering-item{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;border-radius:var(--tb-radius-small);border:2px solid var(--tb-line);background:var(--tb-surface)}
+.tb-ordering-item{position:relative;display:flex;align-items:center;gap:6px;padding:6px 6px 6px 0;border-radius:var(--tb-radius-small);border:2px solid var(--tb-line);background:var(--tb-surface)}
+/* The drag handle: 32px wide, the row's full height (≥ 44px), and a 6px bleed
+   to the left edge of the row. touch-action:none keeps the page from scrolling
+   while a finger drags. */
+.tb-drag-handle{position:relative;align-self:stretch;width:32px;flex:0 0 auto;display:grid;place-items:center;color:var(--tb-muted);font-size:18px;line-height:1;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.tb-drag-handle::after{content:'';position:absolute;inset:-6px 0 -6px -6px}
+.tb-drag-handle[data-disabled="true"]{cursor:default;opacity:.4}
+.tb-ordering-list[data-dragging="true"]{user-select:none;-webkit-user-select:none}
+.tb-ordering-list[data-dragging="true"] .tb-drag-handle{cursor:grabbing}
+.tb-ordering-item[data-lifted="true"]{z-index:2;border-color:var(--tb-selected-line);background:var(--tb-selected-bg);box-shadow:var(--tb-drag-shadow)}
+.tb-ordering-item[data-drop]::before{content:'';position:absolute;left:0;right:0;height:3px;border-radius:999px;background:var(--tb-drop-line);pointer-events:none}
+.tb-ordering-item[data-drop="before"]::before{top:-7px}
+.tb-ordering-item[data-drop="after"]::before{bottom:-7px}
 .tb-ordering-text{flex:1;min-width:0;font-size:15px;font-weight:750;color:var(--tb-ink);overflow-wrap:anywhere}
 .tb-ordering-moves{display:flex;gap:4px;flex:0 0 auto}
 .tb-move{width:44px;min-height:44px;padding:0;border-radius:12px;border:1px solid var(--tb-line);background:var(--tb-accent-soft);color:var(--tb-accent-ink);font-size:16px}
 .tb-hotspot{display:grid;gap:10px}
-.tb-hotspot-list{display:grid;gap:8px}
+.tb-hotspot-list{display:flex;flex-wrap:wrap;gap:8px}
+.tb-hotspot-button{width:48px;min-height:48px;padding:0;justify-content:center;text-align:center;font-size:18px;font-weight:900}
 .tb-sticky-actions{display:grid}
 .tb-test-actions{display:grid;gap:8px}
-.tb-test-grid{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.tb-test-grid-button{width:100%;min-height:44px;padding:0;border-radius:12px;border:2px solid var(--tb-line);background:var(--tb-surface);color:var(--tb-muted);font-size:15px;font-weight:850}
-.tb-test-grid-button[data-answered="true"]{background:var(--tb-accent-soft);border-color:var(--tb-accent-soft);color:var(--tb-accent-ink)}
-.tb-test-grid-button[aria-current="true"]{border-color:var(--tb-selected-line);color:var(--tb-selected-ink)}
+.tb-test-pause{justify-self:center}
+.tb-test-nav{display:grid;gap:12px}
+/* Ten small chips a row. The grid is its own stacking context and every
+   chip's 44px bleed sits behind all the chips (z-index:-1), so a bleed only
+   catches taps in the gaps and never covers a neighbour's visible chip. */
+.tb-test-grid{position:relative;z-index:0;margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));row-gap:10px;column-gap:0;justify-items:center}
+.tb-test-grid>li{display:flex;justify-content:center;min-width:0}
+.tb-test-grid-button{position:relative;width:var(--tb-chip);height:var(--tb-chip);min-height:var(--tb-chip);padding:0;border-radius:999px;border:1.5px solid var(--tb-line);background:var(--tb-surface);color:var(--tb-muted);font-size:12px;font-weight:850;line-height:1}
+.tb-test-grid-button::after{content:'';position:absolute;inset:var(--tb-chip-bleed);z-index:-1}
+.tb-test-grid-button[data-answered="true"]{background:var(--tb-accent);border-color:var(--tb-accent);color:var(--tb-primary-ink)}
+.tb-test-grid-button[aria-current="true"]{outline:2px solid var(--tb-selected-line);outline-offset:2px;color:var(--tb-selected-ink)}
+.tb-test-grid-button[aria-current="true"][data-answered="true"]{color:var(--tb-primary-ink)}
 
 /* Progress, feedback and results. */
 .tb-progress{display:grid;gap:6px}

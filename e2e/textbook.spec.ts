@@ -1,7 +1,7 @@
 import { expect, test, type Page } from './test';
 import { authenticateFamily } from './auth';
 import { navigateStable } from './navigation';
-import type { ParentUnitDetailResponse, PracticeSessionView, UnitDetailResponse } from '../src/lib/textbook/api';
+import type { ParentUnitDetailResponse, PracticeSessionView, TestSessionView, UnitDetailResponse } from '../src/lib/textbook/api';
 import { correctResponseFor, hotspotRegionIds } from '../src/lib/textbook/grading';
 import type { Question } from '../src/lib/textbook/types';
 
@@ -283,6 +283,9 @@ test('preview practice: immediate feedback, correction and resume', async ({ pag
   await readAllViaApi(page, detail);
 
   await openSessionPage(page, `${previewUnit(WATER)}/harjuta`);
+  // The headline counts questions, not topics.
+  const counter = page.locator('.tb-progress-row');
+  await expect(counter).toContainText(/^Küsimus 1 \/ \d+Tehtud 0 · jäänud \d+$/);
   const firstId = await currentQuestionId(page);
   const first = keys.get(firstId)!;
   await answerInUi(page, first, false);
@@ -293,6 +296,10 @@ test('preview practice: immediate feedback, correction and resume', async ({ pag
   await expect(feedback).toContainText('Õige vastus:');
   await expect(feedback).toContainText(first.explanation);
   await expect(feedback).toContainText('Selle teema juurde tuleb hiljem veel üks küsimus.');
+  // The answered question keeps its number while its feedback is shown; total = done + remaining.
+  const [, shown, total, done, left] = (await counter.innerText()).replace(/\s+/g, ' ').match(/Küsimus (\d+) \/ (\d+) ?Tehtud (\d+) · jäänud (\d+)/) ?? [];
+  expect([Number(shown), Number(done)]).toEqual([1, 1]);
+  expect(Number(total)).toBe(Number(done) + Number(left));
 
   // The feedback survives a reload, and the run resumes.
   await page.reload();
@@ -335,6 +342,11 @@ test('preview test: pause and resume, 18/20 fails, targeted practice, 19/20 pass
   await openSessionPage(page, `${previewUnit(WATER)}/test`);
   await expect(page.locator('.tb-question-eyebrow')).toHaveText('Küsimus 1/20');
   await expect(page.locator('.tb-test-grid-button')).toHaveCount(20);
+  // The compact navigation fits the 375 px phone: no sideways scroll, ten chips a row.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+  const chipTops = await page.locator('.tb-test-grid-button').evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().top)));
+  expect(new Set(chipTops).size).toBe(2);
+  await expect(page.getByText('Testis vastuseid kohe ei kontrollita.', { exact: false })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Esita test' })).toBeDisabled();
   // No feedback during the test.
   await expect(page.locator('.tb-feedback')).toHaveCount(0);
@@ -377,6 +389,50 @@ test('preview test: pause and resume, 18/20 fails, targeted practice, 19/20 pass
   await navigateStable(page, previewCourse);
   await expect(page.locator(`.tb-unit-card[data-unit-id="${WATER}"] .tb-status-chip`)).toContainText('Läbitud');
   await expect(page.locator(`.tb-unit-card[data-unit-id="${PLANT}"] .tb-status-chip`)).toContainText('Alusta õppimist');
+});
+
+test('preview test: an ordering row can be dragged into a new place', async ({ page }) => {
+  test.setTimeout(150_000);
+  await signInAsParent(page);
+  const detail = await unitKeys(page, WATER);
+  // The test draws 20 of the unit's questions; start runs until one of them is an ordering question.
+  let position = -1;
+  for (let attempt = 0; attempt < 6 && position < 0; attempt += 1) {
+    await resetPreview(page);
+    await readAllViaApi(page, detail);
+    await practiseViaApi(page, detail);
+    const session = await apiPost<TestSessionView>(page, `${PREVIEW_API}/courses/${DEMO}/units/${WATER}/test`, { actionId: actionId() });
+    position = session.questions.findIndex((question) => question.answer.type === 'ordering');
+  }
+  expect(position, 'a test with an ordering question').toBeGreaterThanOrEqual(0);
+
+  await openSessionPage(page, `${previewUnit(WATER)}/test`);
+  await page.locator('.tb-test-grid-button').nth(position).click();
+  const card = page.locator('.tb-question[data-answer-type="ordering"]');
+  await expect(card).toBeVisible();
+  const rows = card.locator('.tb-ordering-item');
+  const orderOf = () => rows.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-item-id') ?? ''));
+  const before = await orderOf();
+  await expect(card.getByRole('button', { name: 'See järjekord sobib' })).toBeVisible();
+
+  // Drag the first row by its handle to below the second row.
+  const handle = rows.first().locator('.tb-drag-handle');
+  await handle.scrollIntoViewIfNeeded();
+  const from = (await handle.boundingBox())!;
+  const second = (await rows.nth(1).boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 + 10, { steps: 3 });
+  await expect(rows.first()).toHaveAttribute('data-lifted', 'true');
+  await page.mouse.move(from.x + from.width / 2, second.y + second.height * 0.9, { steps: 6 });
+  await expect(rows.nth(1)).toHaveAttribute('data-drop', 'after');
+  await page.mouse.up();
+
+  await expect.poll(orderOf).toEqual([before[1], before[0], ...before.slice(2)]);
+  await expect(card.locator('[aria-live="polite"]')).toHaveText(/on nüüd kohal 2\.$/);
+  // The drag counted as an answer: no confirm button, and the chip shows it answered.
+  await expect(card.getByRole('button', { name: 'See järjekord sobib' })).toHaveCount(0);
+  await expect(page.locator('.tb-test-grid-button').nth(position)).toHaveAttribute('data-answered', 'true');
 });
 
 test('parent panel: drafts cannot be published, questions with answers, preview reset', async ({ page }) => {

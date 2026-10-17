@@ -200,7 +200,6 @@ export default function TextbookTest({ scope, courseId, unitId }: { scope: Textb
   return (
     <TextbookShell scope={scope} title='Test' eyebrow={`${view.total} ${questionCountWord(view.total)} · läbimiseks ${view.requiredCorrect} ${correctWord(view.requiredCorrect)}`} backHref={paths.unit(unitId)} backLabel='← Õppetükk'>
       <TextbookProgress value={answered} total={view.total} label='Vastatud' />
-      <p className='tb-hint'>Testis vastuseid kohe ei kontrollita. Iga vastus salvestub ja testi saab pooleli jätta.</p>
 
       {runner.error ? <TextbookProblem error={runner.error} onRetry={runner.retry} retrying={runner.retrying} backHref={paths.unit(unitId)} backLabel='Tagasi õppetüki juurde' /> : null}
 
@@ -208,31 +207,33 @@ export default function TextbookTest({ scope, courseId, unitId }: { scope: Textb
         <QuestionCard key={current.id} question={current} value={draftFor(current.id)} onChange={change} disabled={leaving || Boolean(runner.error)} eyebrow={`Küsimus ${index + 1}/${view.total}`} />
       ) : null}
 
-      <nav className='tb-pager' aria-label='Testi küsimused'>
-        <button type='button' className='tb-button' disabled={index === 0} onClick={() => goTo(index - 1)}>← Eelmine</button>
-        <span className='tb-pager-label'>{index + 1}/{view.total}</span>
-        <button type='button' className='tb-button tb-button-primary' disabled={index === questions.length - 1} onClick={() => goTo(index + 1)}>Järgmine →</button>
-      </nav>
+      <nav className='tb-test-nav' aria-label='Testi küsimused'>
+        <div className='tb-pager tb-pager-compact'>
+          <button type='button' className='tb-button tb-button-small' disabled={index === 0} onClick={() => goTo(index - 1)}>← Eelmine</button>
+          <span className='tb-pager-label'>{index + 1}/{view.total}</span>
+          <button type='button' className='tb-button tb-button-small tb-button-primary' disabled={index === questions.length - 1} onClick={() => goTo(index + 1)}>Järgmine →</button>
+        </div>
 
-      <ol className='tb-test-grid' aria-label='Kõik küsimused'>
-        {questions.map((question, position) => {
-          const done = isDraftComplete(question.answer, draftFor(question.id));
-          return (
-            <li key={question.id}>
-              <button
-                type='button'
-                className='tb-test-grid-button'
-                data-answered={done ? 'true' : 'false'}
-                aria-current={position === index ? 'true' : undefined}
-                aria-label={`Küsimus ${position + 1}${done ? ', vastatud' : ', vastamata'}`}
-                onClick={() => goTo(position)}
-              >
-                {position + 1}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+        <ol className='tb-test-grid' aria-label='Kõik küsimused'>
+          {questions.map((question, position) => {
+            const done = isDraftComplete(question.answer, draftFor(question.id));
+            return (
+              <li key={question.id}>
+                <button
+                  type='button'
+                  className='tb-test-grid-button'
+                  data-answered={done ? 'true' : 'false'}
+                  aria-current={position === index ? 'true' : undefined}
+                  aria-label={`Küsimus ${position + 1}${done ? ', vastatud' : ', vastamata'}`}
+                  onClick={() => goTo(position)}
+                >
+                  {position + 1}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
 
       <div className='tb-test-actions'>
         {confirming ? (
@@ -246,9 +247,9 @@ export default function TextbookTest({ scope, courseId, unitId }: { scope: Textb
         ) : (
           <button type='button' className='tb-button tb-button-primary tb-button-wide' disabled={!allAnswered || leaving} onClick={() => setConfirming(true)}>Esita test</button>
         )}
-        {!allAnswered ? <p className='tb-hint'>Testi saab esitada, kui kõik {view.total} {questionCountWord(view.total)} on vastatud. Vastamata: {view.total - answered}.</p> : null}
+        {!allAnswered ? <p className='tb-hint'>Esitada saab, kui kõik on vastatud. Vastamata: {view.total - answered}.</p> : null}
         {allAnswered && !savedAll && !runner.busy ? <p className='tb-hint'>Salvestan viimaseid vastuseid…</p> : null}
-        <button type='button' className='tb-button tb-button-wide' disabled={leaving} onClick={() => void pause()}>{leaving ? 'Salvestan…' : 'Peata test'}</button>
+        <button type='button' className='tb-button tb-button-small tb-test-pause' disabled={leaving} onClick={() => void pause()}>{leaving ? 'Salvestan…' : 'Peata test'}</button>
       </div>
     </TextbookShell>
   );

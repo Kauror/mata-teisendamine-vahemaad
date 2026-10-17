@@ -6,7 +6,9 @@ import {
   draftFrom,
   emptyDraft,
   isDraftComplete,
+  dropIndex,
   moveItem,
+  moveItemTo,
   nextOpenPrompt,
   pairPrompt,
   sameResponse,
@@ -73,6 +75,21 @@ describe('answer drafts', () => {
     expect(moveItem(['a', 'b', 'c'], 'a', -1)).toEqual(['a', 'b', 'c']);
     expect(moveItem(['a', 'b', 'c'], 'c', 1)).toEqual(['a', 'b', 'c']);
     expect(moveItem(['a', 'b'], 'zzz', 1)).toEqual(['a', 'b']);
+  });
+
+  it('drops a dragged ordering item at a new index', () => {
+    expect(moveItemTo(['a', 'b', 'c', 'd'], 'a', 2)).toEqual(['b', 'c', 'a', 'd']);
+    expect(moveItemTo(['a', 'b', 'c', 'd'], 'd', 0)).toEqual(['d', 'a', 'b', 'c']);
+    expect(moveItemTo(['a', 'b', 'c'], 'b', 9)).toEqual(['a', 'c', 'b']);
+    expect(moveItemTo(['a', 'b', 'c'], 'b', 1)).toEqual(['a', 'b', 'c']);
+    expect(moveItemTo(['a', 'b'], 'zzz', 0)).toEqual(['a', 'b']);
+  });
+
+  it('finds the drop index from the midpoints of the other rows', () => {
+    // Rows at 0–40, 48–88, 96–136; dragging the first row down past the second's midpoint.
+    expect(dropIndex([68, 116], 20)).toBe(0);
+    expect(dropIndex([68, 116], 70)).toBe(1);
+    expect(dropIndex([68, 116], 200)).toBe(2);
   });
 
   it('compares answers by value', () => {
