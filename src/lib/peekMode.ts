@@ -76,6 +76,8 @@ export function isChildWritePath(pathname: string) {
     // under /api/parent/textbook/preview and is the parent's own, so it is not
     // listed here.
     || pathname.startsWith('/api/textbook/')
+    // Kaardimäng rounds (the preview lives under /api/parent/kaardimang).
+    || pathname.startsWith('/api/kaardimang/')
     || pathname === '/api/tasks/complete'
     || pathname === '/api/remediation'
     || pathname.startsWith('/api/remediation/')

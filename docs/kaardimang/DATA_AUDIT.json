@@ -1,0 +1,1003 @@
+{
+ "dataVersion": "2026-10-17.1",
+ "builtOn": "2026-10-17",
+ "sources": {
+  "countries": {
+   "file": "ne_10m_admin_0_countries_deu.geojson",
+   "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_admin_0_countries_deu.geojson",
+   "what": "Natural Earth 5.1.2, Admin 0 countries 1:10m, Germany point of view (Crimea in Ukraine; Northern Cyprus in Cyprus; Somaliland in Somalia)",
+   "license": "Public domain, https://www.naturalearthdata.com/about/terms-of-use/",
+   "sha256": "fc4d56c6bc256f779e0ba21579f81d64885f5296dba3c23c3e78a9b89a7aa0fb"
+  },
+  "places": {
+   "file": "ne_10m_populated_places_simple.geojson",
+   "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson",
+   "what": "Natural Earth 5.1.2, populated places 1:10m (capital coordinates only; names come from EKI)",
+   "license": "Public domain, https://www.naturalearthdata.com/about/terms-of-use/",
+   "sha256": "fd3fa867a320cbd5c5b6bb5bc550afeec2939fb2cef688e508007282a55ac42f"
+  },
+  "eki": {
+   "file": "eki.html",
+   "url": "https://teatmik.eki.ee/teatmik/maailma-maade-nimed/",
+   "what": "Eesti Keele Instituut, Maailma maade nimed, seis 21.08.2026 (country and capital names, independence marking)",
+   "sha256": "4f0956ced5ccb9a70ae977466cd4c7a36ed43534b2e2ade100e94e5c87974dfe"
+  },
+  "ekiCorrections": {
+   "file": "eki_paran.html",
+   "url": "https://teatmik.eki.ee/teatmik/parandused-maailma-maade-nimestikus/",
+   "what": "EKI corrections to the list (reviewed by hand; already reflected in the main list)",
+   "sha256": "830138e5ace8fc8246260dcd958ef0a7dd9b16750cf5c2a91e7c1d0327fea03b"
+  },
+  "m49": {
+   "file": "m49.html",
+   "url": "https://unstats.un.org/unsd/methodology/m49/overview/",
+   "what": "UN M49 standard country or area codes (regions, sub-regions, ISO codes)",
+   "sha256": "b9048114f6e7f2abda83bf03d4263c9d7cd1bd7230e3d0461025ee7839a7a1fb"
+  },
+  "unMembers": {
+   "file": "un_members.html",
+   "url": "https://www.un.org/en/about-us/member-states",
+   "what": "United Nations member states (193)",
+   "sha256": "930af37ccad5838d18804eadeb698c383b8fe2514cc8d6136c72fb530919ff38"
+  }
+ },
+ "ekiAsOf": "21. august 2026",
+ "totals": {
+  "targetCountries": 194,
+  "unMembers": 193,
+  "unObserversAsTargets": [
+   "VAT"
+  ],
+  "exploreOnly": [
+   {
+    "id": "PSE",
+    "nameEt": "Palestiina",
+    "status": "un_observer",
+    "noteEt": "Palestiina on ÜRO vaatlejariik. Paljud riigid tunnustavad seda, paljud mitte. Rām Allāhis asub Palestiina valitsus."
+   },
+   {
+    "id": "XKX",
+    "nameEt": "Kosovo",
+    "status": "partially_recognised",
+    "noteEt": "Kosovo kuulutas end iseseisvaks 2008. aastal. Paljud riigid, ka Eesti, tunnustavad seda, kuid Serbia ja mõned teised riigid mitte."
+   },
+   {
+    "id": "TWN",
+    "nameEt": "Taiwan",
+    "status": "disputed",
+    "noteEt": "Taiwanil on oma valitsus, kuid Hiina peab saart enda osaks. Taiwan ei ole ÜRO liige."
+   }
+  ],
+  "quizEligibleCapitals": 184
+ },
+ "perWorldPart": [
+  {
+   "worldPart": "europe",
+   "nameEt": "Euroopa",
+   "countries": 44,
+   "unMembers": 43,
+   "quizCapitals": 43,
+   "noQuizCapital": [
+    "VAT"
+   ],
+   "subregions": [
+    {
+     "id": "baltics",
+     "nameEt": "Baltikum",
+     "countries": 3,
+     "tappableOnMap": 3,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "nordic",
+     "nameEt": "Põhjamaad",
+     "countries": 5,
+     "tappableOnMap": 5,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "western",
+     "nameEt": "Lääne-Euroopa",
+     "countries": 11,
+     "tappableOnMap": 10,
+     "answerButtonsOnly": [
+      "LUX"
+     ]
+    },
+    {
+     "id": "central",
+     "nameEt": "Kesk-Euroopa",
+     "countries": 9,
+     "tappableOnMap": 9,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "southern",
+     "nameEt": "Lõuna-Euroopa",
+     "countries": 10,
+     "tappableOnMap": 10,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "eastern",
+     "nameEt": "Ida-Euroopa",
+     "countries": 7,
+     "tappableOnMap": 7,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "balkans",
+     "nameEt": "Balkani piirkond",
+     "countries": 8,
+     "tappableOnMap": 8,
+     "answerButtonsOnly": []
+    }
+   ]
+  },
+  {
+   "worldPart": "asia",
+   "nameEt": "Aasia",
+   "countries": 47,
+   "unMembers": 47,
+   "quizCapitals": 45,
+   "noQuizCapital": [
+    "ISR",
+    "LKA"
+   ],
+   "subregions": [
+    {
+     "id": "east",
+     "nameEt": "Ida-Aasia",
+     "countries": 5,
+     "tappableOnMap": 5,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "southeast",
+     "nameEt": "Kagu-Aasia",
+     "countries": 11,
+     "tappableOnMap": 10,
+     "answerButtonsOnly": [
+      "BRN"
+     ]
+    },
+    {
+     "id": "south",
+     "nameEt": "Lõuna-Aasia",
+     "countries": 9,
+     "tappableOnMap": 9,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "central",
+     "nameEt": "Kesk-Aasia",
+     "countries": 5,
+     "tappableOnMap": 5,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "west",
+     "nameEt": "Lääne-Aasia",
+     "countries": 18,
+     "tappableOnMap": 17,
+     "answerButtonsOnly": [
+      "QAT"
+     ]
+    }
+   ]
+  },
+  {
+   "worldPart": "africa",
+   "nameEt": "Aafrika",
+   "countries": 54,
+   "unMembers": 54,
+   "quizCapitals": 52,
+   "noQuizCapital": [
+    "SWZ",
+    "ZAF"
+   ],
+   "subregions": [
+    {
+     "id": "north",
+     "nameEt": "Põhja-Aafrika",
+     "countries": 6,
+     "tappableOnMap": 6,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "west",
+     "nameEt": "Lääne-Aafrika",
+     "countries": 16,
+     "tappableOnMap": 15,
+     "answerButtonsOnly": [
+      "GMB"
+     ]
+    },
+    {
+     "id": "central",
+     "nameEt": "Kesk-Aafrika",
+     "countries": 9,
+     "tappableOnMap": 9,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "east",
+     "nameEt": "Ida-Aafrika",
+     "countries": 18,
+     "tappableOnMap": 18,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "south",
+     "nameEt": "Lõuna-Aafrika",
+     "countries": 5,
+     "tappableOnMap": 5,
+     "answerButtonsOnly": []
+    }
+   ]
+  },
+  {
+   "worldPart": "americas",
+   "nameEt": "Ameerika",
+   "countries": 35,
+   "unMembers": 35,
+   "quizCapitals": 34,
+   "noQuizCapital": [
+    "BOL"
+   ],
+   "subregions": [
+    {
+     "id": "north-large",
+     "nameEt": "USA, Kanada ja Mehhiko",
+     "countries": 3,
+     "tappableOnMap": 3,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "central",
+     "nameEt": "Kesk-Ameerika",
+     "countries": 8,
+     "tappableOnMap": 8,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "caribbean",
+     "nameEt": "Kariibid",
+     "countries": 13,
+     "tappableOnMap": 9,
+     "answerButtonsOnly": [
+      "ATG",
+      "KNA",
+      "LCA",
+      "VCT"
+     ]
+    },
+    {
+     "id": "south",
+     "nameEt": "Lõuna-Ameerika",
+     "countries": 12,
+     "tappableOnMap": 12,
+     "answerButtonsOnly": []
+    }
+   ]
+  },
+  {
+   "worldPart": "oceania",
+   "nameEt": "Austraalia ja Okeaania",
+   "countries": 14,
+   "unMembers": 14,
+   "quizCapitals": 10,
+   "noQuizCapital": [
+    "KIR",
+    "MHL",
+    "NRU",
+    "TUV"
+   ],
+   "subregions": [
+    {
+     "id": "australia-nz",
+     "nameEt": "Austraalia ja Uus-Meremaa",
+     "countries": 2,
+     "tappableOnMap": 2,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "melanesia",
+     "nameEt": "Melaneesia",
+     "countries": 4,
+     "tappableOnMap": 4,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "micronesia",
+     "nameEt": "Mikroneesia",
+     "countries": 5,
+     "tappableOnMap": 5,
+     "answerButtonsOnly": []
+    },
+    {
+     "id": "polynesia",
+     "nameEt": "Polüneesia",
+     "countries": 3,
+     "tappableOnMap": 3,
+     "answerButtonsOnly": []
+    }
+   ]
+  },
+  {
+   "worldPart": "antarctica",
+   "nameEt": "Antarktika",
+   "countries": 0,
+   "unMembers": 0,
+   "quizCapitals": 0,
+   "noQuizCapital": [],
+   "subregions": []
+  }
+ ],
+ "capitalExceptions": [
+  {
+   "id": "NLD",
+   "nameEt": "Holland",
+   "capitals": [
+    {
+     "nameEt": "Amsterdam",
+     "role": "official",
+     "quizEligible": true,
+     "noteEt": "Amsterdam on põhiseaduse järgi pealinn. Valitsus ja parlament asuvad Haagis.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    },
+    {
+     "nameEt": "Haag",
+     "role": "seat_of_government",
+     "quizEligible": false,
+     "noteEt": null,
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "VAT",
+   "nameEt": "Vatikan",
+   "capitals": []
+  },
+  {
+   "id": "IDN",
+   "nameEt": "Indoneesia",
+   "capitals": [
+    {
+     "nameEt": "Jakarta",
+     "role": "official",
+     "quizEligible": true,
+     "noteEt": "Indoneesia ehitab uut pealinna Nusantarat, kuid EKI 21.08.2026 loendi järgi on pealinn Jakarta.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "ISR",
+   "nameEt": "Iisrael",
+   "capitals": [
+    {
+     "nameEt": "Jeruusalemm",
+     "role": "claimed",
+     "quizEligible": false,
+     "noteEt": "Iisrael on kuulutanud oma pealinnaks Jeruusalemma, kuid enamik riike ei ole seda tunnustanud.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    },
+    {
+     "nameEt": "Tel Aviv",
+     "role": "other",
+     "quizEligible": false,
+     "noteEt": "Enamiku riikide saatkonnad asuvad Tel Avivis.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "MYS",
+   "nameEt": "Malaisia",
+   "capitals": [
+    {
+     "nameEt": "Kuala Lumpur",
+     "role": "official",
+     "quizEligible": true,
+     "noteEt": "Paljud valitsusasutused asuvad Putrajayas.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    },
+    {
+     "nameEt": "Putrajaya",
+     "role": "seat_of_government",
+     "quizEligible": false,
+     "noteEt": null,
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "LKA",
+   "nameEt": "Sri Lanka",
+   "capitals": [
+    {
+     "nameEt": "Sri Jayawardenepura Kotte",
+     "role": "legislative",
+     "quizEligible": false,
+     "noteEt": "Parlament asub Sri Jayawardenepura Kottes.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    },
+    {
+     "nameEt": "Colombo",
+     "role": "other",
+     "quizEligible": false,
+     "noteEt": "Colombo on suurim linn ja paljude valitsusasutuste asukoht.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "BEN",
+   "nameEt": "Benin",
+   "capitals": [
+    {
+     "nameEt": "Porto-Novo",
+     "role": "official",
+     "quizEligible": true,
+     "noteEt": "Valitsus asub suures osas Cotonous.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "BDI",
+   "nameEt": "Burundi",
+   "capitals": [
+    {
+     "nameEt": "Gitega",
+     "role": "official",
+     "quizEligible": true,
+     "noteEt": "Gitega on pealinn alates 2019. aastast; varem oli see Bujumbura.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "CIV",
+   "nameEt": "Elevandiluurannik",
+   "capitals": [
+    {
+     "nameEt": "Yamoussoukro",
+     "role": "official",
+     "quizEligible": true,
+     "noteEt": "Suurim linn ja paljude asutuste asukoht on Abidjan.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "GNQ",
+   "nameEt": "Ekvatoriaal-Guinea",
+   "capitals": [
+    {
+     "nameEt": "Ciudad de la Paz",
+     "role": "official",
+     "quizEligible": true,
+     "noteEt": "Ciudad de la Paz on pealinn alates 2. jaanuarist 2026. Varem oli pealinn Malabo.",
+     "positionSourceUrl": "https://en.wikipedia.org/wiki/Ciudad_de_la_Paz"
+    }
+   ]
+  },
+  {
+   "id": "SWZ",
+   "nameEt": "Svaasimaa",
+   "capitals": [
+    {
+     "nameEt": "Mbabane",
+     "role": "administrative",
+     "quizEligible": false,
+     "noteEt": "Mbabane on halduspealinn.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    },
+    {
+     "nameEt": "Lobamba",
+     "role": "legislative",
+     "quizEligible": false,
+     "noteEt": "Lobambas asuvad parlament ja kuninglik residents.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "ZAF",
+   "nameEt": "Lõuna-Aafrika Vabariik",
+   "capitals": [
+    {
+     "nameEt": "Pretoria",
+     "role": "administrative",
+     "quizEligible": false,
+     "noteEt": "Pretorias asub valitsus.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    },
+    {
+     "nameEt": "Kaplinn",
+     "role": "legislative",
+     "quizEligible": false,
+     "noteEt": "Kaplinnas asub parlament.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    },
+    {
+     "nameEt": "Bloemfontein",
+     "role": "judicial",
+     "quizEligible": false,
+     "noteEt": "Bloemfonteinis asub ülemkohus.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "TZA",
+   "nameEt": "Tansaania",
+   "capitals": [
+    {
+     "nameEt": "Dodoma",
+     "role": "official",
+     "quizEligible": true,
+     "noteEt": "Suurim linn on Dar es Salaam.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "BOL",
+   "nameEt": "Boliivia",
+   "capitals": [
+    {
+     "nameEt": "Sucre",
+     "role": "official",
+     "quizEligible": false,
+     "noteEt": "Sucre on põhiseaduse järgi pealinn.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    },
+    {
+     "nameEt": "La Paz",
+     "role": "seat_of_government",
+     "quizEligible": false,
+     "noteEt": "La Pazis asuvad valitsus ja parlament.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "KIR",
+   "nameEt": "Kiribati",
+   "capitals": [
+    {
+     "nameEt": "Bairiki/Tarawa",
+     "role": "official",
+     "quizEligible": false,
+     "noteEt": "Valitsusasutused asuvad Tarawa atollil, peamiselt Bairikil.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "MHL",
+   "nameEt": "Marshalli Saared",
+   "capitals": [
+    {
+     "nameEt": "Uliga/Majuro",
+     "role": "official",
+     "quizEligible": false,
+     "noteEt": "Pealinn asub Majuro atollil.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "NRU",
+   "nameEt": "Naoero",
+   "capitals": [
+    {
+     "nameEt": "Yaren",
+     "role": "other",
+     "quizEligible": false,
+     "noteEt": "Naurul ei ole ametlikku pealinna. Valitsusasutused asuvad Yarenis.",
+     "positionSourceUrl": "https://en.wikipedia.org/wiki/Yaren"
+    }
+   ]
+  },
+  {
+   "id": "TUV",
+   "nameEt": "Tuvalu",
+   "capitals": [
+    {
+     "nameEt": "Vaiaku/Funafuti",
+     "role": "official",
+     "quizEligible": false,
+     "noteEt": "Valitsusasutused asuvad Funafuti atollil Vaiaku külas.",
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "PSE",
+   "nameEt": "Palestiina",
+   "capitals": [
+    {
+     "nameEt": "Rām Allāh",
+     "role": "de_facto",
+     "quizEligible": false,
+     "noteEt": null,
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "XKX",
+   "nameEt": "Kosovo",
+   "capitals": [
+    {
+     "nameEt": "Prishtina",
+     "role": "official",
+     "quizEligible": false,
+     "noteEt": null,
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  },
+  {
+   "id": "TWN",
+   "nameEt": "Taiwan",
+   "capitals": [
+    {
+     "nameEt": "Taibei",
+     "role": "de_facto",
+     "quizEligible": false,
+     "noteEt": null,
+     "positionSourceUrl": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_populated_places_simple.geojson"
+    }
+   ]
+  }
+ ],
+ "capitalPositionChecks": {
+  "inside": 204,
+  "nearCoast": [],
+  "outside": [],
+  "noPosition": []
+ },
+ "geometry": {
+  "source": "Natural Earth 5.1.2, Admin 0 countries 1:10m, Germany point of view (Crimea in Ukraine; Northern Cyprus in Cyprus; Somaliland in Somalia)",
+  "mergedFeatures": {
+   "BRT": "KAZ",
+   "USG": "CUB"
+  },
+  "transcontinentalSplit": [
+   "RUS",
+   "KAZ",
+   "TUR"
+  ],
+  "overseasParts": {
+   "FRA": [
+    "Prantsusmaa ülemeremaa",
+    "Prantsusmaa ülemeremaa"
+   ],
+   "NLD": [
+    "Hollandi Kariibi saared"
+   ],
+   "USA": [
+    "Hawaii (USA osariik)"
+   ]
+  },
+  "contextFeatures": [
+   "ESB Dhekelia (Suurbritannia)",
+   "ESH Lääne-Sahara (staatus vaidlustatud)",
+   "MAF Saint-Martin (Prantsusmaa)",
+   "SXM Sint Maarten (Holland)",
+   "BRI Bir Tawil (ühegi riigi oma)",
+   "GIB Gibraltar (Suurbritannia)",
+   "HKG Hongkong (Hiina)",
+   "WSB Akrotiri (Suurbritannia)",
+   "ATA Antarktis",
+   "GRL Gröönimaa (Taani)",
+   "NCL Uus-Kaledoonia (Prantsusmaa)",
+   "CUW Curaçao (Holland)",
+   "ABW Aruba (Holland)",
+   "TCA Turks ja Caicos (Suurbritannia)",
+   "SPM Saint-Pierre ja Miquelon (Prantsusmaa)",
+   "PCN Pitcairn (Suurbritannia)",
+   "PYF Prantsuse Polüneesia",
+   "ATF Prantsuse Lõunaalad",
+   "UMI Ühendriikide hajasaared (USA)",
+   "MSR Montserrat (Suurbritannia)",
+   "VIR USA Neitsisaared",
+   "BLM Saint-Barthélemy (Prantsusmaa)",
+   "PRI Puerto Rico (USA)",
+   "AIA Anguilla (Suurbritannia)",
+   "VGB Briti Neitsisaared",
+   "CYM Kaimanisaared (Suurbritannia)",
+   "BMU Bermuda (Suurbritannia)",
+   "HMD Heard ja McDonald (Austraalia)",
+   "SHN Saint Helena (Suurbritannia)",
+   "JEY Jersey (Suurbritannia)",
+   "GGY Guernsey (Suurbritannia)",
+   "IMN Mani saar (Suurbritannia)",
+   "ALA Ahvenamaa (Soome)",
+   "FRO Fääri saared (Taani)",
+   "IOA Austraalia saared India ookeanis",
+   "IOT Briti India ookeani ala",
+   "NFK Norfolk (Austraalia)",
+   "COK Cooki saared (Uus-Meremaa)",
+   "WLF Wallis ja Futuna (Prantsusmaa)",
+   "SGS Lõuna-Georgia ja Lõuna-Sandwichi saared (Suurbritannia)",
+   "FLK Falklandi (Malviini) saared (Suurbritannia)",
+   "NIU Niue (Uus-Meremaa)",
+   "ASM Ameerika Samoa (USA)",
+   "GUM Guam (USA)",
+   "MNP Põhja-Mariaanid (USA)",
+   "CSI Korallimere saared (Austraalia)",
+   "PGA Spratly saared (vaidlustatud)",
+   "CLP Clippertoni saar (Prantsusmaa)",
+   "MAC Macau (Hiina)",
+   "ATC Ashmore ja Cartier (Austraalia)",
+   "SCR Scarborough karid (vaidlustatud)"
+  ]
+ },
+ "views": [
+  {
+   "id": "world",
+   "bytes": 123208,
+   "targets": 14,
+   "tappable": 14,
+   "markers": 0,
+   "capitals": 17
+  },
+  {
+   "id": "antarctica",
+   "bytes": 55028,
+   "targets": 0,
+   "tappable": 0,
+   "markers": 1,
+   "capitals": 0
+  },
+  {
+   "id": "europe",
+   "bytes": 152000,
+   "targets": 44,
+   "tappable": 38,
+   "markers": 7,
+   "capitals": 45
+  },
+  {
+   "id": "europe-baltics",
+   "bytes": 16991,
+   "targets": 3,
+   "tappable": 3,
+   "markers": 0,
+   "capitals": 3
+  },
+  {
+   "id": "europe-nordic",
+   "bytes": 108907,
+   "targets": 5,
+   "tappable": 5,
+   "markers": 0,
+   "capitals": 5
+  },
+  {
+   "id": "europe-western",
+   "bytes": 97268,
+   "targets": 11,
+   "tappable": 10,
+   "markers": 2,
+   "capitals": 12
+  },
+  {
+   "id": "europe-central",
+   "bytes": 54570,
+   "targets": 9,
+   "tappable": 9,
+   "markers": 1,
+   "capitals": 9
+  },
+  {
+   "id": "europe-southern",
+   "bytes": 62696,
+   "targets": 10,
+   "tappable": 10,
+   "markers": 4,
+   "capitals": 10
+  },
+  {
+   "id": "europe-eastern",
+   "bytes": 129429,
+   "targets": 7,
+   "tappable": 7,
+   "markers": 0,
+   "capitals": 8
+  },
+  {
+   "id": "europe-balkans",
+   "bytes": 62913,
+   "targets": 8,
+   "tappable": 8,
+   "markers": 0,
+   "capitals": 9
+  },
+  {
+   "id": "asia",
+   "bytes": 129955,
+   "targets": 47,
+   "tappable": 38,
+   "markers": 10,
+   "capitals": 53
+  },
+  {
+   "id": "asia-east",
+   "bytes": 69888,
+   "targets": 5,
+   "tappable": 5,
+   "markers": 0,
+   "capitals": 6
+  },
+  {
+   "id": "asia-southeast",
+   "bytes": 96904,
+   "targets": 11,
+   "tappable": 10,
+   "markers": 1,
+   "capitals": 13
+  },
+  {
+   "id": "asia-south",
+   "bytes": 58486,
+   "targets": 9,
+   "tappable": 9,
+   "markers": 1,
+   "capitals": 10
+  },
+  {
+   "id": "asia-central",
+   "bytes": 37146,
+   "targets": 5,
+   "tappable": 5,
+   "markers": 0,
+   "capitals": 5
+  },
+  {
+   "id": "asia-west",
+   "bytes": 59330,
+   "targets": 18,
+   "tappable": 17,
+   "markers": 1,
+   "capitals": 20
+  },
+  {
+   "id": "africa",
+   "bytes": 83632,
+   "targets": 54,
+   "tappable": 47,
+   "markers": 6,
+   "capitals": 58
+  },
+  {
+   "id": "africa-north",
+   "bytes": 52198,
+   "targets": 6,
+   "tappable": 6,
+   "markers": 0,
+   "capitals": 7
+  },
+  {
+   "id": "africa-west",
+   "bytes": 33227,
+   "targets": 16,
+   "tappable": 15,
+   "markers": 0,
+   "capitals": 16
+  },
+  {
+   "id": "africa-central",
+   "bytes": 48544,
+   "targets": 9,
+   "tappable": 9,
+   "markers": 1,
+   "capitals": 9
+  },
+  {
+   "id": "africa-east",
+   "bytes": 41600,
+   "targets": 18,
+   "tappable": 18,
+   "markers": 3,
+   "capitals": 18
+  },
+  {
+   "id": "africa-south",
+   "bytes": 16420,
+   "targets": 5,
+   "tappable": 5,
+   "markers": 0,
+   "capitals": 8
+  },
+  {
+   "id": "americas",
+   "bytes": 174481,
+   "targets": 35,
+   "tappable": 22,
+   "markers": 12,
+   "capitals": 36
+  },
+  {
+   "id": "americas-north-large",
+   "bytes": 132245,
+   "targets": 3,
+   "tappable": 3,
+   "markers": 0,
+   "capitals": 3
+  },
+  {
+   "id": "americas-central",
+   "bytes": 40880,
+   "targets": 8,
+   "tappable": 8,
+   "markers": 0,
+   "capitals": 8
+  },
+  {
+   "id": "americas-caribbean",
+   "bytes": 36458,
+   "targets": 13,
+   "tappable": 9,
+   "markers": 7,
+   "capitals": 13
+  },
+  {
+   "id": "americas-south",
+   "bytes": 72692,
+   "targets": 12,
+   "tappable": 12,
+   "markers": 0,
+   "capitals": 13
+  },
+  {
+   "id": "oceania",
+   "bytes": 53415,
+   "targets": 14,
+   "tappable": 14,
+   "markers": 9,
+   "capitals": 14
+  },
+  {
+   "id": "oceania-australia-nz",
+   "bytes": 40378,
+   "targets": 2,
+   "tappable": 2,
+   "markers": 0,
+   "capitals": 2
+  },
+  {
+   "id": "oceania-melanesia",
+   "bytes": 23916,
+   "targets": 4,
+   "tappable": 4,
+   "markers": 0,
+   "capitals": 4
+  },
+  {
+   "id": "oceania-micronesia",
+   "bytes": 30914,
+   "targets": 5,
+   "tappable": 5,
+   "markers": 5,
+   "capitals": 5
+  },
+  {
+   "id": "oceania-polynesia",
+   "bytes": 7793,
+   "targets": 3,
+   "tappable": 3,
+   "markers": 1,
+   "capitals": 3
+  }
+ ],
+ "warnings": [],
+ "problems": []
+}

@@ -1177,6 +1177,49 @@ function addTextbookFramework(connection: DatabaseConnection) {
   `);
 }
 
+// Kaardimäng (the map game): its own rounds and per-place mastery. Like the
+// textbook it allows the 'preview' learner, and nothing else in the database
+// references these tables: the game gives no stars and writes no attempts.
+function addKaardimang(connection: DatabaseConnection) {
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS kaardimang_rounds (
+      id TEXT PRIMARY KEY,
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'preview')),
+      viewId TEXT NOT NULL,
+      setId TEXT,
+      level TEXT NOT NULL CHECK (level IN ('explorer', 'traveler', 'geographer')),
+      dataVersion TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('active', 'completed', 'abandoned')),
+      stateJson TEXT NOT NULL,
+      revision INTEGER NOT NULL DEFAULT 0,
+      startActionId TEXT NOT NULL,
+      lastActionId TEXT,
+      lastResultJson TEXT,
+      correct INTEGER NOT NULL DEFAULT 0,
+      firstTryCorrect INTEGER NOT NULL DEFAULT 0,
+      total INTEGER NOT NULL,
+      startedAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      completedAt TEXT,
+      UNIQUE (learner, startActionId)
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_kaardimang_rounds_active
+      ON kaardimang_rounds(learner) WHERE status = 'active';
+
+    -- One row per learner and place ('country:EST', 'capital:EST', 'ocean:pacific', …).
+    CREATE TABLE IF NOT EXISTS kaardimang_target_stats (
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'preview')),
+      targetKey TEXT NOT NULL,
+      seen INTEGER NOT NULL DEFAULT 0,
+      firstTryCorrect INTEGER NOT NULL DEFAULT 0,
+      missCount INTEGER NOT NULL DEFAULT 0,
+      lastSeenAt TEXT NOT NULL,
+      lastMissedAt TEXT,
+      PRIMARY KEY (learner, targetKey)
+    );
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -1253,6 +1296,12 @@ const migrations: Migration[] = [
     name: 'textbook_framework',
     checksumSource: 'textbook_framework:v1:2026-10-17',
     up: addTextbookFramework
+  },
+  {
+    id: 13,
+    name: 'kaardimang',
+    checksumSource: 'kaardimang:v1:2026-10-17',
+    up: addKaardimang
   }
 ];
 

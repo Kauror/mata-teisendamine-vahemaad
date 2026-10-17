@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { KAARDIMANG_CHILD_ENABLED } from '@/lib/kaardimang/api';
 
 export default function LoodusopetusSetupPage() {
   const router = useRouter();
@@ -30,6 +31,18 @@ export default function LoodusopetusSetupPage() {
           </span>
           <span className='tb-entry-arrow' aria-hidden>→</span>
         </Link>
+
+        {/* Kiur's map game (hidden while it is in parent testing; see KAARDIMANG_CHILD_ENABLED). */}
+        {KAARDIMANG_CHILD_ENABLED ? (
+          <Link className='tb-entry-card' href='/kiur/loodusopetus/kaardimang'>
+            <span className='tb-entry-icon' aria-hidden>🗺️</span>
+            <span className='tb-entry-copy'>
+              <strong>Kaardimäng</strong>
+              <small>Uuri maailma riike ja pealinnu ning mängi. Vajab internetiühendust.</small>
+            </span>
+            <span className='tb-entry-arrow' aria-hidden>→</span>
+          </Link>
+        ) : null}
       </section>
     </main>
   );

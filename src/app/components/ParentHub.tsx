@@ -20,9 +20,10 @@ import { WeeklyDigestPanel } from '@/app/components/parent/WeeklyDigestPanel';
 const loadingPanel = () => <p>Laadin...</p>;
 const ParentEnglishVocabulary = dynamic(() => import('@/app/components/ParentEnglishVocabulary'), { loading: loadingPanel });
 const TextbookPanel = dynamic(() => import('@/app/components/parent/TextbookPanel').then((module) => module.TextbookPanel), { loading: loadingPanel });
+const KaardimangPanel = dynamic(() => import('@/app/components/kaardimang/KaardimangParentPanel'), { loading: loadingPanel });
 const OfflineReadiness = dynamic(() => import('@/app/components/offline/OfflineReadiness').then((module) => module.OfflineReadiness), { loading: loadingPanel });
 
-type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'vocabulary' | 'textbook' | 'password' | 'rewards' | 'history';
+type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'vocabulary' | 'textbook' | 'kaardimang' | 'password' | 'rewards' | 'history';
 type CountedSection = 'library' | 'textbook' | 'tasks' | 'store' | 'rewards' | 'history';
 
 // What a section header says before its panel has loaded its own data; the
@@ -110,6 +111,10 @@ function ParentHubSections() {
 
         <ParentAccordionSection title='Loodusõpetuse õppetükid' summary={summaries.textbook} {...section('textbook')} keepMounted>
           <TextbookPanel onSummary={reportSummary.textbook} />
+        </ParentAccordionSection>
+
+        <ParentAccordionSection title='Kaardimäng' summary='Maailma riigid ja pealinnad, eelvaade' {...section('kaardimang')}>
+          <KaardimangPanel />
         </ParentAccordionSection>
 
         <ParentAccordionSection title='Tegevused' summary={summaries.tasks} {...section('tasks')} keepMounted>

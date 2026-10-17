@@ -1678,3 +1678,98 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-admin-question-meta{margin:0;font-size:12.5px;color:var(--tb-muted)}
 .tb-admin-answer{font-size:13.5px;color:var(--tb-good-ink)}
 .tb-admin-answer ul{margin:2px 0 0;padding-left:18px}
+/* ------------------------------------------------------------ Kaardimäng */
+:root{
+  --km-sea:#d6eaf8; --km-sphere:#c3def3; --km-border:#6b7f8f;
+  --km-land:#bfe3b4; --km-land-ink:#3f6b45; --km-land-other:#ece7da; --km-land-context:#f1eee6; --km-land-special:#f4dcb5; --km-land-dim:#f6f6f3;
+  --km-highlight:#fde047; --km-highlight-line:#a16207;
+  --km-correct:#4ade80; --km-correct-line:#15803d;
+  --km-wrong:#fdba74; --km-wrong-line:#c2410c;
+  --km-selected:#c7d2fe; --km-selected-line:#4f46e5;
+  --km-area:rgba(37,99,235,.16); --km-area-line:rgba(37,99,235,.45);
+  --km-marker:#1e3a8a; --km-marker-hit:rgba(255,255,255,.01);
+  --km-pin:#0b1b45; --km-pin-answer:#dc2626; --km-pin-halo:#fff;
+  --km-label:#0b1b45; --km-label-halo:rgba(255,255,255,.92);
+  --km-chip-on:#2563eb; --km-chip-on-ink:#fff;
+  --km-map-max-height:68vh;
+}
+.km-page .filter-chip[aria-pressed='true']{background:var(--km-chip-on);border-color:var(--km-chip-on);color:var(--km-chip-on-ink)}
+.km-page-map .tb-shell{width:min(980px,100%)}
+.km-head h1{margin:0;font-size:30px;line-height:1.15}
+.km-head p{margin:6px 0 0}
+.km-card{display:grid;gap:8px;padding:14px 16px;border-radius:var(--tb-radius);background:var(--tb-surface);border:var(--card-border);box-shadow:var(--card-shadow)}
+.km-card h2{margin:0;font-size:20px}
+.km-card p{margin:0}
+.km-resume{grid-template-columns:1fr auto;align-items:center}
+.km-places{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.km-place{display:flex;align-items:center;gap:12px;min-height:76px;padding:12px 14px;border-radius:var(--card-radius);background:var(--tb-surface);border:var(--card-border);box-shadow:var(--card-shadow);color:var(--tb-ink);text-align:left;font:inherit;cursor:pointer}
+.km-place strong{display:block;font-size:17px}
+.km-place small{display:block;color:var(--tb-muted);font-size:13px;font-weight:700}
+.km-place-icon{font-size:30px;line-height:1}
+.km-place-world{background:var(--tb-accent-soft);border-color:var(--tb-line)}
+.km-choice{margin:0;padding:0;border:0;display:grid;gap:8px;min-width:0}
+.km-choice legend{padding:0;margin-bottom:8px;font-weight:850;color:var(--tb-ink)}
+.km-chips{display:flex;flex-wrap:wrap;gap:8px}
+.km-chip-count{opacity:.75;font-weight:700}
+.km-level-note{margin:0;font-size:14px}
+.km-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.km-big{min-height:56px;font-size:18px;white-space:nowrap}
+.km-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.km-bar-title{margin:0;font-size:20px;line-height:1.2}
+.km-error{margin:0;padding:10px 12px;border-radius:var(--tb-radius-small);background:var(--tb-danger-bg);color:var(--tb-danger-ink);border:1px solid var(--tb-danger-line);font-weight:750}
+.km-feedback{margin:0;color:var(--tb-text);font-weight:750}
+.km-feedback[data-tone='correct']{color:var(--tb-good-ink)}
+.km-feedback[data-tone='wrong_retry'],.km-feedback[data-tone='revealed']{color:var(--tb-bad-ink)}
+.km-play,.km-explore{display:grid;gap:12px;min-width:0}
+.km-question{gap:10px}
+.km-progress{color:var(--tb-muted);font-size:14px;font-weight:850}
+.km-prompt{font-size:22px;line-height:1.25}
+.km-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.km-option{min-height:52px;padding:8px 12px;border-radius:var(--tb-radius-small);border:1px solid var(--tb-line);background:var(--tb-surface-soft);color:var(--tb-ink);font:inherit;font-size:17px;font-weight:850;overflow-wrap:anywhere;hyphens:auto;cursor:pointer}
+.km-option[data-state='correct']{background:var(--tb-good-bg);border-color:var(--tb-good-line);color:var(--tb-good-ink)}
+.km-option[data-state='wrong']{background:var(--tb-bad-bg);border-color:var(--tb-bad-line);color:var(--tb-bad-ink);text-decoration:line-through}
+.km-option:disabled{cursor:default}
+.km-option:disabled:not([data-state]){opacity:.45}
+.km-summary-score{font-size:22px;font-weight:900;color:var(--tb-ink)}
+.km-toggles{display:flex;flex-wrap:wrap;gap:8px}
+.km-info h2{display:flex;align-items:center;gap:8px}
+.km-flag{font-size:26px;line-height:1}
+.km-capitals{margin:0;padding-left:18px;display:grid;gap:4px}
+.km-note{display:block;color:var(--tb-text);font-size:14px}
+.km-list summary{cursor:pointer;font-weight:850;min-height:44px;display:flex;align-items:center}
+.km-list-items{display:flex;flex-wrap:wrap;gap:6px}
+.km-parent{display:grid;gap:10px}
+.km-preview-note{margin:0;padding:10px 12px;border-radius:var(--tb-radius-small);background:var(--tb-preview-bg);border:1px solid var(--tb-preview-line);color:var(--tb-preview-ink);font-weight:800}
+.km-parent p{margin:0}
+.km-map{border-radius:var(--tb-radius);overflow:hidden;background:var(--km-sea);border:var(--card-border);box-shadow:var(--card-shadow)}
+.km-map svg{display:block;width:100%;height:auto;max-height:var(--km-map-max-height);margin:0 auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.km-sea{fill:var(--km-sea)}
+.km-sphere{fill:var(--km-sphere)}
+.km-area{fill:transparent;stroke:none}
+.km-area[data-visible='true']{fill:var(--km-area);stroke:var(--km-area-line);stroke-width:1;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}
+.km-area[data-paint='correct']{fill:var(--km-correct);stroke:var(--km-correct-line)}
+.km-area[data-paint='wrong']{fill:var(--km-wrong);stroke:var(--km-wrong-line)}
+.km-area[data-paint='selected']{fill:var(--km-selected);stroke:var(--km-selected-line)}
+.km-feature{fill:var(--km-land-other);stroke:var(--km-border);stroke-width:.6;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.km-feature[data-role='t']{fill:var(--km-land);stroke:var(--km-land-ink)}
+.km-feature[data-role='c']{fill:var(--km-land-context)}
+.km-feature[data-role='s']{fill:var(--km-land-special)}
+.km-map[data-uniform='true'] .km-feature:not([data-paint]){fill:var(--km-land);stroke:var(--km-land-ink)}
+.km-feature[data-paint='dim']{fill:var(--km-land-dim)}
+.km-feature[data-paint='highlight']{fill:var(--km-highlight);stroke:var(--km-highlight-line);stroke-width:2}
+.km-feature[data-paint='correct']{fill:var(--km-correct);stroke:var(--km-correct-line);stroke-width:1.5}
+.km-feature[data-paint='wrong']{fill:var(--km-wrong);stroke:var(--km-wrong-line);stroke-width:1.5}
+.km-feature[data-paint='selected']{fill:var(--km-selected);stroke:var(--km-selected-line);stroke-width:1.5}
+.km-map[data-interactive='true'] .km-feature,.km-map[data-interactive='true'] .km-area,.km-map[data-interactive='true'] .km-marker{cursor:pointer}
+.km-feature:focus-visible,.km-area:focus-visible,.km-marker:focus-visible{outline:none;stroke:var(--focus-ring);stroke-width:3}
+.km-marker-hit{fill:var(--km-marker-hit);stroke:none}
+.km-marker-dot{fill:var(--km-marker);stroke:var(--km-pin-halo);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.km-marker[data-paint='highlight'] .km-marker-hit{fill:var(--km-highlight);stroke:var(--km-highlight-line);stroke-dasharray:none}
+.km-marker[data-paint='correct'] .km-marker-hit{fill:var(--km-correct);stroke:var(--km-correct-line);stroke-dasharray:none}
+.km-marker[data-paint='wrong'] .km-marker-hit{fill:var(--km-wrong);stroke:var(--km-wrong-line);stroke-dasharray:none}
+.km-marker[data-paint='selected'] .km-marker-hit{fill:var(--km-selected);stroke:var(--km-selected-line);stroke-dasharray:none}
+.km-pin{fill:var(--km-pin);stroke:var(--km-pin-halo);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.km-pin[data-tone='answer']{fill:var(--km-pin-answer)}
+.km-label{fill:var(--km-label);stroke:var(--km-label-halo);paint-order:stroke;stroke-linejoin:round;text-anchor:middle;dominant-baseline:middle;font-family:var(--font-display);font-weight:800;pointer-events:none}
+.km-label[data-strong='true']{font-weight:900}
+@media (max-width:560px){.km-head h1{font-size:26px}.km-prompt{font-size:19px}.km-option{font-size:15px}.km-big{font-size:16px;padding:0 10px}.km-resume{grid-template-columns:1fr}.km-page-map{padding:10px}.km-map{border-radius:var(--tb-radius-small)}}
