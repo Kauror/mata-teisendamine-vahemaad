@@ -25,6 +25,7 @@
     "leaderboard:rebuild": "tsx scripts/rebuild-leaderboard.ts",
     "auth:hash": "tsx scripts/hash-secret.ts",
     "validate:science": "node scripts/validate-loodusopetus.mjs",
+    "content:validate": "tsx scripts/validate-textbook-content.ts",
     "rewards:approve-held": "tsx scripts/approve-held-rewards.ts"
   },
   "dependencies": {
