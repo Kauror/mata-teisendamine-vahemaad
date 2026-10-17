@@ -525,7 +525,8 @@ export type ParentUnitDetailResponse = {
 };
 
 export type PublishRequest = ActionRequest & { published: boolean };
-export type ManualUnlockRequest = ActionRequest & { unlocked: boolean };
+// `learner` (optional): only that child; omitted = every learner of the course.
+export type ManualUnlockRequest = ActionRequest & { unlocked: boolean; learner?: Learner };
 export type ParentUnitResponse = { unit: ParentUnitView };
 
 export type PreviewStartRequest = ActionRequest & { courseId: string };
