@@ -8,6 +8,7 @@ import {
   lockExplanation,
   nextAction,
   pagesLabel,
+  practiceCounter,
   questionCountWord,
   statusLabel,
   timesWord,
@@ -142,6 +143,21 @@ describe('unit steps and next step', () => {
     expect(nextAction(detail({ nextStep: 'retake_practice' }), child)).toMatchObject({ label: 'Harjuta neid teemasid', href: '/kiur/loodusopetus/opik/u1/harjuta' });
     expect(nextAction(detail({ nextStep: 'resume_test' }), preview).href).toBe('/vanem/oppetukid/eelvaade/textbook-demo/u1/test');
     expect(nextAction(detail({ nextStep: 'done' }), child)).toMatchObject({ label: null, href: null });
+  });
+});
+
+describe('practice question counter', () => {
+  it('shows the question on screen, done and remaining', () => {
+    expect(practiceCounter({ answeredCount: 6, remainingCount: 6, totalQuestionCount: 12, currentQuestionNumber: 7 }, false))
+      .toMatchObject({ number: 7, total: 12, headline: 'Küsimus 7 / 12', detail: 'Tehtud 6 · jäänud 6' });
+  });
+  it('keeps the answered question number while its feedback is shown, with the grown total', () => {
+    expect(practiceCounter({ answeredCount: 7, remainingCount: 6, totalQuestionCount: 13, currentQuestionNumber: 8 }, true))
+      .toMatchObject({ number: 7, total: 13, headline: 'Küsimus 7 / 13', detail: 'Tehtud 7 · jäänud 6' });
+  });
+  it('ends on the last question and never divides by an empty run', () => {
+    expect(practiceCounter({ answeredCount: 12, remainingCount: 0, totalQuestionCount: 12, currentQuestionNumber: null }, false).headline).toBe('Küsimus 12 / 12');
+    expect(practiceCounter({ answeredCount: 0, remainingCount: 0, totalQuestionCount: 0, currentQuestionNumber: null }, false)).toMatchObject({ number: 0, total: 0 });
   });
 });
 

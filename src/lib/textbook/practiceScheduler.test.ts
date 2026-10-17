@@ -61,6 +61,31 @@ describe('practice on the demo units', () => {
     expect(practiceProgress(done)).toMatchObject({ satisfiedCount: 4, objectiveCount: 4, remainingCount: 0, completed: true });
   });
 
+  it('counts questions: number on screen, done, remaining, and a total that grows with a correction', () => {
+    const target = course.settings.practiceTarget;
+    let state = createPracticeState({ courseId: course.id, unit: course.units[0], settings: course.settings, seed: 3 });
+    expect(practiceProgress(state)).toMatchObject({ answeredCount: 0, remainingCount: target, totalQuestionCount: target, currentQuestionNumber: 1 });
+
+    state = answer(state, true).state;
+    expect(practiceProgress(state)).toMatchObject({ answeredCount: 1, remainingCount: target - 1, totalQuestionCount: target, currentQuestionNumber: 2 });
+
+    const before = practiceProgress(state);
+    const wrong = answer(state, false);
+    const after = practiceProgress(wrong.state);
+    expect(after.answeredCount).toBe(2);
+    expect(after.currentQuestionNumber).toBe(3);
+    expect(after.totalQuestionCount).toBe(after.answeredCount + after.remainingCount);
+    // A correction scheduled after a wrong answer grows the run; otherwise the total stays.
+    const grew = wrong.state.queue.length - (state.queue.length - 1);
+    expect(after.totalQuestionCount).toBe(before.totalQuestionCount + grew);
+    expect(grew).toBeGreaterThanOrEqual(0);
+
+    const { state: done } = runToEnd(wrong.state, () => true);
+    const final = practiceProgress(done);
+    expect(final).toMatchObject({ remainingCount: 0, currentQuestionNumber: null, completed: true });
+    expect(final.totalQuestionCount).toBe(done.answers.length);
+  });
+
   it('is deterministic for a seed', () => {
     const a = createPracticeState({ courseId: course.id, unit: course.units[1], settings: course.settings, seed: 9 });
     const b = createPracticeState({ courseId: course.id, unit: course.units[1], settings: course.settings, seed: 9 });

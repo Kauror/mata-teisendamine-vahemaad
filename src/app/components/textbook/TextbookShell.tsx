@@ -70,15 +70,17 @@ export function TextbookLoading({ text }: { text: string }) {
   return <p className='tb-loading' role='status'>{text}</p>;
 }
 
-export function TextbookProgress({ value, total, label }: { value: number; total: number; label: string }) {
+// A labelled bar. `detail` replaces the plain "value/total" on the right
+// (practice shows "Tehtud 6 · jäänud 6" there).
+export function TextbookProgress({ value, total, label, detail }: { value: number; total: number; label: string; detail?: string }) {
   const percent = total > 0 ? Math.round((Math.min(value, total) / total) * 100) : 0;
   return (
     <div className='tb-progress'>
       <div className='tb-progress-row'>
         <span>{label}</span>
-        <strong>{value}/{total}</strong>
+        <strong>{detail ?? `${value}/${total}`}</strong>
       </div>
-      <div className='tb-progress-track' role='progressbar' aria-label={label} aria-valuemin={0} aria-valuemax={total} aria-valuenow={value}>
+      <div className='tb-progress-track' role='progressbar' aria-label={label} aria-valuemin={0} aria-valuemax={total} aria-valuenow={value} aria-valuetext={detail ? `${label}. ${detail}` : undefined}>
         <span style={{ width: `${percent}%` }} />
       </div>
     </div>

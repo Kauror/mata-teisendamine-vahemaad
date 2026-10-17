@@ -8,6 +8,7 @@ import { AnswerFeedback } from '@/app/components/textbook/AnswerFeedback';
 import { QuestionCard } from '@/app/components/textbook/AnswerInputs';
 import { textbookPaths } from '@/app/components/textbook/pages';
 import { emptyDraft, isDraftComplete, type AnswerDraft } from '@/app/components/textbook/responses';
+import { practiceCounter } from '@/app/components/textbook/status';
 import { TextbookLoading, TextbookProblem, TextbookProgress, TextbookShell } from '@/app/components/textbook/TextbookShell';
 import { useLearnerClient, useSessionRunner } from '@/app/components/textbook/useTextbook';
 
@@ -96,10 +97,11 @@ export default function TextbookPractice({ scope, courseId, unitId }: { scope: T
   const feedback = view.lastFeedback;
   const showFeedback = Boolean(feedback) && dismissed !== null && dismissed < view.sequence;
   const progress = view.progress;
+  const counter = practiceCounter(progress, showFeedback);
 
   return (
     <TextbookShell scope={scope} title={title} eyebrow={targeted ? 'Harjutus enne uut testi' : 'Harjutus'} backHref={paths.unit(unitId)} backLabel='← Õppetükk'>
-      <TextbookProgress value={progress.satisfiedCount} total={progress.objectiveCount} label='Selgeks saanud teemad' />
+      <TextbookProgress value={counter.done} total={counter.total} label={counter.headline} detail={counter.detail} />
       {targeted && view.status === 'active' ? (
         <details className='tb-panel tb-details'>
           <summary>Mida kordame?</summary>
@@ -142,7 +144,7 @@ export default function TextbookPractice({ scope, courseId, unitId }: { scope: T
             value={draft}
             onChange={setDraft}
             disabled={runner.busy}
-            eyebrow={`Vastatud ${progress.answeredCount} · õigesti ${progress.correctCount}`}
+            eyebrow={progress.answeredCount > 0 ? `Õigesti ${progress.correctCount}/${progress.answeredCount}` : undefined}
           />
           <div className='tb-sticky-actions'>
             <button type='button' className='tb-button tb-button-primary tb-button-wide' disabled={runner.busy || !isDraftComplete(view.question.answer, draft) || Boolean(runner.error)} onClick={check}>

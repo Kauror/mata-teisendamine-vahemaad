@@ -99,7 +99,13 @@ export type PracticeProgress = {
   correctCount: number;
   satisfiedCount: number;
   objectiveCount: number;
+  // Queue entries still to answer, the question on screen included.
   remainingCount: number;
+  // Question count of the run so far: answered + still queued. It grows when
+  // a wrong answer schedules a correction.
+  totalQuestionCount: number;
+  // 1-based number of the question on screen; null once the run is complete.
+  currentQuestionNumber: number | null;
   completed: boolean;
 };
 
@@ -237,7 +243,9 @@ export function practiceProgress(state: PracticeState): PracticeProgress {
     correctCount: state.answers.filter((answer) => answer.correct).length,
     satisfiedCount: state.satisfiedObjectiveIds.length,
     objectiveCount: state.objectiveIds.length,
-    remainingCount: state.queue.length,
+    remainingCount: state.completed ? 0 : state.queue.length,
+    totalQuestionCount: state.answers.length + (state.completed ? 0 : state.queue.length),
+    currentQuestionNumber: state.completed || state.queue.length === 0 ? null : state.answers.length + 1,
     completed: state.completed
   };
 }

@@ -347,6 +347,9 @@ describe('practice sessions', () => {
     expect(resumed.sessionId).toBe(view.sessionId);
     expect(resumed.progress).toEqual(first.session.progress);
     expect(resumed.progress.satisfiedCount).toBe(0);
+    // The question counts come from the frozen queue: answered + still queued.
+    const queued = parsePracticeState(practiceRow(view.sessionId).stateJson).queue.length;
+    expect(resumed.progress).toMatchObject({ answeredCount: 1, remainingCount: queued, totalQuestionCount: 1 + queued, currentQuestionNumber: 2 });
     expect(resumed.lastFeedback).toEqual(first.feedback);
     expectCode(() => answerPractice(kiur(), view.sessionId, { ...input, actionId: aid() }), 'stale');
     expectCode(() => answerPractice(kiur(), view.sessionId, { ...input, actionId: aid(), revision: first.session.revision }), 'not_current_question');

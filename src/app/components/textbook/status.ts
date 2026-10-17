@@ -5,6 +5,7 @@
 // the agreement helpers below ("1 küsimus", "2 küsimust").
 
 import type { UnitDetailResponse, UnitNextStep, UnitSummary } from '@/lib/textbook/api';
+import type { PracticeProgress } from '@/lib/textbook/practiceScheduler';
 import { UNIT_STATUS_LABELS, type UnitStatusCode } from '@/lib/textbook/progression';
 import type { PageRange } from '@/lib/textbook/types';
 import type { TextbookPaths } from '@/app/components/textbook/pages';
@@ -50,6 +51,22 @@ export function pagesLabel(pages: PageRange | null | undefined) {
 
 export function unitHeading(unit: { number: number; title: string }) {
   return `${unit.number}. ${unit.title}`;
+}
+
+/* ---------------------------------------------------------- practice */
+
+export type PracticeCounter = { number: number; total: number; done: number; remaining: number; headline: string; detail: string };
+
+// "Küsimus 7 / 12" and "Tehtud 6 · jäänud 6". While the feedback of an answer
+// is on screen the number is that answered question's; `remaining` counts the
+// question on screen. The total grows when a correction is scheduled.
+export function practiceCounter(progress: Pick<PracticeProgress, 'answeredCount' | 'remainingCount' | 'totalQuestionCount' | 'currentQuestionNumber'>, showingFeedback: boolean): PracticeCounter {
+  const total = Math.max(progress.totalQuestionCount, progress.answeredCount);
+  const done = progress.answeredCount;
+  const remaining = Math.max(progress.remainingCount, 0);
+  const number = showingFeedback || progress.currentQuestionNumber === null ? done : progress.currentQuestionNumber;
+  const shown = total === 0 ? 0 : Math.min(Math.max(number, 1), total);
+  return { number: shown, total, done, remaining, headline: `Küsimus ${shown} / ${total}`, detail: `Tehtud ${done} · jäänud ${remaining}` };
 }
 
 /* ------------------------------------------------------------ course */
