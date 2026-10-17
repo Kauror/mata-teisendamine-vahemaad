@@ -21,7 +21,7 @@ export const UNIT12_DIAGRAMS: readonly DiagramDefinition[] = [
   },
   {
     id: 'u12-orange-peel',
-    title: 'Apelsinikoore katse',
+    title: 'Kaks kujutist ühest katsest',
     description: 'Näidisskeem. Vasakul on terve ümmargune apelsin. Paremal laual on apelsini koor laiali laotatud: koor on rebenenud mitmeks ebaühtlaseks tükiks ja tükkide vahele jäävad tühjad lõhed.',
     drawingNote: 'viewBox 360×220. Left: an intact orange with a stem and leaf. Right: on a pale table, five irregular peel pieces with white pith edges and visible gaps between them, not arranged as a neat circle.',
     demo: false,
