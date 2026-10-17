@@ -1,15 +1,16 @@
 import { expect, test, type Page } from './test';
 import { authenticateFamily } from './auth';
 import { navigateStable } from './navigation';
-import type { CourseOverviewResponse, ParentOverviewResponse, ParentUnitDetailResponse, PracticeSessionView, TestSessionView, UnitDetailResponse } from '../src/lib/textbook/api';
-import { correctResponseFor, hotspotRegionIds } from '../src/lib/textbook/grading';
+import { COURSE, PREVIEW_API, previewCourse, signInAsParent, apiGet, resetPreview, unitKeys, readAllViaApi, passEarlierReadyUnits } from './textbookHelpers';
+import type { ParentOverviewResponse, TestSessionView } from '../src/lib/textbook/api';
+import { hotspotRegionIds } from '../src/lib/textbook/grading';
 import type { Question } from '../src/lib/textbook/types';
 
 // Unit 14 "Kaartide mitmekesisus" (Loodusõpetus õpik lk 58–59) end to end on a
 // 375 px phone, through the authenticated parent preview. The unit is
 // content-'ready' but NOT published: it shows in the preview and nowhere for
 // Kiur. The preview follows the real order, so every ready unit before Unit 14
-// (Unit 10, and Units 11–13 once they are ready) is first passed through the
+// (Units 10–13) is first passed through the
 // preview API. Then: reading all four lessons (13 sections, 4 fictional-map
 // diagrams), practice with a correction, an 18/20 fail → targeted practice →
 // 19/20 pass, hotspot answers tapped on the picture itself.
@@ -19,11 +20,7 @@ import type { Question } from '../src/lib/textbook/types';
 
 test.use({ viewport: { width: 375, height: 667 } });
 
-const ORIGIN = 'http://localhost:3000';
-const COURSE = 'loodusopetus-opik';
 const U14 = 'lo-opik-u14';
-const PREVIEW_API = '/api/parent/textbook/preview';
-const previewCourse = `/vanem/oppetukid/eelvaade/${COURSE}`;
 const previewUnit = `${previewCourse}/${U14}`;
 const SECTIONS = [3, 3, 3, 4];
 const TITLES = ['Kaarte on vaja paljudel inimestel', 'Füüsiline kaart ja riikide kaart', 'Atlas on kaardiraamat', 'Teemakaardid jutustavad erinevaid lugusid'];
@@ -33,100 +30,6 @@ const DIAGRAM_BY_LESSON_SECTION: Record<string, string> = {
   '2/3': 'u14-map-pair',
   '4/3': 'u14-population-map'
 };
-
-let actionCounter = 0;
-function actionId() {
-  actionCounter += 1;
-  return `e2eu14${Date.now().toString(36)}${actionCounter}x${Math.random().toString(36).slice(2, 8)}`;
-}
-
-async function signInAsParent(page: Page) {
-  await navigateStable(page, '/vanem');
-  const password = page.getByLabel('Sisesta parool');
-  if (await password.count() > 0) {
-    await password.click();
-    await password.pressSequentially('e2e-parent-password');
-    const dashboardLoaded = page.waitForResponse((response) => response.url().endsWith('/api/parent/dashboard') && response.ok());
-    await page.getByRole('button', { name: 'Sisene' }).click();
-    await dashboardLoaded;
-  }
-  await expect(page.getByRole('button', { name: /Loodusõpetuse õppetükid/ })).toBeVisible();
-}
-
-async function parentHeaders(page: Page) {
-  const cookies = await page.context().cookies();
-  const token = cookies.find((cookie) => cookie.name === 'parent_csrf')?.value ?? '';
-  return { 'content-type': 'application/json', origin: ORIGIN, 'x-csrf-token': decodeURIComponent(token) };
-}
-
-async function apiPost<T>(page: Page, url: string, body: unknown): Promise<T> {
-  const response = await page.request.post(url, { headers: await parentHeaders(page), data: body });
-  expect(response.ok(), `${url} → ${response.status()} ${await response.text()}`).toBe(true);
-  return await response.json() as T;
-}
-
-async function apiGet<T>(page: Page, url: string): Promise<T> {
-  const response = await page.request.get(url);
-  expect(response.ok(), `${url} → ${response.status()}`).toBe(true);
-  return await response.json() as T;
-}
-
-async function resetPreview(page: Page) {
-  await apiPost(page, `${PREVIEW_API}/reset`, { actionId: actionId(), courseId: COURSE });
-  await apiPost(page, `${PREVIEW_API}/start`, { actionId: actionId(), courseId: COURSE });
-}
-
-// A unit with its answer keys (parent only).
-async function unitKeys(page: Page, unitId: string): Promise<Map<string, Question>> {
-  const detail = await apiGet<ParentUnitDetailResponse>(page, `/api/parent/textbook/courses/${COURSE}/units/${unitId}`);
-  return new Map(detail.questions.map((question) => [question.id, question]));
-}
-
-async function readAllViaApi(page: Page, unitId: string) {
-  const detail = await apiGet<UnitDetailResponse>(page, `${PREVIEW_API}/courses/${COURSE}/units/${unitId}`);
-  for (const lesson of detail.lessons) {
-    await apiPost(page, `${PREVIEW_API}/courses/${COURSE}/units/${unitId}/lessons/${lesson.lessonId}/complete`, { actionId: actionId() });
-  }
-}
-
-async function practiseViaApi(page: Page, unitId: string, keys: Map<string, Question>) {
-  let session = await apiPost<PracticeSessionView>(page, `${PREVIEW_API}/courses/${COURSE}/units/${unitId}/practice`, { actionId: actionId() });
-  for (let guard = 0; session.status === 'active' && session.question && guard < 120; guard += 1) {
-    const question = keys.get(session.question.id)!;
-    const answered = await apiPost<{ session: PracticeSessionView }>(page, `${PREVIEW_API}/practice/${session.sessionId}/answer`, {
-      actionId: actionId(), revision: session.revision, questionId: question.id, response: correctResponseFor(question.answer)
-    });
-    session = answered.session;
-  }
-  expect(session.status).toBe('completed');
-}
-
-async function passTestViaApi(page: Page, unitId: string, keys: Map<string, Question>) {
-  let session = await apiPost<TestSessionView>(page, `${PREVIEW_API}/courses/${COURSE}/units/${unitId}/test`, { actionId: actionId() });
-  for (const question of session.questions) {
-    session = (await apiPost<{ session: TestSessionView }>(page, `${PREVIEW_API}/test/${session.sessionId}/answer`, {
-      actionId: actionId(), revision: session.revision, questionId: question.id, response: correctResponseFor(keys.get(question.id)!.answer)
-    })).session;
-  }
-  const submitted = await apiPost<{ result: { passed: boolean } }>(page, `${PREVIEW_API}/test/${session.sessionId}/submit`, { actionId: actionId(), revision: session.revision });
-  expect(submitted.result.passed, `${unitId} passed`).toBe(true);
-}
-
-// The preview opens units in order: pass every ready unit listed before
-// `unitNumber` (Unit 10 today; Units 11–13 too once they are ready), so the
-// target unit opens for the preview learner. Preview rows only.
-async function passEarlierReadyUnits(page: Page, unitNumber: number) {
-  const overview = await apiGet<CourseOverviewResponse>(page, `${PREVIEW_API}/courses/${COURSE}`);
-  const earlier = overview.units.filter((unit) => unit.number < unitNumber);
-  expect(earlier.length).toBeGreaterThan(0);
-  for (const unit of earlier) {
-    const keys = await unitKeys(page, unit.unitId);
-    await readAllViaApi(page, unit.unitId);
-    await practiseViaApi(page, unit.unitId, keys);
-    await passTestViaApi(page, unit.unitId, keys);
-  }
-  return earlier.map((unit) => unit.unitId);
-}
 
 // Practice and test pages add ?session=<id> once the run is known.
 async function openSessionPage(page: Page, path: string) {
@@ -309,7 +212,7 @@ test('Unit 14 preview: locked until the earlier ready units are passed, then all
   await expect(card.getByRole('link', { name: 'Alusta õppimist' })).toHaveCount(0);
   expect((await page.request.get(`${PREVIEW_API}/courses/${COURSE}/units/${U14}`)).ok()).toBe(false);
 
-  await passEarlierReadyUnits(page, 14);
+  await passEarlierReadyUnits(page, U14);
   await navigateStable(page, previewCourse);
   await card.getByRole('link', { name: 'Alusta õppimist' }).click();
   await page.getByRole('link', { name: 'Alusta lugemist' }).click();
@@ -364,7 +267,7 @@ test('Unit 14 preview: practice with a correction, 18/20 fails, targeted practic
   test.setTimeout(480_000);
   await signInAsParent(page);
   await resetPreview(page);
-  await passEarlierReadyUnits(page, 14);
+  await passEarlierReadyUnits(page, U14);
   const keys = await unitKeys(page, U14);
   expect(keys.size).toBe(108);
   await readAllViaApi(page, U14);

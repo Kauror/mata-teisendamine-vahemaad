@@ -1,8 +1,9 @@
 import { expect, test, type Page } from './test';
 import { authenticateFamily } from './auth';
 import { navigateStable } from './navigation';
-import type { ParentOverviewResponse, ParentUnitDetailResponse, PracticeSessionView, TestAnswerResponse, TestSessionView, TestSubmitResponse, UnitDetailResponse } from '../src/lib/textbook/api';
-import { correctResponseFor, hotspotRegionIds } from '../src/lib/textbook/grading';
+import { COURSE, PREVIEW_API, previewCourse, signInAsParent, apiGet, resetPreview, unitKeys, readAllViaApi, passEarlierReadyUnits } from './textbookHelpers';
+import type { ParentOverviewResponse, TestSessionView, UnitDetailResponse } from '../src/lib/textbook/api';
+import { hotspotRegionIds } from '../src/lib/textbook/grading';
 import type { Question } from '../src/lib/textbook/types';
 import { getDiagram } from '../src/lib/textbook/diagramRegistry';
 import { unit13 } from '../src/content/textbook/loodusopetus-opik/unit13';
@@ -11,7 +12,7 @@ import { unit13 } from '../src/content/textbook/loodusopetus-opik/unit13';
 // through the authenticated parent preview. The unit is content-'ready' but NOT
 // published: it shows in the preview and nowhere for Kiur. The preview follows
 // the real sequence, so Unit 13 stays locked until the preview learner passes
-// Unit 10 (done here through the preview API, never by a manual unlock — that
+// Units 10–12 (done here through the preview API, never by a manual unlock — that
 // would be a real child's row). Then: all four lessons (15 sections, the four
 // scale diagrams), practice with a correction, an 18/20 fail → targeted
 // practice → 19/20 pass, frozen test snapshots, and Kiur still sees nothing.
@@ -21,12 +22,7 @@ import { unit13 } from '../src/content/textbook/loodusopetus-opik/unit13';
 
 test.use({ viewport: { width: 375, height: 667 } });
 
-const ORIGIN = 'http://localhost:3000';
-const COURSE = 'loodusopetus-opik';
-const U10 = 'lo-opik-u10';
 const U13 = 'lo-opik-u13';
-const PREVIEW_API = '/api/parent/textbook/preview';
-const previewCourse = `/vanem/oppetukid/eelvaade/${COURSE}`;
 const previewUnit = `${previewCourse}/${U13}`;
 
 // Where each diagram is in the reading, from the content itself: "lesson/section" (1-based).
@@ -36,90 +32,6 @@ unit13.lessons.forEach((lesson, lessonIndex) => lesson.sections.forEach((section
     if (block.type === 'diagram') DIAGRAM_BY_LESSON_SECTION[`${lessonIndex + 1}/${sectionIndex + 1}`] = block.diagramId;
   }
 }));
-
-let actionCounter = 0;
-function actionId() {
-  actionCounter += 1;
-  return `e2eu13${Date.now().toString(36)}${actionCounter}x${Math.random().toString(36).slice(2, 8)}`;
-}
-
-async function signInAsParent(page: Page) {
-  await navigateStable(page, '/vanem');
-  const password = page.getByLabel('Sisesta parool');
-  if (await password.count() > 0) {
-    await password.click();
-    await password.pressSequentially('e2e-parent-password');
-    const dashboardLoaded = page.waitForResponse((response) => response.url().endsWith('/api/parent/dashboard') && response.ok());
-    await page.getByRole('button', { name: 'Sisene' }).click();
-    await dashboardLoaded;
-  }
-  await expect(page.getByRole('button', { name: /Loodusõpetuse õppetükid/ })).toBeVisible();
-}
-
-async function parentHeaders(page: Page) {
-  const cookies = await page.context().cookies();
-  const token = cookies.find((cookie) => cookie.name === 'parent_csrf')?.value ?? '';
-  return { 'content-type': 'application/json', origin: ORIGIN, 'x-csrf-token': decodeURIComponent(token) };
-}
-
-async function apiPost<T>(page: Page, url: string, body: unknown): Promise<T> {
-  const response = await page.request.post(url, { headers: await parentHeaders(page), data: body });
-  expect(response.ok(), `${url} → ${response.status()} ${await response.text()}`).toBe(true);
-  return await response.json() as T;
-}
-
-async function apiGet<T>(page: Page, url: string): Promise<T> {
-  const response = await page.request.get(url);
-  expect(response.ok(), `${url} → ${response.status()}`).toBe(true);
-  return await response.json() as T;
-}
-
-async function resetPreview(page: Page) {
-  await apiPost(page, `${PREVIEW_API}/reset`, { actionId: actionId(), courseId: COURSE });
-  await apiPost(page, `${PREVIEW_API}/start`, { actionId: actionId(), courseId: COURSE });
-}
-
-// A unit with its answer keys (parent only).
-async function unitKeys(page: Page, unitId: string): Promise<Map<string, Question>> {
-  const detail = await apiGet<ParentUnitDetailResponse>(page, `/api/parent/textbook/courses/${COURSE}/units/${unitId}`);
-  return new Map(detail.questions.map((question) => [question.id, question]));
-}
-
-async function readAllViaApi(page: Page, unitId: string) {
-  const detail = await apiGet<UnitDetailResponse>(page, `${PREVIEW_API}/courses/${COURSE}/units/${unitId}`);
-  for (const lesson of detail.lessons) {
-    await apiPost(page, `${PREVIEW_API}/courses/${COURSE}/units/${unitId}/lessons/${lesson.lessonId}/complete`, { actionId: actionId() });
-  }
-}
-
-async function practiseViaApi(page: Page, unitId: string, keys: Map<string, Question>) {
-  let session = await apiPost<PracticeSessionView>(page, `${PREVIEW_API}/courses/${COURSE}/units/${unitId}/practice`, { actionId: actionId() });
-  for (let guard = 0; session.status === 'active' && session.question && guard < 120; guard += 1) {
-    const question = keys.get(session.question.id)!;
-    const answered = await apiPost<{ session: PracticeSessionView }>(page, `${PREVIEW_API}/practice/${session.sessionId}/answer`, {
-      actionId: actionId(), revision: session.revision, questionId: question.id, response: correctResponseFor(question.answer)
-    });
-    session = answered.session;
-  }
-  expect(session.status).toBe('completed');
-}
-
-// The preview learner passes Unit 10 (20/20) through the preview API, which
-// opens Unit 13 in the preview exactly as a real pass would for the child.
-async function passUnit10ViaApi(page: Page) {
-  const keys = await unitKeys(page, U10);
-  await readAllViaApi(page, U10);
-  await practiseViaApi(page, U10, keys);
-  let session = await apiPost<TestSessionView>(page, `${PREVIEW_API}/courses/${COURSE}/units/${U10}/test`, { actionId: actionId() });
-  for (const question of session.questions) {
-    const answered = await apiPost<TestAnswerResponse>(page, `${PREVIEW_API}/test/${session.sessionId}/answer`, {
-      actionId: actionId(), revision: session.revision, questionId: question.id, response: correctResponseFor(keys.get(question.id)!.answer)
-    });
-    session = answered.session;
-  }
-  const submitted = await apiPost<TestSubmitResponse>(page, `${PREVIEW_API}/test/${session.sessionId}/submit`, { actionId: actionId(), revision: session.revision });
-  expect(submitted.result).toMatchObject({ correct: 20, passed: true, reward: null, nextUnitOpened: true, nextUnit: { unitId: U13 } });
-}
 
 // Practice and test pages add ?session=<id> once the run is known.
 async function openSessionPage(page: Page, path: string) {
@@ -274,13 +186,13 @@ test.beforeEach(async ({ page }) => {
   await authenticateFamily(page);
 });
 
-test('Unit 13 preview: locked until Unit 10 passes, then all four lessons with the four scale diagrams, at 375 and 360 px', async ({ page }) => {
+test('Unit 13 preview: locked until the earlier ready units pass, then all four lessons with the four scale diagrams, at 375 and 360 px', async ({ page }) => {
   test.setTimeout(180_000);
   expect(Object.values(DIAGRAM_BY_LESSON_SECTION).sort()).toEqual(['u13-area-detail', 'u13-direct-vs-route', 'u13-measured-distance', 'u13-scale-forms']);
   await signInAsParent(page);
   await resetPreview(page);
 
-  // Before Unit 10 is passed, Unit 13 is listed but locked.
+  // Before the earlier ready units are passed, Unit 13 is listed but locked.
   await navigateStable(page, previewCourse);
   await expect(page.getByText('Eelvaade — lapse andmeid ei muudeta.')).toBeVisible();
   const card = page.locator(`.tb-unit-card[data-unit-id="${U13}"]`);
@@ -288,7 +200,7 @@ test('Unit 13 preview: locked until Unit 10 passes, then all four lessons with t
   await expect(card).toHaveAttribute('data-status', 'locked');
   expect((await page.request.get(`${PREVIEW_API}/courses/${COURSE}/units/${U13}`)).status()).toBe(403);
 
-  await passUnit10ViaApi(page);
+  await passEarlierReadyUnits(page, U13);
   await navigateStable(page, previewCourse);
   await expect(card).toHaveAttribute('data-status', 'start_learning');
   await card.getByRole('link', { name: 'Alusta õppimist' }).click();
@@ -358,7 +270,7 @@ test('Unit 13 preview: practice with a correction, 18/20 fails, targeted practic
   test.setTimeout(480_000);
   await signInAsParent(page);
   await resetPreview(page);
-  await passUnit10ViaApi(page);
+  await passEarlierReadyUnits(page, U13);
   const keys = await unitKeys(page, U13);
   expect(keys.size).toBe(117);
   await readAllViaApi(page, U13);
@@ -418,7 +330,8 @@ test('Unit 13 preview: practice with a correction, 18/20 fails, targeted practic
   expect(first.questions.map((question) => question.id)).toEqual(firstIds);
   expect(second.questions.map((question) => question.id)).toEqual(secondIds);
   expect([first.result?.correct, second.result?.correct]).toEqual([18, 19]);
-  expect(second.result).toMatchObject({ nextUnitOpened: false, reward: null });
+  // Passing Unit 13 opens the next ready unit, Unit 14.
+  expect(second.result).toMatchObject({ nextUnitOpened: true, nextUnit: { unitId: 'lo-opik-u14' }, reward: null });
   const unit = await apiGet<UnitDetailResponse>(page, `${PREVIEW_API}/courses/${COURSE}/units/${U13}`);
   expect(unit.attempts.map((attempt) => [attempt.correct, attempt.total, attempt.passed])).toEqual([[18, 20, false], [19, 20, true]]);
 
