@@ -20,6 +20,16 @@ export default function LoodusopetusSetupPage() {
 
           <button type='button' className='next-button science-start-button' onClick={start}>▶ Alusta harjutust</button>
         </section>
+
+        {/* Kiur's textbook course (online only). This page is Kiur's, so Kirsi never sees it. */}
+        <Link className='tb-entry-card' href='/kiur/loodusopetus/opik'>
+          <span className='tb-entry-icon' aria-hidden>📖</span>
+          <span className='tb-entry-copy'>
+            <strong>Õpiku õppetükid</strong>
+            <small>Loe, harjuta ja tee test. Vajab internetiühendust.</small>
+          </span>
+          <span className='tb-entry-arrow' aria-hidden>→</span>
+        </Link>
       </section>
     </main>
   );
