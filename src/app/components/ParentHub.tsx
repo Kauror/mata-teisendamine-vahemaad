@@ -16,18 +16,20 @@ import { TasksPanel } from '@/app/components/parent/TasksPanel';
 import { ParentApiProvider, ParentToasts, useParentApi } from '@/app/components/parent/useParentApi';
 import { WeeklyDigestPanel } from '@/app/components/parent/WeeklyDigestPanel';
 
-// Both are large and only needed once their section is opened.
+// These are large and only needed once their section is opened.
 const loadingPanel = () => <p>Laadin...</p>;
 const ParentEnglishVocabulary = dynamic(() => import('@/app/components/ParentEnglishVocabulary'), { loading: loadingPanel });
+const TextbookPanel = dynamic(() => import('@/app/components/parent/TextbookPanel').then((module) => module.TextbookPanel), { loading: loadingPanel });
 const OfflineReadiness = dynamic(() => import('@/app/components/offline/OfflineReadiness').then((module) => module.OfflineReadiness), { loading: loadingPanel });
 
-type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'vocabulary' | 'password' | 'rewards' | 'history';
-type CountedSection = 'library' | 'tasks' | 'store' | 'rewards' | 'history';
+type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'tasks' | 'store' | 'learning' | 'library' | 'vocabulary' | 'textbook' | 'password' | 'rewards' | 'history';
+type CountedSection = 'library' | 'textbook' | 'tasks' | 'store' | 'rewards' | 'history';
 
 // What a section header says before its panel has loaded its own data; the
 // panel replaces it with a count once it has one.
 const DEFAULT_SUMMARIES: Record<CountedSection, string> = {
   library: 'Harjutuste nähtavus lastele',
+  textbook: 'Avaldamine, edenemine ja eelvaade',
   tasks: 'Laste igapäevased tegevused',
   store: 'Poe esemed ja ostud',
   rewards: 'Kuu võistlus ja seeria auhinnad',
@@ -51,7 +53,7 @@ function ParentHubSections() {
   const [summaries, setSummaries] = useState<Record<CountedSection, string>>(DEFAULT_SUMMARIES);
   const reportSummary = useMemo(() => {
     const report = (section: CountedSection) => (summary: string) => setSummaries((current) => (current[section] === summary ? current : { ...current, [section]: summary }));
-    return { library: report('library'), tasks: report('tasks'), store: report('store'), rewards: report('rewards'), history: report('history') };
+    return { library: report('library'), textbook: report('textbook'), tasks: report('tasks'), store: report('store'), rewards: report('rewards'), history: report('history') };
   }, []);
 
   const toggleSection = (section: ParentSectionId) => {
@@ -104,6 +106,10 @@ function ParentHubSections() {
 
         <ParentAccordionSection title='Inglise keele sõnavara' summary='Õppetükid, import ja edenemine' {...section('vocabulary')} keepMounted>
           <ParentEnglishVocabulary setNotice={api.setNotice} setError={api.setError} />
+        </ParentAccordionSection>
+
+        <ParentAccordionSection title='Loodusõpetuse õppetükid' summary={summaries.textbook} {...section('textbook')} keepMounted>
+          <TextbookPanel onSummary={reportSummary.textbook} />
         </ParentAccordionSection>
 
         <ParentAccordionSection title='Tegevused' summary={summaries.tasks} {...section('tasks')} keepMounted>
