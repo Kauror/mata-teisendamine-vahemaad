@@ -22,12 +22,14 @@ export default function ChildHomeDashboard({
   exercises,
   remediationHref,
   remediationCount,
+  textbookHref,
   completedExerciseCounts
 }: {
   child: ChildProfile;
   exercises: ChildExerciseCard[];
   remediationHref?: string;
   remediationCount?: number;
+  textbookHref?: string;
   completedExerciseCounts?: Record<string, number>;
 }) {
   const yesterdayPoints = getYesterdayPointsSummary(child.learner);
@@ -56,6 +58,7 @@ export default function ChildHomeDashboard({
           initialExercises={exercises}
           remediationHref={remediationHref}
           remediationCount={remediationCount}
+          textbookHref={textbookHref}
           completedExerciseCounts={completedExerciseCounts ?? {}}
         />
 
