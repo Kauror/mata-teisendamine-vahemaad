@@ -12,6 +12,7 @@ import WaterCycleDiagram from '@/app/components/textbook/diagrams/WaterCycleDiag
 import { UNIT11_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit11';
 import { UNIT12_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit12';
 import { UNIT13_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit13';
+import { U14_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit14';
 
 export type { DiagramMode, DiagramProps } from '@/app/components/textbook/diagrams/DiagramFrame';
 
@@ -26,7 +27,8 @@ export const DIAGRAM_COMPONENTS: Record<string, ComponentType<DiagramProps>> = {
   'u10-observer-height': ObserverHeightDiagram,
   ...UNIT11_DIAGRAM_COMPONENTS,
   ...UNIT12_DIAGRAM_COMPONENTS,
-  ...UNIT13_DIAGRAM_COMPONENTS
+  ...UNIT13_DIAGRAM_COMPONENTS,
+  ...U14_DIAGRAM_COMPONENTS
 };
 
 export function DiagramView({ diagramId, ...props }: DiagramProps & { diagramId: string }) {

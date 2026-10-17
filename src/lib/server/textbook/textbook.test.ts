@@ -653,6 +653,36 @@ describe('preview isolation (A5, A6)', () => {
     expectCode(() => getUnitDetail(kiur(), REAL, U13), 'forbidden');
   });
 
+  it('runs the real Unit 14 in the preview after the earlier ready units: read, practise, 18/20 fails, 19/20 passes; Kiur sees nothing', () => {
+    useCourse(makeCourse());
+    const before = realFootprint();
+    const U14 = 'lo-opik-u14';
+    expectCode(() => getUnitDetail(preview(), REAL, U14), 'locked');
+    passEarlierReadyUnits(REAL, U14);
+    expect(getCourseOverview(preview(), REAL).units.find((unit) => unit.unitId === U14)?.status).toBe('start_learning');
+    const detail = getUnitDetail(preview(), REAL, U14);
+    expect(detail.lessons).toHaveLength(4);
+    expectCode(() => startPractice(preview(), REAL, U14), 'gate_reading');
+    readAll(preview(), REAL, U14);
+    expect(finishPractice(preview(), REAL, U14, 2).status).toBe('completed');
+    const failed = playTest(preview(), REAL, U14, 2);
+    expect(failed.result).toMatchObject({ correct: 18, total: 20, passed: false, reward: null });
+    finishPractice(preview(), REAL, U14);
+    const passed = playTest(preview(), REAL, U14, 1);
+    expect(passed.result).toMatchObject({ correct: 19, total: 20, passed: true, reward: null, ...nextAfter(U14) });
+    for (const view of [failed.session, passed.session]) {
+      const questions = testState(view.sessionId).snapshot.questions.map((frozen) => frozen.question);
+      expect(new Set(questions.map((question) => question.variantGroupId)).size).toBe(20);
+      expect(new Set(questions.map((question) => question.primaryObjectiveId)).size).toBe(8);
+      const levels = { factual: 0, understanding: 0, application: 0 };
+      for (const question of questions) levels[question.cognitiveLevel] += 1;
+      expect(levels).toEqual({ factual: 8, understanding: 7, application: 5 });
+    }
+    expect(realFootprint()).toEqual(before);
+    expect(getCourseOverview(kiur(), REAL).units).toEqual([]);
+    expectCode(() => getUnitDetail(kiur(), REAL, U14), 'forbidden');
+  });
+
   it('"Lähtesta eelvaade" removes only preview rows (A7)', () => {
     readyForTest(kiur(), COURSE_ID, WATER);
     playTest(kiur(), COURSE_ID, WATER, 2);

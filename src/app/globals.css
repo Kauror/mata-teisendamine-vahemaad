@@ -1640,6 +1640,40 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-u13-small-road{fill:none;stroke:var(--tb-dia-soil);stroke-width:2;stroke-linecap:round}
 .tb-u13-inset{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:3 2}
 .tb-u13-place{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:2.5}
+/* Unit 14 "Kaartide mitmekesisus": fictional maps (existing diagram tokens only). */
+.tb-u14-sea{fill:var(--tb-dia-globe-light)}
+.tb-u14-panel{stroke:var(--tb-dia-sea-line);stroke-width:1.5}
+.tb-u14-land{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:2;stroke-linejoin:round}
+.tb-u14-mountain{fill:var(--tb-dia-soil);stroke:var(--tb-dia-soil-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u14-snow{fill:var(--tb-dia-ink-light)}
+.tb-u14-river{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:5;stroke-linecap:round}
+.tb-u14-river.tb-u14-river-thin{stroke-width:3.5}
+.tb-u14-water{fill:var(--tb-dia-sea);stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-u14-country-base{fill:var(--tb-dia-tower)}
+.tb-u14-country-right{fill:var(--tb-dia-petal);fill-opacity:.3}
+.tb-u14-country-left{fill:var(--tb-dia-sand)}
+.tb-u14-coast{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:2;stroke-linejoin:round}
+.tb-u14-border{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;stroke-dasharray:9 6}
+.tb-u14-capital{fill:var(--tb-dia-flag);stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-linejoin:round}
+.tb-u14-city{fill:var(--tb-dia-ink);stroke:var(--tb-dia-ink-light);stroke-width:2}
+.tb-u14-frame{fill:var(--tb-dia-tower)}
+.tb-u14-map-frame{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:1.5}
+.tb-u14-heading{font-family:var(--font-display);font-weight:800;fill:var(--tb-dia-ink)}
+.tb-u14-pop{stroke:var(--tb-dia-tower-line);stroke-width:1}
+.tb-u14-pop-a{fill:var(--tb-dia-panel-line)}
+.tb-u14-pop-c{fill:var(--tb-dia-sea)}
+.tb-u14-pop-b{fill:var(--tb-dia-sea-line)}
+.tb-u14-pop-pattern{stroke:none}
+.tb-u14-pattern-dot{fill:var(--tb-dia-sea-line)}
+.tb-u14-pattern-line{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:1.6;stroke-opacity:.6}
+.tb-u14-pop-edge{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:3;stroke-linejoin:round}
+.tb-u14-letter{font-family:var(--font-display);font-weight:900;fill:var(--tb-dia-ink);paint-order:stroke;stroke:var(--tb-dia-sky);stroke-width:3px;stroke-linejoin:round}
+.tb-u14-letter.tb-u14-letter-light{fill:var(--tb-dia-ink-light);stroke:none}
+.tb-u14-legend-text{font-family:var(--font-display);font-weight:750;fill:var(--tb-dia-ink)}
+/* The region fill covers its tap area here, so the choice is outlined on the shape itself. */
+.tb-region[data-selected="true"] .tb-u14-pop,.tb-region[data-selected="true"] .tb-u14-panel{stroke:var(--tb-dia-selected);stroke-width:4}
+.tb-region[data-correct="true"] .tb-u14-pop,.tb-region[data-correct="true"] .tb-u14-panel{stroke:var(--tb-dia-correct);stroke-width:4}
+.tb-region[data-wrong="true"] .tb-u14-pop,.tb-region[data-wrong="true"] .tb-u14-panel{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}
