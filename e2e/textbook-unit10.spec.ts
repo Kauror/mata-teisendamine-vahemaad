@@ -10,7 +10,7 @@ import type { Question } from '../src/lib/textbook/types';
 // content-'ready' but NOT published, so it shows in the preview and nowhere
 // for Kiur. Reading all four lessons (12 sections, 4 diagrams, the NASA
 // photo), practice to completion with a correction, an 18/20 fail → targeted
-// practice → 19/20 pass, frozen test snapshots, and Unit 11 still a draft.
+// practice → 19/20 pass, frozen test snapshots, and Unit 22 still a draft.
 //
 // Both browser projects share one database, so every test starts by resetting
 // the preview learner for this course.
@@ -21,6 +21,7 @@ const ORIGIN = 'http://localhost:3000';
 const COURSE = 'loodusopetus-opik';
 const U10 = 'lo-opik-u10';
 const U11 = 'lo-opik-u11';
+const DRAFT = 'lo-opik-u22';
 const PREVIEW_API = '/api/parent/textbook/preview';
 const previewCourse = `/vanem/oppetukid/eelvaade/${COURSE}`;
 const previewUnit = `${previewCourse}/${U10}`;
@@ -253,11 +254,11 @@ test('Unit 10 preview: all four lessons with the diagrams and the photo, at 375 
 
   await navigateStable(page, previewCourse);
   await expect(page.getByText('Eelvaade — lapse andmeid ei muudeta.')).toBeVisible();
-  // Only the ready unit is in the preview; Unit 11 (a draft) is not listed.
-  await expect(page.locator('.tb-unit-card')).toHaveCount(1);
+  // Only ready units are in the preview (Unit 11 waits for Unit 10); Unit 22 (a draft) is not listed.
   const card = page.locator(`.tb-unit-card[data-unit-id="${U10}"]`);
   await expect(card).toContainText('Maa kuju');
-  await expect(page.locator(`[data-unit-id="${U11}"]`)).toHaveCount(0);
+  await expect(page.locator(`.tb-unit-card[data-unit-id="${U11}"]`)).toBeVisible();
+  await expect(page.locator(`[data-unit-id="${DRAFT}"]`)).toHaveCount(0);
   await card.getByRole('link', { name: 'Alusta õppimist' }).click();
   await page.getByRole('link', { name: 'Alusta lugemist' }).click();
 
@@ -322,7 +323,7 @@ test('Unit 10 preview: all four lessons with the diagrams and the photo, at 375 
   await noSidewaysScroll(page);
 });
 
-test('Unit 10 preview: practice with a correction, 18/20 fails, targeted practice, 19/20 passes; Unit 11 stays a draft and Kiur sees nothing', async ({ page }) => {
+test('Unit 10 preview: practice with a correction, 18/20 fails, targeted practice, 19/20 passes; Unit 22 stays a draft and Kiur sees nothing', async ({ page }) => {
   test.setTimeout(420_000);
   await signInAsParent(page);
   await resetPreview(page);
@@ -388,14 +389,14 @@ test('Unit 10 preview: practice with a correction, 18/20 fails, targeted practic
   const unit = await apiGet<UnitDetailResponse>(page, `${PREVIEW_API}/courses/${COURSE}/units/${U10}`);
   expect(unit.attempts.map((attempt) => [attempt.correct, attempt.total, attempt.passed])).toEqual([[18, 20, false], [19, 20, true]]);
 
-  // Unit 11 is still a draft that cannot be published; Unit 10 itself is unpublished.
+  // Unit 22 is still a draft that cannot be published; Unit 10 itself is unpublished.
   const overview = await apiGet<ParentOverviewResponse>(page, '/api/parent/textbook');
   const real = overview.courses.find((course) => course.courseId === COURSE)!;
   expect(real.units.find((item) => item.unitId === U10)).toMatchObject({ contentStatus: 'ready', published: false, validation: { publishable: true } });
-  expect(real.units.find((item) => item.unitId === U11)).toMatchObject({ contentStatus: 'draft', published: false, validation: { publishable: false } });
+  expect(real.units.find((item) => item.unitId === DRAFT)).toMatchObject({ contentStatus: 'draft', published: false, validation: { publishable: false } });
   await navigateStable(page, previewCourse);
   await expect(page.locator(`.tb-unit-card[data-unit-id="${U10}"] .tb-status-chip`)).toContainText('Läbitud');
-  await expect(page.locator(`[data-unit-id="${U11}"]`)).toHaveCount(0);
+  await expect(page.locator(`[data-unit-id="${DRAFT}"]`)).toHaveCount(0);
 
   // Kiur's course list is still empty: nothing was published by the preview.
   const child = await apiGet<{ units: unknown[] }>(page, `/api/textbook/courses/${COURSE}`);

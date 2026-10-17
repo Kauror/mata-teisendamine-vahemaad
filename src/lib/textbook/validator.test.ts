@@ -30,12 +30,12 @@ describe('shipped content', () => {
     }
   });
 
-  it('Unit 10 is ready and publishable without warnings; units 11–22 stay metadata-only drafts', () => {
+  it('Units 10 and 11 are ready and publishable without warnings; units 12–22 stay metadata-only drafts', () => {
     const result = validateCourse(loodusopetusOpikCourse, { imageExists: () => true });
     expect(result.errors).toEqual([]);
     expect(result.valid).toBe(true);
     expect(result.units.map((unit) => unit.unitNumber)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
-    const [unit10, ...drafts] = result.units;
+    const [unit10, unit11, ...drafts] = result.units;
     expect(unit10.errors).toEqual([]);
     expect(unit10.warnings).toEqual([]);
     expect(unit10.publishable).toBe(true);
@@ -46,12 +46,14 @@ describe('shipped content', () => {
       testLevels: { factual: 19, understanding: 20, application: 15 }
     });
     expect(Object.values(unit10.stats.answerTypes).every((count) => count > 0)).toBe(true);
+    // Unit 11 in detail: src/lib/textbook/unit11Content.test.ts.
+    expect(unit11).toMatchObject({ unitNumber: 11, errors: [], warnings: [], publishable: true });
     for (const unit of drafts) {
       expect(unit.publishable).toBe(false);
       expect(codes(unit.errors)).toEqual(['unit_draft', 'unit_no_content']);
       expect(unit.errors[0].message).toMatch(/mustand/u);
     }
-    for (const unit of loodusopetusOpikCourse.units.slice(1)) {
+    for (const unit of loodusopetusOpikCourse.units.slice(2)) {
       expect(unit.status).toBe('draft');
       expect(unit.lessons).toEqual([]);
       expect(unit.questions).toEqual([]);
