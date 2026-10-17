@@ -258,7 +258,7 @@ test('Unit 10 preview: all four lessons with the diagrams and the photo, at 375 
   await expect(page.locator('.tb-unit-card').first()).toHaveAttribute('data-unit-id', U10);
   const card = page.locator(`.tb-unit-card[data-unit-id="${U10}"]`);
   await expect(card).toContainText('Maa kuju');
-  await expect(page.locator(`.tb-unit-card[data-unit-id="${U11}"]`)).toBeVisible();
+  await expect(page.locator(`.tb-unit-card[data-unit-id="${U11}"]`)).toHaveAttribute('data-status', 'locked');
   await expect(page.locator(`[data-unit-id="${DRAFT}"]`)).toHaveCount(0);
   await card.getByRole('link', { name: 'Alusta õppimist' }).click();
   await page.getByRole('link', { name: 'Alusta lugemist' }).click();
@@ -397,6 +397,8 @@ test('Unit 10 preview: practice with a correction, 18/20 fails, targeted practic
   expect(real.units.find((item) => item.unitId === DRAFT)).toMatchObject({ contentStatus: 'draft', published: false, validation: { publishable: false } });
   await navigateStable(page, previewCourse);
   await expect(page.locator(`.tb-unit-card[data-unit-id="${U10}"] .tb-status-chip`)).toContainText('Läbitud');
+  // Passing Unit 10 opens the next ready unit, Unit 11.
+  await expect(page.locator(`.tb-unit-card[data-unit-id="${U11}"]`)).toHaveAttribute('data-status', 'start_learning');
   await expect(page.locator(`[data-unit-id="${DRAFT}"]`)).toHaveCount(0);
 
   // Kiur's course list is still empty: nothing was published by the preview.

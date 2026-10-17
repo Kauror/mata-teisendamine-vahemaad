@@ -1,5 +1,6 @@
 import { UNIT11_LAYOUTS } from '@/app/components/textbook/diagrams/unit11/layout';
 import { UNIT12_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit12/layout';
+import { UNIT13_LAYOUTS } from '@/app/components/textbook/diagrams/unit13/layout';
 
 // Where each registered diagram puts its region labels and hotspot markers,
 // as data, so a unit test can prove every label fits inside the picture at
@@ -107,7 +108,8 @@ export const DIAGRAM_LAYOUTS: Record<string, DiagramLayout> = {
   },
   // Later units keep their layouts next to their components (diagrams/unitNN/layout.ts).
   ...UNIT11_LAYOUTS,
-  ...UNIT12_DIAGRAM_LAYOUTS
+  ...UNIT12_DIAGRAM_LAYOUTS,
+  ...UNIT13_LAYOUTS
 };
 
 // DejaVu Sans Bold advance widths in em (font units / 2048), for the letters

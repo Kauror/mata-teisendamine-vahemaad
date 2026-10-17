@@ -31,7 +31,7 @@ describe('shipped content', () => {
     }
   });
 
-  it('Units 10–12 are ready and publishable without warnings; Units 13–22 stay metadata-only drafts', () => {
+  it('Units 10–13 are ready and publishable without warnings; Units 14–22 stay metadata-only drafts', () => {
     const result = validateCourse(loodusopetusOpikCourse, { imageExists: () => true });
     expect(result.errors).toEqual([]);
     expect(result.valid).toBe(true);
@@ -39,7 +39,7 @@ describe('shipped content', () => {
     const status = new Map(loodusopetusOpikCourse.units.map((unit) => [unit.id, unit.status]));
     const ready = result.units.filter((unit) => status.get(unit.unitId) === 'ready');
     const drafts = result.units.filter((unit) => status.get(unit.unitId) === 'draft');
-    expect(ready.map((unit) => unit.unitNumber)).toEqual([10, 11, 12]);
+    expect(ready.map((unit) => unit.unitNumber)).toEqual([10, 11, 12, 13]);
     expect(ready.length + drafts.length).toBe(result.units.length);
     // Every ready unit: no errors or warnings, publishable, tests buildable (each unit's details: its own test).
     for (const unit of ready) {
@@ -91,6 +91,22 @@ describe('shipped content', () => {
     expect([...diagrams].sort()).toEqual(['u12-aerial-vs-map', 'u12-globe-flatmap', 'u12-legend-town', 'u12-orange-peel']);
     // All IDs are ASCII (the validator's ID rule).
     expect(JSON.stringify(unit12.questions.map((question) => question.id))).toMatch(/^[\x00-\x7f]*$/);
+  });
+
+  it('Unit 13 "Kaardi mõõtkava" is ready and publishable without warnings, unpublished content version 2026-10-17.1', () => {
+    const unit13 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u13')!;
+    expect(unit13).toMatchObject({ number: 13, title: 'Kaardi mõõtkava', status: 'ready', contentVersion: '2026-10-17.1', pages: { from: 54, to: 57 } });
+    const result = validateUnit(unit13, loodusopetusOpikCourse);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.publishable).toBe(true);
+    expect(result.buildability?.ok).toBe(true);
+    expect(result.stats).toMatchObject({
+      lessons: 4, requiredLessons: 4, sections: 15, blocks: 59, objectives: 8, requiredObjectives: 8,
+      questions: 117, practiceQuestions: 117, testQuestions: 117, testVariantGroups: 100,
+      testLevels: { factual: 31, understanding: 38, application: 48 }
+    });
+    expect(result.stats.answerTypes).toMatchObject({ single_choice: 85, multiple_selection: 8, matching: 6, grouping: 4, ordering: 5, diagram_hotspot: 9 });
   });
 
   it('Unit 10 is not publishable when its photo file is missing', () => {

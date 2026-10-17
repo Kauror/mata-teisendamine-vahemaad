@@ -1626,6 +1626,20 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-u12-legend-box{fill:var(--tb-u12-paper);stroke:var(--tb-u12-paper-line);stroke-width:1.5}
 .tb-u12-legend-word{font-family:var(--font-display);font-weight:800;fill:var(--tb-dia-ink)}
 .tb-u12-legend-blank{fill:var(--tb-u12-blank)}
+/* Unit 13 "Kaardi mõõtkava" diagrams (existing palette tokens only). The
+   numbers drawn in a scale picture stay visible in hotspot questions. */
+.tb-u13-value{font-family:var(--font-display);font-weight:800;fill:var(--tb-dia-ink)}
+.tb-u13-tick-label{font-family:var(--font-display);font-weight:750;fill:var(--tb-dia-note)}
+.tb-u13-map-sea{fill:var(--tb-dia-globe-light)}
+.tb-u13-ink{fill:var(--tb-dia-ink)}
+.tb-u13-paper{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u13-line{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;stroke-linecap:round}
+.tb-u13-thin{fill:none;stroke:var(--tb-dia-ink);stroke-width:2;stroke-linecap:round}
+.tb-u13-road{fill:none;stroke:var(--tb-dia-soil);stroke-width:4;stroke-dasharray:9 6;stroke-linecap:round}
+.tb-u13-street{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:6;stroke-linecap:square}
+.tb-u13-small-road{fill:none;stroke:var(--tb-dia-soil);stroke-width:2;stroke-linecap:round}
+.tb-u13-inset{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:3 2}
+.tb-u13-place{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:2.5}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}

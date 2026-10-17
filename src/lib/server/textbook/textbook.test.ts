@@ -624,6 +624,35 @@ describe('preview isolation (A5, A6)', () => {
     expectCode(() => getUnitDetail(kiur(), REAL, U12), 'forbidden');
   });
 
+  it('runs the real Unit 13 in the preview after the earlier ready units: 18/20 fails, 19/20 passes; Kiur sees nothing', () => {
+    useCourse(makeCourse());
+    const before = realFootprint();
+    const U13 = 'lo-opik-u13';
+    // Preview follows the real sequence: Unit 13 opens after every earlier ready unit's test.
+    expectCode(() => getUnitDetail(preview(), REAL, U13), 'locked');
+    passEarlierReadyUnits(REAL, U13);
+    const detail = getUnitDetail(preview(), REAL, U13);
+    expect(detail.lessons.map((lesson) => lesson.title)).toEqual(['Kaardil on kõik väiksem', 'Mis on mõõtkava?', 'Kuidas leida vahemaa kaardilt?', 'Lisa: vahemaid arvestame ka ajas']);
+    readAll(preview(), REAL, U13);
+    finishPractice(preview(), REAL, U13, 2);
+    const failed = playTest(preview(), REAL, U13, 2);
+    expect(failed.result).toMatchObject({ correct: 18, total: 20, passed: false, reward: null });
+    finishPractice(preview(), REAL, U13);
+    const passed = playTest(preview(), REAL, U13, 1);
+    expect(passed.result).toMatchObject({ correct: 19, total: 20, passed: true, reward: null, ...nextAfter(U13) });
+    for (const view of [failed.session, passed.session]) {
+      const frozen = testState(view.sessionId).snapshot.questions.map((item) => item.question);
+      expect(new Set(frozen.map((question) => question.variantGroupId)).size).toBe(20);
+      const levels = { factual: 0, understanding: 0, application: 0 };
+      for (const question of frozen) levels[question.cognitiveLevel] += 1;
+      expect(levels).toEqual({ factual: 8, understanding: 7, application: 5 });
+      expect(new Set(frozen.map((question) => question.primaryObjectiveId)).size).toBe(8);
+    }
+    expect(realFootprint()).toEqual(before);
+    expect(getCourseOverview(kiur(), REAL).units).toEqual([]);
+    expectCode(() => getUnitDetail(kiur(), REAL, U13), 'forbidden');
+  });
+
   it('"Lähtesta eelvaade" removes only preview rows (A7)', () => {
     readyForTest(kiur(), COURSE_ID, WATER);
     playTest(kiur(), COURSE_ID, WATER, 2);
