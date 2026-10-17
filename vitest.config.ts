@@ -12,6 +12,8 @@ export default defineConfig({
     // them isolated but allow the suite to run in-process.
     pool: 'forks'
   },
+  // tsconfig keeps JSX for Next.js; tests that render a component need it compiled.
+  oxc: { jsx: { runtime: 'automatic' } },
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') }
   }

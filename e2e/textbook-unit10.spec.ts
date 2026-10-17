@@ -253,8 +253,9 @@ test('Unit 10 preview: all four lessons with the diagrams and the photo, at 375 
 
   await navigateStable(page, previewCourse);
   await expect(page.getByText('Eelvaade — lapse andmeid ei muudeta.')).toBeVisible();
-  // Only the ready unit is in the preview; Unit 11 (a draft) is not listed.
-  await expect(page.locator('.tb-unit-card')).toHaveCount(1);
+  // Only the ready units are in the preview (Unit 13 waits for Unit 10's pass); Unit 11 (a draft) is not listed.
+  await expect(page.locator('.tb-unit-card')).toHaveCount(2);
+  await expect(page.locator('.tb-unit-card[data-unit-id="lo-opik-u13"]')).toHaveAttribute('data-status', 'locked');
   const card = page.locator(`.tb-unit-card[data-unit-id="${U10}"]`);
   await expect(card).toContainText('Maa kuju');
   await expect(page.locator(`[data-unit-id="${U11}"]`)).toHaveCount(0);
@@ -395,6 +396,7 @@ test('Unit 10 preview: practice with a correction, 18/20 fails, targeted practic
   expect(real.units.find((item) => item.unitId === U11)).toMatchObject({ contentStatus: 'draft', published: false, validation: { publishable: false } });
   await navigateStable(page, previewCourse);
   await expect(page.locator(`.tb-unit-card[data-unit-id="${U10}"] .tb-status-chip`)).toContainText('Läbitud');
+  await expect(page.locator('.tb-unit-card[data-unit-id="lo-opik-u13"]')).toHaveAttribute('data-status', 'start_learning');
   await expect(page.locator(`[data-unit-id="${U11}"]`)).toHaveCount(0);
 
   // Kiur's course list is still empty: nothing was published by the preview.
