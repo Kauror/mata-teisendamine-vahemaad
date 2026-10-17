@@ -2,7 +2,7 @@
 
 import type { KeyboardEvent, ReactNode } from 'react';
 import { getDiagram, type DiagramDefinition } from '@/lib/textbook/diagramRegistry';
-import { DIAGRAM_LAYOUTS, MARKER_FONT_SIZE, MARKER_RADIUS } from '@/app/components/textbook/diagrams/layout';
+import { DIAGRAM_LAYOUTS, MARKER_FONT_SIZE, MARKER_RADIUS } from '@/app/components/textbook/diagrams/diagramLayout';
 
 // Shared frame for the registered diagrams. `lesson` mode shows the real
 // region labels; `hotspot` mode hides them and draws only the neutral letter

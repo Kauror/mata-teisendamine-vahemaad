@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DIAGRAMS } from '@/lib/textbook/diagramRegistry';
-import { DIAGRAM_LAYOUTS, MARKER_RADIUS, estimateTextWidth, labelExtent } from '@/app/components/textbook/diagrams/layout';
+import { DIAGRAM_LAYOUTS, MARKER_RADIUS, estimateTextWidth, labelExtent } from '@/app/components/textbook/diagrams/diagramLayout';
 
 // How the label fit is measured: CI renders SVG text in DejaVu Sans (no
 // Nunito there), about 17 % wider than a phone. estimateTextWidth sums real

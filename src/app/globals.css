@@ -1452,7 +1452,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-finish{display:grid;gap:6px}
 .tb-done-note{margin:0;padding:10px 12px;border-radius:var(--tb-radius-small);background:var(--tb-good-bg);color:var(--tb-good-ink);font-weight:800}
 
-/* Diagrams. Label text is measured for DejaVu Sans Bold (diagrams/layout.ts). */
+/* Diagrams. Label text is measured for DejaVu Sans Bold (diagrams/diagramLayout.ts). */
 .tb-diagram{display:flex;justify-content:center;padding:6px;border-radius:var(--tb-radius-small);background:var(--tb-dia-sky)}
 .tb-diagram-svg{width:100%;max-width:360px;height:auto;display:block}
 .tb-diagram-missing{margin:0;color:var(--tb-muted)}
