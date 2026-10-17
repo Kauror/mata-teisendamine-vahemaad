@@ -1,3 +1,4 @@
+import type { ParentOverviewResponse } from '../src/lib/textbook/api';
 import { expect, test, type Page } from './test';
 import { authenticateFamilyWithCatalogue } from './auth';
 import { navigateStable } from './navigation';
@@ -32,6 +33,15 @@ function scienceRows(page: Page) {
 
 // Publishes or unpublishes a textbook unit through the parent API (the parent
 // session from openParentLibrary supplies the CSRF cookie).
+// The units currently published for the course, from the parent overview.
+async function publishedUnitIds(page: Page): Promise<string[]> {
+  const response = await page.request.get('/api/parent/textbook');
+  expect(response.ok(), await response.text()).toBe(true);
+  const body = await response.json() as ParentOverviewResponse;
+  const course = body.courses.find((entry) => entry.courseId === 'loodusopetus-opik');
+  return (course?.units ?? []).filter((unit) => unit.published).map((unit) => unit.unitId);
+}
+
 async function setUnitPublished(page: Page, unitId: string, published: boolean) {
   const cookies = await page.context().cookies();
   const token = cookies.find((cookie) => cookie.name === 'parent_csrf')?.value ?? '';
@@ -75,6 +85,11 @@ test('the parent library no longer offers the archived mixed Loodusõpetus exerc
 test('Kiur gets one Loodusõpetus card, to the textbook, only while a unit is published', async ({ page }) => {
   test.setTimeout(90_000);
   const scienceCards = () => page.locator('.child-exercise-card').filter({ hasText: SCIENCE_TITLE });
+
+  // The suite shares one database: another spec may have published a unit.
+  // Start from "nothing published" so the card's absence is this test's own.
+  await openParentLibrary(page);
+  for (const unitId of await publishedUnitIds(page)) await setUnitPublished(page, unitId, false);
 
   await navigateStable(page, '/kiur');
   await expect(page.locator('.child-exercise-card[href^="/opi/loodusopetus"]')).toHaveCount(0);
