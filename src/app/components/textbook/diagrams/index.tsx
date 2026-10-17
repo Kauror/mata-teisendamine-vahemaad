@@ -9,6 +9,7 @@ import ObserverHeightDiagram from '@/app/components/textbook/diagrams/ObserverHe
 import PlantPartsDiagram from '@/app/components/textbook/diagrams/PlantPartsDiagram';
 import ShipHorizonDiagram from '@/app/components/textbook/diagrams/ShipHorizonDiagram';
 import WaterCycleDiagram from '@/app/components/textbook/diagrams/WaterCycleDiagram';
+import { UNIT13_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit13';
 
 export type { DiagramMode, DiagramProps } from '@/app/components/textbook/diagrams/DiagramFrame';
 
@@ -20,7 +21,8 @@ export const DIAGRAM_COMPONENTS: Record<string, ComponentType<DiagramProps>> = {
   'u10-ancient-earth': AncientEarthDiagram,
   'u10-lunar-eclipse': LunarEclipseDiagram,
   'u10-ship-horizon': ShipHorizonDiagram,
-  'u10-observer-height': ObserverHeightDiagram
+  'u10-observer-height': ObserverHeightDiagram,
+  ...UNIT13_DIAGRAM_COMPONENTS
 };
 
 export function DiagramView({ diagramId, ...props }: DiagramProps & { diagramId: string }) {

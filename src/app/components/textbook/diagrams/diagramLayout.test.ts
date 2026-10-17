@@ -8,6 +8,7 @@ import {
   BEACH_EYE_POINT, BEACH_HORIZON, BEACH_X, FAR_SHIP_X, HEIGHT_SEA, NEAR_SHIP_X, SHIP_EYE, SHIP_HORIZON, SHIP_HULL_TOP, SHIP_MAST_TOP, SHIP_SEA,
   TOWER_EYE_POINT, TOWER_HORIZON, TOWER_X
 } from '@/app/components/textbook/diagrams/horizonGeometry';
+import { UNIT13_COMPONENT_FILES } from '@/app/components/textbook/diagrams/unit13/layout';
 
 // How the label fit is measured: CI renders SVG text in DejaVu Sans (no
 // Nunito there), about 17 % wider than a phone. estimateTextWidth sums real
@@ -21,7 +22,8 @@ const COMPONENT_FILES: Record<string, string> = {
   'u10-ancient-earth': 'AncientEarthDiagram.tsx',
   'u10-lunar-eclipse': 'LunarEclipseDiagram.tsx',
   'u10-ship-horizon': 'ShipHorizonDiagram.tsx',
-  'u10-observer-height': 'ObserverHeightDiagram.tsx'
+  'u10-observer-height': 'ObserverHeightDiagram.tsx',
+  ...UNIT13_COMPONENT_FILES
 };
 
 // The narrowest picture a phone draws: 360 px screen − page, card and diagram
@@ -146,6 +148,26 @@ describe('textbook diagrams', () => {
       expect(point.x).toBeLessThan(356);
       expect(point.y).toBeLessThan(266);
       expect(Math.abs(surfacePoint(HEIGHT_SEA, point.x).y - point.y)).toBeLessThan(0.01);
+    }
+  });
+
+  it('never lets two labels or notes of one unit diagram overlap (feedback text "B – leht" included)', () => {
+    type Box = { name: string; left: number; right: number; top: number; bottom: number };
+    for (const diagram of DIAGRAMS.filter((item) => !item.demo)) {
+      const layout = DIAGRAM_LAYOUTS[diagram.id];
+      const boxes: Box[] = [
+        ...diagram.regions.map((region) => {
+          const label = layout.regions[region.id].label;
+          return { name: region.id, ...labelExtent(label, `${region.marker} – ${region.label}`), top: label.y - label.fontSize, bottom: label.y };
+        }),
+        ...(layout.notes ?? []).map((note) => ({ name: `note "${note.text}"`, ...labelExtent(note.label, note.text), top: note.label.y - note.label.fontSize, bottom: note.label.y }))
+      ];
+      for (const [index, box] of boxes.entries()) {
+        for (const other of boxes.slice(index + 1)) {
+          const overlap = box.left < other.right && other.left < box.right && box.top < other.bottom && other.top < box.bottom;
+          expect(overlap, `${diagram.id}: ${box.name} overlaps ${other.name}`).toBe(false);
+        }
+      }
     }
   });
 

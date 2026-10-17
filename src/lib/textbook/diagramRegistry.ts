@@ -13,6 +13,8 @@
 //    region buttons ("A – kõige ülemine osa"), which also must not give the
 //    answer away.
 
+import { UNIT13_DIAGRAMS } from '@/lib/textbook/diagrams/unit13';
+
 export type DiagramRegion = {
   id: string;
   label: string;
@@ -107,7 +109,8 @@ export const DIAGRAMS: readonly DiagramDefinition[] = [
       { id: 'beach', label: 'rannalt', marker: 'A', position: 'vasakpoolne vaatluskoht' },
       { id: 'tower', label: 'tornist', marker: 'B', position: 'parempoolne vaatluskoht' }
     ]
-  }
+  },
+  ...UNIT13_DIAGRAMS
 ];
 
 const BY_ID = new Map(DIAGRAMS.map((diagram) => [diagram.id, diagram]));

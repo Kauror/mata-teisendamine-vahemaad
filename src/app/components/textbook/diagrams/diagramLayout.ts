@@ -4,6 +4,8 @@
 // text is ~17 % wider than on a phone). The SVG components read these
 // positions; nothing else positions a label.
 
+import { UNIT13_LAYOUTS } from '@/app/components/textbook/diagrams/unit13/layout';
+
 export type TextAnchor = 'start' | 'middle' | 'end';
 export type LabelLayout = {
   x: number;
@@ -99,7 +101,8 @@ export const DIAGRAM_LAYOUTS: Record<string, DiagramLayout> = {
       { text: 'silmapiir', label: { x: 6, y: 250, anchor: 'start', fontSize: NOTE_FONT_SIZE, onShape: true } },
       { text: 'silmapiir', label: { x: 334, y: 268, anchor: 'end', fontSize: NOTE_FONT_SIZE, onShape: true } }
     ]
-  }
+  },
+  ...UNIT13_LAYOUTS
 };
 
 // DejaVu Sans Bold advance widths in em (font units / 2048), for the letters
