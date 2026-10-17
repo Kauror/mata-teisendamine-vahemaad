@@ -185,7 +185,7 @@ async function finishPracticeInUi(page: Page, keys: Map<string, Question>, seen:
     const id = await currentQuestionId(page);
     seen.push(id);
     await answerInUi(page, keys.get(id)!, true);
-    await page.getByRole('button', { name: 'Kontrolli' }).click();
+    await page.getByRole('button', { name: 'Kontrolli', exact: true }).click();
     await expect(page.locator('.tb-feedback')).toBeVisible();
   }
   throw new Error('practice did not finish');
@@ -289,7 +289,7 @@ test('preview practice: immediate feedback, correction and resume', async ({ pag
   const firstId = await currentQuestionId(page);
   const first = keys.get(firstId)!;
   await answerInUi(page, first, false);
-  await page.getByRole('button', { name: 'Kontrolli' }).click();
+  await page.getByRole('button', { name: 'Kontrolli', exact: true }).click();
   const feedback = page.locator('.tb-feedback');
   await expect(feedback).toHaveAttribute('data-correct', 'false');
   await expect(feedback).toContainText('Pole päris õige');
@@ -312,7 +312,7 @@ test('preview practice: immediate feedback, correction and resume', async ({ pag
     const id = await currentQuestionId(page);
     seen.push(id);
     await answerInUi(page, keys.get(id)!, true);
-    await page.getByRole('button', { name: 'Kontrolli' }).click();
+    await page.getByRole('button', { name: 'Kontrolli', exact: true }).click();
     await expect(page.locator('.tb-feedback')).toHaveAttribute('data-correct', 'true');
     await page.getByRole('button', { name: 'Edasi' }).click();
   }
@@ -470,6 +470,8 @@ test('parent panel: drafts cannot be published, questions with answers, preview 
 });
 
 test('the child course list never shows demo units', async ({ page }) => {
+  // Several child routes compile on first use under `next dev`, now with five units of content.
+  test.setTimeout(90_000);
   await navigateStable(page, '/kiur/loodusopetus');
   await page.getByRole('link', { name: /Õpiku õppetükid/ }).click();
   await expect(page).toHaveURL(/\/kiur\/loodusopetus\/opik$/);

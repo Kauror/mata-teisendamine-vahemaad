@@ -213,7 +213,7 @@ async function finishPracticeInUi(page: Page, keys: Map<string, Question>, wrong
     const wrong = wrongFirst && seen.length === 0;
     seen.push(id);
     await answerInUi(page, keys.get(id)!, !wrong);
-    await page.getByRole('button', { name: 'Kontrolli' }).click();
+    await page.getByRole('button', { name: 'Kontrolli', exact: true }).click();
     await expect(page.locator('.tb-feedback')).toHaveAttribute('data-correct', wrong ? 'false' : 'true');
     await noSidewaysScroll(page);
   }
