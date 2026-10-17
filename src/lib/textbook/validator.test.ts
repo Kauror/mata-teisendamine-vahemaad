@@ -3,7 +3,8 @@ import { loodusopetusOpikCourse } from '@/content/textbook/loodusopetus-opik';
 import { TEXTBOOK_COURSES } from '@/content/textbook/registry';
 import { textbookDemoCourse } from '@/content/textbook/textbook-demo';
 import { publishable, validateCourse, validateUnit } from '@/lib/textbook/validator';
-import type { Course, Unit } from '@/lib/textbook/types';
+import { buildTestSnapshot, historyFromSnapshots, type TestSnapshot } from '@/lib/textbook/testSelection';
+import { COGNITIVE_LEVELS, type Course, type Unit } from '@/lib/textbook/types';
 
 const demo = textbookDemoCourse;
 const codes = (issues: Array<{ code: string }>) => issues.map((issue) => issue.code);
@@ -30,12 +31,15 @@ describe('shipped content', () => {
     }
   });
 
-  it('Unit 10 is ready and publishable without warnings; units 11–22 stay metadata-only drafts', () => {
+  it('Unit 10 is ready and publishable without warnings; the units still marked draft stay metadata-only', () => {
     const result = validateCourse(loodusopetusOpikCourse, { imageExists: () => true });
     expect(result.errors).toEqual([]);
     expect(result.valid).toBe(true);
     expect(result.units.map((unit) => unit.unitNumber)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
-    const [unit10, ...drafts] = result.units;
+    const unit10 = result.units.find((unit) => unit.unitNumber === 10)!;
+    const draftNumbers = loodusopetusOpikCourse.units.filter((unit) => unit.status === 'draft').map((unit) => unit.number);
+    const drafts = result.units.filter((unit) => draftNumbers.includes(unit.unitNumber));
+    expect(drafts.length).toBeGreaterThan(0);
     expect(unit10.errors).toEqual([]);
     expect(unit10.warnings).toEqual([]);
     expect(unit10.publishable).toBe(true);
@@ -51,14 +55,53 @@ describe('shipped content', () => {
       expect(codes(unit.errors)).toEqual(['unit_draft', 'unit_no_content']);
       expect(unit.errors[0].message).toMatch(/mustand/u);
     }
-    for (const unit of loodusopetusOpikCourse.units.slice(1)) {
-      expect(unit.status).toBe('draft');
+    for (const unit of loodusopetusOpikCourse.units.filter((item) => item.status === 'draft')) {
       expect(unit.lessons).toEqual([]);
       expect(unit.questions).toEqual([]);
       expect(unit.objectives).toEqual([]);
     }
     expect(loodusopetusOpikCourse.settings).toMatchObject({ testLength: 20, passNumerator: 95, passDenominator: 100, levelDistribution: { factual: 8, understanding: 7, application: 5 } });
     expect(loodusopetusOpikCourse.learners).toEqual(['kiur']);
+  });
+
+  it('Unit 14 "Kaartide mitmekesisus" is ready and publishable without warnings (owner-reviewed package counts)', () => {
+    const unit14 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u14')!;
+    expect(unit14).toMatchObject({ number: 14, status: 'ready', contentVersion: '2026-10-17.1', title: 'Kaartide mitmekesisus', pages: { from: 58, to: 59 } });
+    const result = validateUnit(unit14, loodusopetusOpikCourse);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.publishable).toBe(true);
+    expect(result.buildability?.ok).toBe(true);
+    expect(result.stats).toMatchObject({
+      lessons: 4, requiredLessons: 4, sections: 13, blocks: 50, objectives: 8, requiredObjectives: 8,
+      questions: 108, practiceQuestions: 108, testQuestions: 108, testVariantGroups: 74,
+      testLevels: { factual: 28, understanding: 35, application: 45 },
+      answerTypes: { single_choice: 78, multiple_selection: 9, matching: 3, grouping: 4, ordering: 4, diagram_hotspot: 10 }
+    });
+  });
+
+  it('Unit 14 tests: 20 questions from 20 groups, 8/7/5, all 8 objectives, for every seed and across three retakes', () => {
+    const unit14 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u14')!;
+    const settings = loodusopetusOpikCourse.settings;
+    const strict = (snapshot: TestSnapshot) => {
+      const questions = snapshot.questions.map((frozen) => frozen.question);
+      expect(new Set(questions.map((question) => question.id)).size).toBe(20);
+      expect(new Set(questions.map((question) => question.variantGroupId)).size).toBe(20);
+      for (const level of COGNITIVE_LEVELS) expect(questions.filter((question) => question.cognitiveLevel === level)).toHaveLength(settings.levelDistribution[level]);
+      expect(new Set(questions.map((question) => question.primaryObjectiveId)).size).toBe(8);
+      expect(snapshot.relaxations).toEqual([]);
+      expect(snapshot.requiredCorrect).toBe(19);
+    };
+    for (let seed = 1; seed <= 40; seed++) strict(buildTestSnapshot({ courseId: loodusopetusOpikCourse.id, unit: unit14, settings, seed }));
+    // Three attempts in a row, each built with the earlier ones as history (as the server does).
+    const attempts: TestSnapshot[] = [];
+    for (const seed of [11, 12, 13]) {
+      const snapshot = buildTestSnapshot({ courseId: loodusopetusOpikCourse.id, unit: unit14, settings, seed, history: historyFromSnapshots(attempts) });
+      strict(snapshot);
+      attempts.push(snapshot);
+    }
+    // 74 groups are enough for three fully different tests (the package's witness proves it); the retakes reuse none.
+    expect(attempts.map((snapshot) => snapshot.reusedVariantGroupIds.length)).toEqual([0, 0, 0]);
   });
 
   it('Unit 10 is not publishable when its photo file is missing', () => {

@@ -253,8 +253,8 @@ test('Unit 10 preview: all four lessons with the diagrams and the photo, at 375 
 
   await navigateStable(page, previewCourse);
   await expect(page.getByText('Eelvaade — lapse andmeid ei muudeta.')).toBeVisible();
-  // Only the ready unit is in the preview; Unit 11 (a draft) is not listed.
-  await expect(page.locator('.tb-unit-card')).toHaveCount(1);
+  // Only ready units are in the preview (Unit 10 first, open; later ready units such as 14 locked); Unit 11 (a draft) is not listed.
+  await expect(page.locator('.tb-unit-card').first()).toHaveAttribute('data-unit-id', U10);
   const card = page.locator(`.tb-unit-card[data-unit-id="${U10}"]`);
   await expect(card).toContainText('Maa kuju');
   await expect(page.locator(`[data-unit-id="${U11}"]`)).toHaveCount(0);

@@ -8,6 +8,7 @@
 
 import { DEFAULT_COURSE_SETTINGS, type Course, type Unit } from '@/lib/textbook/types';
 import { unit10 } from '@/content/textbook/loodusopetus-opik/unit10';
+import { unit14 } from '@/content/textbook/loodusopetus-opik/unit14';
 
 export const LOODUSOPETUS_OPIK_COURSE_ID = 'loodusopetus-opik';
 
@@ -15,7 +16,6 @@ const DRAFTS: ReadonlyArray<{ number: number; title: string; from: number; to: n
   { number: 11, title: 'Gloobus', from: 48, to: 49 },
   { number: 12, title: 'Kaart', from: 50, to: 53 },
   { number: 13, title: 'Kaardi mõõtkava', from: 54, to: 57 },
-  { number: 14, title: 'Kaartide mitmekesisus', from: 58, to: 59 },
   { number: 15, title: 'Mandrid ja maailmajaod', from: 60, to: 63 },
   { number: 16, title: 'Maailmameri', from: 64, to: 65 },
   { number: 17, title: 'Eesti geograafiline asend', from: 66, to: 67 },
@@ -39,7 +39,7 @@ const drafts: Unit[] = DRAFTS.map((draft) => ({
   questions: []
 }));
 
-const units: Unit[] = [unit10, ...drafts];
+const units: Unit[] = [unit10, ...drafts, unit14].sort((a, b) => a.number - b.number);
 
 export const loodusopetusOpikCourse: Course = {
   id: LOODUSOPETUS_OPIK_COURSE_ID,
