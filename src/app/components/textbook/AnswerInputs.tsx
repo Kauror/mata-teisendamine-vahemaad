@@ -197,6 +197,9 @@ function OrderingInput({ view, value, onChange, disabled }: InputProps<'ordering
         ))}
       </ol>
       {view.lastLabel ? <p className='tb-ordering-end'>⬇ {view.lastLabel}</p> : null}
+      {value?.type !== 'ordering' ? (
+        <button type='button' className='tb-button tb-ordering-confirm' disabled={disabled} onClick={() => onChange({ type: 'ordering', order })}>See järjekord sobib</button>
+      ) : null}
       <p className='sr-only' aria-live='polite'>{announcement}</p>
     </div>
   );

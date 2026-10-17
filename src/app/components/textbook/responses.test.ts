@@ -26,12 +26,13 @@ const ordering: ClientAnswerView = { type: 'ordering', items: [{ id: 's2', text:
 const hotspot: ClientAnswerView = { type: 'diagram_hotspot', diagramId: 'demo-water-cycle', regions: [{ id: 'sun', marker: 'A', position: 'ülemine vasak nurk' }, { id: 'sea', marker: 'B', position: 'alumine vasak osa' }] };
 
 describe('answer drafts', () => {
-  it('starts empty, except ordering which starts in the displayed order', () => {
+  it('starts empty for every type, ordering included, so a question merely shown is not answered', () => {
     expect(emptyDraft(single)).toBeNull();
     expect(emptyDraft(hotspot)).toBeNull();
     expect(emptyDraft(multi)).toEqual({ type: 'multiple_selection', optionIds: [] });
-    expect(emptyDraft(ordering)).toEqual({ type: 'ordering', order: ['s2', 's1', 's3'] });
-    expect(isDraftComplete(ordering, emptyDraft(ordering))).toBe(true);
+    expect(emptyDraft(ordering)).toBeNull();
+    expect(isDraftComplete(ordering, emptyDraft(ordering))).toBe(false);
+    expect(isDraftComplete(ordering, { type: 'ordering', order: ['s2', 's1', 's3'] })).toBe(true);
   });
 
   it('knows when each answer type is complete', () => {

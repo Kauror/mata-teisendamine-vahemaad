@@ -10,12 +10,14 @@ import type { AnswerItem, AnswerResponse, AnswerSpec } from '@/lib/textbook/type
 
 export type AnswerDraft = AnswerResponse | null;
 
-// The starting draft. Ordering starts from the displayed order (which is never
-// the correct one), so it is already a complete — if probably wrong — answer.
+// The starting draft: nothing answered yet. Ordering too — the displayed order
+// only becomes an answer once the child moves a row or confirms the order, so
+// a question merely shown never counts as answered.
 export function emptyDraft(view: ClientAnswerView): AnswerDraft {
   switch (view.type) {
     case 'single_choice':
     case 'diagram_hotspot':
+    case 'ordering':
       return null;
     case 'multiple_selection':
       return { type: 'multiple_selection', optionIds: [] };
@@ -23,8 +25,6 @@ export function emptyDraft(view: ClientAnswerView): AnswerDraft {
       return { type: 'matching', pairs: {} };
     case 'grouping':
       return { type: 'grouping', assignments: {} };
-    case 'ordering':
-      return { type: 'ordering', order: view.items.map((item) => item.id) };
   }
 }
 

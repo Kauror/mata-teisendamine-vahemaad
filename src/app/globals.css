@@ -1520,6 +1520,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-group-chip[aria-pressed="true"]{border-color:var(--tb-selected-line);background:var(--tb-selected-line);color:var(--tb-primary-ink)}
 .tb-ordering{display:grid;gap:6px}
 .tb-ordering-end{margin:0;color:var(--tb-muted);font-size:14px;font-weight:850}
+.tb-ordering-confirm{justify-self:start}
 .tb-ordering-list{margin:0;padding:0;list-style:none;display:grid;gap:8px}
 .tb-ordering-item{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;border-radius:var(--tb-radius-small);border:2px solid var(--tb-line);background:var(--tb-surface)}
 .tb-ordering-text{flex:1;min-width:0;font-size:15px;font-weight:750;color:var(--tb-ink);overflow-wrap:anywhere}

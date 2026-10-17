@@ -89,6 +89,20 @@ async function practiseViaApi(page: Page, detail: ParentUnitDetailResponse) {
 }
 
 // Answers the question on screen through its real controls, right or wrong.
+// Practice and test pages add ?session=<id> once the run is known, which a
+// plain navigateStable reads as a failed navigation (seen on a CI retry).
+async function openSessionPage(page: Page, path: string) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto(path);
+    } catch (error) {
+      if (!(error instanceof Error && error.message.includes('is interrupted by another navigation'))) throw error;
+    }
+    if (new URL(page.url()).pathname === path) return;
+  }
+  throw new Error(`Could not open ${path}; stopped at ${page.url()}`);
+}
+
 async function answerInUi(page: Page, question: Question, correct: boolean) {
   const card = page.locator(`.tb-question[data-question-id="${question.id}"]`);
   await expect(card).toBeVisible();
@@ -139,6 +153,9 @@ async function answerInUi(page: Page, question: Question, correct: boolean) {
       }
       current = await card.locator('.tb-ordering-item').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-item-id') ?? ''));
       expect(current).toEqual(target);
+      // No move was needed: the shown order only counts once confirmed.
+      const confirm = card.getByRole('button', { name: 'See järjekord sobib' });
+      if (await confirm.count()) await confirm.click();
       return;
     }
     case 'diagram_hotspot': {
@@ -265,7 +282,7 @@ test('preview practice: immediate feedback, correction and resume', async ({ pag
   const keys = new Map(detail.questions.map((question) => [question.id, question]));
   await readAllViaApi(page, detail);
 
-  await navigateStable(page, `${previewUnit(WATER)}/harjuta`);
+  await openSessionPage(page, `${previewUnit(WATER)}/harjuta`);
   const firstId = await currentQuestionId(page);
   const first = keys.get(firstId)!;
   await answerInUi(page, first, false);
@@ -315,7 +332,7 @@ test('preview test: pause and resume, 18/20 fails, targeted practice, 19/20 pass
   await readAllViaApi(page, detail);
   await practiseViaApi(page, detail);
 
-  await navigateStable(page, `${previewUnit(WATER)}/test`);
+  await openSessionPage(page, `${previewUnit(WATER)}/test`);
   await expect(page.locator('.tb-question-eyebrow')).toHaveText('Küsimus 1/20');
   await expect(page.locator('.tb-test-grid-button')).toHaveCount(20);
   await expect(page.getByRole('button', { name: 'Esita test' })).toBeDisabled();
