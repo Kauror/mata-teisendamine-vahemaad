@@ -1,19 +1,23 @@
 import { expect, type Page } from './test';
 import { navigateStable } from './navigation';
-import type { CourseOverviewResponse, ParentUnitDetailResponse, PracticeSessionView, TestSessionView, TestSubmitResponse, UnitDetailResponse } from '../src/lib/textbook/api';
+import type { ParentUnitDetailResponse, PracticeSessionView, TestSessionView, TestSubmitResponse, UnitDetailResponse } from '../src/lib/textbook/api';
 import { correctResponseFor } from '../src/lib/textbook/grading';
 import type { Question } from '../src/lib/textbook/types';
 
-// Shared parent-preview plumbing for the Loodusõpetus õpik unit specs
-// (e2e/textbook-unitNN.spec.ts): sign-in, the parent API with its CSRF
-// header, the preview reset, and passing every earlier ready unit through
-// the preview API so a later unit opens — the preview keeps the child's
-// order (10 → 11 → 12 → …), so each spec reaches its unit the same way.
+// Shared parent-preview plumbing for the Loodusõpetus õpik smoke spec
+// (e2e/textbook-real-units.spec.ts): sign-in, the parent API with its CSRF
+// header, the preview reset, and reading, practising and passing a unit
+// through the preview API (direct JSON requests, no clicking) — passing a
+// unit opens the next one, as it does for the child.
 
 export const ORIGIN = 'http://localhost:3000';
 export const COURSE = 'loodusopetus-opik';
 export const PREVIEW_API = '/api/parent/textbook/preview';
 export const previewCourse = `/vanem/oppetukid/eelvaade/${COURSE}`;
+
+// Field names of an answer key, or of the region labels of a hotspot picture:
+// none may reach the browser while a test is running.
+export const ANSWER_KEY_FIELDS = /correctOptionId|correctOptionIds|correctPairs|correctGroupByItem|correctOrder|correctRegionId|"explanation"|"label":/;
 
 let actionCounter = 0;
 export function actionId() {
@@ -83,7 +87,7 @@ export async function practiseViaApi(page: Page, unitId: string, keys: Map<strin
   expect(session.status).toBe('completed');
 }
 
-// Starts a test and answers all 20 correctly; returns the submit result.
+// Starts (or resumes) the test and answers all 20 correctly; returns the submit result.
 export async function passTestViaApi(page: Page, unitId: string, keys: Map<string, Question>) {
   let session = await apiPost<TestSessionView>(page, `${PREVIEW_API}/courses/${COURSE}/units/${unitId}/test`, { actionId: actionId() });
   for (const question of session.questions) {
@@ -94,23 +98,4 @@ export async function passTestViaApi(page: Page, unitId: string, keys: Map<strin
   const submitted = await apiPost<TestSubmitResponse>(page, `${PREVIEW_API}/test/${session.sessionId}/submit`, { actionId: actionId(), revision: session.revision });
   expect(submitted.result, `${unitId} passed`).toMatchObject({ correct: 20, passed: true });
   return submitted.result;
-}
-
-// Reads, practises and passes (20/20) every ready unit the preview lists before
-// `unitId`, in order; each pass opens the next one, the last opens `unitId`.
-// Preview rows only. Returns the unit IDs it passed.
-export async function passEarlierReadyUnits(page: Page, unitId: string) {
-  const overview = await apiGet<CourseOverviewResponse>(page, `${PREVIEW_API}/courses/${COURSE}`);
-  const target = overview.units.find((unit) => unit.unitId === unitId);
-  expect(target, `${unitId} is listed in the preview`).toBeTruthy();
-  const earlier = overview.units.filter((unit) => unit.number < target!.number).sort((left, right) => left.number - right.number);
-  expect(earlier.length, `ready units before ${unitId}`).toBeGreaterThan(0);
-  for (const [index, unit] of earlier.entries()) {
-    const keys = await unitKeys(page, unit.unitId);
-    await readAllViaApi(page, unit.unitId);
-    await practiseViaApi(page, unit.unitId, keys);
-    const result = await passTestViaApi(page, unit.unitId, keys);
-    expect(result, `passing ${unit.unitId}`).toMatchObject({ nextUnitOpened: true, nextUnit: { unitId: earlier[index + 1]?.unitId ?? unitId } });
-  }
-  return earlier.map((unit) => unit.unitId);
 }

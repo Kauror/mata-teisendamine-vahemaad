@@ -55,14 +55,18 @@ jobs:
   # be parallelised inside a runner. It is split across runners instead: each
   # browser on its own machine, each cut into shards. Every runner starts its
   # own dev server and its own empty database, exactly as the single job did.
+  # Playwright shards by test count, not duration, so the one long test --
+  # the @real-units smoke over every ready unit of the real course, which
+  # grows with each unit -- gets runner 3 of its own; runners 1 and 2 split
+  # everything else (the demo walkthrough included) between them.
   e2e:
-    name: Browser E2E (${{ matrix.project }} ${{ matrix.shard }}/2)
+    name: Browser E2E (${{ matrix.project }} ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         project: [chromium, webkit]
-        shard: [1, 2]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -85,7 +89,13 @@ jobs:
       - name: Install the system libraries for the cached browser
         if: steps.browser-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps ${{ matrix.project }}
-      - run: npm run test:e2e -- --project=${{ matrix.project }} --shard=${{ matrix.shard }}/2
+      - name: Run the browser tests
+        run: |
+          if [ "${{ matrix.shard }}" = 3 ]; then
+            npm run test:e2e -- --project=${{ matrix.project }} --grep @real-units
+          else
+            npm run test:e2e -- --project=${{ matrix.project }} --grep-invert @real-units --shard=${{ matrix.shard }}/2
+          fi
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
