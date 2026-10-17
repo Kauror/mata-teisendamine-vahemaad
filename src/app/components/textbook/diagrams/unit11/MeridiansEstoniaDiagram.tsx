@@ -2,7 +2,7 @@
 
 import { DiagramNotes, DiagramRegion, DiagramSvg, type DiagramProps } from '@/app/components/textbook/diagrams/DiagramFrame';
 import { meridianPath, parallelPath, project, sideHalfPath } from '@/app/components/textbook/diagrams/unit11/globeProjection';
-import { ESTONIA, MERIDIANS_GLOBE, OTHER_MERIDIAN, PLAIN_MERIDIAN } from '@/app/components/textbook/diagrams/unit11/layout';
+import { ESTONIA, MERIDIANS_GLOBE, OTHER_MERIDIAN, PLAIN_MERIDIAN } from '@/app/components/textbook/diagrams/unit11/layouts';
 
 const ID = 'u11-meridians-estonia';
 const G = MERIDIANS_GLOBE;

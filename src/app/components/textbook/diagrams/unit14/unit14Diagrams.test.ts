@@ -9,7 +9,7 @@ import { unit14 } from '@/content/textbook/loodusopetus-opik/unit14';
 import type { DiagramMode } from '@/app/components/textbook/diagrams/DiagramFrame';
 import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams';
 import { labelExtent } from '@/app/components/textbook/diagrams/diagramLayout';
-import { U14_DIAGRAM_LAYOUTS, U14_POPULATION_HEADING, U14_POPULATION_LEGEND, U14_POPULATION_LETTERS } from '@/app/components/textbook/diagrams/unit14/layout';
+import { U14_DIAGRAM_LAYOUTS, U14_POPULATION_HEADING, U14_POPULATION_LEGEND, U14_POPULATION_LETTERS } from '@/app/components/textbook/diagrams/unit14/layouts';
 
 // Unit 14 "Kaartide mitmekesisus": the four fictional maps rendered in every
 // mode. The generic checks (label fit, 44 px tap areas, no overlaps) are in

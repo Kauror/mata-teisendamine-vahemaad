@@ -2,7 +2,7 @@
 
 import { DiagramRegion, DiagramSvg, type DiagramProps } from '@/app/components/textbook/diagrams/DiagramFrame';
 import { hemispherePath, parallelPath } from '@/app/components/textbook/diagrams/unit11/globeProjection';
-import { PARALLEL_LATITUDE, PARALLELS_GLOBE } from '@/app/components/textbook/diagrams/unit11/layout';
+import { PARALLEL_LATITUDE, PARALLELS_GLOBE } from '@/app/components/textbook/diagrams/unit11/layouts';
 
 const ID = 'u11-equator-parallels';
 const G = PARALLELS_GLOBE;

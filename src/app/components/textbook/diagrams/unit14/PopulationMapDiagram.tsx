@@ -1,7 +1,7 @@
 'use client';
 
 import { DiagramNotes, DiagramRegion, DiagramSvg, type DiagramProps } from '@/app/components/textbook/diagrams/DiagramFrame';
-import { U14_POPULATION_HEADING, U14_POPULATION_LEGEND, U14_POPULATION_LETTERS } from '@/app/components/textbook/diagrams/unit14/layout';
+import { U14_POPULATION_HEADING, U14_POPULATION_LEGEND, U14_POPULATION_LETTERS } from '@/app/components/textbook/diagrams/unit14/layouts';
 
 const ID = 'u14-population-map';
 

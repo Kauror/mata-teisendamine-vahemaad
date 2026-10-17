@@ -8,7 +8,7 @@ import { DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/diagramLayou
 import { meridianPoints, parallelPoints, project, type GlobePoint } from '@/app/components/textbook/diagrams/unit11/globeProjection';
 import {
   AXIS_GLOBE, ESTONIA, MERIDIANS_GLOBE, OTHER_MERIDIAN, PARALLEL_LATITUDE, PARALLELS_GLOBE, PLAIN_MERIDIAN, UNIT11_COMPONENT_FILES, axisPoint
-} from '@/app/components/textbook/diagrams/unit11/layout';
+} from '@/app/components/textbook/diagrams/unit11/layouts';
 
 // Unit 11 "Gloobus": the content names only registered diagrams and regions,
 // the schematics are geometrically honest (orthographic projection), every

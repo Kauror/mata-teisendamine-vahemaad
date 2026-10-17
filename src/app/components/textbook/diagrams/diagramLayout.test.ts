@@ -3,10 +3,10 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DIAGRAMS } from '@/lib/textbook/diagramRegistry';
 import { DIAGRAM_LAYOUTS, MARKER_RADIUS, estimateTextWidth, labelBottom, labelExtent } from '@/app/components/textbook/diagrams/diagramLayout';
-import { UNIT11_COMPONENT_FILES } from '@/app/components/textbook/diagrams/unit11/layout';
-import { UNIT12_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit12/layout';
-import { UNIT13_COMPONENT_FILES } from '@/app/components/textbook/diagrams/unit13/layout';
-import { U14_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit14/layout';
+import { UNIT11_COMPONENT_FILES } from '@/app/components/textbook/diagrams/unit11/layouts';
+import { UNIT12_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit12/layouts';
+import { UNIT13_COMPONENT_FILES } from '@/app/components/textbook/diagrams/unit13/layouts';
+import { U14_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit14/layouts';
 import { aboveSightLine, above, surfacePoint } from '@/app/components/textbook/diagrams/curvedSurface';
 import {
   BEACH_EYE_POINT, BEACH_HORIZON, BEACH_X, FAR_SHIP_X, HEIGHT_SEA, NEAR_SHIP_X, SHIP_EYE, SHIP_HORIZON, SHIP_HULL_TOP, SHIP_MAST_TOP, SHIP_SEA,

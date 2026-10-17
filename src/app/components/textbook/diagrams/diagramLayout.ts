@@ -1,7 +1,7 @@
-import { UNIT11_LAYOUTS } from '@/app/components/textbook/diagrams/unit11/layout';
-import { UNIT12_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit12/layout';
-import { UNIT13_LAYOUTS } from '@/app/components/textbook/diagrams/unit13/layout';
-import { U14_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit14/layout';
+import { UNIT11_LAYOUTS } from '@/app/components/textbook/diagrams/unit11/layouts';
+import { UNIT12_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit12/layouts';
+import { UNIT13_LAYOUTS } from '@/app/components/textbook/diagrams/unit13/layouts';
+import { U14_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit14/layouts';
 
 // Where each registered diagram puts its region labels and hotspot markers,
 // as data, so a unit test can prove every label fits inside the picture at
@@ -107,7 +107,7 @@ export const DIAGRAM_LAYOUTS: Record<string, DiagramLayout> = {
       { text: 'silmapiir', label: { x: 334, y: 268, anchor: 'end', fontSize: NOTE_FONT_SIZE, onShape: true } }
     ]
   },
-  // Later units keep their layouts next to their components (diagrams/unitNN/layout.ts).
+  // Later units keep their layouts next to their components (diagrams/unitNN/layouts.ts; never `layout.ts`, which Next.js would take for a route layout).
   ...UNIT11_LAYOUTS,
   ...UNIT12_DIAGRAM_LAYOUTS,
   ...UNIT13_LAYOUTS,

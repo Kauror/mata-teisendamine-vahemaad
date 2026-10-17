@@ -1,7 +1,7 @@
 'use client';
 
 import { DiagramRegion, DiagramSvg, type DiagramProps } from '@/app/components/textbook/diagrams/DiagramFrame';
-import { AXIS_GLOBE, AXIS_TILT, axisPoint } from '@/app/components/textbook/diagrams/unit11/layout';
+import { AXIS_GLOBE, AXIS_TILT, axisPoint } from '@/app/components/textbook/diagrams/unit11/layouts';
 
 const ID = 'u11-axis-poles';
 const { cx, cy, r } = AXIS_GLOBE;
