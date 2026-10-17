@@ -17,10 +17,22 @@ export type ChildExerciseCard = {
   legacyTopic: string;
   legacyCategory: string;
   completionKeys: string[];
+  // See FIXED_CHILD_EXERCISES: an archived exercise is offered to nobody.
+  archived?: boolean;
 };
 
 // Fixed runners live beside the catalogue-backed registry so server rendering,
 // offline hydration and readiness all see the same inventory.
+//
+// `archived: true` takes an exercise out of use without deleting anything: it is
+// never a child card (server or offline), never in the daily rotation and not in
+// the parent's "Harjutuste kogu" (getLearningExerciseCatalog omits it). Its
+// runner route, data, offline capability entry and the child's history rows stay
+// as they are, and the parent's last status for it is kept in the database.
+// To un-archive, remove the flag. To give it to Kirsi instead, also move it under
+// `kirsi` here (childId 'kirsi'), set learnerScope ['kirsi'] in
+// STATIC_LEARNING_EXERCISES (learningExercises.ts) and learners ["kirsi"] in
+// offline/capabilities.json, and give it content suitable for her.
 export const FIXED_CHILD_EXERCISES: Readonly<Record<Learner, readonly ChildExerciseCard[]>> = {
   kiur: [
     {
@@ -32,6 +44,9 @@ export const FIXED_CHILD_EXERCISES: Readonly<Record<Learner, readonly ChildExerc
       accent: 'teal',
       route: '/kiur/loodusopetus',
       enabled: true,
+      // Archived 2026-10-17: Kiur's Loodusõpetus is now the textbook course (the
+      // always-shown card on /kiur). Kept to be reused for Kirsi later.
+      archived: true,
       legacySubject: 'loodusopetus',
       legacyTopic: 'segaharjutus',
       legacyCategory: 'Loodusõpetus',
@@ -44,6 +59,14 @@ export const FIXED_CHILD_EXERCISES: Readonly<Record<Learner, readonly ChildExerc
   ],
   kirsi: []
 };
+
+export const ARCHIVED_EXERCISE_IDS: ReadonlySet<string> = new Set(
+  Object.values(FIXED_CHILD_EXERCISES).flat().filter((exercise) => exercise.archived).map((exercise) => exercise.id)
+);
+
+export function isArchivedExercise(exerciseId: string): boolean {
+  return ARCHIVED_EXERCISE_IDS.has(exerciseId);
+}
 
 // Only the id and this child's status matter here, so callers can pass whatever
 // catalogue shape they hold (server rows or a cached offline catalogue).
@@ -61,6 +84,10 @@ export function mergeFixedChildExerciseCards(
 ): ChildExerciseCard[] {
   const merged = new Map(cards.map((card) => [card.id, card]));
   for (const fixed of FIXED_CHILD_EXERCISES[learner]) {
+    if (fixed.archived) {
+      merged.delete(fixed.id);
+      continue;
+    }
     const catalogueEntry = catalogue.find((entry) => entry.id === fixed.id);
     if (!catalogueEntry || catalogueEntry.childStatus[learner] === 'permanent') {
       merged.set(fixed.id, fixed);
@@ -141,7 +168,8 @@ export function childExerciseCards(
   catalogue: CatalogueStatus[] = exercises
 ): ChildExerciseCard[] {
   const catalogueCards = exercises
-    .filter((exercise) => exercise.childStatus[learner] !== 'hidden')
+    // An older cached offline catalogue may still list an archived exercise.
+    .filter((exercise) => exercise.childStatus[learner] !== 'hidden' && !isArchivedExercise(exercise.id))
     .map((exercise) => {
       const meta = metadataFor(exercise);
       return {

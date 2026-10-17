@@ -15,9 +15,11 @@ describe('offline capability manifest', () => {
     expect(OFFLINE_CAPABILITY_MANIFEST.runners.filter((runner) => !['remediation', 'kiur.english.vocabulary'].includes(runner.id)).every((runner) => runner.offlineStart)).toBe(true);
   });
 
-  it('keeps fixed science when catalogue hydration supplies no rotating cards', () => {
-    const cards = childExerciseCards('kiur', []);
-    expect(cards.map((card) => card.id)).toContain('kiur.science.loodusopetus');
+  it('keeps the archived science runner in the manifest but never offers it as a card', () => {
+    // Archived (FIXED_CHILD_EXERCISES): the runner route stays cached so it can
+    // be reused later, but neither child gets the card offline.
+    expect(OFFLINE_CAPABILITY_MANIFEST.runners.map((runner) => runner.id)).toContain('kiur.science.loodusopetus');
+    expect(childExerciseCards('kiur', []).map((card) => card.id)).not.toContain('kiur.science.loodusopetus');
     expect(childExerciseCards('kirsi', []).map((card) => card.id)).not.toContain('kiur.science.loodusopetus');
   });
 });

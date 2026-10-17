@@ -1,15 +1,8 @@
-'use client';
-
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
+// Kiur's Loodusõpetus is the textbook course. The old mixed exercise
+// (/kiur/loodusopetus/test) is archived, see FIXED_CHILD_EXERCISES.
 export default function LoodusopetusSetupPage() {
-  const router = useRouter();
-
-  const start = () => {
-    router.push(`/kiur/loodusopetus/test?count=10&seed=${Date.now()}`);
-  };
-
   return (
     <main className='test-page'>
       <section className='test-shell science-setup-shell'>
@@ -17,8 +10,6 @@ export default function LoodusopetusSetupPage() {
 
         <section className='question-card science-setup-card'>
           <h1 className='question-text'>🔬 Loodusõpetus</h1>
-
-          <button type='button' className='next-button science-start-button' onClick={start}>▶ Alusta harjutust</button>
         </section>
 
         {/* Kiur's textbook course (online only). This page is Kiur's, so Kirsi never sees it. */}

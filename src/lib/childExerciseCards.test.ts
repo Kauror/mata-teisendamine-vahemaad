@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { childExerciseCards } from '@/lib/childExerciseCards';
+import { childExerciseCards, FIXED_CHILD_EXERCISES, isArchivedExercise } from '@/lib/childExerciseCards';
 import type { CatalogueEntry, Learner, LearningExerciseStatus } from '@/lib/shared/types';
 
 const SCIENCE_ID = 'kiur.science.loodusopetus';
@@ -36,45 +36,32 @@ function science(status: LearningExerciseStatus): CatalogueEntry {
 
 const ids = (cards: ReturnType<typeof childExerciseCards>) => cards.map((card) => card.id);
 
-describe('childExerciseCards fixed runners', () => {
-  it('keeps the fixed science card when no catalogue is available', () => {
-    // Offline before the first catalogue hydration: the card is the fallback.
-    expect(ids(childExerciseCards('kiur', []))).toContain(SCIENCE_ID);
+// The mixed Loodusõpetus exercise is archived (Kiur's Loodusõpetus is now the
+// textbook course). Whatever the catalogue or the rotation says, it is never a
+// card, so Kiur never sees two Loodusõpetus cards.
+describe('childExerciseCards archived fixed runner', () => {
+  it('marks the mixed science exercise as archived', () => {
+    expect(isArchivedExercise(SCIENCE_ID)).toBe(true);
+    expect(FIXED_CHILD_EXERCISES.kiur.find((exercise) => exercise.id === SCIENCE_ID)?.archived).toBe(true);
+    expect(isArchivedExercise('kiur.math.a')).toBe(false);
+  });
+
+  it('is not shown offline before the first catalogue hydration', () => {
+    expect(ids(childExerciseCards('kiur', []))).not.toContain(SCIENCE_ID);
     expect(ids(childExerciseCards('kirsi', []))).not.toContain(SCIENCE_ID);
   });
 
-  it('keeps it when the catalogue says it is permanent but rotation did not pick it', () => {
+  it('is not shown even when an older catalogue still has it as permanent', () => {
     const catalogue = [science('permanent'), entry('kiur.math.a', 'kiur', 'rotation')];
-    expect(ids(childExerciseCards('kiur', [entry('kiur.math.a', 'kiur', 'rotation')], catalogue))).toContain(SCIENCE_ID);
+    expect(ids(childExerciseCards('kiur', [entry('kiur.math.a', 'kiur', 'rotation')], catalogue))).toEqual(['kiur.math.a']);
   });
 
-  it('does not add it as a fifth daily card when it is rotating but was not picked', () => {
-    const selected = [
-      entry('kiur.math.a', 'kiur', 'rotation'),
-      entry('kiur.math.b', 'kiur', 'rotation'),
-      entry('kiur.math.c', 'kiur', 'rotation'),
-      entry('kiur.math.d', 'kiur', 'rotation')
-    ];
-    const catalogue = [science('rotation'), ...selected];
-    expect(ids(childExerciseCards('kiur', selected, catalogue))).toEqual(selected.map((exercise) => exercise.id));
-  });
-
-  it('keeps it when the daily rotation selected it', () => {
+  it('is not shown even when an older catalogue rotation selected it', () => {
     const catalogue = [science('rotation'), entry('kiur.math.a', 'kiur', 'rotation')];
-    expect(ids(childExerciseCards('kiur', [science('rotation')], catalogue))).toEqual([SCIENCE_ID]);
+    expect(ids(childExerciseCards('kiur', [science('rotation'), entry('kiur.math.a', 'kiur', 'rotation')], catalogue))).toEqual(['kiur.math.a']);
   });
 
-  it('drops it once the parent hides it', () => {
-    // The rotation already excludes a hidden exercise, so before this the card
-    // was added straight back and the child got a fifth card that could only
-    // produce an attempt held for parent review.
-    const catalogue = [science('hidden'), entry('kiur.math.a', 'kiur', 'rotation')];
-    const cards = childExerciseCards('kiur', [entry('kiur.math.a', 'kiur', 'rotation')], catalogue);
-    expect(ids(cards)).not.toContain(SCIENCE_ID);
-    expect(ids(cards)).toEqual(['kiur.math.a']);
-  });
-
-  it('never leaks a hidden fixed card in through the daily selection either', () => {
+  it('stays out when hidden as well', () => {
     const catalogue = [science('hidden')];
     expect(ids(childExerciseCards('kiur', [science('hidden')], catalogue))).toEqual([]);
   });

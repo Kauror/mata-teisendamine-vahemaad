@@ -3,7 +3,7 @@ import { childExerciseCards } from '@/lib/childExerciseCards';
 import { getCompletedExerciseCountsToday } from '@/lib/exerciseCompletion';
 import { getActiveLearningExercises, getLearningExerciseCatalog, selectTodaysLearningExercises } from '@/lib/learningExercises';
 import { getOpenRenderableMistakeCount, REMEDIATION_MIN_OPEN_MISTAKES } from '@/lib/remediation';
-import { childTextbookHref } from '@/lib/server/textbook/entry';
+import { childLoodusopetusHref } from '@/lib/server/textbook/entry';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -24,7 +24,7 @@ export default function KiurPage() {
       remediationHref={remediationHref}
       remediationCount={openMistakeCount}
       completedExerciseCounts={completedExerciseCounts}
-      textbookHref={childTextbookHref('kiur') ?? undefined}
+      loodusopetusHref={childLoodusopetusHref('kiur') ?? undefined}
     />
   );
 }

@@ -16,7 +16,7 @@ export default function ChildExerciseGrid({
   initialExercises,
   remediationHref,
   remediationCount,
-  textbookHref,
+  loodusopetusHref,
   completedExerciseIds,
   completedExerciseCounts
 }: {
@@ -24,9 +24,9 @@ export default function ChildExerciseGrid({
   initialExercises: ChildExerciseCard[];
   remediationHref?: string;
   remediationCount?: number;
-  // The textbook course, once something is published for this child. Always
-  // shown, outside the daily exercise rotation.
-  textbookHref?: string;
+  // The Loodusõpetus page (the textbook course), once a unit is published for
+  // this child. Always shown, outside the daily exercise rotation.
+  loodusopetusHref?: string;
   // Kept so an older caller still marks cards done; one id means one attempt.
   completedExerciseIds?: string[];
   completedExerciseCounts?: Record<string, number>;
@@ -48,12 +48,12 @@ export default function ChildExerciseGrid({
     <section className='child-exercise-section' aria-labelledby={`${learner}-exercise-title`}>
       <h2 id={`${learner}-exercise-title`}>Harjutused</h2>
       <div className='child-exercise-grid'>
-        {textbookHref ? (
-          <Link className='child-exercise-card' data-accent='teal' href={textbookHref}>
-            <span className='child-exercise-icon' aria-hidden>📖</span>
+        {loodusopetusHref ? (
+          <Link className='child-exercise-card' data-accent='teal' href={loodusopetusHref}>
+            <span className='child-exercise-icon' aria-hidden>🔬</span>
             <span className='child-exercise-copy'>
-              <strong>Õpiku õppetükid</strong>
-              <small>Loodusõpetus: loe, harjuta ja tee test. Vajab internetiühendust.</small>
+              <strong>Loodusõpetus</strong>
+              <small>Õpiku õppetükid: loe, harjuta ja tee test.</small>
             </span>
           </Link>
         ) : null}
@@ -89,7 +89,7 @@ export default function ChildExerciseGrid({
           </Link>
         ) : null}
       </div>
-      {exercises.length === 0 && !remediationHref && !textbookHref ? <p className='recent-empty'>Harjutusi ei ole praegu aktiivne.</p> : null}
+      {exercises.length === 0 && !remediationHref && !loodusopetusHref ? <p className='recent-empty'>Harjutusi ei ole praegu aktiivne.</p> : null}
     </section>
   );
 }
