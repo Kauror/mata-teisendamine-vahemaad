@@ -47,3 +47,27 @@ export function finishState(input: { isLast: boolean; endSeen: boolean; complete
   if (!input.isLast) return 'hidden';
   return input.endSeen ? 'ready' : 'waiting';
 }
+
+export type LessonNextCard = {
+  // The card under the last section: after "Lugesin läbi", or when revisiting
+  // a read lesson's end.
+  show: boolean;
+  // "Kõik kohustuslikud õppetükid on loetud. Nüüd saad harjutada!" + "Harjuta".
+  practice: boolean;
+  // "Järgmine õppetükk →": the primary action unless practice just opened.
+  nextLesson: 'primary' | 'secondary' | null;
+};
+
+// What follows a lesson. Once this completion has opened practice, practice is
+// the main next step even when another lesson follows in order — that lesson
+// may be optional or already read (the unit page lets the child read lessons
+// in any order).
+export function lessonNextCard(input: { practiceUnlocked: boolean | null; completed: boolean; isLast: boolean; nextLessonId: string | null }): LessonNextCard {
+  const justCompleted = input.practiceUnlocked !== null;
+  const practice = input.practiceUnlocked === true;
+  return {
+    show: justCompleted || (input.completed && input.isLast),
+    practice,
+    nextLesson: input.nextLessonId ? (practice ? 'secondary' : 'primary') : null
+  };
+}
