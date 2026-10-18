@@ -186,7 +186,7 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
 
   // Test round 1: one wrong → 2/3 fails (3/3 is needed).
   await page.getByRole('link', { name: 'Tee test' }).click();
-  const input = page.getByLabel('Kirjuta inglise keeles:');
+  const input = page.getByLabel('Kirjuta inglise keeles');
   await expect(input).toHaveAttribute('spellcheck', 'false');
   await expect(input).toHaveAttribute('autocomplete', 'off');
   const missed = await promptText(page);

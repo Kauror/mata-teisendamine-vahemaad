@@ -17,10 +17,12 @@ export function VocabularyShell({ title, eyebrow, children, backHref = VOCAB_HOM
   return (
     <main className='english-page vocab-page'>
       <section className='practice-shell english-shell vocab-shell'>
-        <Link className='practice-back-button' href={backHref}>{backLabel}</Link>
+        <div className='practice-top-row'>
+          <Link className='practice-back-button' href={backHref}>{backLabel}</Link>
+          {eyebrow ? <span className='practice-top-label'>{eyebrow}</span> : null}
+        </div>
         {title ? (
           <header className='vocab-header'>
-            {eyebrow ? <p className='vocab-eyebrow'>{eyebrow}</p> : null}
             <h1>{title}</h1>
           </header>
         ) : null}

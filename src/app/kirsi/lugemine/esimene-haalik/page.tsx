@@ -318,12 +318,9 @@ export default function KirsiFirstSoundPage() {
   return (
     <main className='container english-page reading-page'>
       <section className='practice-shell english-shell first-sound-shell'>
-        <Link className='practice-back-button' href='/kirsi'>← Harjutused</Link>
-        <div className='matching-hud'>
-          <strong>Esimene häälik</strong>
-          <span>{index + 1}/{QUESTION_COUNT}</span>
-          <span>Õigeid: {score}</span>
-          <span>Vihjeid: {hintCount}</span>
+        <div className='practice-top-row'>
+          <Link className='practice-back-button' href='/kirsi'>← Harjutused</Link>
+          <span className='practice-top-label'>Esimene häälik {index + 1}/{QUESTION_COUNT}</span>
         </div>
         <section className='first-sound-card'>
           <p className='question-eyebrow'>Mis on pildil oleva sõna esimene häälik?</p>

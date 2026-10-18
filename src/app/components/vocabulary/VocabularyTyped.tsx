@@ -59,7 +59,7 @@ function AnswerForm({ estonian, feedback, busy, onAnswer, onContinue }: {
   return (
     <form className='vocab-answer-card' onSubmit={submit}>
       <p className='vocab-prompt-word' lang='et'>{estonian}</p>
-      <label className='vocab-answer-label' htmlFor='vocab-answer'>Kirjuta inglise keeles:</label>
+      <label className='sr-only' htmlFor='vocab-answer'>Kirjuta inglise keeles</label>
       <input
         ref={inputRef}
         id='vocab-answer'

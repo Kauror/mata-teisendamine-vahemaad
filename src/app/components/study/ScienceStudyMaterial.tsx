@@ -279,7 +279,6 @@ export default function ScienceStudyMaterial() {
         <span className='study-material-icon' aria-hidden>🔬</span>
         <div>
           <h2>Loodusõpetus</h2>
-          <p>Kordame enne harjutamist üle kõige tähtsamad teadmised.</p>
         </div>
       </header>
 
