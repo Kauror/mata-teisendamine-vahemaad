@@ -250,7 +250,7 @@ describe('late offline task completions', () => {
     const second = applyOfflineTaskAction(lateAction(template, 'kirsi', 'fc-kirsi'));
     expect(second.status).toBe('conflict');
     expect(getBalance('kirsi')).toBe(0);
-    expect(getAssignmentStatusById(findAssignmentId(template.id, '2026-10-16', 'kirsi')!)).toBe('missed');
+    expect(getAssignmentStatusById(findAssignmentId(template.id, '2026-10-16', 'kirsi')!)).toBe('locked');
   });
 
   it('still refuses a past-day completion that was not made on that day', () => {

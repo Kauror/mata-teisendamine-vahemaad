@@ -70,6 +70,41 @@ describe('pending parent approvals (SRV-02)', () => {
     expect(getBalance('kirsi')).toBe(5);
     expect(getPendingApprovals(TODAY)).toEqual([]);
   });
+
+  it('a late approval does not pay that day\'s joint bonus when a task of the day was missed', () => {
+    createTaskTemplate({ title: 'Koristus', points: 4, assignmentMode: 'kiur', recurrenceType: 'daily', startDate: '2026-10-01', requiresApproval: true });
+    createTaskTemplate({ title: 'Prügi välja', points: 2, assignmentMode: 'kiur', recurrenceType: 'daily', startDate: '2026-10-01' });
+    createTaskTemplate({ title: 'Lilled', points: 2, assignmentMode: 'kirsi', recurrenceType: 'daily', startDate: '2026-10-01' });
+    const ids = Object.fromEntries((db.prepare('SELECT id, title FROM task_templates').all() as Array<{ id: number; title: string }>).map((row) => [row.title, row.id]));
+    ensureTaskInstancesForDate(OLD_DAY);
+    const kiurPending = completeOnOldDay(ids['Koristus'], 'kiur');
+    completeOnOldDay(ids['Lilled'], 'kirsi');
+    // Kiur never takes the rubbish out; the day ends and it is closed as missed.
+    ensureTaskInstancesForDate(TODAY);
+
+    const result = approveTaskAssignment(kiurPending);
+    expect(result.dailyBonus).toEqual({ awarded: false, amount: 0 });
+    expect(db.prepare('SELECT date FROM daily_task_bonuses').all()).toEqual([]);
+    expect(getBalance('kiur')).toBe(4);
+    expect(getBalance('kirsi')).toBe(2);
+  });
+
+  it('a first-completer task settled after its day locks the sibling, so the sibling still gets the bonus', () => {
+    createTaskTemplate({ title: 'Nõudepesu', points: 3, assignmentMode: 'first_completer', recurrenceType: 'daily', startDate: '2026-10-01', requiresApproval: true });
+    createTaskTemplate({ title: 'Lilled', points: 2, assignmentMode: 'kirsi', recurrenceType: 'daily', startDate: '2026-10-01' });
+    const ids = Object.fromEntries((db.prepare('SELECT id, title FROM task_templates').all() as Array<{ id: number; title: string }>).map((row) => [row.title, row.id]));
+    ensureTaskInstancesForDate(OLD_DAY);
+    const kiurPending = completeOnOldDay(ids['Nõudepesu'], 'kiur');
+    completeOnOldDay(ids['Lilled'], 'kirsi');
+    ensureTaskInstancesForDate(TODAY);
+
+    const result = approveTaskAssignment(kiurPending);
+    const kirsiShare = findAssignmentId(ids['Nõudepesu'], OLD_DAY, 'kirsi')!;
+    expect((db.prepare('SELECT status FROM task_instance_assignments WHERE id = ?').get(kirsiShare) as { status: string }).status).toBe('locked');
+    expect(result.dailyBonus).toEqual({ awarded: true, amount: 1 });
+    expect(getBalance('kiur')).toBe(4);
+    expect(getBalance('kirsi')).toBe(3);
+  });
 });
 
 // SRV-10: a day that has been prepared is not prepared again on every read —
