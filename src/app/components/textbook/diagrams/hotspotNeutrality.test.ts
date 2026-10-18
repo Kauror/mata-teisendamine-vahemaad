@@ -33,7 +33,7 @@ const textOf = (markup: string) => [...markup.matchAll(/>([^<>]+)</g)].map((matc
 
 describe('hotspot pictures of every ready unit', () => {
   it('finds the ready units and at least one hotspot picture in each authored real unit', () => {
-    for (const id of ['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14', 'lo-opik-u15', 'lo-opik-u18', 'lo-opik-u19']) {
+    for (const id of ['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14', 'lo-opik-u15', 'lo-opik-u17', 'lo-opik-u18', 'lo-opik-u19']) {
       expect(READY_UNITS.map((unit) => unit.id)).toContain(id);
       expect(hotspotDiagramsOf(id).length, id).toBeGreaterThan(0);
     }

@@ -1769,6 +1769,21 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-region[data-selected="true"] .tb-u18-target{fill:var(--tb-dia-selected);fill-opacity:.55;stroke:var(--tb-dia-selected);stroke-width:2.5}
 .tb-region[data-correct="true"] .tb-u18-target{fill:var(--tb-dia-correct);fill-opacity:.45;stroke:var(--tb-dia-correct);stroke-width:2.5}
 .tb-region[data-wrong="true"] .tb-u18-target{fill:var(--tb-dia-wrong);fill-opacity:.35;stroke:var(--tb-dia-wrong);stroke-width:2}
+/* Unit 17 "Eesti geograafiline asend": hemispheres and Natural Earth maps (existing diagram tokens only). Map strokes ignore the map's scale. */
+.tb-u17-half{fill:var(--tb-dia-tint-a)}
+.tb-u17-half.tb-u17-half-estonia{fill:var(--tb-dia-sand)}
+.tb-u17-disk-edge{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-u17-dividing-line{stroke:var(--tb-dia-ink);stroke-width:2.5;stroke-dasharray:7 5}
+.tb-u17-sea{fill:var(--tb-dia-pol-sea)}
+.tb-u17-land,.tb-u17-country{fill:var(--tb-dia-land);stroke:var(--tb-dia-tower-line);stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.tb-u17-land.tb-u17-land-estonia,.tb-u17-country.tb-u17-land-estonia{fill:var(--tb-dia-estonia)}
+.tb-u17-context{fill:var(--tb-dia-tower);stroke:var(--tb-dia-tower-line);stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.tb-u17-lake{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.tb-u17-estonia-dot{fill:var(--tb-dia-flag);stroke:var(--tb-dia-ink-light);stroke-width:1.5}
+/* The choice and the answer are outlined on the shape itself too, not only on its tap area. */
+.tb-region[data-selected="true"] :is(.tb-u17-half,.tb-u17-land,.tb-u17-country,.tb-u17-lake){stroke:var(--tb-dia-selected);stroke-width:2.5}
+.tb-region[data-correct="true"] :is(.tb-u17-half,.tb-u17-land,.tb-u17-country,.tb-u17-lake){stroke:var(--tb-dia-correct);stroke-width:2.5}
+.tb-region[data-wrong="true"] :is(.tb-u17-half,.tb-u17-land,.tb-u17-country,.tb-u17-lake){stroke:var(--tb-dia-wrong);stroke-width:2.5;stroke-dasharray:6 4}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}
