@@ -73,7 +73,7 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
     const labels: MapLabel[] = [];
     const pins: MapPin[] = [];
     if (!question) return { labels, pins };
-    if (question.correctId && (question.targetType === 'country' || question.targetType === 'capital')) {
+    if (question.correctId && question.targetId && (question.targetType === 'country' || question.targetType === 'capital')) {
       const countryId = question.targetId;
       const at = map.labels[countryId] ?? (() => {
         const marker = map.markers.find((item) => item.id === countryId);

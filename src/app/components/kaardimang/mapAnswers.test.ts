@@ -4,7 +4,7 @@ import { answerIdFor, playAreaPaint, playPaint, scoreLine } from './mapAnswers';
 
 function question(targetType: ClientQuestion['targetType'], extra: Partial<ClientQuestion> = {}): ClientQuestion {
   return {
-    id: 'q1', kind: 'find_country', answering: 'map', targetType, targetId: 'EST', targetKey: 'country:EST', prompt: '', options: null,
+    id: 'q1', kind: 'find_country', answering: 'map', targetType, targetId: null, prompt: '', options: null,
     highlightId: null, hideCapitalId: null, state: emptyState(), correctId: null, explainEt: null, hintEt: null, ...extra
   };
 }
