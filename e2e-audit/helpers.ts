@@ -20,7 +20,7 @@ export async function authenticateFamily(page: Page) {
   const input = page.getByLabel('Sisesta pere parool');
   await input.fill('e2e-family-passphrase');
   await page.getByRole('button', { name: 'Sisene' }).click();
-  await expect(page.getByRole('link', { name: 'Harjutused', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Kiur', exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/$/);
 }
 

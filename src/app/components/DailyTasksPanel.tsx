@@ -91,7 +91,7 @@ function learnerName(learner: Learner) {
 // belong to one identity card, and the panel is the only component that holds
 // the other three. Passing the slot in keeps the child's name and avatar owned
 // by the page and out of this component's data model.
-export default function DailyTasksPanel({ learner, identity }: { learner: Learner; identity: React.ReactNode }) {
+export default function DailyTasksPanel({ learner, identity, afterIdentity }: { learner: Learner; identity: React.ReactNode; afterIdentity?: React.ReactNode }) {
   const { online } = useOffline();
   const peekMode = usePeekMode();
   const [data, setData] = useState<ChildDashboard | null>(null);
@@ -245,6 +245,9 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
     ? streakFreezeNotice({ coveredDays: streakFreeze.recentlyCovered.length, held: streakFreeze.held })
     : null;
   const achievements = useMemo(() => data?.achievements ?? [], [data]);
+  // Today's count is already the exercise grid's job; the card keeps the
+  // milestone and the week.
+  const shownAchievements = useMemo(() => achievements.filter((achievement) => achievement.kind !== 'daily'), [achievements]);
   const tasks = data?.tasks ?? [];
   const isDone = (task: ChildTask) => task.status === 'completed' || task.status === 'locked';
   const activeTasks = tasks.filter((task) => !isDone(task));
@@ -356,10 +359,10 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
       <div className='child-identity-card'>
         <div className='child-home-header'>
           {identity}
-          {/* The captions are gone, so the label has to live on the control. */}
-          <Link className='identity-action' href={`/${learner}/tunniplaan`} aria-label='Tunniplaan' title='Tunniplaan'><span aria-hidden>📅</span></Link>
+          {/* The captions are gone, so the label has to live on the control.
+              The timetable is on the page itself now, so it needs no button. */}
           <Link className='identity-action' href={storeHref} aria-label='Pood' title='Pood'><span aria-hidden>🛒</span></Link>
-          <Link className='identity-action' href='/history' aria-label='Ajalugu' title='Ajalugu'><span aria-hidden>📜</span></Link>
+          <Link className='identity-action' href={`/history?child=${learner}`} aria-label='Minu ajalugu' title='Minu ajalugu'><span aria-hidden>📜</span></Link>
         </div>
 
         <div className='daily-summary'>
@@ -374,11 +377,11 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
           )}
         </div>
 
-        {achievements.length > 0 && (
+        {shownAchievements.length > 0 && (
           <>
             <div className='identity-divider' aria-hidden />
             <div className='achievement-strip' aria-label='Saavutused'>
-              {achievements.map((achievement) => (
+              {shownAchievements.map((achievement) => (
                 <MetricTooltip
                   key={achievement.id}
                   className={achievement.unlocked ? 'achievement-badge unlocked' : 'achievement-badge locked'}
@@ -405,6 +408,8 @@ export default function DailyTasksPanel({ learner, identity }: { learner: Learne
           <button type='button' aria-label='Sulge saavutuseteade' onClick={dismissMilestone}>×</button>
         </div>
       )}
+
+      {afterIdentity}
 
       <div className='daily-task-card'>
         <div className='daily-task-head'>

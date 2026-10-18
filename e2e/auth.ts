@@ -29,5 +29,5 @@ export async function authenticateFamily(page: Page) {
   await input.pressSequentially('e2e-family-passphrase');
   await expect(page.getByRole('button', { name: 'Sisene' })).toBeEnabled();
   await page.getByRole('button', { name: 'Sisene' }).click();
-  await expect(page.getByRole('link', { name: 'Harjutused', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Kiur', exact: true })).toBeVisible();
 }

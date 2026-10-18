@@ -1,4 +1,4 @@
-import { expect, test } from './test';
+import { expect, test, type Page } from './test';
 import { authenticateFamily } from './auth';
 import { navigateStable } from './navigation';
 
@@ -14,96 +14,85 @@ const SUNDAY_1830 = new Date('2026-10-18T15:30:00Z');
 // Tuesday 27 October 2026 falls in the autumn holiday.
 const HOLIDAY_1100 = new Date('2026-10-27T09:00:00Z');
 
-test('the home page shows the lesson each child is in', async ({ page }) => {
+// Tuesday 13 October 2026, 17:40 in Tallinn: Kiur's judo starts at 18.30.
+const TUESDAY_1740 = new Date('2026-10-13T14:40:00Z');
+// Saturday 17 October 2026, 11:00 in Tallinn.
+const SATURDAY_1100 = new Date('2026-10-17T08:00:00Z');
+
+const childCard = (page: Page, name: 'Kiur' | 'Kirsi') =>
+  page.locator('.child-dashboard-card', { has: page.getByRole('link', { name, exact: true }) });
+
+test('the home cards say how long each child is at school, and open the child page', async ({ page }) => {
   await page.clock.setFixedTime(WEDNESDAY_1020);
   await navigateStable(page, '/');
 
-  const card = page.getByRole('region', { name: 'Lapsed koolis' });
-  const kiur = card.getByRole('group', { name: 'Kiur' });
-  const kirsi = card.getByRole('group', { name: 'Kirsi' });
-  await expect(kiur).toContainText('3. tund');
-  await expect(kiur).toContainText('Matemaatika');
-  await expect(kiur).toContainText('10.00–10.45 · veel 25 min');
-  await expect(kirsi).toContainText('Eesti keel');
-  // The compact card has no progress bar.
-  await expect(card.locator('.school-bar')).toHaveCount(0);
-
-  const toggle = kiur.getByRole('button', { name: /tunniplaan/ });
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await toggle.click();
-  const today = kiur.getByRole('list', { name: 'Kiur täna' });
-  await expect(today.getByRole('listitem')).toHaveCount(6);
-  await expect(today.locator('[aria-current="time"]')).toContainText('Matemaatika');
-  await kiur.getByRole('button', { name: /Peida/ }).click();
-  await expect(today).toHaveCount(0);
-
-  // The two buttons on each child's card.
-  await expect(page.getByRole('link', { name: 'Harjutused', exact: true }).first()).toHaveAttribute('href', '/kiur');
-  await expect(page.getByRole('link', { name: 'Tunniplaan' }).first()).toHaveAttribute('href', '/kiur/tunniplaan');
+  await expect(childCard(page, 'Kiur').locator('.child-status')).toHaveText(/koolis kuni 12\.45/);
+  await expect(childCard(page, 'Kirsi').locator('.child-status')).toHaveText(/koolis kuni 12\.45/);
+  // The separate school card is gone: the line lives on each child's card.
+  await expect(page.getByRole('region', { name: 'Lapsed koolis' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Kiur', exact: true })).toHaveAttribute('href', '/kiur');
+  await expect(page.getByRole('link', { name: 'Kirsi', exact: true })).toHaveAttribute('href', '/kirsi');
 });
 
-test('the home page says when school starts tomorrow once the day is over', async ({ page }) => {
+test('a club shows on the home card an hour before it starts', async ({ page }) => {
+  await page.clock.setFixedTime(TUESDAY_1740);
+  await navigateStable(page, '/');
+  await expect(childCard(page, 'Kiur').locator('.child-status')).toHaveText(/Judo 18\.30/);
+  // Kirsi's day is over and it is not evening yet: no line at all.
+  await expect(childCard(page, 'Kirsi').locator('.child-status')).toHaveCount(0);
+});
+
+test('the home cards say when school starts, from the evening before', async ({ page }) => {
   await page.clock.setFixedTime(WEDNESDAY_2100);
   await navigateStable(page, '/');
+  await expect(childCard(page, 'Kiur').locator('.child-status')).toHaveText(/kool algab 8\.15/);
+  await expect(childCard(page, 'Kirsi').locator('.child-status')).toHaveText(/kool algab 9\.05/);
 
-  const card = page.getByRole('region', { name: 'Lapsed koolis' });
-  const kiur = card.getByRole('group', { name: 'Kiur' });
-  const kirsi = card.getByRole('group', { name: 'Kirsi' });
-  await expect(kiur).toContainText('Kodus');
-  await expect(kiur).toContainText('Kool algab homme 8.15');
-  await expect(kirsi).toContainText('Kool algab homme 9.05');
-  // Nothing left today, so no list to open.
-  await expect(card.getByRole('button', { name: /tunniplaan/ })).toHaveCount(0);
-});
-
-test('the home page shows the school card on Sunday evening', async ({ page }) => {
   await page.clock.setFixedTime(SUNDAY_1830);
   await navigateStable(page, '/');
-
-  const card = page.getByRole('region', { name: 'Lapsed koolis' });
-  await expect(card.getByRole('group', { name: 'Kiur' })).toContainText('Kool algab homme 9.05');
-  await expect(card.getByRole('group', { name: 'Kirsi' })).toContainText('Kool algab homme 9.05');
+  await expect(childCard(page, 'Kiur').locator('.child-status')).toHaveText(/kool algab 9\.05/);
+  await expect(childCard(page, 'Kirsi').locator('.child-status')).toHaveText(/kool algab 9\.05/);
 });
 
-test('the school card fits an iPhone mini without sideways scrolling', async ({ page }) => {
-  // Monday 12 October, 12:10 in Tallinn: Kirsi is in the longest-named lesson.
+test('the home cards fit an iPhone mini without sideways scrolling', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-12T09:10:00Z'));
   await page.setViewportSize({ width: 375, height: 667 });
   await navigateStable(page, '/');
-
-  const card = page.getByRole('region', { name: 'Lapsed koolis' });
-  const kirsi = card.getByRole('group', { name: 'Kirsi' });
-  await expect(kirsi).toContainText('Tehnoloogiline avastusõpe');
-  await expect(kirsi).toContainText('12.00–12.45 · veel 35 min');
-  await kirsi.getByRole('button', { name: /tunniplaan/ }).click();
-  await expect(card.getByRole('list', { name: 'Kirsi täna' })).toBeVisible();
+  await expect(childCard(page, 'Kirsi').locator('.child-status')).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
-  // "10.00–10.45" stays on one line, even with the phone's larger text size.
-  await page.evaluate(() => { document.documentElement.style.fontSize = '120%'; document.querySelectorAll<HTMLElement>('.school-now-list').forEach((list) => { list.style.fontSize = '1.2em'; }); });
-  const timeLines = await card.locator('.school-now-list li > span:first-child').evaluateAll((spans) => spans.map((span) => {
-    const style = getComputedStyle(span);
-    return Math.round(span.getBoundingClientRect().height / parseFloat(style.lineHeight === 'normal' ? String(parseFloat(style.fontSize) * 1.4) : style.lineHeight));
-  }));
-  expect(timeLines.every((lines) => lines === 1)).toBe(true);
-  const cardBox = await card.boundingBox();
-  const nameBox = await kirsi.locator('.school-now-what').boundingBox();
-  expect((nameBox?.x ?? 0) + (nameBox?.width ?? 0)).toBeLessThanOrEqual((cardBox?.x ?? 0) + (cardBox?.width ?? 0));
 });
 
-test('the home page has no school card during a holiday', async ({ page }) => {
+test('the home cards have no school line during a holiday', async ({ page }) => {
   await page.clock.setFixedTime(HOLIDAY_1100);
   await navigateStable(page, '/');
   await expect(page.locator('.child-dashboard-card').first()).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Lapsed koolis' })).toHaveCount(0);
+  await expect(page.locator('.child-status')).toHaveCount(0);
+});
+
+test('the child page opens its timetable on a school day and folds it on a day off', async ({ page }) => {
+  await page.clock.setFixedTime(WEDNESDAY_1020);
+  await navigateStable(page, '/kiur');
+  const section = page.getByRole('region', { name: 'Tunniplaan' });
+  await expect(section.getByRole('button', { name: /Tunniplaan/ })).toHaveAttribute('aria-expanded', 'true');
+  await expect(section.getByRole('tablist', { name: 'Tunniplaan' })).toBeVisible();
+  await expect(section.locator('.timetable-day [aria-current="time"]')).toContainText('Matemaatika');
+
+  await page.clock.setFixedTime(SATURDAY_1100);
+  await navigateStable(page, '/kiur');
+  const folded = page.getByRole('region', { name: 'Tunniplaan' });
+  const head = folded.getByRole('button', { name: /Tunniplaan/ });
+  await expect(head).toHaveAttribute('aria-expanded', 'false');
+  // Kiur has no first lesson on Mondays.
+  await expect(head).toContainText('esmaspäev 9.05');
+  // Folded means the tabs are not rendered at all. (Not clicked open here: the
+  // page can open with yesterday's points recap over it.)
+  await expect(folded.getByRole('tablist', { name: 'Tunniplaan' })).toHaveCount(0);
 });
 
 test('the timetable page turns to tomorrow when lessons end and keeps today\'s club', async ({ page }) => {
   await page.clock.setFixedTime(WEDNESDAY_1300);
-  // The exercise page can open with the "yesterday" popup over it, so the
-  // calendar button is checked by its target rather than clicked through.
-  await navigateStable(page, '/kiur');
-  await expect(page.getByRole('link', { name: 'Tunniplaan' })).toHaveAttribute('href', '/kiur/tunniplaan');
+  // The page itself is still there for an old bookmark and the offline shell.
   await navigateStable(page, '/kiur/tunniplaan');
 
   const tabs = page.getByRole('tablist', { name: 'Tunniplaan' });
