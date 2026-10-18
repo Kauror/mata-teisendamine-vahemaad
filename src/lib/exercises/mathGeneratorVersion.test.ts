@@ -7,6 +7,7 @@ import {
   MATH_GENERATOR_VERSION_V1,
   MATH_GENERATOR_VERSION_V2,
   MATH_GENERATOR_VERSION_V3,
+  MATH_GENERATOR_VERSION_V4,
   MATH_GENERATOR_VERSIONS,
   isSupportedMathGeneratorVersion,
   type MathGeneratorVersion
@@ -108,7 +109,7 @@ function verify(questions: GeneratedQuestion[], seed: number, generatorVersion: 
 
 describe('maths generator versions', () => {
   it('starts new sessions on the current version, which the runner contract names', () => {
-    expect(MATH_GENERATOR_VERSION).toBe(MATH_GENERATOR_VERSION_V3);
+    expect(MATH_GENERATOR_VERSION).toBe(MATH_GENERATOR_VERSION_V4);
     expect(getOfflineRunnerCapability('math')?.generatorVersion).toBe(MATH_GENERATOR_VERSION);
     expect(generateKiurMathSession('ring-ja-ringjoon', 'Segaharjutus', 'Lihtne', 15, 7)).toEqual(generateKiurMathSession('ring-ja-ringjoon', 'Segaharjutus', 'Lihtne', 15, 7, MATH_GENERATOR_VERSION));
     expect(generateKirsiSession('Kellaaeg', 15, 7)).toEqual(generateKirsiSession('Kellaaeg', 15, 7, MATH_GENERATOR_VERSION));
@@ -118,7 +119,8 @@ describe('maths generator versions', () => {
     expect(MATH_GENERATOR_VERSIONS).toContain(MATH_GENERATOR_VERSION_V1);
     expect(MATH_GENERATOR_VERSION_V1).toBe('2026-07-1');
     expect(isSupportedMathGeneratorVersion('2026-07-1')).toBe(true);
-    expect(MATH_GENERATOR_VERSIONS).toEqual(['2026-07-1', 'math-2026-10', 'math-2026-10b']);
+    expect(MATH_GENERATOR_VERSIONS).toEqual(['2026-07-1', 'math-2026-10', 'math-2026-10b', 'math-2026-10c']);
+    expect(isSupportedMathGeneratorVersion('math-2026-10b')).toBe(true);
     expect(isSupportedMathGeneratorVersion('math-2026-10')).toBe(true);
     expect(isSupportedMathGeneratorVersion('math-1999')).toBe(false);
   });
@@ -136,9 +138,17 @@ describe('maths generator versions', () => {
   });
 
   it.each(UNBRANCHED_SESSIONS.map((session) => [session.name, session] as const))('v1, v2 and v3 %s still generate exactly what they generated', (name, session) => {
-    for (const version of [MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3]) {
+    for (const version of [MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3] as MathGeneratorVersion[]) {
       expect(digest(session, version)).toBe(UNBRANCHED_BEFORE_V4_DIGESTS[name]);
     }
+  });
+
+  // v4 (content audit EDU-01..EDU-08) changes every Kiur session it fixes and
+  // leaves Kirsi's clock alone.
+  it.each([...SESSIONS, ...UNBRANCHED_SESSIONS].map((session) => [session.name, session] as const))('v4 %s changes exactly the sessions it should', (name, session) => {
+    const before = V3_DIGESTS[name] ?? UNBRANCHED_BEFORE_V4_DIGESTS[name];
+    if (name === 'kirsi-kell') expect(digest(session, MATH_GENERATOR_VERSION_V4)).toBe(before);
+    else expect(digest(session, MATH_GENERATOR_VERSION_V4)).not.toBe(before);
   });
 
   it.each(SESSIONS.filter((session) => session.name !== 'jagamine').map((session) => [session.name, session] as const))('v2 %s differs from v1, so the version really selects the generator', (_name, session) => {
@@ -188,6 +198,29 @@ describe('server replay by version', () => {
       const v3 = generateKiurMathSession('ring-ja-ringjoon', 'Segaharjutus', 'Lihtne', 15, seed, MATH_GENERATOR_VERSION_V3);
       try {
         if (verify(v3, seed, MATH_GENERATOR_VERSION_V2).score < 15) rejected += 1;
+      } catch (error) {
+        expect(error).toBeInstanceOf(AttemptContractError);
+        rejected += 1;
+      }
+    }
+    expect(rejected).toBeGreaterThan(0);
+  });
+
+  it('verifies an attempt generated with v3 after the v4 change', () => {
+    for (let seed = 1; seed <= 25; seed += 1) {
+      for (const topic of ['ring-ja-ringjoon', 'arvud-10000-piires', 'mootuhikud-pikkused', 'jagamine-kahekohaline-uhekohaline', 'mustrid']) {
+        const v3 = generateKiurMathSession(topic, 'Segaharjutus', 'Lihtne', 15, seed, MATH_GENERATOR_VERSION_V3);
+        expect(verify(v3, seed, MATH_GENERATOR_VERSION_V3, topic).score).toBe(15);
+      }
+    }
+  });
+
+  it('does not verify a v4 attempt as if it were v3', () => {
+    let rejected = 0;
+    for (let seed = 1; seed <= 25; seed += 1) {
+      const v4 = generateKiurMathSession('mootuhikud-pikkused', 'Segaharjutus', 'Lihtne', 15, seed, MATH_GENERATOR_VERSION_V4);
+      try {
+        if (verify(v4, seed, MATH_GENERATOR_VERSION_V3, 'mootuhikud-pikkused').score < 15) rejected += 1;
       } catch (error) {
         expect(error).toBeInstanceOf(AttemptContractError);
         rejected += 1;

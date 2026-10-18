@@ -763,3 +763,25 @@ export const kiurTextProblemPool: TextProblemTask[] = [
     solution: "16:35 + 2 tundi = 18:35. 18:35 + 25 minutit = 19:00."
   }
 ];
+
+// Corrections from the content audit of 2026-10-17 (EDU-08), used from maths
+// generator v4 on. v1-v3 replay kiurTextProblemPool exactly as above, so an
+// attempt made before the bump re-verifies unchanged; v4 swaps a task for its
+// corrected copy in the same place, so a seed still picks the same tasks.
+const TEXT_PROBLEM_V4_CORRECTIONS: Readonly<Record<string, Partial<TextProblemTask>>> = {
+  // Either order names the same two numbers.
+  "tekst-022": { acceptedAnswers: ["4 ja 5"] },
+  "tekst-030": { acceptedAnswers: ["1 ja 0"] },
+  // «Staasionil» is a misspelling of «Staadionil».
+  "tekst-061": { question: "Staadionil on 10 000 istekohta. Võistluse ajal oli hõivatud 6425 kohta. Mitu kohta jäi vabaks?" },
+  // «kaks küljed» → «kaks külge».
+  "tekst-075": { solution: "Ristküliku kaks 8 cm külge annavad 16 cm. 30 - 16 = 14. Teised kaks külge on võrdsed, seega 14 : 2 = 7." },
+  // Only the full sentence «need on võrdsed» was accepted.
+  "tekst-101": { acceptedAnswers: ["võrdsed", "on võrdsed", "mõlemad on võrdsed", "sama pikad", "need on sama pikad", "ühepikkused", "ühe pikkusega"] },
+  // «Mis kell …?» is naturally answered «kell 15.05».
+  "tekst-115": { acceptedAnswers: ["15.05", "kell 15:05", "kell 15.05"] },
+  "tekst-116": { acceptedAnswers: ["10.40", "kell 10:40", "kell 10.40"] },
+  "tekst-120": { acceptedAnswers: ["19.00", "kell 19:00", "kell 19.00", "kell 19"] }
+};
+
+export const kiurTextProblemPoolV4: TextProblemTask[] = kiurTextProblemPool.map((task) => ({ ...task, ...TEXT_PROBLEM_V4_CORRECTIONS[task.id] }));
