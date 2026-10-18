@@ -156,6 +156,18 @@ describe('Kaardimäng preview', () => {
     const response = await kaardimangHandlers('child').overview.GET();
     expect(response.status).toBe(403);
     expect((await response.json()).code).toBe('forbidden');
+    // Every other child route too, before it reads the body or the round.
+    const round = startRound(kiur, { actionId: aid(), viewId: 'europe-baltics', setId: null, level: 'explorer' });
+    const post = (body: unknown) => new Request('http://localhost/api/kaardimang', { method: 'POST', body: JSON.stringify(body) }) as never;
+    const params = { params: Promise.resolve({ roundId: round.roundId }) };
+    const handlers = kaardimangHandlers('child');
+    const responses = [
+      await handlers.start.POST(post({ actionId: aid(), viewId: 'europe-baltics', setId: null, level: 'explorer' })),
+      await handlers.round.GET(post({}), params),
+      await handlers.answer.POST(post({ actionId: aid(), revision: 0, questionIndex: 0, answerId: 'EST' }), params)
+    ];
+    expect(responses.map((item) => item.status)).toEqual([403, 403, 403]);
+    expect(getRound(kiur, round.roundId).revision).toBe(0);
   });
 
   it('treats child map-game writes as child writes for peek mode', () => {
