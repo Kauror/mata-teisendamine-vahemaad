@@ -1702,6 +1702,54 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-region[data-selected="true"] .tb-u15-continent,.tb-region[data-selected="true"] .tb-u15-link-panel{stroke:var(--tb-dia-selected);stroke-width:4}
 .tb-region[data-correct="true"] .tb-u15-continent,.tb-region[data-correct="true"] .tb-u15-link-panel{stroke:var(--tb-dia-correct);stroke-width:4}
 .tb-region[data-wrong="true"] .tb-u15-continent,.tb-region[data-wrong="true"] .tb-u15-link-panel{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
+/* Unit 19 "Maakera siseehitus": Earth's layers, crust, plates (existing diagram tokens only). */
+.tb-u19-layer{stroke:var(--tb-dia-ink);stroke-width:1}
+.tb-u19-crust{fill:var(--tb-dia-rock-line)}
+.tb-u19-mantle{fill:var(--tb-dia-pol-d)}
+.tb-u19-outer-core{fill:var(--tb-dia-sun-line)}
+.tb-u19-inner-core{fill:var(--tb-dia-centre)}
+.tb-u19-leaders,.tb-u19-arrows,.tb-u19-surface,.tb-u19-world{pointer-events:none}
+.tb-u19-leader{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u19-leader-dot{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u19-bar{fill:var(--tb-dia-rock);stroke:var(--tb-dia-rock-line);stroke-width:1.5}
+.tb-u19-water{fill:var(--tb-dia-sea)}
+.tb-u19-wave{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:2;stroke-linecap:round}
+.tb-u19-ground{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1.5}
+.tb-u19-tree{fill:var(--tb-dia-leaf-line)}
+.tb-u19-peak{fill:var(--tb-dia-relief-high);stroke:var(--tb-dia-soil-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u19-snow{fill:var(--tb-dia-ink-light)}
+.tb-u19-surface{stroke:var(--tb-dia-tower-line);stroke-width:2;stroke-dasharray:6 4}
+.tb-u19-card{fill:var(--tb-dia-tower);stroke:var(--tb-dia-panel-line);stroke-width:2}
+.tb-u19-stratum-a{fill:var(--tb-dia-sand)}
+.tb-u19-stratum-b{fill:var(--tb-dia-rock)}
+.tb-u19-stratum-c{fill:var(--tb-dia-soil)}
+.tb-u19-rig{fill:none;stroke:var(--tb-dia-ink);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.tb-u19-hole{fill:var(--tb-dia-ink)}
+.tb-u19-quake{fill:var(--tb-dia-flag);stroke:var(--tb-dia-ink);stroke-width:1}
+.tb-u19-quake-wave{fill:none;stroke:var(--tb-dia-flag);stroke-width:2.5;stroke-linecap:round}
+.tb-u19-seismograph{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u19-trace{fill:none;stroke:var(--tb-dia-flag);stroke-width:1.5;stroke-linejoin:round}
+.tb-u19-cone{fill:var(--tb-dia-rock);stroke:var(--tb-dia-rock-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u19-magma{fill:none;stroke:var(--tb-dia-flag);stroke-width:4}
+.tb-u19-lava{fill:var(--tb-dia-flag)}
+.tb-u19-lava-flow{fill:none;stroke:var(--tb-dia-flag);stroke-width:4;stroke-linecap:round}
+.tb-u19-mantle-block{fill:var(--tb-dia-pol-d);stroke:var(--tb-dia-sun-line);stroke-width:1.5}
+.tb-u19-plate-crust{fill:var(--tb-dia-soil);stroke:var(--tb-dia-ink);stroke-width:1}
+.tb-u19-lithosphere{fill:var(--tb-dia-rock);stroke:var(--tb-dia-ink);stroke-width:1}
+.tb-u19-flow{fill:none;stroke:var(--tb-dia-sun-line);stroke-width:2.5;stroke-dasharray:6 5;stroke-linecap:round}
+.tb-u19-flow-head{fill:var(--tb-dia-sun-line)}
+.tb-u19-rising{fill:var(--tb-dia-flag)}
+.tb-u19-boundary{stroke:var(--tb-dia-ink);stroke-width:2.5;stroke-dasharray:5 4}
+.tb-u19-move{stroke:var(--tb-dia-sea-line);stroke-width:5;stroke-linecap:round}
+.tb-u19-arrowhead{fill:var(--tb-dia-sea-line)}
+.tb-u19-ocean{fill:var(--tb-dia-globe-light)}
+.tb-u19-continent{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.tb-u19-rift{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:4 4}
+.tb-u19-plate-dot{fill:var(--tb-dia-ink);stroke:var(--tb-dia-ink-light);stroke-width:1.5}
+/* Thin layers and small dots: the choice is also outlined on the shape itself. */
+.tb-region[data-selected="true"] .tb-u19-layer,.tb-region[data-selected="true"] .tb-u19-bar,.tb-region[data-selected="true"] .tb-u19-plate-dot{stroke:var(--tb-dia-selected);stroke-width:3}
+.tb-region[data-correct="true"] .tb-u19-layer,.tb-region[data-correct="true"] .tb-u19-bar,.tb-region[data-correct="true"] .tb-u19-plate-dot{stroke:var(--tb-dia-correct);stroke-width:3}
+.tb-region[data-wrong="true"] .tb-u19-layer,.tb-region[data-wrong="true"] .tb-u19-bar,.tb-region[data-wrong="true"] .tb-u19-plate-dot{stroke:var(--tb-dia-wrong);stroke-width:3;stroke-dasharray:6 4}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}
