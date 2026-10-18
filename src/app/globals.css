@@ -1784,6 +1784,27 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-region[data-selected="true"] :is(.tb-u17-half,.tb-u17-land,.tb-u17-country,.tb-u17-lake){stroke:var(--tb-dia-selected);stroke-width:2.5}
 .tb-region[data-correct="true"] :is(.tb-u17-half,.tb-u17-land,.tb-u17-country,.tb-u17-lake){stroke:var(--tb-dia-correct);stroke-width:2.5}
 .tb-region[data-wrong="true"] :is(.tb-u17-half,.tb-u17-land,.tb-u17-country,.tb-u17-lake){stroke:var(--tb-dia-wrong);stroke-width:2.5;stroke-dasharray:6 4}
+/* Unit 16 "Maailmameri": land/water bar, real-coastline world map, water forms, Baltic chain (existing diagram tokens only). */
+.tb-u16-land{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:2}
+.tb-u16-water{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-u16-split{stroke:var(--tb-dia-ink-light);stroke-width:4}
+.tb-u16-bracket{fill:none;stroke:var(--tb-dia-note);stroke-width:1.5;stroke-linejoin:round}
+.tb-u16-ocean{fill:var(--tb-dia-pol-sea)}
+.tb-u16-map-land path{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:.6px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.tb-u16-map-frame{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:1}
+.tb-u16-sea{fill:var(--tb-dia-pol-sea)}
+.tb-u16-coast{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u16-panel{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:1.5}
+.tb-u16-box{stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-u16-box-sea{fill:var(--tb-dia-tint-a)}
+.tb-u16-box-strait{fill:var(--tb-dia-pol-sea);stroke-dasharray:6 3}
+.tb-u16-box-ocean{fill:var(--tb-dia-globe-light)}
+.tb-u16-link-line{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:3;stroke-linecap:round}
+.tb-u16-link-head{fill:var(--tb-dia-sea-line)}
+/* The water forms and the Baltic boxes fill their tap areas, so the choice is outlined on the shape itself. */
+.tb-region[data-selected="true"] .tb-u16-panel,.tb-region[data-selected="true"] .tb-u16-box{stroke:var(--tb-dia-selected);stroke-width:4}
+.tb-region[data-correct="true"] .tb-u16-panel,.tb-region[data-correct="true"] .tb-u16-box{stroke:var(--tb-dia-correct);stroke-width:4}
+.tb-region[data-wrong="true"] .tb-u16-panel,.tb-region[data-wrong="true"] .tb-u16-box{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}
