@@ -299,6 +299,10 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .stars-badge strong{font-size:14px;color:#713f12}
 .trophy-badge{margin:0;display:inline-flex;align-items:center;gap:5px;min-height:26px;padding:3px 9px;border-radius:999px;background:#f5f3ff;border:1px solid #ddd6fe;color:#6d28d9;font-size:12px;font-weight:850;line-height:1}
 .trophy-badge strong{font-size:14px;color:#5b21b6}
+/* The home pills are 26px buttons the children tap for the explanation (tablets
+   too, not only phones): a transparent vertical bleed keeps a 44px target. */
+.child-overview .metric-tooltip-trigger{position:relative}
+.child-overview .metric-tooltip-trigger::after{content:'';position:absolute;inset:-9px -1px}
 @media (max-width:640px){
   .child-overview{gap:5px}
   .child-overview .streak-badge,.child-overview .stars-badge,.child-overview .trophy-badge{gap:3px;min-height:24px;padding:2px 8px;font-size:11px;position:relative}
