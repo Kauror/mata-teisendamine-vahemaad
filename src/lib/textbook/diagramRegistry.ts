@@ -2,6 +2,7 @@ import { UNIT11_DIAGRAMS } from '@/lib/textbook/diagrams/unit11';
 import { UNIT12_DIAGRAMS } from '@/lib/textbook/diagrams/unit12';
 import { UNIT13_DIAGRAMS } from '@/lib/textbook/diagrams/unit13';
 import { UNIT14_DIAGRAMS } from '@/lib/textbook/diagrams/unit14';
+import { UNIT19_DIAGRAMS } from '@/lib/textbook/diagrams/unit19';
 
 // The diagrams content may reference — data only. Every `diagram` block,
 // `diagram` question context and `diagram_hotspot` question names one of these
@@ -117,7 +118,8 @@ export const DIAGRAMS: readonly DiagramDefinition[] = [
   ...UNIT11_DIAGRAMS,
   ...UNIT12_DIAGRAMS,
   ...UNIT13_DIAGRAMS,
-  ...UNIT14_DIAGRAMS
+  ...UNIT14_DIAGRAMS,
+  ...UNIT19_DIAGRAMS
 ];
 
 const BY_ID = new Map(DIAGRAMS.map((diagram) => [diagram.id, diagram]));

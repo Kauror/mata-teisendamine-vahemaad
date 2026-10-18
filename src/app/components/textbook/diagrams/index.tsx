@@ -13,6 +13,7 @@ import { UNIT11_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/un
 import { UNIT12_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit12';
 import { UNIT13_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit13';
 import { U14_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit14';
+import { U19_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit19';
 
 export type { DiagramMode, DiagramProps } from '@/app/components/textbook/diagrams/DiagramFrame';
 
@@ -28,7 +29,8 @@ export const DIAGRAM_COMPONENTS: Record<string, ComponentType<DiagramProps>> = {
   ...UNIT11_DIAGRAM_COMPONENTS,
   ...UNIT12_DIAGRAM_COMPONENTS,
   ...UNIT13_DIAGRAM_COMPONENTS,
-  ...U14_DIAGRAM_COMPONENTS
+  ...U14_DIAGRAM_COMPONENTS,
+  ...U19_DIAGRAM_COMPONENTS
 };
 
 export function DiagramView({ diagramId, ...props }: DiagramProps & { diagramId: string }) {
