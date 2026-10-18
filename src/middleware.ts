@@ -8,8 +8,14 @@ function isPublicPath(pathname: string) {
   if (pathname === '/api/healthz') return true;
   if (pathname === '/sw.js' || pathname === '/manifest.webmanifest') return true;
   if (pathname.startsWith('/_next')) return true;
-  return /\.(?:ico|png|jpg|jpeg|gif|svg|webp|txt|xml)$/i.test(pathname);
+  // Static files by extension: only root-level files (icons, manifest images,
+  // favicon) and the two public image folders. A bare extension test let any
+  // dynamic API route or page whose last segment ends in ".png" skip the
+  // family session (/api/history/1.png reached its handler unauthenticated).
+  return STATIC_FILE.test(pathname);
 }
+
+const STATIC_FILE = /^\/(?:(?:textbook-images|kaardimang)\/(?:[^/]+\/)*)?[^/]+\.(?:ico|png|jpg|jpeg|gif|svg|webp|txt|xml)$/i;
 
 function isMutation(request: NextRequest) {
   return !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
