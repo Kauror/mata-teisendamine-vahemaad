@@ -1,4 +1,9 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CATALOG } from '@/content/kaardimang/catalog';
+import { DATA_VERSION, MAP_VIEWS } from '@/content/kaardimang/regions';
+import type { MapViewData } from '@/content/kaardimang/types';
 import { emptyState, NO_AREA_ANSWER, SEA_ANSWER, type ClientQuestion } from '@/lib/kaardimang/engine';
 import { answerIdFor, playAreaPaint, playPaint, scoreLine } from './mapAnswers';
 
@@ -14,6 +19,11 @@ describe('answerIdFor', () => {
     expect(answerIdFor(question('continent'), { kind: 'land', id: 'RUS', wp: 'europe', ct: 'eurasia' })).toBe('eurasia');
     expect(answerIdFor(question('worldPart'), { kind: 'land', id: 'RUS', wp: 'asia', ct: 'eurasia' })).toBe('asia');
     expect(answerIdFor(question('continent'), { kind: 'land', id: 'NZL', wp: 'oceania', ct: null })).toBe(NO_AREA_ANSWER);
+  });
+
+  it('counts the South Pole dot as Antarctica in a continent question (it sits on the continent)', () => {
+    expect(answerIdFor(question('continent'), { kind: 'marker', id: 'south-pole' })).toBe('antarctica');
+    expect(answerIdFor(question('point', { kind: 'find_point', targetId: 'south-pole' }), { kind: 'marker', id: 'south-pole' })).toBe('south-pole');
   });
 
   it('turns open sea into the neutral answer and keeps ocean areas as oceans', () => {

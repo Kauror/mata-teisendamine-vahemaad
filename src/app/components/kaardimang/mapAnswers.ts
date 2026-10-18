@@ -11,7 +11,10 @@ export function answerIdFor(question: Pick<ClientQuestion, 'targetType'>, pick: 
   switch (question.targetType) {
     case 'continent':
       if (pick.kind === 'land') return pick.ct ?? NO_AREA_ANSWER;
-      return pick.kind === 'marker' ? pick.id : SEA_ANSWER;
+      // The South Pole dot lies on Antarctica: tapping the middle of the
+      // continent hits it, and that is the continent, not a wrong place.
+      if (pick.kind === 'marker') return pick.id === 'south-pole' ? 'antarctica' : NO_AREA_ANSWER;
+      return SEA_ANSWER;
     case 'worldPart':
       if (pick.kind === 'land') return pick.wp ?? NO_AREA_ANSWER;
       return SEA_ANSWER;
