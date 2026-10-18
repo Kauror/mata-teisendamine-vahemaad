@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LessonContentResponse, ReadingCompleteResponse, TextbookScope } from '@/lib/textbook/api';
 import { ContentBlocks } from '@/app/components/textbook/ContentBlocks';
 import { textbookPaths } from '@/app/components/textbook/pages';
-import { clampSection, finishState, pagerView, sectionParam } from '@/app/components/textbook/pager';
+import { clampSection, finishState, lessonNextCard, pagerView, sectionParam } from '@/app/components/textbook/pager';
 import { newActionId, type TextbookClientError } from '@/app/components/textbook/textbookClient';
 import { TextbookLoading, TextbookProblem, TextbookShell } from '@/app/components/textbook/TextbookShell';
 import { PEEK_ERROR, useLearnerClient, useTextbookLoad, writesBlocked } from '@/app/components/textbook/useTextbook';
@@ -112,6 +112,7 @@ export default function TextbookLesson({ scope, courseId, unitId, lessonId }: { 
 
   const section = sections[pager.index];
   const state = finishState({ isLast: pager.isLast, endSeen: end.seen, completed: data.completed });
+  const next = lessonNextCard({ practiceUnlocked: result ? result.practiceUnlocked : null, completed: data.completed, isLast: pager.isLast, nextLessonId: data.nextLessonId });
 
   return (
     <TextbookShell scope={scope} eyebrow={`Õpi · ${pager.label}`} title={data.lesson.title} backHref={paths.unit(unitId)} backLabel='← Õppetükk'>
@@ -150,13 +151,13 @@ export default function TextbookLesson({ scope, courseId, unitId, lessonId }: { 
 
       {saveError ? <TextbookProblem error={saveError} onRetry={() => void complete()} retrying={saving} backHref={paths.unit(unitId)} backLabel='Tagasi õppetüki juurde' /> : null}
 
-      {result || (data.completed && pager.isLast) ? (
+      {next.show ? (
         <section className='tb-next-card' aria-label='Mis edasi'>
           {result ? <h2>✓ Õppetükk on loetud</h2> : null}
-          {result?.practiceUnlocked && !data.nextLessonId ? <p>Kõik kohustuslikud õppetükid on loetud. Nüüd saad harjutada!</p> : null}
+          {next.practice ? <p>Kõik kohustuslikud õppetükid on loetud. Nüüd saad harjutada!</p> : null}
           <div className='tb-actions'>
-            {data.nextLessonId ? <Link className='tb-button tb-button-primary' href={paths.lesson(unitId, data.nextLessonId)}>Järgmine õppetükk →</Link> : null}
-            {!data.nextLessonId && (result?.practiceUnlocked ?? false) ? <Link className='tb-button tb-button-primary' href={paths.practice(unitId)}>Harjuta</Link> : null}
+            {next.practice ? <Link className='tb-button tb-button-primary' href={paths.practice(unitId)}>Harjuta</Link> : null}
+            {next.nextLesson && data.nextLessonId ? <Link className={next.nextLesson === 'primary' ? 'tb-button tb-button-primary' : 'tb-button'} href={paths.lesson(unitId, data.nextLessonId)}>Järgmine õppetükk →</Link> : null}
             <Link className='tb-button' href={paths.unit(unitId)}>Tagasi õppetüki juurde</Link>
           </div>
         </section>

@@ -351,7 +351,10 @@ describe('textbook test', () => {
     expect(saveAnswer(kiur(), view.sessionId, { actionId, revision: view.revision, questionId: question.id, response: correctResponseFor(question.answer) }).session.revision).toBe(saved.revision);
     const stale = expectCode(() => saveAnswer(kiur(), view.sessionId, { actionId: aid(), revision: view.revision, questionId: question.id, response: correctResponseFor(question.answer) }), 'stale');
     expect((stale.extra.session as TestSessionView).revision).toBe(saved.revision);
-    expectCode(() => saveAnswer(kiur(), view.sessionId, { actionId: aid(), revision: saved.revision, questionId: question.id, response: { type: 'ordering', order: [] } }), 'invalid_response');
+    // An empty ordering answer is malformed only for a question of another type
+    // (for an ordering question it is merely incomplete), so pick one.
+    const other = testState(view.sessionId).snapshot.questions.find((frozen) => frozen.question.answer.type !== 'ordering')!.question;
+    expectCode(() => saveAnswer(kiur(), view.sessionId, { actionId: aid(), revision: saved.revision, questionId: other.id, response: { type: 'ordering', order: [] } }), 'invalid_response');
   });
 });
 
