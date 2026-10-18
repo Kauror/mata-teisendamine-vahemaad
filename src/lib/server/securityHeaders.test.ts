@@ -14,3 +14,11 @@ describe('production response security headers', () => {
     expect(headers.get('Strict-Transport-Security')).toContain('max-age=31536000');
   });
 });
+
+describe('API response caching (SEC-06)', () => {
+  it('marks every API response no-store, so child data and answer keys are never kept by a browser or proxy cache', async () => {
+    const rules = await nextConfig.headers!();
+    const api = rules.find((rule) => rule.source === '/api/:path*');
+    expect(api?.headers).toContainEqual({ key: 'Cache-Control', value: 'no-store' });
+  });
+});
