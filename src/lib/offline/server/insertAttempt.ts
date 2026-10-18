@@ -199,11 +199,7 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
   if (runnerContract.runnerId !== 'math' && runnerContract.id !== exerciseId) {
     return { status: 'rejected', reasonCode: 'runner_exercise_mismatch', message: 'Runner does not own this exercise.' };
   }
-  if (!grant) {
-    permitted = false;
-    review = true;
-    reasonCode = reasonCode ?? 'unknown_catalogue_grant';
-  } else if (!metadataMatchesContract(input as unknown as Record<string, unknown>, {
+  const contract = grant ? {
     learner,
     exerciseId: exerciseId ?? '',
     catalogueVersion: grant.catalogueVersion,
@@ -212,7 +208,24 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
     acceptedGeneratorVersions: runnerContract.runnerId === 'math' ? MATH_GENERATOR_VERSIONS : undefined,
     runnerVersion: runnerContract.runnerVersion,
     rotationVersion: runnerContract.rotationVersion
-  })) {
+  } : null;
+  // The runner stamps the policy version when the exercise starts. If the
+  // parent edits the star settings meanwhile and a background pull refreshes
+  // this device's grant, the finished attempt carries the previous version.
+  // That is the server's own (immutable) policy, not a forged one, so the work
+  // is kept and held for the parent instead of being rejected and lost.
+  const policyChangedMidRun = Boolean(
+    grant && contract &&
+    typeof input.rewardPolicyVersion === 'string' &&
+    input.rewardPolicyVersion !== grant.rewardPolicyVersion &&
+    rewardPolicyByVersion(input.rewardPolicyVersion) &&
+    metadataMatchesContract(input as unknown as Record<string, unknown>, { ...contract, rewardPolicyVersion: input.rewardPolicyVersion })
+  );
+  if (!grant || !contract) {
+    permitted = false;
+    review = true;
+    reasonCode = reasonCode ?? 'unknown_catalogue_grant';
+  } else if (!policyChangedMidRun && !metadataMatchesContract(input as unknown as Record<string, unknown>, contract)) {
     return { status: 'rejected', reasonCode: 'metadata_mismatch', message: 'Attempt metadata does not match its catalogue grant.' };
   } else if (!rewardPolicyByVersion(grant.rewardPolicyVersion)) {
     return { status: 'rejected', reasonCode: 'unknown_reward_policy', message: 'Reward policy is not available.' };
@@ -229,6 +242,10 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
     if (timing.verdict === 'review') {
       review = true;
       reasonCode = timing.reasonCode;
+    }
+    if (policyChangedMidRun) {
+      review = true;
+      reasonCode = reasonCode ?? 'reward_policy_changed';
     }
   }
 

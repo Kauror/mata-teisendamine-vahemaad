@@ -111,15 +111,19 @@ function createAssignments(taskInstanceId: number, mode: AssignmentMode) {
 
 function childDailyTasksDone(learner: Learner, date: string) {
   // A task still awaiting parent approval counts as not-yet-done, so the shared
-  // daily bonus waits until every task is settled.
+  // daily bonus waits until every task is settled. A 'missed' task (its day
+  // ended with it undone) is not done either: the bonus for a day can still be
+  // settled after that day is over (a late approval or offline completion
+  // settles against its own day), and a missed task must not drop out of the
+  // count and let the bonus pay as if it had never been set.
   const row = db.prepare(`
     SELECT
       COUNT(*) as total,
-      SUM(CASE WHEN a.status IN ('active', 'pending_approval') THEN 1 ELSE 0 END) as pending,
+      SUM(CASE WHEN a.status IN ('active', 'pending_approval', 'missed') THEN 1 ELSE 0 END) as pending,
       SUM(CASE WHEN a.status = 'completed' THEN 1 ELSE 0 END) as completed
     FROM task_instance_assignments a
     JOIN task_instances i ON i.id = a.taskInstanceId
-    WHERE a.learner = ? AND i.date = ? AND a.status IN ('active', 'pending_approval', 'completed', 'locked')
+    WHERE a.learner = ? AND i.date = ? AND a.status IN ('active', 'pending_approval', 'completed', 'locked', 'missed')
   `).get(learner, date) as { total: number; pending: number | null; completed: number | null } | undefined;
   return Boolean(row && row.total > 0 && (row.pending ?? 0) === 0 && (row.completed ?? 0) > 0);
 }
@@ -394,7 +398,10 @@ function settleAssignment(row: AssignmentRow, completedAt: string, date: string)
 
   if (row.assignmentModeSnapshot === 'first_completer') {
     const lockedSiblings = db.prepare("SELECT id FROM task_instance_assignments WHERE taskInstanceId = ? AND id <> ? AND status IN ('active', 'pending_approval')").all(row.taskInstanceId, row.assignmentId) as Array<{ id: number }>;
-    db.prepare("UPDATE task_instance_assignments SET status = 'locked' WHERE taskInstanceId = ? AND id <> ? AND status IN ('active', 'pending_approval')").run(row.taskInstanceId, row.assignmentId);
+    // A sibling already closed as 'missed' (the task settled after its day,
+    // through a late approval or offline completion) lost the task too; it is
+    // locked like an active one so it does not count as a missed task of its own.
+    db.prepare("UPDATE task_instance_assignments SET status = 'locked' WHERE taskInstanceId = ? AND id <> ? AND status IN ('active', 'pending_approval', 'missed')").run(row.taskInstanceId, row.assignmentId);
     db.prepare("UPDATE task_instances SET status = 'completed', completedBy = ?, completedAt = ? WHERE id = ?").run(learner, completedAt, row.taskInstanceId);
     // A sibling who completed the same first-completer task offline lost the race.
     for (const sibling of lockedSiblings) emitTaskChangeForAssignment(sibling.id, 'conflict', { reasonCode: 'first_completer_taken' });

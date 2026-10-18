@@ -157,6 +157,22 @@ function earliestDayCovered(freeze: StreakFreezeRow) {
 
 export type SettlementResult = { covered: string[]; held: number };
 
+// A freeze spent on a day that turns out to have been studied after all goes
+// back to the child. Settlement runs on any read of the day after (the home
+// page on another phone, a parent's view), often before the child's own phone
+// has synced the exercise it did offline the evening before; without this the
+// freeze stays spent on a day that never needed it.
+function releaseFreezesOnStudiedDays(learner: Learner, dates: Set<string>) {
+  const spent = db
+    .prepare('SELECT id, coveredDate FROM streak_freezes WHERE learner = ? AND coveredDate IS NOT NULL')
+    .all(learner) as Array<{ id: number; coveredDate: string }>;
+  const updatedAt = nowIso();
+  for (const freeze of spent) {
+    if (!dates.has(freeze.coveredDate)) continue;
+    db.prepare('UPDATE streak_freezes SET consumedAt = NULL, coveredDate = NULL, updatedAt = ? WHERE id = ?').run(updatedAt, freeze.id);
+  }
+}
+
 // Spend held freezes on the days that broke the streak. Runs on every dashboard
 // read, so it must be idempotent — the unique index on (learner, coveredDate)
 // is the backstop.
@@ -165,7 +181,9 @@ export type SettlementResult = { covered: string[]; held: number };
 // pass them in (`knownStudyDates`) and reuse the same set afterwards.
 export function settleStreakFreezes(learner: Learner, today = todayDateString(), knownStudyDates?: Set<string>): SettlementResult {
   const settle = db.transaction((): SettlementResult => {
-    const gap = gapNeedingCover(learner, today, knownStudyDates);
+    const dates = knownStudyDates ?? studyDates(learner);
+    releaseFreezesOnStudiedDays(learner, dates);
+    const gap = gapNeedingCover(learner, today, dates);
     const available = heldRows(learner);
 
     // All or nothing. Spending two freezes on a three-day gap buys nothing:
