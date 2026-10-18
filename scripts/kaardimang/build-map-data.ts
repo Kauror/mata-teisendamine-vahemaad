@@ -163,6 +163,10 @@ function flagOf(iso2: string): string {
 
 function genitiveOf(nameEt: string): string {
   if (GENITIVE_ET[nameEt]) return GENITIVE_ET[nameEt];
+  // "X ja Y": every name is declined ("Trinidadi ja Tobago"), so the last
+  // letter of the whole name is not enough.
+  const consonantPart = nameEt.split(' ja ').find((part) => !/[aeiouõäöüé]$/iu.test(part));
+  if (consonantPart && consonantPart !== nameEt) fail(`"${nameEt}": "${consonantPart}" ends in a consonant; add the genitive to curation.ts GENITIVE_ET`);
   if (/[aeiouõäöü]$/i.test(nameEt)) return nameEt;
   fail(`"${nameEt}" ends in a consonant but has no genitive in curation.ts GENITIVE_ET`);
   return nameEt;

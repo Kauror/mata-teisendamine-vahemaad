@@ -59,6 +59,14 @@ describe('Kaardimäng catalog', () => {
     for (const country of CATALOG.countries) expect(country.nameGenEt, country.id).toMatch(/\S/);
   });
 
+  it('declines both names of an "X ja Y" country: "Mis on Trinidadi ja Tobago pealinn?"', () => {
+    expect(findCountry('TTO')!.nameGenEt).toBe('Trinidadi ja Tobago');
+    for (const country of CATALOG.countries.filter((item) => item.nameEt.includes(' ja '))) {
+      const first = country.nameEt.split(' ja ')[0];
+      if (/[^aeiouõäöüé]$/iu.test(first)) expect(country.nameGenEt.startsWith(`${first} ja `), country.id).toBe(false);
+    }
+  });
+
   it('uses EKI names and the checked capital exceptions', () => {
     expect(quizCapital(findCountry('EST')!)?.nameEt).toBe('Tallinn');
     expect(quizCapital(findCountry('LVA')!)?.nameEt).toBe('Riia');
