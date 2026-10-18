@@ -11,19 +11,30 @@ export function shuffle<T>(arr: readonly T[], seed = Date.now()) {
 // words labelled "Tere!" (Hello./Hi.) are indistinguishable on one board: the
 // child cannot tell the two cards apart, yet the board accepts only one of
 // them. The board takes words in order and skips any whose label (compared the
-// way the verifier compares it) is already on the board.
+// way the verifier compares it) is already on the board. The same holds the
+// other way round: «orange» is both «oranž» and «apelsin», «you», «too»,
+// «about» and «pool» also appear twice with different labels, and two
+// identical English cards cannot be told apart either; so a word whose
+// English prompt is already on the board is skipped too.
 function sprintLabel(word: EnglishVocabularyWord) {
   return word.estonian.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('et');
 }
 
+function sprintPrompt(word: EnglishVocabularyWord) {
+  return word.english.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('en');
+}
+
 export function pickSprintBoardWords(words: readonly EnglishVocabularyWord[], size: number) {
   const labels = new Set<string>();
+  const prompts = new Set<string>();
   const board: EnglishVocabularyWord[] = [];
   for (const word of words) {
     if (board.length === size) break;
     const label = sprintLabel(word);
-    if (labels.has(label)) continue;
+    const prompt = sprintPrompt(word);
+    if (labels.has(label) || prompts.has(prompt)) continue;
     labels.add(label);
+    prompts.add(prompt);
     board.push(word);
   }
   return board;
