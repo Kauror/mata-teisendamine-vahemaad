@@ -30,7 +30,7 @@ the app, and audit and fix the whole app.
   brought them back near the old size. The course list and Kaardimäng are now
   *smaller* than before the night (see E).
 - **Tests:** unit tests went from 1131 to 1333 and are all green on a quiet
-  machine. The Playwright suite result is in G.
+  machine. Every e2e spec passes after one spec fix and timing reruns (G).
 
 **Verdict: READY WITH LIMITATIONS** (see J).
 
@@ -166,6 +166,12 @@ fingerprints were committed first).
   Unit 16 draws the Pacific at both map edges (the new `twin` region), so the
   spec now counts regions instead.
 
+### UI (lead)
+
+- **UI-01 (low):** the home page's star/streak/trophy pills had a 44 px bleed
+  only on phones. On a tablet they were 50×26 px. The bleed is now in the
+  base rule (7189dc9); the accessibility spec and the width sweep pass.
+
 ## E. Performance
 
 First-load JS from the production build (`next build`), in kB:
@@ -226,25 +232,38 @@ Run on the final branch on a quiet machine (Windows, Node 22.23.3):
 | `npm test` | **1333/1333 pass, 138 files** (baseline 1131) |
 | `npm run test:content` | pass |
 | `npm run build` | pass |
-| `npm run test:e2e` (CI=1, Chromium + WebKit, 92 tests) | first full run: 85 passed, 2 flaky, 5 failed — see below |
+| `npm run test:e2e` (CI=1, Chromium + WebKit, 92 tests) | first full run: 85 passed, 2 flaky, 5 failed; after the spec fix and reruns, every failing spec passes (see below) |
+| `npm run test:e2e:audit` (52 tests) | 51 passed; the 1 failure is a cold-start flake (see below) |
+| Six-width layout sweep (temporary spec, not committed) | 320/360/390/768/1024/1280 px, 11 child and 3 parent pages: no sideways scroll anywhere; one target-size finding, fixed (D) |
 
-**The five failures in the first run:**
+**The five e2e failures in the first full run:**
 
-- **`textbook-real-units`, both browsers:** a real spec defect, explained in
-  D. It assumed one label per region, and Unit 16's Pacific is drawn twice.
-  After fixing the spec: _see final line below_.
+- **`textbook-real-units`, both browsers:** a real spec defect. It assumed one
+  label and one tap area per region, and Unit 16's Pacific is drawn twice
+  (commit 020a599). After the fix it passes in Chromium and WebKit (7.7 min).
 - **`parent-peek`, 3 tests, WebKit only:** `page.goto('/kiur')` timed out
-  after 37 minutes of dev-server run time. Rerun: all pass in both browsers.
+  after 37 minutes of dev-server run time. The rerun passed in both browsers.
 - **`remediation` (WebKit), flaky:** passed on retry, and passed in the rerun.
 
-**Earlier in the night, under load:**
+**The audit suite (`e2e-audit`):**
 
-- During the night, with 11 agents sharing the machine, the full `npm test`
-  timed out in unrelated files such as `syncDelta` and `hashSecretCli`. On the
-  quiet machine every file passes.
-- The `test:e2e:audit` stage of `npm run test:audit` failed at that time
-  because its server took 233 s to start (limit 120 s). That is environmental
-  and was not rerun.
+- It is not run in CI and still had expectations from before 2026-10-14:
+  - three parent sections added since;
+  - `/kiur/inglise-keel` is now a page, not a redirect.
+- Those were updated (commit 6ca89a3).
+- The remaining failure, "core screens stay within the phone viewport"
+  (Chromium), times out waiting for the parent dashboard on the first parent
+  login after a fresh server start. The same test then passes 3 of 3 times in
+  the same run, in both browsers. The helper is unchanged tonight; the
+  2026-10-15 audit noted the same local flake.
+
+**Layout sweep finding:** from 641 px up, the home page's ⭐/🔥/🏆 pills were
+50×26 px with no bleed. The bleed now sits in the base rule (commit 7189dc9),
+and the accessibility spec still passes.
+
+**Earlier in the night, under load:** with 11 agents sharing the machine, the
+full `npm test` timed out in unrelated files such as `syncDelta` and
+`hashSecretCli`. On the quiet machine every file passes.
 
 ## H. Remaining issues, by risk
 
@@ -288,7 +307,12 @@ Run on the final branch on a quiet machine (Windows, Node 22.23.3):
 - **Merged branches** (each keeps its own commits): `feat/textbook-unit15`,
   `-16`, `-17`, `-18`, `-19`, `-21`, `fix/overnight-engine`,
   `fix/overnight-rewards`, `fix/overnight-kaart`, `fix/overnight-security`,
-  `fix/overnight-content`, plus two performance commits (dd6c341, d1d7424).
+  `fix/overnight-content`, plus the lead's own commits:
+  - two performance commits (dd6c341, d1d7424);
+  - the e2e spec fix (020a599);
+  - the tablet-target fix (7189dc9);
+  - the audit-suite update (6ca89a3);
+  - this report.
 - **Migrations:** none. Stored data formats are unchanged; the maths v1–v3
   generators are kept.
 - **Deployment:** **not deployed.** Follow `docs/release-checklist.md`:
