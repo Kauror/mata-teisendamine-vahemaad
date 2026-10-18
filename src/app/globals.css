@@ -1805,6 +1805,76 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-region[data-selected="true"] .tb-u16-panel,.tb-region[data-selected="true"] .tb-u16-box{stroke:var(--tb-dia-selected);stroke-width:4}
 .tb-region[data-correct="true"] .tb-u16-panel,.tb-region[data-correct="true"] .tb-u16-box{stroke:var(--tb-dia-correct);stroke-width:4}
 .tb-region[data-wrong="true"] .tb-u16-panel,.tb-region[data-wrong="true"] .tb-u16-box{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
+/* Unit 21 "Maavärinad" diagrams. Safety pictures: red = danger or force, green = the safe way. */
+.tb-u21-frame{fill:var(--tb-dia-sky)}
+.tb-u21-panel{fill:var(--tb-dia-tower);stroke:var(--tb-dia-panel-line);stroke-width:1.5}
+.tb-u21-rock{fill:var(--tb-dia-relief-mid)}
+.tb-u21-layer{fill:none;stroke:var(--tb-dia-soil);stroke-width:1.5;stroke-opacity:.6}
+.tb-u21-ground-line{fill:none;stroke:var(--tb-dia-land-line);stroke-width:3;stroke-linejoin:round}
+.tb-u21-grass{fill:var(--tb-dia-leaf)}
+.tb-u21-crack{fill:none;stroke:var(--tb-dia-ink);stroke-width:2.5;stroke-linejoin:round}
+.tb-u21-crack-locked{fill:none;stroke:var(--tb-dia-ink);stroke-width:3.5;stroke-linejoin:round}
+.tb-u21-stitch{fill:none;stroke:var(--tb-dia-ink);stroke-width:2;stroke-linecap:round}
+.tb-u21-fault{fill:none;stroke:var(--tb-dia-soil-line);stroke-width:4;stroke-linecap:round}
+.tb-u21-stress,.tb-u21-shake,.tb-u21-glass-crack,.tb-u21-sound{fill:none;stroke:var(--tb-dia-key-line);stroke-linecap:round;stroke-linejoin:round}
+.tb-u21-stress{stroke-width:4}
+.tb-u21-shake,.tb-u21-sound{stroke-width:3}
+.tb-u21-glass-crack{stroke-width:2.5}
+.tb-u21-slip,.tb-u21-route{fill:none;stroke:var(--tb-dia-land-line);stroke-linecap:round}
+.tb-u21-slip{stroke-width:4}
+.tb-u21-route{stroke-width:6}
+.tb-u21-flow{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:3;stroke-linecap:round}
+.tb-u21-head-red{fill:var(--tb-dia-key-line)}
+.tb-u21-head-green{fill:var(--tb-dia-land-line)}
+.tb-u21-head-blue{fill:var(--tb-dia-sea-line)}
+.tb-u21-wave{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:2;stroke-dasharray:6 5}
+.tb-u21-plumb{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:2 4}
+.tb-u21-focus{fill:var(--tb-dia-key-line);stroke:var(--tb-dia-ink-light);stroke-width:2}
+.tb-u21-epicenter{fill:var(--tb-dia-sun);stroke:var(--tb-dia-ink);stroke-width:2}
+.tb-u21-ocean{fill:var(--tb-dia-pol-sea)}
+.tb-u21-continent{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1;stroke-linejoin:round}
+.tb-u21-place-ring{fill:none;stroke:var(--tb-dia-key-line);stroke-width:2}
+.tb-u21-place{fill:var(--tb-dia-key-line)}
+.tb-u21-water{fill:var(--tb-dia-globe-light)}
+.tb-u21-wave-line{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-u21-old-level{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:2;stroke-dasharray:5 4}
+.tb-u21-seabed{fill:var(--tb-dia-relief-mid);stroke:var(--tb-dia-soil);stroke-width:1}
+.tb-u21-sand{fill:var(--tb-dia-sand);stroke:var(--tb-dia-sand-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u21-wet-sand{fill:none;stroke:var(--tb-dia-soil);stroke-width:4;stroke-linecap:round}
+.tb-u21-shore,.tb-u21-land{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u21-boat{fill:var(--tb-dia-hull);stroke:var(--tb-dia-hull-line);stroke-width:1}
+.tb-u21-wall{fill:var(--tb-dia-root);stroke:var(--tb-dia-soil-line);stroke-width:1.5}
+.tb-u21-roof{fill:var(--tb-dia-flag);stroke:var(--tb-dia-soil-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u21-door{fill:var(--tb-dia-soil)}
+.tb-u21-trunk{fill:var(--tb-dia-soil)}
+.tb-u21-tree{fill:var(--tb-dia-stem)}
+.tb-u21-post{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:3}
+.tb-u21-sign{fill:var(--tb-dia-land-line)}
+.tb-u21-sign-arrow{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tb-u21-floor{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:2}
+.tb-u21-table{fill:var(--tb-dia-hull);stroke:var(--tb-dia-hull-line);stroke-width:1}
+.tb-u21-head,.tb-u21-hand{fill:var(--tb-dia-sun);stroke:var(--tb-dia-person);stroke-width:2}
+.tb-u21-person{fill:none;stroke:var(--tb-dia-person);stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+.tb-u21-glass{fill:var(--tb-dia-panel-line);stroke:var(--tb-dia-tower-line);stroke-width:1.5}
+.tb-u21-window-bar{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:3}
+.tb-u21-shard{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:1}
+.tb-u21-building{fill:var(--tb-dia-elephant);stroke:var(--tb-dia-elephant-line);stroke-width:1.5}
+.tb-u21-fall{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:3 3}
+.tb-u21-debris{fill:var(--tb-dia-rock-line)}
+.tb-u21-lawn{fill:var(--tb-dia-leaf);stroke:var(--tb-dia-land-line);stroke-width:1.5;stroke-dasharray:4 3}
+.tb-u21-tuft{fill:none;stroke:var(--tb-dia-stem);stroke-width:2;stroke-linecap:round}
+.tb-u21-pole{fill:none;stroke:var(--tb-dia-hull-line);stroke-width:5;stroke-linecap:round}
+.tb-u21-wire{fill:none;stroke:var(--tb-dia-ink);stroke-width:2}
+.tb-u21-spark{fill:var(--tb-dia-sun);stroke:var(--tb-dia-sun-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u21-antenna{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;stroke-linecap:round}
+.tb-u21-radio{fill:var(--tb-dia-pol-c);stroke:var(--tb-dia-ink);stroke-width:2}
+.tb-u21-speaker{fill:var(--tb-dia-tower);stroke:var(--tb-dia-ink);stroke-width:2}
+.tb-u21-knob{fill:var(--tb-dia-sun);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u21-battery{fill:var(--tb-dia-land-line);stroke:var(--tb-dia-ink);stroke-width:1}
+/* A chosen, correct or wrong card is outlined as a whole (its hit area already is). */
+.tb-region[data-selected="true"] .tb-u21-panel{stroke:var(--tb-dia-selected);stroke-width:3}
+.tb-region[data-correct="true"] .tb-u21-panel{stroke:var(--tb-dia-correct);stroke-width:3}
+.tb-region[data-wrong="true"] .tb-u21-panel{stroke:var(--tb-dia-wrong);stroke-width:3;stroke-dasharray:6 4}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}
