@@ -1674,6 +1674,34 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-region[data-selected="true"] .tb-u14-pop,.tb-region[data-selected="true"] .tb-u14-panel{stroke:var(--tb-dia-selected);stroke-width:4}
 .tb-region[data-correct="true"] .tb-u14-pop,.tb-region[data-correct="true"] .tb-u14-panel{stroke:var(--tb-dia-correct);stroke-width:4}
 .tb-region[data-wrong="true"] .tb-u14-pop,.tb-region[data-wrong="true"] .tb-u14-panel{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
+/* Unit 15 "Mandrid ja maailmajaod": land and water bar, two world maps (outlines drawn at half size, so strokes are doubled), the continent / world part scheme. */
+.tb-u15-bar-land{fill:var(--tb-dia-earth-land)}
+.tb-u15-bar-water{fill:var(--tb-dia-earth-sea)}
+.tb-u15-bar-grid{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:.6;stroke-opacity:.55;pointer-events:none}
+.tb-u15-bar-split{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;pointer-events:none}
+.tb-u15-bar-frame{fill:none;stroke:var(--tb-dia-ink);stroke-width:2;pointer-events:none}
+.tb-u15-sea{fill:var(--tb-dia-pol-sea)}
+.tb-u15-continent,.tb-u15-neutral-land{stroke:var(--tb-dia-tower-line);stroke-width:1.2;stroke-linejoin:round}
+.tb-u15-continent-north-america{fill:var(--tb-dia-land)}
+.tb-u15-continent-south-america{fill:var(--tb-dia-pol-a)}
+.tb-u15-continent-eurasia{fill:var(--tb-dia-pol-b)}
+.tb-u15-continent-africa{fill:var(--tb-dia-pol-d)}
+.tb-u15-continent-australia{fill:var(--tb-dia-pol-c)}
+.tb-u15-continent-antarctica{fill:var(--tb-dia-tower)}
+.tb-u15-neutral-land{fill:var(--tb-dia-sand)}
+.tb-u15-world-land{pointer-events:none}
+.tb-u15-pointer{fill:none;stroke:var(--tb-dia-ink);stroke-width:2;stroke-dasharray:4 3;stroke-linecap:round}
+.tb-u15-link-panel{fill:var(--tb-dia-tower);stroke:var(--tb-dia-panel-line);stroke-width:2}
+.tb-u15-box{stroke-width:2}
+.tb-u15-box-continent{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line)}
+.tb-u15-box-part{fill:var(--tb-dia-tint-b);stroke:var(--tb-dia-sand-line);stroke-dasharray:6 3}
+.tb-u15-box-text,.tb-u15-legend-text{font-family:var(--font-display);font-weight:800;fill:var(--tb-dia-ink)}
+.tb-u15-arrow{fill:none;stroke:var(--tb-dia-flow);stroke-width:2.5;stroke-linecap:round}
+.tb-u15-arrowhead{fill:var(--tb-dia-flow)}
+/* A chosen continent is outlined on its own coast too, since its tap area covers only part of it. */
+.tb-region[data-selected="true"] .tb-u15-continent,.tb-region[data-selected="true"] .tb-u15-link-panel{stroke:var(--tb-dia-selected);stroke-width:4}
+.tb-region[data-correct="true"] .tb-u15-continent,.tb-region[data-correct="true"] .tb-u15-link-panel{stroke:var(--tb-dia-correct);stroke-width:4}
+.tb-region[data-wrong="true"] .tb-u15-continent,.tb-region[data-wrong="true"] .tb-u15-link-panel{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}
