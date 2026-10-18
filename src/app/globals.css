@@ -1899,7 +1899,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .km-feature[data-paint='selected']{fill:var(--km-selected);stroke:var(--km-selected-line);stroke-width:1.5}
 .km-map[data-interactive='true'] .km-feature,.km-map[data-interactive='true'] .km-area,.km-map[data-interactive='true'] .km-marker{cursor:pointer}
 .km-feature:focus-visible,.km-area:focus-visible,.km-marker:focus-visible{outline:none;stroke:var(--focus-ring);stroke-width:3}
-.km-marker-hit{fill:var(--km-marker-hit);stroke:none}
+.km-marker-tap{fill:var(--km-marker-hit);stroke:none}
+.km-marker-hit{fill:var(--km-marker-hit);stroke:none;pointer-events:none}
 .km-marker-dot{fill:var(--km-marker);stroke:var(--km-pin-halo);stroke-width:1.5;vector-effect:non-scaling-stroke}
 .km-marker[data-paint='highlight'] .km-marker-hit{fill:var(--km-highlight);stroke:var(--km-highlight-line);stroke-dasharray:none}
 .km-marker[data-paint='correct'] .km-marker-hit{fill:var(--km-correct);stroke:var(--km-correct-line);stroke-dasharray:none}

@@ -5,7 +5,7 @@ import { CATALOG } from '@/content/kaardimang/catalog';
 import { DATA_VERSION, MAP_VIEWS } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 import { emptyState, NO_AREA_ANSWER, SEA_ANSWER, type ClientQuestion } from '@/lib/kaardimang/engine';
-import { answerIdFor, playAreaPaint, playPaint, scoreLine } from './mapAnswers';
+import { answerIdFor, markerHitRadii, playAreaPaint, playPaint, scoreLine } from './mapAnswers';
 
 function question(targetType: ClientQuestion['targetType'], extra: Partial<ClientQuestion> = {}): ClientQuestion {
   return {
@@ -31,6 +31,32 @@ describe('answerIdFor', () => {
     expect(answerIdFor(question('country'), { kind: 'area', id: 'pacific' })).toBe(SEA_ANSWER);
     expect(answerIdFor(question('ocean'), { kind: 'area', id: 'pacific' })).toBe('pacific');
     expect(answerIdFor(question('country'), { kind: 'marker', id: 'VAT' })).toBe('VAT');
+  });
+});
+
+describe('markerHitRadii', () => {
+  const views = MAP_VIEWS.map((view) => JSON.parse(readFileSync(path.join(process.cwd(), 'public', 'kaardimang', 'maps', DATA_VERSION, `${view.id}.json`), 'utf8')) as MapViewData);
+
+  // 360 px phone (≈338 px of map), a tablet and a wide desktop map.
+  it.each([1000 / 338, 1000 / 740, 1])('never lets two hit circles overlap, so a tap means one country (%f units/px)', (units) => {
+    for (const view of views) {
+      const radii = markerHitRadii(view.markers, units);
+      for (const a of view.markers) {
+        const halfGap = Math.min(Infinity, ...view.markers.filter((other) => other !== a).map((other) => Math.hypot(a.x - other.x, a.y - other.y) / 2));
+        expect(radii.get(a.id)!, `${view.id}/${a.id}`).toBeGreaterThanOrEqual(Math.min(a.hr, halfGap));
+        for (const b of view.markers) {
+          if (a.id >= b.id) continue;
+          const gap = Math.hypot(a.x - b.x, a.y - b.y);
+          expect(radii.get(a.id)! + radii.get(b.id)!, `${view.id}: ${a.id}/${b.id}`).toBeLessThanOrEqual(gap + 0.01);
+        }
+      }
+    }
+  });
+
+  it('keeps the 10 px minimum for a marker with room around it', () => {
+    const radii = markerHitRadii([{ id: 'MLT', x: 100, y: 100, hr: 12 }, { id: 'TUN', x: 400, y: 100, hr: 34 }], 3);
+    expect(radii.get('MLT')).toBe(30);
+    expect(radii.get('TUN')).toBe(34);
   });
 });
 

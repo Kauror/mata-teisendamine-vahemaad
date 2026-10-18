@@ -49,6 +49,20 @@ export function playAreaPaint(question: ClientQuestion, id: string): Paint {
   return null;
 }
 
+// The tap circle of each small-country marker, in map units, for a map shown
+// at `units` map units per CSS pixel: at least 10 px where there is room, but
+// never past half the gap to the nearest marker. The build keeps the circles
+// apart in map units (hr); a phone-sized minimum alone would make them overlap
+// again, and a tap between two dots would then go to whichever is drawn last.
+export const MARKER_MIN_HIT_PX = 10;
+export function markerHitRadii(markers: Array<{ id: string; x: number; y: number; hr: number }>, units: number): Map<string, number> {
+  return new Map(markers.map((marker) => {
+    let halfGap = Infinity;
+    for (const other of markers) if (other !== marker) halfGap = Math.min(halfGap, Math.hypot(other.x - marker.x, other.y - marker.y) / 2);
+    return [marker.id, Math.min(Math.max(marker.hr, MARKER_MIN_HIT_PX * units), halfGap)];
+  }));
+}
+
 // "8 küsimusest 6 õiget": partitive after every number but 1.
 export function scoreLine(correct: number, total: number): string {
   return `${total} küsimusest ${correct} ${correct === 1 ? 'õige' : 'õiget'}`;
