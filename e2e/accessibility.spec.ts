@@ -8,7 +8,8 @@ test('dashboard has semantic independent links with keyboard focus and mobile to
   await expect(page.locator('.child-dashboard-card [role="button"]')).toHaveCount(0);
   await expect(page.locator('a button, button a, a a, button button')).toHaveCount(0);
 
-  const primary = page.getByRole('link', { name: 'Harjutused', exact: true }).first();
+  // The child's name is the card's link; its ::after covers the whole card.
+  const primary = page.getByRole('link', { name: 'Kiur', exact: true });
   await primary.focus();
   await expect(primary).toBeFocused();
   expect(await primary.evaluate((node) => getComputedStyle(node).outlineStyle)).not.toBe('none');
@@ -17,7 +18,7 @@ test('dashboard has semantic independent links with keyboard focus and mobile to
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  const primaryBox = await page.getByRole('link', { name: 'Harjutused', exact: true }).first().boundingBox();
+  const primaryBox = await page.locator('.child-dashboard-card').first().boundingBox();
   const historyBox = await page.getByRole('link', { name: 'Ajalugu', exact: true }).boundingBox();
   expect(primaryBox?.height).toBeGreaterThanOrEqual(44);
   expect(historyBox?.height).toBeGreaterThanOrEqual(44);
@@ -46,25 +47,25 @@ test('dashboard metrics explain their live values on focus and tap', async ({ pa
 
   await navigateStable(page, '/kiur');
   const achievements = page.locator('.achievement-badge');
-  await expect(achievements).toHaveCount(3);
+  await expect(achievements).toHaveCount(2);
   // The badge caption is now a shortened title, a bare "1/7" and no padlock, so
   // the accessible name has to carry the full title and the lock state itself
   // on top of the live count it always carried.
   await expect(achievements.nth(0)).toHaveAccessibleName(/^\d+ harjutust, \d+\/\d+, (tehtud|veel lukus)\. Sul on seni tehtud \d+ (harjutus|harjutust)\.$/);
-  await expect(achievements.nth(1)).toHaveAccessibleName(/^Täna, \d+\/\d+, (tehtud|veel lukus)\. Täna oled teinud \d+ (harjutus|harjutust)\.$/);
-  await expect(achievements.nth(2)).toHaveAccessibleName(/^Täiuslik nädal, \d+\/\d+, (tehtud|veel lukus)\. Sellel nädalal oled teinud \d+ (harjutus|harjutust)\.$/);
+  // Today's count is the exercise grid's job; the card keeps the milestone and the week.
+  await expect(achievements.nth(1)).toHaveAccessibleName(/^Täiuslik nädal, \d+\/\d+, (tehtud|veel lukus)\. Sellel nädalal oled teinud \d+ (harjutus|harjutust)\.$/);
 });
 
 test('the child identity card keeps one row of achievements and 44px targets', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await navigateStable(page, '/kiur');
-  await expect(page.locator('.achievement-badge')).toHaveCount(3);
+  await expect(page.locator('.achievement-badge')).toHaveCount(2);
 
   // Identity, points, shop/history and achievements are one card.
   const card = page.locator('.child-identity-card');
   await expect(card.locator('.child-home-avatar')).toHaveCount(1);
   await expect(card.locator('.daily-summary-metric')).not.toHaveCount(0);
-  await expect(card.locator('.achievement-badge')).toHaveCount(3);
+  await expect(card.locator('.achievement-badge')).toHaveCount(2);
 
   // The saving comes from the achievements sharing a single row; wrapping would
   // give it straight back.
@@ -100,11 +101,11 @@ test('an achievement tooltip is actually painted, not clipped by its own row', a
   await page.setViewportSize({ width: 360, height: 800 });
   await navigateStable(page, '/kiur');
   const badges = page.locator('.achievement-badge');
-  await expect(badges).toHaveCount(3);
+  await expect(badges).toHaveCount(2);
 
   // Every badge, because only the strip's overflow decides this and a
-  // regression would take all three at once.
-  for (let index = 0; index < 3; index += 1) {
+  // regression would take both at once.
+  for (let index = 0; index < 2; index += 1) {
     await badges.nth(index).focus();
     // toBeVisible() and computed visibility both pass on a tooltip that an
     // ancestor's overflow has clipped out of sight, and elementFromPoint is no

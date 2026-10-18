@@ -271,3 +271,29 @@ export function formatDayMonth(date: string): string {
   const [, month, day] = date.split('-').map(Number);
   return `${day}.${month}`;
 }
+
+// A club's chip appears this long before it starts: a gentle reminder, not a timetable.
+export const CLUB_REMINDER_LEAD = 60;
+
+const CLUB_ICONS: Record<string, string> = { Judo: '🥋', Robootika: '🤖', Ukulele: '🎸', Tantsutund: '💃', 'Õpiabi': '📚' };
+
+export type HomeStatus = { kind: 'school' | 'club' | 'start'; icon: string; text: string };
+
+// The one short line after a child's name on the home page. At school until the
+// last bell; a club from an hour before it starts until it ends; and when school
+// starts, in the morning before it or from the evening before (18.00). Nothing
+// otherwise, so a weekend afternoon shows no chip at all.
+export function homeStatus(learner: Learner, clock: AppClock): HomeStatus | null {
+  if (isSchoolDate(clock.date)) {
+    const state = nowState(learner, clock);
+    const end = schoolEndsAt(learner, clock.weekday);
+    if ((state.kind === 'lesson' || state.kind === 'break') && end !== null && clock.minutes < end) {
+      return { kind: 'school', icon: '🏫', text: `koolis kuni ${formatClock(end)}` };
+    }
+    const club = (schoolDay(learner, clock.weekday)?.clubs ?? []).find((item) => clock.minutes < item.end && item.start - clock.minutes <= CLUB_REMINDER_LEAD);
+    if (club) return { kind: 'club', icon: CLUB_ICONS[club.name] ?? '⏰', text: `${club.name} ${formatClock(club.start)}` };
+  }
+  const hint = schoolStartHint(learner, clock);
+  if (!hint || (hint.when === 'tomorrow' && clock.minutes < EVENING_BEFORE_SCHOOL)) return null;
+  return { kind: 'start', icon: '🎒', text: `kool algab ${formatClock(hint.minutes)}` };
+}

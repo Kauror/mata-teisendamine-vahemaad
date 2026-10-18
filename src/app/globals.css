@@ -254,8 +254,23 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .leaderboard-bar[data-empty="true"] .leaderboard-bar-kiur,.leaderboard-bar[data-empty="true"] .leaderboard-bar-kirsi{background:var(--leaderboard-empty)}
 @media (max-width:640px){.today-leaderboard{padding:8px 10px}}
 .children-list{display:grid;gap:12px}
-.child-dashboard-card{background:#fff;border-radius:20px;padding:12px;display:grid;gap:8px;border:1px solid var(--learner-soft,var(--card-border-colour));box-shadow:var(--card-shadow)}
-.child-profile{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Home: "choose your character". The whole card opens the child's page: the
+   name link's ::after covers the card, and the metric pills sit above it so a
+   tap on a number still explains it. */
+.child-dashboard-card{position:relative;background:#fff;border-radius:20px;padding:12px;display:flex;align-items:center;gap:12px;border:1px solid var(--learner-soft,var(--card-border-colour));box-shadow:var(--card-shadow)}
+.child-card-body{flex:1 1 auto;min-width:0;display:grid;gap:6px}
+.child-card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.child-card-link{color:inherit;text-decoration:none;border-radius:6px}
+.child-card-link::after{content:'';position:absolute;inset:0;border-radius:20px}
+.child-card-link:focus{outline:3px solid var(--focus-ring);outline-offset:2px}
+.child-dashboard-card .child-overview{position:relative;z-index:1}
+.child-status{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800;line-height:1.2;white-space:nowrap;background:var(--school-home-soft);color:var(--school-home-ink)}
+.child-status[data-kind="school"]{background:var(--school-now-soft);color:var(--school-now-ink)}
+.child-status[data-kind="club"]{background:var(--school-club-soft);color:var(--school-club-ink)}
+.child-last{margin:0;display:flex;gap:6px;min-width:0;font-size:12.5px;line-height:1.3;color:#33416f}
+.child-last-label{flex:none;color:#64748b;font-weight:800}
+.child-last-what{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.child-card-arrow{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--learner,#2563eb);color:#fff;font-size:18px;font-weight:900}
 .child-avatar{width:52px;height:52px;display:grid;place-items:center;border-radius:18px;background:linear-gradient(180deg,var(--learner-soft,#eff6ff),var(--learner-soft-2,#dbeafe));font-size:32px;line-height:1;box-shadow:inset 0 0 0 3px #fff}
 .child-name{margin:0;font-size:24px;line-height:1.05;color:var(--learner,#0b1b45)}
 .child-overview{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -311,17 +326,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
      visually small but extend the hit area vertically, where there is room —
      horizontally only a sliver, so a tap cannot land on the neighbouring pill. */
   .child-overview .metric-tooltip-trigger::after{content:'';position:absolute;inset:-8px -1px}
-  .child-dashboard-card .recent-panel{padding:7px 9px;border-radius:11px;gap:2px}
-  .child-dashboard-card .recent-title{font-size:12.5px}
-  .child-dashboard-card .exercise-list{gap:2px}
-  .child-dashboard-card .exercise-row,.child-dashboard-card .recent-empty{font-size:12px}
 }
-.recent-panel{border-radius:13px;padding:8px 10px;display:grid;gap:4px;border:0;background:var(--inner-bg)}
-.recent-title{margin:0;font-size:14px;line-height:1.2}
-.exercise-list{display:grid;gap:3px}
-.exercise-row{margin:0;font-size:13.5px;color:#33416f;word-break:break-word;line-height:1.25}
 .recent-empty{margin:0;color:#64748b;font-size:14px;line-height:1.25}
-.card-actions{display:flex;align-items:center;justify-content:flex-start;gap:8px;margin-top:2px;flex-wrap:wrap}
 /* Deliberately compact: the card around it is set in 12–13px, so the button
    only has to be the firmest thing on the card, not the biggest. The 44px
    floor is a tap target, not a style choice — it stays even as the type,
@@ -330,16 +336,14 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .subject-button:hover{transform:translateY(-2px);box-shadow:0 7px 16px rgba(37,99,235,.26)}
 .subject-button:focus{outline:3px solid #99a8ff;outline-offset:2px}
 .subject-button:active{transform:translateY(0)}
-.child-dashboard-card[data-accent="pink"] .subject-button{background:linear-gradient(180deg,#ec4899 0%,#db2777 100%);box-shadow:0 3px 8px rgba(219,39,119,.18)}
 .history-link{min-height:44px;display:inline-flex;align-items:center;gap:8px;color:#2563eb;font-size:17px;font-weight:650;text-decoration:none;border-bottom:1px dashed currentColor}
-.child-dashboard-card[data-accent="pink"] .history-link{color:#db2777}
 .noticeboard{background:#fffdf5;border:1px solid #fef0c7;border-radius:12px;padding:9px 12px}
 .noticeboard-title{cursor:pointer;font-size:13px;font-weight:800;color:#a16207;opacity:.85}
 .noticeboard-text{margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere;color:#6b5a32;font-weight:600;font-size:13px;line-height:1.4}
 .dashboard-footer-links{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:2px}
 .dashboard-version{margin:0;text-align:center;color:#cbd5e1;font-size:12px;font-weight:700}
 .dashboard-history-link{width:fit-content;min-height:44px;margin:2px auto 0;display:inline-flex;align-items:center;color:#2563eb;font-size:16px;font-weight:800;text-decoration:none;border-bottom:1px dashed currentColor}
-@media (max-width:560px){.dashboard{padding:8px}.children-list{gap:8px}.child-dashboard-card{border-radius:16px;padding:10px;gap:7px}.child-profile{gap:9px}.child-avatar{width:46px;height:46px;border-radius:16px;font-size:27px;box-shadow:inset 0 0 0 3px #fff}.child-name{font-size:21px}.streak-badge{min-height:32px;font-size:13px}.card-actions{margin-top:0}.subject-button{width:fit-content;min-height:44px;border-radius:10px;padding:0 12px;gap:6px;font-size:13px;box-shadow:0 2px 7px rgba(37,99,235,.15)}.child-dashboard-card[data-accent="pink"] .subject-button{box-shadow:0 2px 7px rgba(219,39,119,.14)}.history-link{justify-content:center}.dashboard-footer-links{gap:12px}}
+@media (max-width:560px){.dashboard{padding:8px}.children-list{gap:8px}.child-dashboard-card{border-radius:16px;padding:10px;gap:7px}.child-avatar{width:46px;height:46px;border-radius:16px;font-size:27px;box-shadow:inset 0 0 0 3px #fff}.child-name{font-size:21px}.streak-badge{min-height:32px;font-size:13px}.subject-button{width:fit-content;min-height:44px;border-radius:10px;padding:0 12px;gap:6px;font-size:13px;box-shadow:0 2px 7px rgba(37,99,235,.15)}.history-link{justify-content:center}.dashboard-footer-links{gap:12px}}
 
 
 .subject-flow-page{max-width:900px}
@@ -1256,40 +1260,17 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 [data-subject="dig"]{--subject:var(--subject-dig);--subject-soft:var(--subject-dig-soft)}
 [data-subject="teh"]{--subject:var(--subject-teh);--subject-soft:var(--subject-teh-soft)}
 
-/* Home: the second button beside Harjutused. */
-.timetable-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 12px;border-radius:10px;background:#fff;color:var(--learner,#1d4ed8);font-size:13px;font-weight:800;text-decoration:none;box-shadow:inset 0 0 0 2px var(--learner-soft-2,#bfdbfe)}
-.timetable-button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
-
-/* Home: where the children are right now. On school days, and from the
-   evening before one. One row per child: avatar | pill over the toggle |
-   divider | what is on and until when. Fits a 375px phone. */
-.school-now-card{background:#fff;border-radius:20px;padding:2px 12px;border:var(--card-border);box-shadow:var(--card-shadow);display:grid;min-width:0}
-.school-now-row{display:grid;grid-template-columns:40px auto minmax(0,1fr);column-gap:10px;row-gap:6px;padding:8px 0;align-items:center;min-width:0}
-.school-now-row+.school-now-row{border-top:1px solid var(--school-line)}
-.school-now-avatar{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:22px;background:linear-gradient(180deg,var(--learner-soft),var(--learner-soft-2))}
-.school-now-state{display:grid;justify-items:start;gap:2px}
-.school-now-detail{display:grid;gap:1px;min-width:0;padding-left:10px;border-left:1px solid var(--school-line)}
-.school-now-what{font-size:15px;font-weight:900;line-height:1.25;color:#0b1b45;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.school-now-time{font-size:11.5px;font-weight:700;color:#64748b;font-variant-numeric:tabular-nums;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.school-pill{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;border-radius:999px;padding:3px 9px;white-space:nowrap}
-.school-pill[data-state="lesson"]{background:var(--school-now-soft);color:var(--school-now-ink)}
-.school-pill[data-state="break"]{background:var(--school-break-soft);color:var(--school-break-ink);box-shadow:inset 0 0 0 1px var(--school-break-line)}
-.school-pill[data-state="club"]{background:var(--school-club-soft);color:var(--school-club-ink)}
-.school-pill[data-state="home"]{background:var(--school-home-soft);color:var(--school-home-ink)}
-/* 26px tall + 9px each side = 44px. */
-.school-now-toggle{position:relative;width:fit-content;min-height:26px;padding:0 2px;border:0;background:none;box-shadow:none;color:var(--learner,#1d4ed8);font-size:12px;font-weight:800;white-space:nowrap;cursor:pointer}
-.school-now-toggle::after{content:'';position:absolute;inset:-9px -6px}
-.school-now-toggle:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px;border-radius:6px}
-/* Today's list sits under the text, not under the avatar. */
-.school-now-list{grid-column:2/-1;list-style:none;margin:0;padding:0;display:grid;gap:1px;min-width:0}
-/* The time column is sized in em and never wraps, so a larger text size on the
-   phone widens it instead of breaking "10.00–10.45" over two lines. */
-.school-now-list li{display:grid;grid-template-columns:7.4em minmax(0,1fr);gap:6px;font-size:12.5px;font-weight:700;color:#334155;padding:2px 0;font-variant-numeric:tabular-nums}
-.school-now-list li>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.school-now-list li>span:first-child{color:var(--school-muted);white-space:nowrap}
-.school-now-list li[data-when="past"],.school-now-list li[data-when="past"]>span:first-child{color:var(--school-muted)}
-.school-now-list li[data-when="now"],.school-now-list li[data-when="now"]>span:first-child{color:var(--school-now-ink)}
-.school-now-list li[data-kind="club"]{color:var(--school-club-ink)}
+/* The child's page: the timetable folds into one row on a day off and opens
+   by itself on a school day. The head is a 44px button. */
+.child-timetable{background:#fff;border-radius:18px;border:var(--card-border);box-shadow:var(--card-shadow);display:grid;min-width:0}
+.child-timetable-head{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 14px;border:0;background:none;box-shadow:none;color:#0b1b45;font-size:15px;font-weight:850;text-align:left;cursor:pointer;border-radius:18px}
+.child-timetable-head:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+.child-timetable-title{font-family:var(--font-display)}
+.child-timetable-sum{margin-left:auto;font-size:12.5px;font-weight:700;color:#64748b;white-space:nowrap}
+.child-timetable-caret{margin-left:auto;color:#94a3b8;transition:transform 160ms ease}
+.child-timetable-sum+.child-timetable-caret{margin-left:4px}
+.child-timetable[data-open="true"] .child-timetable-caret{transform:rotate(180deg)}
+.child-timetable-body{padding:0 12px 12px;min-width:0}
 
 /* The child's timetable page. */
 .timetable-head{display:flex;align-items:center;gap:var(--identity-gap)}

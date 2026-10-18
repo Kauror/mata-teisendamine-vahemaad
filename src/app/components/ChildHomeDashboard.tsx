@@ -5,6 +5,7 @@ import NoticeBoard from '@/app/components/NoticeBoard';
 import YesterdayPointsPopup from '@/app/components/YesterdayPointsPopup';
 import ChildAvatarEasterEgg from '@/app/components/ChildAvatarEasterEgg';
 import ChildExerciseGrid from '@/app/components/ChildExerciseGrid';
+import ChildTimetableSection from '@/app/components/ChildTimetableSection';
 import PeekModeBanner from '@/app/components/PeekModeBanner';
 import { ChildExerciseCard } from '@/lib/childExerciseCards';
 import { CHILD_PAGE_DATA_PRELOAD, childPageDataPreloads } from '@/lib/childPageData';
@@ -51,6 +52,7 @@ export default function ChildHomeDashboard({
         <DailyTasksPanel
           learner={child.learner}
           identity={<ChildAvatarEasterEgg learner={child.learner} name={child.name} avatar={child.avatar} />}
+          afterIdentity={<ChildTimetableSection learner={child.learner} />}
         />
 
         <ChildExerciseGrid

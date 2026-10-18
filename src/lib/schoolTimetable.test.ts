@@ -4,6 +4,7 @@ import {
   clubsLeftToday,
   defaultTab,
   hasMoreToday,
+  homeStatus,
   isKnownSubject,
   isSchoolDate,
   nextDayHeading,
@@ -176,5 +177,42 @@ describe('the home card and its "Kool algab" line', () => {
   it('gives no hint while lessons are on or in the gap before an evening club', () => {
     expect(schoolStartHint('kiur', wed(10, 20))).toBeNull();
     expect(schoolStartHint('kiur', { date: '2026-10-13', weekday: 1, minutes: 16 * 60 })).toBeNull();
+  });
+});
+
+describe('the status chip on the home page', () => {
+  const at = (date: string, hours: number, minutes = 0): AppClock => ({ date, weekday: weekdayOf(date), minutes: hours * 60 + minutes });
+
+  it('says how long a child is at school, through breaks too', () => {
+    expect(homeStatus('kiur', wed(10, 20))).toEqual({ kind: 'school', icon: '🏫', text: 'koolis kuni 12.45' });
+    expect(homeStatus('kiur', wed(10, 47))?.text).toBe('koolis kuni 12.45');
+    expect(homeStatus('kirsi', wed(10, 20))?.text).toBe('koolis kuni 12.45');
+  });
+
+  it('shows a club from an hour before it starts until it ends, not earlier', () => {
+    const tuesday = (hours: number, minutes = 0) => at('2026-10-13', hours, minutes);
+    expect(homeStatus('kiur', tuesday(17, 29))).toBeNull();
+    expect(homeStatus('kiur', tuesday(17, 30))).toEqual({ kind: 'club', icon: '🥋', text: 'Judo 18.30' });
+    expect(homeStatus('kiur', tuesday(19))?.text).toBe('Judo 18.30');
+  });
+
+  it('moves from school to a club that starts right after the bell', () => {
+    // Kiur, Wednesday: school until 12.45, Robootika at 13.00.
+    expect(homeStatus('kiur', wed(12, 30))?.kind).toBe('school');
+    expect(homeStatus('kiur', wed(12, 50))).toEqual({ kind: 'club', icon: '🤖', text: 'Robootika 13.00' });
+  });
+
+  it('says when school starts in the morning and from 18.00 the evening before', () => {
+    expect(homeStatus('kirsi', at('2026-10-15', 7, 45))).toEqual({ kind: 'start', icon: '🎒', text: 'kool algab 9.05' });
+    // Wednesday afternoon, both days over: too early for tomorrow's start.
+    expect(homeStatus('kirsi', wed(16))).toBeNull();
+    expect(homeStatus('kiur', wed(21))?.text).toBe('kool algab 8.15');
+    expect(homeStatus('kirsi', wed(21))?.text).toBe('kool algab 9.05');
+    expect(homeStatus('kiur', at('2026-10-18', 18, 30))?.text).toBe('kool algab 9.05');
+  });
+
+  it('shows nothing on a Saturday or inside a holiday', () => {
+    expect(homeStatus('kiur', at('2026-10-17', 11))).toBeNull();
+    expect(homeStatus('kiur', at('2026-10-28', 10))).toBeNull();
   });
 });
