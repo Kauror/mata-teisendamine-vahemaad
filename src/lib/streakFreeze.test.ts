@@ -266,6 +266,25 @@ describe('spending a freeze on a missed day', () => {
     expect(settleStreakFreezes(learner, TODAY).covered).toEqual([]);
     expect(heldFreezeCount(learner)).toBe(MAX_HELD_FREEZES);
   });
+
+  it('gives the freeze back when the "missed" day syncs in late as studied', () => {
+    // Studied up to the day before yesterday; yesterday's exercise was done
+    // offline and is still on the child's phone when another device reads.
+    seedStreak(5, addAppDays(TODAY, -2));
+    giveStars(25);
+    holdFreezeSince(addAppDays(TODAY, -5));
+    expect(settleStreakFreezes(learner, TODAY).covered).toEqual([addAppDays(TODAY, -1)]);
+    expect(heldFreezeCount(learner)).toBe(0);
+
+    seedStudyDay(addAppDays(TODAY, -1)); // the offline attempt arrives
+    const settled = settleStreakFreezes(learner, TODAY);
+    expect(settled).toEqual({ covered: [], held: 1 });
+    expect(heldFreezeCount(learner)).toBe(1);
+    expect(getActiveLearningStreak(learner, TODAY)).toBe(6);
+    expect(getStreakFreezeState(learner, TODAY).recentlyCovered).toEqual([]);
+    // Settling again changes nothing.
+    expect(settleStreakFreezes(learner, TODAY)).toEqual({ covered: [], held: 1 });
+  });
 });
 
 describe('what a frozen day does NOT count towards', () => {

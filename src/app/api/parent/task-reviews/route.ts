@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { listOfflineTaskReviews, resolveOfflineTaskReview } from '@/lib/offline/server/taskReviews';
 
@@ -15,5 +16,5 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   if (typeof body.clientActionId !== 'string' || (body.action !== 'approve' && body.action !== 'reject')) return NextResponse.json({ message: 'Vale tegevus.' }, { status: 400 });
   try { return NextResponse.json(resolveOfflineTaskReview(body.clientActionId, body.action)); }
-  catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : 'Toiming ebaõnnestus.' }, { status: 409 }); }
+  catch (error) { return NextResponse.json({ message: publicErrorMessage(error, 'Toiming ebaõnnestus.') }, { status: 409 }); }
 }

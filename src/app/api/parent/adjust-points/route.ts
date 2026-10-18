@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { Learner, manualPointAdjustment } from '@/lib/tasks';
 
@@ -18,6 +19,6 @@ export async function POST(req: NextRequest) {
     if (!learner) return NextResponse.json({ message: 'Vale laps.' }, { status: 400 });
     return NextResponse.json(manualPointAdjustment(learner, amount, String(body.reason || '')));
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Punkte ei saanud muuta.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Punkte ei saanud muuta.') }, { status: 400 });
   }
 }

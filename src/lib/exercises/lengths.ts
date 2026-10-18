@@ -1,6 +1,6 @@
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
-import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V4, isMathGeneratorAtLeast, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 
 type InternalType =
   | 'suitable-unit-choice'
@@ -46,7 +46,9 @@ function orderingCards(rng: RNG, i: number) {
   }));
 }
 
-function byType(type: InternalType, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+// v4 = maths generator v4 or later (see mathGeneratorVersion.ts). Every v4
+// branch draws from the RNG exactly as before, so only the fixed questions change.
+function byType(type: InternalType, d: Difficulty, rng: RNG, i: number, v4 = false): GeneratedQuestion {
   if (type === 'suitable-unit-choice') {
     const items = [
       { question: 'Millise ühikuga mõõdaksid pliiatsi pikkust?', units: ['cm'], explanation: 'Pliiatsi pikkust mõõdetakse tavaliselt sentimeetrites.' },
@@ -69,7 +71,9 @@ function byType(type: InternalType, d: Difficulty, rng: RNG, i: number): Generat
   if (type === 'km-m-conversion') {
     const mode = rInt(rng,0,2);
     if(mode===0){const km=rInt(rng,2,9); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:`${km} km = mitu m?`,expectedUnit:'m',correctAnswer:km*1000,explanation:`1 km = 1000 m, seega ${km} km = ${km*1000} m.`,subtopic:'pikkusuhikud'};}
-    if(mode===1){const m=rInt(rng,1100,9800); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:`${m} m = mitu km?`,expectedUnit:'km',correctAnswer:Math.floor(m/1000),explanation:`${m} m = ${Math.floor(m/1000)} km ${m%1000} m.`,subtopic:'pikkusuhikud'};}
+    // v1-v3 asked «3450 m = mitu km?» and keyed 3, so the true answer 3,45 was
+    // marked wrong (EDU-01). v4 asks like the cm/mm question does.
+    if(mode===1){const m=rInt(rng,1100,9800); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:v4?`${m} m = mitu km ja m? Sisesta ainult km arv.`:`${m} m = mitu km?`,expectedUnit:'km',correctAnswer:Math.floor(m/1000),explanation:`${m} m = ${Math.floor(m/1000)} km ${m%1000} m.`,subtopic:'pikkusuhikud'};}
     const km=rInt(rng,1,8),m=pick(rng,[20,60,120,300,500,700]); return {id:`kmm-${i}`,category:'Teisendamine',difficulty:d,question:`${km} km ${m} m = mitu m?`,expectedUnit:'m',correctAnswer:kmMToM(km,m),explanation:`${km} km ${m} m = ${kmMToM(km,m)} m.`,subtopic:'pikkusuhikud'};
   }
   if (type === 'length-comparison') {
@@ -92,14 +96,17 @@ function byType(type: InternalType, d: Difficulty, rng: RNG, i: number): Generat
   if (type === 'missing-measurement') {
     const mode=rInt(rng,0,2);
     if(mode===0){const full=rInt(rng,31,89); const cm=Math.floor(full/10); return {id:`mis-${i}`,category:'Puuduv arv',difficulty:d,question:`${cm} cm __ mm = ${full} mm. Leia puuduv mm arv.`,expectedUnit:'mm',correctAnswer:full%10,explanation:`${full} mm = ${cm} cm ${full%10} mm.`,subtopic:'pikkusuhikud'};}
-    if(mode===1){const total=pick(rng,[2300,5300,6400,7800]); return {id:`mis-${i}`,category:'Puuduv arv',difficulty:d,question:`__ km 300 m = ${total} m. Leia puuduv km arv.`,expectedUnit:'km',correctAnswer:(total-300)/1000,explanation:`${total} m = ${(total-300)/1000} km 300 m.`,subtopic:'pikkusuhikud'};}
+    // v1-v3 also drew 6400 and 7800, for which «__ km 300 m» has no whole
+    // answer (keyed 6.1 and 7.5, EDU-02).
+    if(mode===1){const total=pick(rng,v4?[2300,5300,6300,8300]:[2300,5300,6400,7800]); return {id:`mis-${i}`,category:'Puuduv arv',difficulty:d,question:`__ km 300 m = ${total} m. Leia puuduv km arv.`,expectedUnit:'km',correctAnswer:(total-300)/1000,explanation:`${total} m = ${(total-300)/1000} km 300 m.`,subtopic:'pikkusuhikud'};}
     return {id:`mis-${i}`,category:'Puuduv arv',difficulty:d,question:'2 km + __ m = 2500 m. Leia puuduv meeter.',expectedUnit:'m',correctAnswer:500,explanation:'2500 m = 2 km 500 m.',subtopic:'pikkusuhikud'};
   }
   if (type === 'perimeter-with-units') {
     const mode=rInt(rng,0,2);
     if(mode===0){const s=rInt(rng,3,8); return {id:`per-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ruudu külg on ${s} cm. Leia ümbermõõt.`,expectedUnit:'cm',correctAnswer:s*4,explanation:`Ruudu ümbermõõt on 4 × ${s} cm = ${s*4} cm.`,subtopic:'pikkusuhikud'};}
     if(mode===1){const a=rInt(rng,4,9),b=rInt(rng,3,7); return {id:`per-${i}`,category:'Ümbermõõt',difficulty:d,question:`Ristküliku küljed on ${a} cm ja ${b} cm. Leia ümbermõõt.`,expectedUnit:'cm',correctAnswer:2*(a+b),explanation:`2 × (${a}+${b}) = ${2*(a+b)} cm.`,subtopic:'pikkusuhikud'};}
-    const a=rInt(rng,3,7),b=rInt(rng,4,8),c=rInt(rng,5,9); return {id:`per-${i}`,category:'Ümbermõõt',difficulty:d,question:`Kolmnurga küljed on ${a} cm, ${b} cm ja ${c} cm. Leia ümbermõõt.`,expectedUnit:'cm',correctAnswer:a+b+c,explanation:`${a}+${b}+${c} = ${a+b+c} cm.`,subtopic:'pikkusuhikud'};
+    // v1-v3 could draw sides such as 4, 4, 9 cm: no such triangle (EDU-03).
+    const a=rInt(rng,3,7),b=rInt(rng,4,8),c=v4?rInt(rng,Math.max(5,Math.abs(a-b)+1),Math.min(9,a+b-1)):rInt(rng,5,9); return {id:`per-${i}`,category:'Ümbermõõt',difficulty:d,question:`Kolmnurga küljed on ${a} cm, ${b} cm ja ${c} cm. Leia ümbermõõt.`,expectedUnit:'cm',correctAnswer:a+b+c,explanation:`${a}+${b}+${c} = ${a+b+c} cm.`,subtopic:'pikkusuhikud'};
   }
   if (type === 'route-distance') {
     const mode=rInt(rng,0,2);
@@ -144,6 +151,7 @@ function mixedPlanV2(rng: RNG, count: number): InternalType[] {
 export function generateSession(_mode: Category, difficulty: Difficulty, count: number, seed: number, generatorVersion: MathGeneratorVersion = MATH_GENERATOR_VERSION): GeneratedQuestion[] {
   const rng = seededRng(seed);
   const v1 = generatorVersion === MATH_GENERATOR_VERSION_V1;
+  const v4 = isMathGeneratorAtLeast(generatorVersion, MATH_GENERATOR_VERSION_V4);
   const types = v1 ? mixedPlan(rng, count) : mixedPlanV2(rng, count);
   const out: GeneratedQuestion[] = [];
   const used = new Set<string>();
@@ -157,7 +165,7 @@ export function generateSession(_mode: Category, difficulty: Difficulty, count: 
     let tries = 0;
     let q: GeneratedQuestion;
     do {
-      q = byType(types[i], difficulty, rng, i + tries * 31);
+      q = byType(types[i], difficulty, rng, i + tries * 31, v4);
       tries++;
     } while (used.has(signature(q)) && tries < 20);
     used.add(signature(q));

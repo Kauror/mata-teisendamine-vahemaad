@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { AssignmentMode, createTaskTemplate, RecurrenceType } from '@/lib/tasks';
 
@@ -21,6 +22,6 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Tegevust ei saanud salvestada.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Tegevust ei saanud salvestada.') }, { status: 400 });
   }
 }

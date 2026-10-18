@@ -52,7 +52,8 @@ async function tapAreasAtLeast44(page: Page, diagramId: string) {
     const box = node.getBoundingClientRect();
     return Math.min(box.width, box.height);
   }));
-  expect(sizes.length, diagramId).toBe(getDiagram(diagramId)!.regions.length);
+  // Every region has a tap area; a region drawn twice (the `twin` prop) has two.
+  await expect(page.locator(`svg[data-diagram-id="${diagramId}"] .tb-region:has(.tb-region-hit)`), diagramId).toHaveCount(getDiagram(diagramId)!.regions.length);
   for (const size of sizes) expect(size, `${diagramId} tap area`).toBeGreaterThanOrEqual(44);
 }
 
@@ -65,7 +66,10 @@ async function checkLessonDiagram(page: Page, diagramId: string) {
   await expect(svg).toBeVisible();
   const regionIds = await svg.locator('.tb-region').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-region-id')));
   expect(regionIds.sort(), `${diagramId} regions`).toEqual(definition!.regions.map((region) => region.id).sort());
-  await expect(svg.locator('.tb-diagram-label')).toHaveCount(definition!.regions.length);
+  // Every region carries its label. A region drawn twice (Unit 16's Pacific at
+  // both map edges, the `twin` prop) carries it twice, so count regions, not labels.
+  await expect(svg.locator('.tb-region:has(.tb-diagram-label)')).toHaveCount(definition!.regions.length);
+  await expect(svg.locator('.tb-diagram-label:not(.tb-region .tb-diagram-label)')).toHaveCount(0);
   await expect(svg.locator('desc')).not.toHaveText(/^Joonisel on tähtedega/);
   const [svgBox, readerBox] = [(await svg.boundingBox())!, (await page.locator('.tb-reader').boundingBox())!];
   expect(svgBox.x).toBeGreaterThanOrEqual(readerBox.x);

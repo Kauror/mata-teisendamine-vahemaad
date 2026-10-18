@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { createStoreItem, getParentStoreDashboard, StoreStockType, StoreVisibility } from '@/lib/store';
 
@@ -32,6 +33,6 @@ export async function POST(req: NextRequest) {
     const id = createStoreItem(parseBody(await req.json()));
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Poe eset ei saanud salvestada.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Poe eset ei saanud salvestada.') }, { status: 400 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { Learner } from '@/lib/tasks';
 import { giftPoints } from '@/lib/store';
 
@@ -18,6 +19,6 @@ export async function POST(req: NextRequest) {
     if (!from || !to) return NextResponse.json({ message: 'Vale laps.' }, { status: 400 });
     return NextResponse.json(giftPoints(from, to, amount));
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Kinkimine ebaõnnestus.' }, { status: 409 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Kinkimine ebaõnnestus.') }, { status: 409 });
   }
 }

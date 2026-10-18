@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { approveHeldRewardAttempt, listHeldRewardAttempts } from '@/lib/server/rewards/projection';
 
@@ -23,6 +24,6 @@ export async function POST(req: NextRequest) {
     const result = approveHeldRewardAttempt(attemptId);
     return NextResponse.json({ ok: true, applied: result });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Toimingut ei saanud teha.' }, { status: 409 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Toimingut ei saanud teha.') }, { status: 409 });
   }
 }

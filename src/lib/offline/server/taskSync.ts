@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto';
 import db from '@/lib/db';
+import { addAppDays } from '@/lib/appDate';
+import { maxOfflineAttemptAgeDays } from '@/lib/offline/server/attemptTiming';
 import {
+  isoToAppDate,
   completeTaskAssignmentAt,
   ensureTaskInstancesForDate,
   findAssignmentId,
@@ -100,6 +103,30 @@ function persist(action: OfflineTaskActionPayload, status: TaskActionStatus, rea
   );
 }
 
+// Whether a completion for a past task day may still settle: it must have been
+// made on that very day (Europe/Tallinn) and arrive within the same offline age
+// limit that exercise attempts have.
+function lateCompletionOnTaskDay(taskDate: string, completedAt: string) {
+  const today = todayDateString();
+  if (taskDate >= today) return false;
+  if (taskDate < addAppDays(today, -maxOfflineAttemptAgeDays())) return false;
+  return isoToAppDate(completedAt) === taskDate;
+}
+
+function reopenMissedAssignment(assignmentId: number) {
+  db.prepare("UPDATE task_instance_assignments SET status = 'active' WHERE id = ? AND status = 'missed'").run(assignmentId);
+  // The instance is reopened too. For a shared (non first-completer) task a
+  // 'completed' instance only means no assignment was still open once the
+  // sibling finished; settling this one closes it again. A first-completer
+  // instance that someone completed stays closed, and the completion below is
+  // refused as taken.
+  db.prepare(`
+    UPDATE task_instances SET status = 'active'
+    WHERE id = (SELECT taskInstanceId FROM task_instance_assignments WHERE id = ?)
+      AND (status = 'missed' OR (status = 'completed' AND assignmentModeSnapshot <> 'first_completer'))
+  `).run(assignmentId);
+}
+
 function process(action: OfflineTaskActionPayload, learner: Learner): { status: TaskActionStatus; reasonCode?: string; serverState?: unknown; message?: string } {
   const template = action.templateId != null ? getTaskTemplateById(action.templateId) : undefined;
   if (!template) return { status: 'needs_review', reasonCode: 'template_removed' };
@@ -113,16 +140,26 @@ function process(action: OfflineTaskActionPayload, learner: Learner): { status: 
   const assignmentId = findAssignmentId(action.templateId!, action.taskDate, learner);
   if (!assignmentId) return { status: 'needs_review', reasonCode: 'no_assignment' };
 
+  // Clamp an impossible future completion time to now, keeping the task date.
+  const completedAt = action.completedAt && new Date(action.completedAt).getTime() <= Date.now() ? action.completedAt : nowIso();
+
   const status = getAssignmentStatusById(assignmentId);
   if (status === 'completed') return { status: 'duplicate' };
   if (status === 'locked') return { status: 'conflict', reasonCode: 'first_completer_taken' };
   if (status === 'pending_approval') return { status: 'pending_approval' };
-  if (status !== 'active') return { status: 'conflict', reasonCode: 'not_active' };
+  // A task ticked offline late in the evening usually reaches the server the
+  // next morning, after the first read of the new day has closed the old day's
+  // open assignments as 'missed'. The child did the task on its own day, so a
+  // completion stamped on that task date is settled against it (the same way a
+  // late approval is, RTM2-M01) instead of being refused as no longer active.
+  const lateArrival = status === 'missed' && lateCompletionOnTaskDay(action.taskDate, completedAt);
+  if (status !== 'active' && !lateArrival) return { status: 'conflict', reasonCode: 'not_active' };
 
-  // Clamp an impossible future completion time to now, keeping the task date.
-  const completedAt = action.completedAt && new Date(action.completedAt).getTime() <= Date.now() ? action.completedAt : nowIso();
   try {
-    const result = completeTaskAssignmentAt(assignmentId, learner, completedAt, action.taskDate);
+    const result = db.transaction(() => {
+      if (lateArrival) reopenMissedAssignment(assignmentId);
+      return completeTaskAssignmentAt(assignmentId, learner, completedAt, action.taskDate);
+    })();
     return { status: result.pending ? 'pending_approval' : 'applied', serverState: result };
   } catch (error) {
     // The only expected throw is the first-completer race.

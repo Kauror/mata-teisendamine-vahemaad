@@ -314,7 +314,7 @@ export const GENITIVE_ET: Record<string, string> = {
   'Dominikaani Vabariik': 'Dominikaani Vabariigi', Ecuador: 'Ecuadori', 'El Salvador': 'El Salvadori', Honduras: 'Hondurase',
   Paraguay: 'Paraguay', 'Saint Kitts ja Nevis': 'Saint Kittsi ja Nevise', 'Saint Vincent ja Grenadiinid': 'Saint Vincenti ja Grenadiinide',
   'Ameerika Ühendriigid': 'Ameerika Ühendriikide', Uruguay: 'Uruguay', 'Marshalli Saared': 'Marshalli Saarte',
-  'Saalomoni Saared': 'Saalomoni Saarte', Taiwan: 'Taiwani'
+  'Saalomoni Saared': 'Saalomoni Saarte', 'Trinidad ja Tobago': 'Trinidadi ja Tobago', Taiwan: 'Taiwani'
 };
 
 // Map geometry crosswalk: catalog id → Natural Earth ADM0_A3 where they differ,

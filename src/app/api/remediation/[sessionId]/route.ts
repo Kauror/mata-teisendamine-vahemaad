@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { isLearner } from '@/lib/learningExercises';
 import { getRemediationSession, submitRemediationSession } from '@/lib/remediation';
 
@@ -31,6 +32,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ses
     const result = submitRemediationSession({ learner, sessionId: id, answers, elapsedSeconds });
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Kordamist ei saanud salvestada.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Kordamist ei saanud salvestada.') }, { status: 400 });
   }
 }

@@ -25,6 +25,17 @@ describe('unit access', () => {
     const access = computeTextbookAccess([unit('a', 1), unit('b', 2, { published: false, testPassed: true, manualUnlock: true })]);
     expect(access.get('b')!.accessible).toBe(false);
   });
+
+  it('a draft between two ready units never blocks the next one: Unit 21 opens on the pass of the previous ready unit (Unit 20 is a draft)', () => {
+    // isPublished() makes every draft unpublished (child and preview alike), so drafts drop out of the order.
+    const order = (passed: boolean) => [unit('u18', 18, { testPassed: true }), unit('u19', 19, { testPassed: passed }), unit('u20', 20, { published: false }), unit('u21', 21)];
+    expect(computeTextbookAccess(order(false)).get('u21')).toMatchObject({ accessible: false, reason: 'locked', previousUnitNumber: 19 });
+    expect(computeTextbookAccess(order(true)).get('u21')).toMatchObject({ accessible: true, reason: 'previous_passed', previousUnitNumber: 19 });
+    expect(textbookUnitOpenedByPassing(order(false), 'u19')).toBe('u21');
+    // Today on this branch Units 15–20 are all drafts: passing Unit 14 opens Unit 21.
+    const today = [unit('u14', 14), ...[15, 16, 17, 18, 19, 20].map((number) => unit(`u${number}`, number, { published: false })), unit('u21', 21)];
+    expect(textbookUnitOpenedByPassing(today, 'u14')).toBe('u21');
+  });
 });
 
 describe('unit gates and status', () => {

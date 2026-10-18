@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { getLearningPointSettings, updateLearningPointSettings } from '@/lib/learningPoints';
 
@@ -16,6 +17,6 @@ export async function POST(req: NextRequest) {
     updateLearningPointSettings(await req.json());
     return NextResponse.json(getLearningPointSettings());
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Seadeid ei saanud salvestada.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Seadeid ei saanud salvestada.') }, { status: 400 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { adjustTrophies } from '@/lib/monthlyCompetition';
 import type { Learner } from '@/lib/tasks';
@@ -19,6 +20,6 @@ export async function POST(req: NextRequest) {
     const standing = adjustTrophies(learner, Number(body.amount), String(body.reason || ''));
     return NextResponse.json({ standing });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Karikaid ei saanud muuta.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Karikaid ei saanud muuta.') }, { status: 400 });
   }
 }

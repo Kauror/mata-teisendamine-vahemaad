@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import type { MapViewData, MapViewFeature } from '@/content/kaardimang/types';
+import { MARKER_MIN_HIT_PX, markerHitRadii } from './mapAnswers';
 
 // One pre-projected map view as SVG. It never moves, zooms or reloads by
 // itself: a new question only changes the paint, the pins and the labels
@@ -104,6 +105,7 @@ export default function MapView({ data, ariaLabel, paint, areaPaint, showAreas, 
   const ref = useRef<SVGSVGElement>(null);
   const units = useUnitsPerPixel(ref, data);
   const placed = useMemo(() => placeLabels(labels, units), [labels, units]);
+  const tapRadii = useMemo(() => markerHitRadii(data.markers, units), [data.markers, units]);
   const interactive = Boolean(onPick);
 
   const pickFrom = (target: Element | null): MapPick | null => {
@@ -171,7 +173,8 @@ export default function MapView({ data, ariaLabel, paint, areaPaint, showAreas, 
                 className='km-marker'
                 {...(canFocus ? { tabIndex: 0, role: 'button', 'aria-label': nameOf(marker.id) } : { 'aria-hidden': true })}
               >
-                <circle className='km-marker-hit' cx={marker.x} cy={marker.y} r={Math.max(marker.hr, 10 * units)} />
+                <circle className='km-marker-tap' cx={marker.x} cy={marker.y} r={tapRadii.get(marker.id) ?? marker.hr} />
+                <circle className='km-marker-hit' cx={marker.x} cy={marker.y} r={Math.max(marker.hr, MARKER_MIN_HIT_PX * units)} />
                 <circle className='km-marker-dot' cx={marker.x} cy={marker.y} r={Math.max(marker.r, 4 * units)} />
               </g>
             );

@@ -351,7 +351,10 @@ describe('textbook test', () => {
     expect(saveAnswer(kiur(), view.sessionId, { actionId, revision: view.revision, questionId: question.id, response: correctResponseFor(question.answer) }).session.revision).toBe(saved.revision);
     const stale = expectCode(() => saveAnswer(kiur(), view.sessionId, { actionId: aid(), revision: view.revision, questionId: question.id, response: correctResponseFor(question.answer) }), 'stale');
     expect((stale.extra.session as TestSessionView).revision).toBe(saved.revision);
-    expectCode(() => saveAnswer(kiur(), view.sessionId, { actionId: aid(), revision: saved.revision, questionId: question.id, response: { type: 'ordering', order: [] } }), 'invalid_response');
+    // An empty ordering answer is malformed only for a question of another type
+    // (for an ordering question it is merely incomplete), so pick one.
+    const other = testState(view.sessionId).snapshot.questions.find((frozen) => frozen.question.answer.type !== 'ordering')!.question;
+    expectCode(() => saveAnswer(kiur(), view.sessionId, { actionId: aid(), revision: saved.revision, questionId: other.id, response: { type: 'ordering', order: [] } }), 'invalid_response');
   });
 });
 
@@ -545,8 +548,8 @@ describe('preview isolation (A5, A6)', () => {
   // ready (15–22) is covered here without writing a new test. This is where
   // the full pass/fail logic of the real units is proved; the browser only
   // smoke-tests how they render (e2e/textbook-real-units.spec.ts).
-  it('lists the real Units 10–14 as ready, in order', () => {
-    expect(REAL_READY.slice(0, 5)).toEqual(['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14']);
+  it('lists the real authored units as ready, in order', () => {
+    expect(REAL_READY).toEqual(['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14', 'lo-opik-u15', 'lo-opik-u16', 'lo-opik-u17', 'lo-opik-u18', 'lo-opik-u19', 'lo-opik-u21']);
   });
 
   it.each(REAL_READY)('runs the real unit %s in the preview after the earlier ready units: read, practise with a correction, 18/20 fails, targeted practice, 19/20 passes; Kiur sees nothing', (unitId) => {
@@ -607,7 +610,9 @@ describe('preview isolation (A5, A6)', () => {
     expect(realFootprint()).toEqual(before);
     expect(getCourseOverview(kiur(), REAL).units).toEqual([]);
     expectCode(() => getUnitDetail(kiur(), REAL, unitId), 'forbidden');
-  });
+    // Each run first passes every earlier ready unit in the preview, so the
+    // later units take several seconds each; the 5 s default is too tight.
+  }, 60_000);
 
   it('keeps the real course\'s draft units out of the preview and unpublishable; the ready ones publishable and unpublished', () => {
     const drafts = REAL_UNITS.filter((unit) => unit.status !== 'ready').map((unit) => unit.id);

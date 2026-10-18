@@ -17,6 +17,7 @@ const ROUTES = [
   { name: 'Kiur reading runner', path: '/kiur/lugemine', visible: /Lugemine|Harjutus/ },
   { name: 'Kirsi picture-word runner', path: '/kirsi/lugemine/pilt-ja-sona', visible: /Pilt ja sõna|Harjutus/ },
   { name: 'Kirsi first-sound runner', path: '/kirsi/lugemine/esimene-haalik', visible: /Esimene häälik|Harjutus/ },
+  { name: 'Kiur English vocabulary', path: '/kiur/inglise-keel', visible: /Inglise keel/ },
   { name: 'Kiur English sprint', path: '/kiur/inglise-keel/sprint', visible: /Sprint/ },
   { name: 'Kiur science entry', path: '/kiur/loodusopetus', visible: /Loodusõpetus/ }
 ] as const;
@@ -36,7 +37,6 @@ for (const route of ROUTES) {
 
 for (const redirect of [
   { from: '/stats', to: /\/history$/ },
-  { from: '/kiur/inglise-keel', to: /\/kiur$/ },
   { from: '/kirsi/lugemine', to: /\/kirsi$/ }
 ]) {
   test(`${redirect.from} redirects to its supported screen`, async ({ page }) => {

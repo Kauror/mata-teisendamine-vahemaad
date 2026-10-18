@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { getStreakFreezeState, grantStreakFreeze, settleStreakFreezes } from '@/lib/streakFreeze';
 import type { Learner } from '@/lib/tasks';
@@ -31,6 +32,6 @@ export async function POST(req: NextRequest) {
     grantStreakFreeze(learner);
     return NextResponse.json({ state: getStreakFreezeState(learner) });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Külmutust ei saanud anda.' }, { status: 409 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Külmutust ei saanud anda.') }, { status: 409 });
   }
 }

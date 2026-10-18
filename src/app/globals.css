@@ -299,6 +299,10 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .stars-badge strong{font-size:14px;color:#713f12}
 .trophy-badge{margin:0;display:inline-flex;align-items:center;gap:5px;min-height:26px;padding:3px 9px;border-radius:999px;background:#f5f3ff;border:1px solid #ddd6fe;color:#6d28d9;font-size:12px;font-weight:850;line-height:1}
 .trophy-badge strong{font-size:14px;color:#5b21b6}
+/* The home pills are 26px buttons the children tap for the explanation (tablets
+   too, not only phones): a transparent vertical bleed keeps a 44px target. */
+.child-overview .metric-tooltip-trigger{position:relative}
+.child-overview .metric-tooltip-trigger::after{content:'';position:absolute;inset:-9px -1px}
 @media (max-width:640px){
   .child-overview{gap:5px}
   .child-overview .streak-badge,.child-overview .stars-badge,.child-overview .trophy-badge{gap:3px;min-height:24px;padding:2px 8px;font-size:11px;position:relative}
@@ -1480,6 +1484,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-diagram{display:flex;justify-content:center;padding:6px;border-radius:var(--tb-radius-small);background:var(--tb-dia-sky)}
 .tb-diagram-svg{width:100%;max-width:360px;height:auto;display:block}
 .tb-diagram-missing{margin:0;color:var(--tb-muted)}
+/* A later unit's pictures load on demand; hold some room so the page does not jump. */
+.tb-diagram-loading{min-height:160px}
 .tb-diagram-sky{fill:var(--tb-dia-sky)}
 .tb-diagram-land{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:2}
 .tb-diagram-river{fill:none;stroke:var(--tb-dia-sea);stroke-width:5;stroke-linecap:round}
@@ -1674,6 +1680,207 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-region[data-selected="true"] .tb-u14-pop,.tb-region[data-selected="true"] .tb-u14-panel{stroke:var(--tb-dia-selected);stroke-width:4}
 .tb-region[data-correct="true"] .tb-u14-pop,.tb-region[data-correct="true"] .tb-u14-panel{stroke:var(--tb-dia-correct);stroke-width:4}
 .tb-region[data-wrong="true"] .tb-u14-pop,.tb-region[data-wrong="true"] .tb-u14-panel{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
+/* Unit 15 "Mandrid ja maailmajaod": land and water bar, two world maps (outlines drawn at half size, so strokes are doubled), the continent / world part scheme. */
+.tb-u15-bar-land{fill:var(--tb-dia-earth-land)}
+.tb-u15-bar-water{fill:var(--tb-dia-earth-sea)}
+.tb-u15-bar-grid{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:.6;stroke-opacity:.55;pointer-events:none}
+.tb-u15-bar-split{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;pointer-events:none}
+.tb-u15-bar-frame{fill:none;stroke:var(--tb-dia-ink);stroke-width:2;pointer-events:none}
+.tb-u15-sea{fill:var(--tb-dia-pol-sea)}
+.tb-u15-continent,.tb-u15-neutral-land{stroke:var(--tb-dia-tower-line);stroke-width:1.2;stroke-linejoin:round}
+.tb-u15-continent-north-america{fill:var(--tb-dia-land)}
+.tb-u15-continent-south-america{fill:var(--tb-dia-pol-a)}
+.tb-u15-continent-eurasia{fill:var(--tb-dia-pol-b)}
+.tb-u15-continent-africa{fill:var(--tb-dia-pol-d)}
+.tb-u15-continent-australia{fill:var(--tb-dia-pol-c)}
+.tb-u15-continent-antarctica{fill:var(--tb-dia-tower)}
+.tb-u15-neutral-land{fill:var(--tb-dia-sand)}
+.tb-u15-world-land{pointer-events:none}
+.tb-u15-pointer{fill:none;stroke:var(--tb-dia-ink);stroke-width:2;stroke-dasharray:4 3;stroke-linecap:round}
+.tb-u15-link-panel{fill:var(--tb-dia-tower);stroke:var(--tb-dia-panel-line);stroke-width:2}
+.tb-u15-box{stroke-width:2}
+.tb-u15-box-continent{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line)}
+.tb-u15-box-part{fill:var(--tb-dia-tint-b);stroke:var(--tb-dia-sand-line);stroke-dasharray:6 3}
+.tb-u15-box-text,.tb-u15-legend-text{font-family:var(--font-display);font-weight:800;fill:var(--tb-dia-ink)}
+.tb-u15-arrow{fill:none;stroke:var(--tb-dia-flow);stroke-width:2.5;stroke-linecap:round}
+.tb-u15-arrowhead{fill:var(--tb-dia-flow)}
+/* A chosen continent is outlined on its own coast too, since its tap area covers only part of it. */
+.tb-region[data-selected="true"] .tb-u15-continent,.tb-region[data-selected="true"] .tb-u15-link-panel{stroke:var(--tb-dia-selected);stroke-width:4}
+.tb-region[data-correct="true"] .tb-u15-continent,.tb-region[data-correct="true"] .tb-u15-link-panel{stroke:var(--tb-dia-correct);stroke-width:4}
+.tb-region[data-wrong="true"] .tb-u15-continent,.tb-region[data-wrong="true"] .tb-u15-link-panel{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
+/* Unit 19 "Maakera siseehitus": Earth's layers, crust, plates (existing diagram tokens only). */
+.tb-u19-layer{stroke:var(--tb-dia-ink);stroke-width:1}
+.tb-u19-crust{fill:var(--tb-dia-rock-line)}
+.tb-u19-mantle{fill:var(--tb-dia-pol-d)}
+.tb-u19-outer-core{fill:var(--tb-dia-sun-line)}
+.tb-u19-inner-core{fill:var(--tb-dia-centre)}
+.tb-u19-leaders,.tb-u19-arrows,.tb-u19-surface,.tb-u19-world{pointer-events:none}
+.tb-u19-leader{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u19-leader-dot{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u19-bar{fill:var(--tb-dia-rock);stroke:var(--tb-dia-rock-line);stroke-width:1.5}
+.tb-u19-water{fill:var(--tb-dia-sea)}
+.tb-u19-wave{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:2;stroke-linecap:round}
+.tb-u19-ground{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1.5}
+.tb-u19-tree{fill:var(--tb-dia-leaf-line)}
+.tb-u19-peak{fill:var(--tb-dia-relief-high);stroke:var(--tb-dia-soil-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u19-snow{fill:var(--tb-dia-ink-light)}
+.tb-u19-surface{stroke:var(--tb-dia-tower-line);stroke-width:2;stroke-dasharray:6 4}
+.tb-u19-card{fill:var(--tb-dia-tower);stroke:var(--tb-dia-panel-line);stroke-width:2}
+.tb-u19-stratum-a{fill:var(--tb-dia-sand)}
+.tb-u19-stratum-b{fill:var(--tb-dia-rock)}
+.tb-u19-stratum-c{fill:var(--tb-dia-soil)}
+.tb-u19-rig{fill:none;stroke:var(--tb-dia-ink);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.tb-u19-hole{fill:var(--tb-dia-ink)}
+.tb-u19-quake{fill:var(--tb-dia-flag);stroke:var(--tb-dia-ink);stroke-width:1}
+.tb-u19-quake-wave{fill:none;stroke:var(--tb-dia-flag);stroke-width:2.5;stroke-linecap:round}
+.tb-u19-seismograph{fill:var(--tb-dia-ink-light);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u19-trace{fill:none;stroke:var(--tb-dia-flag);stroke-width:1.5;stroke-linejoin:round}
+.tb-u19-cone{fill:var(--tb-dia-rock);stroke:var(--tb-dia-rock-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u19-magma{fill:none;stroke:var(--tb-dia-flag);stroke-width:4}
+.tb-u19-lava{fill:var(--tb-dia-flag)}
+.tb-u19-lava-flow{fill:none;stroke:var(--tb-dia-flag);stroke-width:4;stroke-linecap:round}
+.tb-u19-mantle-block{fill:var(--tb-dia-pol-d);stroke:var(--tb-dia-sun-line);stroke-width:1.5}
+.tb-u19-plate-crust{fill:var(--tb-dia-soil);stroke:var(--tb-dia-ink);stroke-width:1}
+.tb-u19-lithosphere{fill:var(--tb-dia-rock);stroke:var(--tb-dia-ink);stroke-width:1}
+.tb-u19-flow{fill:none;stroke:var(--tb-dia-sun-line);stroke-width:2.5;stroke-dasharray:6 5;stroke-linecap:round}
+.tb-u19-flow-head{fill:var(--tb-dia-sun-line)}
+.tb-u19-rising{fill:var(--tb-dia-flag)}
+.tb-u19-boundary{stroke:var(--tb-dia-ink);stroke-width:2.5;stroke-dasharray:5 4}
+.tb-u19-move{stroke:var(--tb-dia-sea-line);stroke-width:5;stroke-linecap:round}
+.tb-u19-arrowhead{fill:var(--tb-dia-sea-line)}
+.tb-u19-ocean{fill:var(--tb-dia-globe-light)}
+.tb-u19-continent{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.tb-u19-rift{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:4 4}
+.tb-u19-plate-dot{fill:var(--tb-dia-ink);stroke:var(--tb-dia-ink-light);stroke-width:1.5}
+/* Thin layers and small dots: the choice is also outlined on the shape itself. */
+.tb-region[data-selected="true"] .tb-u19-layer,.tb-region[data-selected="true"] .tb-u19-bar,.tb-region[data-selected="true"] .tb-u19-plate-dot{stroke:var(--tb-dia-selected);stroke-width:3}
+.tb-region[data-correct="true"] .tb-u19-layer,.tb-region[data-correct="true"] .tb-u19-bar,.tb-region[data-correct="true"] .tb-u19-plate-dot{stroke:var(--tb-dia-correct);stroke-width:3}
+.tb-region[data-wrong="true"] .tb-u19-layer,.tb-region[data-wrong="true"] .tb-u19-bar,.tb-region[data-wrong="true"] .tb-u19-plate-dot{stroke:var(--tb-dia-wrong);stroke-width:3;stroke-dasharray:6 4}
+/* Unit 18 "Euroopa kaart": real generalised maps (existing diagram tokens only).
+   The country data is scaled down, so outlines keep a fixed on-screen width. */
+.tb-u18-sea{fill:var(--tb-dia-pol-sea)}
+.tb-u18-land{fill:var(--tb-dia-tint-b);stroke:var(--tb-dia-rock);stroke-width:.75;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.tb-u18-europe{fill:var(--tb-dia-pol-d)}
+.tb-u18-asia{fill:var(--tb-dia-land)}
+.tb-u18-divide{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
+.tb-u18-tint-1{fill:var(--tb-dia-land)}
+.tb-u18-tint-2{fill:var(--tb-dia-pol-b)}
+.tb-u18-tint-3{fill:var(--tb-dia-panel-line)}
+.tb-u18-tint-4{fill:var(--tb-dia-pol-a)}
+.tb-u18-tint-5{fill:var(--tb-dia-pol-c)}
+.tb-u18-ridge{fill:none;stroke:var(--tb-dia-soil);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.tb-u18-peak{fill:var(--tb-dia-soil);stroke:var(--tb-dia-soil-line);stroke-width:.75;stroke-linejoin:round}
+/* A tapped or revealed country is coloured itself (its square tap area would also cover its neighbours). */
+.tb-u18-shape-regions .tb-region[data-selected="true"] .tb-region-hit,.tb-u18-shape-regions .tb-region[data-correct="true"] .tb-region-hit,.tb-u18-shape-regions .tb-region[data-wrong="true"] .tb-region-hit{fill:transparent;stroke:none}
+.tb-region[data-selected="true"] .tb-u18-target{fill:var(--tb-dia-selected);fill-opacity:.55;stroke:var(--tb-dia-selected);stroke-width:2.5}
+.tb-region[data-correct="true"] .tb-u18-target{fill:var(--tb-dia-correct);fill-opacity:.45;stroke:var(--tb-dia-correct);stroke-width:2.5}
+.tb-region[data-wrong="true"] .tb-u18-target{fill:var(--tb-dia-wrong);fill-opacity:.35;stroke:var(--tb-dia-wrong);stroke-width:2}
+/* Unit 17 "Eesti geograafiline asend": hemispheres and Natural Earth maps (existing diagram tokens only). Map strokes ignore the map's scale. */
+.tb-u17-half{fill:var(--tb-dia-tint-a)}
+.tb-u17-half.tb-u17-half-estonia{fill:var(--tb-dia-sand)}
+.tb-u17-disk-edge{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-u17-dividing-line{stroke:var(--tb-dia-ink);stroke-width:2.5;stroke-dasharray:7 5}
+.tb-u17-sea{fill:var(--tb-dia-pol-sea)}
+.tb-u17-land,.tb-u17-country{fill:var(--tb-dia-land);stroke:var(--tb-dia-tower-line);stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.tb-u17-land.tb-u17-land-estonia,.tb-u17-country.tb-u17-land-estonia{fill:var(--tb-dia-estonia)}
+.tb-u17-context{fill:var(--tb-dia-tower);stroke:var(--tb-dia-tower-line);stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.tb-u17-lake{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.tb-u17-estonia-dot{fill:var(--tb-dia-flag);stroke:var(--tb-dia-ink-light);stroke-width:1.5}
+/* The choice and the answer are outlined on the shape itself too, not only on its tap area. */
+.tb-region[data-selected="true"] :is(.tb-u17-half,.tb-u17-land,.tb-u17-country,.tb-u17-lake){stroke:var(--tb-dia-selected);stroke-width:2.5}
+.tb-region[data-correct="true"] :is(.tb-u17-half,.tb-u17-land,.tb-u17-country,.tb-u17-lake){stroke:var(--tb-dia-correct);stroke-width:2.5}
+.tb-region[data-wrong="true"] :is(.tb-u17-half,.tb-u17-land,.tb-u17-country,.tb-u17-lake){stroke:var(--tb-dia-wrong);stroke-width:2.5;stroke-dasharray:6 4}
+/* Unit 16 "Maailmameri": land/water bar, real-coastline world map, water forms, Baltic chain (existing diagram tokens only). */
+.tb-u16-land{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:2}
+.tb-u16-water{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-u16-split{stroke:var(--tb-dia-ink-light);stroke-width:4}
+.tb-u16-bracket{fill:none;stroke:var(--tb-dia-note);stroke-width:1.5;stroke-linejoin:round}
+.tb-u16-ocean{fill:var(--tb-dia-pol-sea)}
+.tb-u16-map-land path{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:.6px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.tb-u16-map-frame{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:1}
+.tb-u16-sea{fill:var(--tb-dia-pol-sea)}
+.tb-u16-coast{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u16-panel{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:1.5}
+.tb-u16-box{stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-u16-box-sea{fill:var(--tb-dia-tint-a)}
+.tb-u16-box-strait{fill:var(--tb-dia-pol-sea);stroke-dasharray:6 3}
+.tb-u16-box-ocean{fill:var(--tb-dia-globe-light)}
+.tb-u16-link-line{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:3;stroke-linecap:round}
+.tb-u16-link-head{fill:var(--tb-dia-sea-line)}
+/* The water forms and the Baltic boxes fill their tap areas, so the choice is outlined on the shape itself. */
+.tb-region[data-selected="true"] .tb-u16-panel,.tb-region[data-selected="true"] .tb-u16-box{stroke:var(--tb-dia-selected);stroke-width:4}
+.tb-region[data-correct="true"] .tb-u16-panel,.tb-region[data-correct="true"] .tb-u16-box{stroke:var(--tb-dia-correct);stroke-width:4}
+.tb-region[data-wrong="true"] .tb-u16-panel,.tb-region[data-wrong="true"] .tb-u16-box{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
+/* Unit 21 "Maavärinad" diagrams. Safety pictures: red = danger or force, green = the safe way. */
+.tb-u21-frame{fill:var(--tb-dia-sky)}
+.tb-u21-panel{fill:var(--tb-dia-tower);stroke:var(--tb-dia-panel-line);stroke-width:1.5}
+.tb-u21-rock{fill:var(--tb-dia-relief-mid)}
+.tb-u21-layer{fill:none;stroke:var(--tb-dia-soil);stroke-width:1.5;stroke-opacity:.6}
+.tb-u21-ground-line{fill:none;stroke:var(--tb-dia-land-line);stroke-width:3;stroke-linejoin:round}
+.tb-u21-grass{fill:var(--tb-dia-leaf)}
+.tb-u21-crack{fill:none;stroke:var(--tb-dia-ink);stroke-width:2.5;stroke-linejoin:round}
+.tb-u21-crack-locked{fill:none;stroke:var(--tb-dia-ink);stroke-width:3.5;stroke-linejoin:round}
+.tb-u21-stitch{fill:none;stroke:var(--tb-dia-ink);stroke-width:2;stroke-linecap:round}
+.tb-u21-fault{fill:none;stroke:var(--tb-dia-soil-line);stroke-width:4;stroke-linecap:round}
+.tb-u21-stress,.tb-u21-shake,.tb-u21-glass-crack,.tb-u21-sound{fill:none;stroke:var(--tb-dia-key-line);stroke-linecap:round;stroke-linejoin:round}
+.tb-u21-stress{stroke-width:4}
+.tb-u21-shake,.tb-u21-sound{stroke-width:3}
+.tb-u21-glass-crack{stroke-width:2.5}
+.tb-u21-slip,.tb-u21-route{fill:none;stroke:var(--tb-dia-land-line);stroke-linecap:round}
+.tb-u21-slip{stroke-width:4}
+.tb-u21-route{stroke-width:6}
+.tb-u21-flow{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:3;stroke-linecap:round}
+.tb-u21-head-red{fill:var(--tb-dia-key-line)}
+.tb-u21-head-green{fill:var(--tb-dia-land-line)}
+.tb-u21-head-blue{fill:var(--tb-dia-sea-line)}
+.tb-u21-wave{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:2;stroke-dasharray:6 5}
+.tb-u21-plumb{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:2 4}
+.tb-u21-focus{fill:var(--tb-dia-key-line);stroke:var(--tb-dia-ink-light);stroke-width:2}
+.tb-u21-epicenter{fill:var(--tb-dia-sun);stroke:var(--tb-dia-ink);stroke-width:2}
+.tb-u21-ocean{fill:var(--tb-dia-pol-sea)}
+.tb-u21-continent{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1;stroke-linejoin:round}
+.tb-u21-place-ring{fill:none;stroke:var(--tb-dia-key-line);stroke-width:2}
+.tb-u21-place{fill:var(--tb-dia-key-line)}
+.tb-u21-water{fill:var(--tb-dia-globe-light)}
+.tb-u21-wave-line{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:2}
+.tb-u21-old-level{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:2;stroke-dasharray:5 4}
+.tb-u21-seabed{fill:var(--tb-dia-relief-mid);stroke:var(--tb-dia-soil);stroke-width:1}
+.tb-u21-sand{fill:var(--tb-dia-sand);stroke:var(--tb-dia-sand-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u21-wet-sand{fill:none;stroke:var(--tb-dia-soil);stroke-width:4;stroke-linecap:round}
+.tb-u21-shore,.tb-u21-land{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u21-boat{fill:var(--tb-dia-hull);stroke:var(--tb-dia-hull-line);stroke-width:1}
+.tb-u21-wall{fill:var(--tb-dia-root);stroke:var(--tb-dia-soil-line);stroke-width:1.5}
+.tb-u21-roof{fill:var(--tb-dia-flag);stroke:var(--tb-dia-soil-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u21-door{fill:var(--tb-dia-soil)}
+.tb-u21-trunk{fill:var(--tb-dia-soil)}
+.tb-u21-tree{fill:var(--tb-dia-stem)}
+.tb-u21-post{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:3}
+.tb-u21-sign{fill:var(--tb-dia-land-line)}
+.tb-u21-sign-arrow{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tb-u21-floor{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:2}
+.tb-u21-table{fill:var(--tb-dia-hull);stroke:var(--tb-dia-hull-line);stroke-width:1}
+.tb-u21-head,.tb-u21-hand{fill:var(--tb-dia-sun);stroke:var(--tb-dia-person);stroke-width:2}
+.tb-u21-person{fill:none;stroke:var(--tb-dia-person);stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+.tb-u21-glass{fill:var(--tb-dia-panel-line);stroke:var(--tb-dia-tower-line);stroke-width:1.5}
+.tb-u21-window-bar{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:3}
+.tb-u21-shard{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:1}
+.tb-u21-building{fill:var(--tb-dia-elephant);stroke:var(--tb-dia-elephant-line);stroke-width:1.5}
+.tb-u21-fall{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:3 3}
+.tb-u21-debris{fill:var(--tb-dia-rock-line)}
+.tb-u21-lawn{fill:var(--tb-dia-leaf);stroke:var(--tb-dia-land-line);stroke-width:1.5;stroke-dasharray:4 3}
+.tb-u21-tuft{fill:none;stroke:var(--tb-dia-stem);stroke-width:2;stroke-linecap:round}
+.tb-u21-pole{fill:none;stroke:var(--tb-dia-hull-line);stroke-width:5;stroke-linecap:round}
+.tb-u21-wire{fill:none;stroke:var(--tb-dia-ink);stroke-width:2}
+.tb-u21-spark{fill:var(--tb-dia-sun);stroke:var(--tb-dia-sun-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u21-antenna{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;stroke-linecap:round}
+.tb-u21-radio{fill:var(--tb-dia-pol-c);stroke:var(--tb-dia-ink);stroke-width:2}
+.tb-u21-speaker{fill:var(--tb-dia-tower);stroke:var(--tb-dia-ink);stroke-width:2}
+.tb-u21-knob{fill:var(--tb-dia-sun);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u21-battery{fill:var(--tb-dia-land-line);stroke:var(--tb-dia-ink);stroke-width:1}
+/* A chosen, correct or wrong card is outlined as a whole (its hit area already is). */
+.tb-region[data-selected="true"] .tb-u21-panel{stroke:var(--tb-dia-selected);stroke-width:3}
+.tb-region[data-correct="true"] .tb-u21-panel{stroke:var(--tb-dia-correct);stroke-width:3}
+.tb-region[data-wrong="true"] .tb-u21-panel{stroke:var(--tb-dia-wrong);stroke-width:3;stroke-dasharray:6 4}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}
@@ -1899,7 +2106,8 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .km-feature[data-paint='selected']{fill:var(--km-selected);stroke:var(--km-selected-line);stroke-width:1.5}
 .km-map[data-interactive='true'] .km-feature,.km-map[data-interactive='true'] .km-area,.km-map[data-interactive='true'] .km-marker{cursor:pointer}
 .km-feature:focus-visible,.km-area:focus-visible,.km-marker:focus-visible{outline:none;stroke:var(--focus-ring);stroke-width:3}
-.km-marker-hit{fill:var(--km-marker-hit);stroke:none}
+.km-marker-tap{fill:var(--km-marker-hit);stroke:none}
+.km-marker-hit{fill:var(--km-marker-hit);stroke:none;pointer-events:none}
 .km-marker-dot{fill:var(--km-marker);stroke:var(--km-pin-halo);stroke-width:1.5;vector-effect:non-scaling-stroke}
 .km-marker[data-paint='highlight'] .km-marker-hit{fill:var(--km-highlight);stroke:var(--km-highlight-line);stroke-dasharray:none}
 .km-marker[data-paint='correct'] .km-marker-hit{fill:var(--km-correct);stroke:var(--km-correct-line);stroke-dasharray:none}

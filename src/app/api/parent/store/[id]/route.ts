@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { deleteStoreItem, hideStoreItemToday, showStoreItemToday, StoreStockType, StoreVisibility, updateStoreItem } from '@/lib/store';
 
@@ -35,7 +36,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     updateStoreItem(id, parseBody(await req.json()));
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Poe eset ei saanud muuta.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Poe eset ei saanud muuta.') }, { status: 400 });
   }
 }
 

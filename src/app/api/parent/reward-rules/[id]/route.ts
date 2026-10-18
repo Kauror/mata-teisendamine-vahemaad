@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { deleteRewardRule, listRewardRules, RewardLearnerScope, updateRewardRule } from '@/lib/rewardRules';
 
@@ -29,7 +30,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     updateRewardRule(id, parseBody(await req.json()));
     return NextResponse.json({ rules: listRewardRules() });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Auhinda ei saanud muuta.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Auhinda ei saanud muuta.') }, { status: 400 });
   }
 }
 

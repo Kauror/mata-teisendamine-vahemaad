@@ -3,7 +3,7 @@ import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { isSupportedMathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
-import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
+import { kirsiPictureWordQuestions, KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { KIUR_READING_TASKS } from '@/lib/kiurReadingTasks';
 import { LOODUSOPETUS_TASKS } from '@/lib/loodusopetus/tasks';
 import { isChoiceTask, type ScienceTask } from '@/lib/loodusopetus/types';
@@ -137,7 +137,7 @@ function verifyPictureWords(input: VerifiableAttempt) {
     const actual = row(question);
     const vocabularyId = input.questionIds[index].split(':').at(-1);
     const expected = vocabularyId ? contracts.get(vocabularyId) : undefined;
-    if (!expected || (actual.vocabularyId !== undefined && actual.vocabularyId !== vocabularyId) || actual.question !== buildKirsiPictureWordQuestion(expected)) throw new AttemptContractError(`Unknown picture-word task ${input.questionIds[index]}.`);
+    if (!expected || (actual.vocabularyId !== undefined && actual.vocabularyId !== vocabularyId) || !kirsiPictureWordQuestions(expected).includes(String(actual.question))) throw new AttemptContractError(`Unknown picture-word task ${input.questionIds[index]}.`);
     return normalize(actual.selectedWord ?? answerOf(actual)) === normalize(expected.word);
   });
 }

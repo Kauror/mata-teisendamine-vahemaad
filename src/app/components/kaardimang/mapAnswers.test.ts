@@ -1,10 +1,15 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CATALOG } from '@/content/kaardimang/catalog';
+import { DATA_VERSION, MAP_VIEWS } from '@/content/kaardimang/regions';
+import type { MapViewData } from '@/content/kaardimang/types';
 import { emptyState, NO_AREA_ANSWER, SEA_ANSWER, type ClientQuestion } from '@/lib/kaardimang/engine';
-import { answerIdFor, playAreaPaint, playPaint, scoreLine } from './mapAnswers';
+import { answerIdFor, contextNoteEt, markerHitRadii, playAreaPaint, playPaint, scoreLine } from './mapAnswers';
 
 function question(targetType: ClientQuestion['targetType'], extra: Partial<ClientQuestion> = {}): ClientQuestion {
   return {
-    id: 'q1', kind: 'find_country', answering: 'map', targetType, targetId: 'EST', targetKey: 'country:EST', prompt: '', options: null,
+    id: 'q1', kind: 'find_country', answering: 'map', targetType, targetId: null, prompt: '', options: null,
     highlightId: null, hideCapitalId: null, state: emptyState(), correctId: null, explainEt: null, hintEt: null, ...extra
   };
 }
@@ -16,11 +21,63 @@ describe('answerIdFor', () => {
     expect(answerIdFor(question('continent'), { kind: 'land', id: 'NZL', wp: 'oceania', ct: null })).toBe(NO_AREA_ANSWER);
   });
 
+  it('counts the South Pole dot as Antarctica in a continent question (it sits on the continent)', () => {
+    expect(answerIdFor(question('continent'), { kind: 'marker', id: 'south-pole' })).toBe('antarctica');
+    expect(answerIdFor(question('point', { kind: 'find_point', targetId: 'south-pole' }), { kind: 'marker', id: 'south-pole' })).toBe('south-pole');
+  });
+
   it('turns open sea into the neutral answer and keeps ocean areas as oceans', () => {
     expect(answerIdFor(question('country'), { kind: 'sea' })).toBe(SEA_ANSWER);
     expect(answerIdFor(question('country'), { kind: 'area', id: 'pacific' })).toBe(SEA_ANSWER);
     expect(answerIdFor(question('ocean'), { kind: 'area', id: 'pacific' })).toBe('pacific');
     expect(answerIdFor(question('country'), { kind: 'marker', id: 'VAT' })).toBe('VAT');
+  });
+});
+
+describe('markerHitRadii', () => {
+  const views = MAP_VIEWS.map((view) => JSON.parse(readFileSync(path.join(process.cwd(), 'public', 'kaardimang', 'maps', DATA_VERSION, `${view.id}.json`), 'utf8')) as MapViewData);
+
+  // 360 px phone (≈338 px of map), a tablet and a wide desktop map.
+  it.each([1000 / 338, 1000 / 740, 1])('never lets two hit circles overlap, so a tap means one country (%f units/px)', (units) => {
+    for (const view of views) {
+      const radii = markerHitRadii(view.markers, units);
+      for (const a of view.markers) {
+        const halfGap = Math.min(Infinity, ...view.markers.filter((other) => other !== a).map((other) => Math.hypot(a.x - other.x, a.y - other.y) / 2));
+        expect(radii.get(a.id)!, `${view.id}/${a.id}`).toBeGreaterThanOrEqual(Math.min(a.hr, halfGap));
+        for (const b of view.markers) {
+          if (a.id >= b.id) continue;
+          const gap = Math.hypot(a.x - b.x, a.y - b.y);
+          expect(radii.get(a.id)! + radii.get(b.id)!, `${view.id}: ${a.id}/${b.id}`).toBeLessThanOrEqual(gap + 0.01);
+        }
+      }
+    }
+  });
+
+  it('gives the South Pole, asked only as a map tap, a 44 px tap circle on a 360 px phone', () => {
+    const antarctica = views.find((view) => view.id === 'antarctica')!;
+    const units = antarctica.width / 338;
+    expect((2 * markerHitRadii(antarctica.markers, units).get('south-pole')!) / units).toBeGreaterThanOrEqual(44);
+  });
+
+  it('keeps the 10 px minimum for a marker with room around it', () => {
+    const radii = markerHitRadii([{ id: 'MLT', x: 100, y: 100, hr: 12 }, { id: 'TUN', x: 400, y: 100, hr: 34 }], 3);
+    expect(radii.get('MLT')).toBe(30);
+    expect(radii.get('TUN')).toBe(34);
+  });
+});
+
+describe('contextNoteEt', () => {
+  const countryNames = new Set(CATALOG.countries.map((country) => country.nameEt));
+
+  it('says "the owner is in brackets" only when a country is in brackets', () => {
+    const notes = Object.fromEntries(Object.entries(CATALOG.contextNames).map(([id, name]) => [id, contextNoteEt(name, countryNames)]));
+    expect(notes.GRL).toMatch(/Sulgudes on riik/);
+    expect(notes.PRI).toMatch(/Sulgudes on riik/);
+    for (const id of ['ESH', 'PGA', 'SCR']) expect(notes[id], id).toBe('Selle ala staatus on vaidlustatud.');
+    for (const id of ['BRI', 'PYF', 'VIR', 'IOT']) expect(notes[id], id).toBe('See ala ei ole iseseisev riik.');
+    for (const [id, name] of Object.entries(CATALOG.contextNames)) {
+      if (notes[id].includes('Sulgudes')) expect(countryNames.has(/\(([^)]+)\)$/u.exec(name)![1]) || name.endsWith('(USA)'), id).toBe(true);
+    }
   });
 });
 

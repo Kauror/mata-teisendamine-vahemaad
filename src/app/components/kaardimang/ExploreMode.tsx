@@ -6,8 +6,11 @@ import { CONTINENTS, WORLD_PARTS, type MapViewDef } from '@/content/kaardimang/r
 import type { MapViewData } from '@/content/kaardimang/types';
 import { PLACE_HINTS } from '@/lib/kaardimang/engine';
 import MapView, { type MapLabel, type MapPick, type MapPin } from './MapView';
+import { contextNoteEt } from './mapAnswers';
 
 type Selection = { id: string; kind: 'land' | 'marker' | 'area'; wp: string | null; ct: string | null } | null;
+
+const COUNTRY_NAMES: ReadonlySet<string> = new Set(CATALOG.countries.map((country) => country.nameEt));
 
 const ANTARCTICA_FACT = 'Antarktis on manner lõunapooluse ümber. Seal ei ole riike ega pealinnu: inimesed elavad seal ainult teadusjaamades ja enamasti lühikest aega.';
 
@@ -37,7 +40,7 @@ function InfoCard({ selection, view }: { selection: NonNullable<Selection>; view
     return (
       <div className='km-card km-info' role='status'>
         <h2>{nameOf(selection.id)}</h2>
-        <p>{selection.id === 'ATA' ? ANTARCTICA_FACT : 'See ala ei ole iseseisev riik. Sulgudes on riik, kellele see kuulub.'}</p>
+        <p>{selection.id === 'ATA' ? ANTARCTICA_FACT : contextNoteEt(nameOf(selection.id), COUNTRY_NAMES)}</p>
         {where ? <p className='tb-muted'>{where}</p> : null}
       </div>
     );

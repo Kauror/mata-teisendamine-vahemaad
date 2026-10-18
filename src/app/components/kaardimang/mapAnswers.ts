@@ -11,7 +11,10 @@ export function answerIdFor(question: Pick<ClientQuestion, 'targetType'>, pick: 
   switch (question.targetType) {
     case 'continent':
       if (pick.kind === 'land') return pick.ct ?? NO_AREA_ANSWER;
-      return pick.kind === 'marker' ? pick.id : SEA_ANSWER;
+      // The South Pole dot lies on Antarctica: tapping the middle of the
+      // continent hits it, and that is the continent, not a wrong place.
+      if (pick.kind === 'marker') return pick.id === 'south-pole' ? 'antarctica' : NO_AREA_ANSWER;
+      return SEA_ANSWER;
     case 'worldPart':
       if (pick.kind === 'land') return pick.wp ?? NO_AREA_ANSWER;
       return SEA_ANSWER;
@@ -44,6 +47,30 @@ export function playAreaPaint(question: ClientQuestion, id: string): Paint {
   if (question.correctId === id) return 'correct';
   if (question.state.wrongIds.includes(id)) return 'wrong';
   return null;
+}
+
+// The tap circle of each small-country marker, in map units, for a map shown
+// at `units` map units per CSS pixel: at least 10 px where there is room, but
+// never past half the gap to the nearest marker. The build keeps the circles
+// apart in map units (hr); a phone-sized minimum alone would make them overlap
+// again, and a tap between two dots would then go to whichever is drawn last.
+export const MARKER_MIN_HIT_PX = 10;
+export function markerHitRadii(markers: Array<{ id: string; x: number; y: number; hr: number }>, units: number): Map<string, number> {
+  return new Map(markers.map((marker) => {
+    let halfGap = Infinity;
+    for (const other of markers) if (other !== marker) halfGap = Math.min(halfGap, Math.hypot(other.x - marker.x, other.y - marker.y) / 2);
+    return [marker.id, Math.min(Math.max(marker.hr, MARKER_MIN_HIT_PX * units), halfGap)];
+  }));
+}
+
+// Uuri's line under a map area that is not a country. Only "Gröönimaa (Taani)"
+// style names have the owner in brackets; "Lääne-Sahara (staatus vaidlustatud)"
+// and "Prantsuse Polüneesia" do not, and must not be told so.
+export function contextNoteEt(name: string, countryNames: ReadonlySet<string>): string {
+  const bracket = /\(([^)]+)\)$/u.exec(name)?.[1];
+  if (bracket && /vaidlustatud/u.test(bracket)) return 'Selle ala staatus on vaidlustatud.';
+  if (bracket && (countryNames.has(bracket) || bracket === 'USA')) return 'See ala ei ole iseseisev riik. Sulgudes on riik, kellele see kuulub.';
+  return 'See ala ei ole iseseisev riik.';
 }
 
 // "8 küsimusest 6 õiget": partitive after every number but 1.

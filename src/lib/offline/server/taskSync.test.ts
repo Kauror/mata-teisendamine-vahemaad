@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import db from '@/lib/db';
-import { approveTaskAssignment, createTaskTemplate, findAssignmentId, getBalance, invalidateTaskInstancePreparation, rejectTaskAssignment, todayDateString, updateTaskTemplate } from '@/lib/tasks';
+import { approveTaskAssignment, createTaskTemplate, ensureTaskInstancesForDate, findAssignmentId, getAssignmentStatusById, getBalance, invalidateTaskInstancePreparation, rejectTaskAssignment, todayDateString, updateTaskTemplate } from '@/lib/tasks';
 import { applyOfflineTaskAction, getSyncTaskAssignments, getSyncTaskTemplates } from '@/lib/offline/server/taskSync';
 import { getTaskChangesAfter } from '@/lib/offline/server/taskChanges';
 import { listOfflineTaskReviews, resolveOfflineTaskReview } from '@/lib/offline/server/taskReviews';
@@ -185,5 +185,92 @@ describe('getSyncTaskAssignments', () => {
     const kirsi = assignments.find((a) => a.learner === 'kirsi' && a.templateId === template.id);
     expect(kiur?.state).toBe('completed');
     expect(kirsi?.state).toBe('active');
+  });
+});
+
+// A task ticked offline in the evening reaches the server the next morning,
+// after the new day's first read has closed the old day as 'missed'.
+describe('late offline task completions', () => {
+  const EVENING = '2026-10-16T18:30:00.000Z'; // 21:30 in Tallinn, 16 October
+  const NEXT_MORNING = '2026-10-17T05:00:00.000Z'; // 08:00 in Tallinn, 17 October
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(EVENING));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  function dailyTemplate(mode: TaskAssignmentMode, requiresApproval = false) {
+    createTaskTemplate({ title: 'Koru tuba', points: 5, assignmentMode: mode, recurrenceType: 'daily', startDate: '2026-10-01', requiresApproval });
+    return getSyncTaskTemplates()[0];
+  }
+
+  function lateAction(template: SyncTaskTemplate, learner: 'kiur' | 'kirsi', clientActionId: string, completedAt = EVENING) {
+    return action({ templateId: template.id, templateVersion: template.version, learner, clientActionId, taskDate: '2026-10-16', completedAt });
+  }
+
+  function rollOverToNextMorning() {
+    vi.setSystemTime(new Date(NEXT_MORNING));
+    ensureTaskInstancesForDate(todayDateString());
+  }
+
+  it('settles yesterday\'s completion against yesterday instead of refusing it', () => {
+    const template = dailyTemplate('kiur');
+    ensureTaskInstancesForDate('2026-10-16');
+    rollOverToNextMorning();
+
+    const result = applyOfflineTaskAction(lateAction(template, 'kiur', 'late-1'));
+    expect(result.status).toBe('applied');
+    expect(getBalance('kiur')).toBe(5);
+    expect(getAssignmentStatusById(findAssignmentId(template.id, '2026-10-16', 'kiur')!)).toBe('completed');
+    // A retry is still idempotent.
+    expect(applyOfflineTaskAction(lateAction(template, 'kiur', 'late-1')).status).toBe('applied');
+    expect(getBalance('kiur')).toBe(5);
+  });
+
+  it('settles both children of a shared task when both arrive late', () => {
+    const template = dailyTemplate('both_independent');
+    ensureTaskInstancesForDate('2026-10-16');
+    rollOverToNextMorning();
+
+    expect(applyOfflineTaskAction(lateAction(template, 'kiur', 'late-kiur')).status).toBe('applied');
+    expect(applyOfflineTaskAction(lateAction(template, 'kirsi', 'late-kirsi')).status).toBe('applied');
+    // 5 each, plus that day's joint bonus now that both finished everything.
+    expect(getBalance('kiur')).toBe(6);
+    expect(getBalance('kirsi')).toBe(6);
+    expect(db.prepare('SELECT date FROM daily_task_bonuses').all()).toEqual([{ date: '2026-10-16' }]);
+  });
+
+  it('keeps a first-completer task for the child who settled it first', () => {
+    const template = dailyTemplate('first_completer');
+    ensureTaskInstancesForDate('2026-10-16');
+    rollOverToNextMorning();
+
+    expect(applyOfflineTaskAction(lateAction(template, 'kiur', 'fc-kiur')).status).toBe('applied');
+    const second = applyOfflineTaskAction(lateAction(template, 'kirsi', 'fc-kirsi'));
+    expect(second.status).toBe('conflict');
+    expect(getBalance('kirsi')).toBe(0);
+    expect(getAssignmentStatusById(findAssignmentId(template.id, '2026-10-16', 'kirsi')!)).toBe('locked');
+  });
+
+  it('still refuses a past-day completion that was not made on that day', () => {
+    const template = dailyTemplate('kiur');
+    ensureTaskInstancesForDate('2026-10-16');
+    rollOverToNextMorning();
+
+    const result = applyOfflineTaskAction(lateAction(template, 'kiur', 'late-wrong-day', NEXT_MORNING));
+    expect(result).toMatchObject({ status: 'conflict', reasonCode: 'not_active' });
+    expect(getBalance('kiur')).toBe(0);
+  });
+
+  it('holds a late approval-required completion for the parent', () => {
+    const template = dailyTemplate('kiur', true);
+    ensureTaskInstancesForDate('2026-10-16');
+    rollOverToNextMorning();
+
+    expect(applyOfflineTaskAction(lateAction(template, 'kiur', 'late-approval')).status).toBe('pending_approval');
+    expect(getBalance('kiur')).toBe(0);
+    approveTaskAssignment(findAssignmentId(template.id, '2026-10-16', 'kiur')!);
+    expect(getBalance('kiur')).toBe(5);
   });
 });

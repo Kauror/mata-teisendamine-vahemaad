@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { Learner } from '@/lib/tasks';
 import { purchaseStreakFreeze } from '@/lib/streakFreeze';
 
@@ -16,6 +17,6 @@ export async function POST(req: NextRequest) {
     if (!learner) return NextResponse.json({ message: 'Vale laps.' }, { status: 400 });
     return NextResponse.json(purchaseStreakFreeze(learner));
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Ostu ei saanud teha.' }, { status: 409 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Ostu ei saanud teha.') }, { status: 409 });
   }
 }

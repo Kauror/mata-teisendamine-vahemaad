@@ -3,7 +3,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { TEXTBOOK_COURSES } from '@/content/textbook/registry';
 import { getDiagram } from '@/lib/textbook/diagramRegistry';
-import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams';
+import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/components';
+import { hasDiagramView } from '@/app/components/textbook/diagrams';
+import { DIAGRAMS } from '@/lib/textbook/diagramRegistry';
 
 // Answer secrecy of every picture used in a hotspot question of every ready
 // unit, data-driven: a unit that becomes ready is covered without a new test.
@@ -32,8 +34,8 @@ const strip = (markup: string, tag: string) => markup.replace(new RegExp(`<${tag
 const textOf = (markup: string) => [...markup.matchAll(/>([^<>]+)</g)].map((match) => match[1].trim()).filter(Boolean);
 
 describe('hotspot pictures of every ready unit', () => {
-  it('finds the ready units and at least one hotspot picture in each real unit 10–14', () => {
-    for (const id of ['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14']) {
+  it('finds the ready units and at least one hotspot picture in each authored real unit', () => {
+    for (const id of ['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14', 'lo-opik-u15', 'lo-opik-u16', 'lo-opik-u17', 'lo-opik-u18', 'lo-opik-u19', 'lo-opik-u21']) {
       expect(READY_UNITS.map((unit) => unit.id)).toContain(id);
       expect(hotspotDiagramsOf(id).length, id).toBeGreaterThan(0);
     }
@@ -64,6 +66,15 @@ describe('hotspot pictures of every ready unit', () => {
         if (LABELS_ARE_LEGEND_DATA.has(diagramId)) continue;
         for (const text of drawn) expect(text.toLowerCase(), `${diagramId} draws "${region.label}"`).not.toContain(label);
       }
+    }
+  });
+});
+
+describe('every registered picture can be drawn by DiagramView', () => {
+  it('has a component and a (lazy) unit loader for each registry ID', () => {
+    for (const { id } of DIAGRAMS) {
+      expect(DIAGRAM_COMPONENTS[id], id).toBeTruthy();
+      expect(hasDiagramView(id), id).toBe(true);
     }
   });
 });

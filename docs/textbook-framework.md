@@ -14,11 +14,24 @@ unpublished, and so is Unit 12 "Kaart" (`unit12.ts`: 4 lessons, 15 sections,
 8 objectives, 94 questions, 4 diagrams, no photos), Unit 13 "Kaardi mõõtkava"
 (`unit13.ts`: 4 lessons, 15 sections, 8 objectives, 117 questions, 4 diagrams)
 and Unit 14 "Kaartide mitmekesisus" (`unit14.ts`: 4 lessons, 13 sections,
-8 objectives, 108 questions, 4 diagrams). The preview keeps the child's unit
-order: each ready unit opens there once the ready unit before it is passed.
-Units 15–22 are **metadata-only drafts**
+8 objectives, 108 questions, 4 diagrams). Added on 2026-10-18, all `ready` and
+unpublished: Unit 15 "Mandrid ja maailmajaod" (5 lessons, 117 questions,
+4 diagrams), 16 "Maailmameri" (4 lessons, 99 questions, 4 diagrams), 17 "Eesti
+geograafiline asend" (4 lessons, 111 questions, 4 diagrams), 18 "Euroopa kaart"
+(4 lessons, 137 questions, 4 diagrams), 19 "Maakera siseehitus" (5 lessons, one
+optional; 134 questions, 6 diagrams) and 21 "Maavärinad" (4 lessons,
+136 questions, 9 diagrams). Their world maps share one Natural Earth outline
+file (`diagrams/data/world_continent_paths.json`). The preview keeps the
+child's unit order: each ready unit opens there once the ready unit before it
+is passed; a draft in between (Unit 20) is skipped, never blocks.
+Units 20 "Vulkaanid" and 22 "Loodusõnnetused" are **metadata-only drafts**
 (number, title, pages); their lessons and questions are written later from the
-corrected textbook text. A preview-only demo course (`textbook-demo`) shows the whole flow
+corrected textbook text.
+
+Diagram code: units 11 onwards are loaded on demand, one chunk per unit
+(`DiagramView` in `diagrams/index.tsx`, keyed by the `uNN-` ID prefix); a new
+unit adds its `uNN` entry there and its components to `diagrams/components.ts`
+(the eager map the tests use). A test fails if a registered ID has no loader. A preview-only demo course (`textbook-demo`) shows the whole flow
 to the parent.
 
 ## Architecture

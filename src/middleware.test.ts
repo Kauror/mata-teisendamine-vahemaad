@@ -83,3 +83,20 @@ describe('build id on pages (OFF-03)', () => {
     expect((await get('/kiur')).headers.get('x-app-build-id')).toBeNull();
   });
 });
+
+describe('public static files (SEC-02)', () => {
+  it('keeps real static files public without a family session', async () => {
+    for (const path of ['/favicon.ico', '/icon.png', '/web-app-manifest-192x192.png', '/textbook-images/maa-kuju.webp', '/kaardimang/maps/nasa-apollo17-blue-marble.webp']) {
+      const response = await middleware(new NextRequest(`https://example.test${path}`));
+      expect(response.headers.get('x-middleware-next'), path).toBe('1');
+    }
+  });
+
+  it('never lets a file extension skip the family session on API routes or dynamic pages', async () => {
+    for (const path of ['/api/history/1.png', '/api/parent/textbook/preview/courses/x.svg', '/api/remediation/1.txt', '/history/1.png', '/kiur/loodusopetus/opik/u1.jpg']) {
+      const response = await middleware(new NextRequest(`https://example.test${path}`));
+      expect(response.headers.get('x-middleware-next'), path).toBeNull();
+      expect([401, 307], path).toContain(response.status);
+    }
+  });
+});

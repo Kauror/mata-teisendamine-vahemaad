@@ -173,11 +173,17 @@ function countryOptions(answer: CatalogCountry, pool: CatalogCountry[], count: n
   return shuffle([answer, ...others], rng).map((country) => ({ id: country.id, label: country.nameEt }));
 }
 
+// Wrong capitals come from the view's set first. A set where few countries
+// have one plain capital (Lõuna-Aafrika, Mikroneesia) is topped up from the
+// rest of the world part, then the world, so every question has `count` buttons.
 function capitalOptions(answer: CatalogCountry, pool: CatalogCountry[], count: number, rng: Rng) {
   const right = quizCapital(answer)!;
   const seen = new Set([right.nameEt]);
   const others: Array<{ id: string; label: string }> = [];
-  for (const country of shuffle(pool, rng)) {
+  const inPool = new Set(pool.map((country) => country.id));
+  const samePart = CATALOG.countries.filter((country) => country.target && country.worldPart === answer.worldPart && !inPool.has(country.id));
+  const rest = CATALOG.countries.filter((country) => country.target && country.worldPart !== answer.worldPart && !inPool.has(country.id));
+  for (const country of [...shuffle(pool, rng), ...shuffle(samePart, rng), ...shuffle(rest, rng)]) {
     const capital = quizCapital(country);
     if (!capital || country.id === answer.id || seen.has(capital.nameEt)) continue;
     seen.add(capital.nameEt);
@@ -318,8 +324,12 @@ export function gradeAnswer(question: FrozenQuestion, state: QuestionState, answ
   }
   let removedOptionIds = state.removedOptionIds;
   if (question.answering === 'buttons') {
-    const removable = question.options!.find((option) => option.id !== question.answerId && option.id !== answerId);
-    removedOptionIds = removable ? [...removedOptionIds, answerId, removable.id] : [...removedOptionIds, answerId];
+    // The tapped button goes, and one more wrong one if that still leaves a
+    // choice: with three buttons (Avastaja) the retry must not be the answer alone.
+    removedOptionIds = [...removedOptionIds, answerId];
+    const left = question.options!.filter((option) => !removedOptionIds.includes(option.id));
+    const removable = left.find((option) => option.id !== question.answerId);
+    if (removable && left.length > 2) removedOptionIds = [...removedOptionIds, removable.id];
   }
   const tapped = question.answering === 'map' ? `See on ${nameOf(answerId)}. ` : '';
   return { outcome: 'wrong_retry', state: { ...state, attempts, wrongIds, removedOptionIds }, messageEt: `${tapped}Proovi veel. ${question.hintEt}`.trim() };
@@ -327,21 +337,35 @@ export function gradeAnswer(question: FrozenQuestion, state: QuestionState, answ
 
 /* ---------------------------------------------------------- client views */
 
-export type ClientQuestion = Omit<FrozenQuestion, 'answerId' | 'explainEt' | 'hintEt'> & {
+// The target (`targetId`, and the mastery key built from it) and the capital a
+// question hides are the answer itself for most kinds — "Leia kaardilt Eesti"
+// has targetId EST, "Mis on Norra pealinn?" hides nor-oslo — so they stay on
+// the server until the question is resolved, exactly like `answerId`.
+export type ClientQuestion = Omit<FrozenQuestion, 'answerId' | 'explainEt' | 'hintEt' | 'targetId' | 'targetKey' | 'hideCapitalId'> & {
   state: QuestionState;
   // Only once the question is resolved (or a hint has been earned).
+  targetId: string | null;
+  hideCapitalId: string | null;
   correctId: string | null;
   explainEt: string | null;
   hintEt: string | null;
 };
 
 export function toClientQuestion(question: FrozenQuestion, state: QuestionState): ClientQuestion {
-  const { answerId, explainEt, hintEt, ...rest } = question;
+  const resolved = Boolean(state.resolved);
   return {
-    ...rest,
+    id: question.id,
+    kind: question.kind,
+    answering: question.answering,
+    targetType: question.targetType,
+    prompt: question.prompt,
+    options: question.options,
+    highlightId: question.highlightId,
     state,
-    correctId: state.resolved ? answerId : null,
-    explainEt: state.resolved ? explainEt : null,
-    hintEt: state.attempts > 0 ? hintEt : null
+    targetId: resolved ? question.targetId : null,
+    hideCapitalId: resolved ? question.hideCapitalId : null,
+    correctId: resolved ? question.answerId : null,
+    explainEt: resolved ? question.explainEt : null,
+    hintEt: state.attempts > 0 ? question.hintEt : null
   };
 }

@@ -284,3 +284,14 @@ export function metadataMatchesContract(attempt: Record<string, unknown>, contra
     attempt.runnerVersion === contract.runnerVersion &&
     attempt.rotationVersion === contract.rotationVersion;
 }
+
+// The message a route may show for a failed action. Domain code throws a plain
+// Error with an Estonian, user-facing text ("Tähti ei ole piisavalt."); every
+// other error (a TypeError from a malformed body, a SqliteError, an internal
+// contract error) is logged and replaced by the route's own fallback, so no
+// internal detail reaches the browser.
+export function publicErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && Object.getPrototypeOf(error) === Error.prototype) return error.message;
+  console.error('Request failed', error);
+  return fallback;
+}
