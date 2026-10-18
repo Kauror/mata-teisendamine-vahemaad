@@ -666,7 +666,9 @@ function buildView(view: MapViewDef): MapViewData {
       }
     }
     const pole = projection(SOUTH_POLE)!;
-    markers.push({ id: 'south-pole', x: round1(pole[0]), y: round1(pole[1]), r: 7, hr: 30 });
+    // "Leia lõunapoolus" is answered only on the map, and nothing else is near
+    // the pole: a 44 px circle on a 360 px phone (1000 units ≈ 338 px).
+    markers.push({ id: 'south-pole', x: round1(pole[0]), y: round1(pole[1]), r: 7, hr: 66 });
   }
 
   const background = view.kind === 'world' ? encodePath(projectRings(projection, { type: 'Polygon', coordinates: [[[-180, -90], [-180, 90], [180, 90], [180, -90], [-180, -90]]] }), 0.4, 1) : null;

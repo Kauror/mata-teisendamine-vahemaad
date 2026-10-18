@@ -53,6 +53,12 @@ describe('markerHitRadii', () => {
     }
   });
 
+  it('gives the South Pole, asked only as a map tap, a 44 px tap circle on a 360 px phone', () => {
+    const antarctica = views.find((view) => view.id === 'antarctica')!;
+    const units = antarctica.width / 338;
+    expect((2 * markerHitRadii(antarctica.markers, units).get('south-pole')!) / units).toBeGreaterThanOrEqual(44);
+  });
+
   it('keeps the 10 px minimum for a marker with room around it', () => {
     const radii = markerHitRadii([{ id: 'MLT', x: 100, y: 100, hr: 12 }, { id: 'TUN', x: 400, y: 100, hr: 34 }], 3);
     expect(radii.get('MLT')).toBe(30);
