@@ -591,8 +591,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .history-stats-toggle::after{content:'';position:absolute;inset:-4px}
 .history-stats-toggle[aria-expanded="true"]{background:var(--inner-bg)}
 /* Segmented filters: equal columns, never wider than the phone. */
-.history-seg{margin-top:10px;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding:3px;border-radius:12px;background:var(--inner-bg)}
-.history-seg button{min-height:38px;padding:0 4px;border:0;border-radius:10px;background:none;box-shadow:none;color:#64748b;font-size:13px;font-weight:850;white-space:nowrap;cursor:pointer}
+/* Each button is as wide as its word plus the same padding, so the gaps between labels look even. */
+.history-seg{margin-top:10px;display:flex;padding:3px;border-radius:12px;background:var(--inner-bg)}
+.history-seg button{flex:1 1 auto;min-width:0;min-height:38px;padding:0 8px;border:0;border-radius:10px;background:none;box-shadow:none;color:#64748b;font-size:13px;font-weight:850;white-space:nowrap;cursor:pointer}
 .history-seg button[aria-pressed="true"]{background:#fff;color:#0b1b45;box-shadow:0 1px 3px rgba(35,65,165,.14)}
 .filter-chip{min-height:44px;padding:0 13px;border-radius:999px;border:1px solid #dfe8f6;background:#fff;color:#475569;font-size:14px;font-weight:800;cursor:pointer}
 .filter-chip.active{background:#2563eb;border-color:#2563eb;color:#fff}
