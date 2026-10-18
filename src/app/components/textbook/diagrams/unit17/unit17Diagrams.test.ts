@@ -7,7 +7,7 @@ import { getDiagram } from '@/lib/textbook/diagramRegistry';
 import { UNIT17_DIAGRAMS } from '@/lib/textbook/diagrams/unit17';
 import { unit17 } from '@/content/textbook/loodusopetus-opik/unit17';
 import type { DiagramMode } from '@/app/components/textbook/diagrams/DiagramFrame';
-import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams';
+import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/components';
 import { CONTINENT_PATHS, COUNTRY_PATHS, REGION_COUNTRY } from '@/app/components/textbook/diagrams/unit17/geometry';
 import {
   BALTIC_MAP, HIIUMAA, PEIPUS, SAAREMAA, U17_DIAGRAM_LAYOUTS, WATERS_MAP, WORLD_ESTONIA, WORLD_MAP, type MapTransform

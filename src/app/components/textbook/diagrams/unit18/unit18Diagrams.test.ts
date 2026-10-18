@@ -7,7 +7,7 @@ import { getDiagram } from '@/lib/textbook/diagramRegistry';
 import { UNIT18_DIAGRAMS } from '@/lib/textbook/diagrams/unit18';
 import { unit18 } from '@/content/textbook/loodusopetus-opik/unit18';
 import type { DiagramMode } from '@/app/components/textbook/diagrams/DiagramFrame';
-import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams';
+import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/components';
 import { CONTINENT_PATHS, EUROPE_COUNTRY_PATHS } from '@/app/components/textbook/diagrams/unit18/europeMap';
 import { U18_BORDERS_VIEW, U18_COUNTRIES_VIEW, U18_DIAGRAM_LAYOUTS, U18_WORLD_VIEW } from '@/app/components/textbook/diagrams/unit18/layouts';
 import { U18_AREA_COUNTRIES } from '@/app/components/textbook/diagrams/unit18/EuropeAreaDiagram';

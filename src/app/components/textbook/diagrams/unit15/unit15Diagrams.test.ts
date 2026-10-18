@@ -8,7 +8,7 @@ import { getDiagram } from '@/lib/textbook/diagramRegistry';
 import { UNIT15_DIAGRAMS } from '@/lib/textbook/diagrams/unit15';
 import { unit15 } from '@/content/textbook/loodusopetus-opik/unit15';
 import type { DiagramMode } from '@/app/components/textbook/diagrams/DiagramFrame';
-import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams';
+import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/components';
 import { estimateTextWidth, labelExtent } from '@/app/components/textbook/diagrams/diagramLayout';
 import { boxFirstBaseline } from '@/app/components/textbook/diagrams/unit15/ContinentWorldPartLinksDiagram';
 import { U15_BAR } from '@/app/components/textbook/diagrams/unit15/LandWaterDiagram';

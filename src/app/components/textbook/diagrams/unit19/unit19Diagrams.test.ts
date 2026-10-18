@@ -7,7 +7,7 @@ import { getDiagram } from '@/lib/textbook/diagramRegistry';
 import { UNIT19_DIAGRAMS } from '@/lib/textbook/diagrams/unit19';
 import { unit19 } from '@/content/textbook/loodusopetus-opik/unit19';
 import type { DiagramMode } from '@/app/components/textbook/diagrams/DiagramFrame';
-import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams';
+import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/components';
 import { U19_CRUST_KM, U19_DIAGRAM_LAYOUTS, U19_EARTH, U19_EARTH_ROWS } from '@/app/components/textbook/diagrams/unit19/layouts';
 
 // Unit 19 "Maakera siseehitus": the six pictures rendered in every mode. The

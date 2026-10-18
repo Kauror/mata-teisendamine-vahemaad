@@ -7,7 +7,7 @@ import { getDiagram } from '@/lib/textbook/diagramRegistry';
 import { UNIT16_DIAGRAMS } from '@/lib/textbook/diagrams/unit16';
 import { unit16 } from '@/content/textbook/loodusopetus-opik/unit16';
 import { DiagramRegion, type DiagramMode } from '@/app/components/textbook/diagrams/DiagramFrame';
-import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams';
+import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/components';
 import { MARKER_RADIUS, labelExtent, labelLines, type MarkerLayout } from '@/app/components/textbook/diagrams/diagramLayout';
 import world from '@/app/components/textbook/diagrams/data/world_continent_paths.json';
 import { U16_DIAGRAM_LAYOUTS, U16_MAP, U16_MAP_SCALE, U16_PACIFIC_TWIN } from '@/app/components/textbook/diagrams/unit16/layouts';

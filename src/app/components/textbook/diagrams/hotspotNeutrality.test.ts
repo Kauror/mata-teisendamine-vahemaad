@@ -3,7 +3,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { TEXTBOOK_COURSES } from '@/content/textbook/registry';
 import { getDiagram } from '@/lib/textbook/diagramRegistry';
-import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams';
+import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/components';
+import { hasDiagramView } from '@/app/components/textbook/diagrams';
+import { DIAGRAMS } from '@/lib/textbook/diagramRegistry';
 
 // Answer secrecy of every picture used in a hotspot question of every ready
 // unit, data-driven: a unit that becomes ready is covered without a new test.
@@ -64,6 +66,15 @@ describe('hotspot pictures of every ready unit', () => {
         if (LABELS_ARE_LEGEND_DATA.has(diagramId)) continue;
         for (const text of drawn) expect(text.toLowerCase(), `${diagramId} draws "${region.label}"`).not.toContain(label);
       }
+    }
+  });
+});
+
+describe('every registered picture can be drawn by DiagramView', () => {
+  it('has a component and a (lazy) unit loader for each registry ID', () => {
+    for (const { id } of DIAGRAMS) {
+      expect(DIAGRAM_COMPONENTS[id], id).toBeTruthy();
+      expect(hasDiagramView(id), id).toBe(true);
     }
   });
 });

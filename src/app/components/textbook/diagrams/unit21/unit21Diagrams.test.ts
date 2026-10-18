@@ -7,7 +7,7 @@ import { getDiagram } from '@/lib/textbook/diagramRegistry';
 import { UNIT21_DIAGRAMS } from '@/lib/textbook/diagrams/unit21';
 import { unit21 } from '@/content/textbook/loodusopetus-opik/unit21';
 import type { DiagramMode } from '@/app/components/textbook/diagrams/DiagramFrame';
-import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams';
+import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/components';
 import { U21_DIAGRAM_FILES, U21_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit21/layouts';
 import { U21_WORLD_POINTS } from '@/app/components/textbook/diagrams/unit21/WorldLocationsDiagram';
 

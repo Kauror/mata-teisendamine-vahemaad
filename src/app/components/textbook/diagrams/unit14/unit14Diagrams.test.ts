@@ -7,7 +7,7 @@ import { getDiagram } from '@/lib/textbook/diagramRegistry';
 import { UNIT14_DIAGRAMS } from '@/lib/textbook/diagrams/unit14';
 import { unit14 } from '@/content/textbook/loodusopetus-opik/unit14';
 import type { DiagramMode } from '@/app/components/textbook/diagrams/DiagramFrame';
-import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams';
+import { DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/components';
 import { labelExtent } from '@/app/components/textbook/diagrams/diagramLayout';
 import { U14_DIAGRAM_LAYOUTS, U14_POPULATION_HEADING, U14_POPULATION_LEGEND, U14_POPULATION_LETTERS } from '@/app/components/textbook/diagrams/unit14/layouts';
 
