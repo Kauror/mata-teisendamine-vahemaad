@@ -7,8 +7,10 @@ import type { MapViewData } from '@/content/kaardimang/types';
 import { seededRng } from '@/lib/random';
 import { buildRound, directionHint, emptyState, gradeAnswer, NO_AREA_ANSWER, orderWithoutRepeats, ROUND_LENGTH, SEA_ANSWER, toClientQuestion, type TargetStat, type ViewGeometry } from '@/lib/kaardimang/engine';
 
+const geometries = new Map<string, ViewGeometry>();
 function geometry(id: string): ViewGeometry {
-  return JSON.parse(readFileSync(path.join(process.cwd(), 'public', 'kaardimang', 'maps', DATA_VERSION, `${id}.json`), 'utf8')) as MapViewData;
+  if (!geometries.has(id)) geometries.set(id, JSON.parse(readFileSync(path.join(process.cwd(), 'public', 'kaardimang', 'maps', DATA_VERSION, `${id}.json`), 'utf8')) as MapViewData);
+  return geometries.get(id)!;
 }
 
 const noStats = new Map<string, TargetStat>();
@@ -88,6 +90,20 @@ describe('buildRound', () => {
       }
     }
   });
+
+  it('offers the full number of buttons in every view, even where few countries have one capital', () => {
+    for (const view of MAP_VIEWS.filter((item) => item.kind === 'part' || item.kind === 'subregion')) {
+      for (const level of LEVELS) {
+        for (let seed = 1; seed < 10; seed++) {
+          for (const question of round(view.id, level.id, null, seed).questions) {
+            if (!question.options) continue;
+            expect(question.options.length, `${view.id}/${level.id}: ${question.prompt}`).toBe(level.id === 'explorer' ? 3 : 4);
+            expect(new Set(question.options.map((option) => option.label)).size).toBe(question.options.length);
+          }
+        }
+      }
+    }
+  }, 30_000);
 });
 
 describe('gradeAnswer', () => {

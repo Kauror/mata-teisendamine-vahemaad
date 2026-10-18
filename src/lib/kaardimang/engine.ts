@@ -173,11 +173,17 @@ function countryOptions(answer: CatalogCountry, pool: CatalogCountry[], count: n
   return shuffle([answer, ...others], rng).map((country) => ({ id: country.id, label: country.nameEt }));
 }
 
+// Wrong capitals come from the view's set first. A set where few countries
+// have one plain capital (Lõuna-Aafrika, Mikroneesia) is topped up from the
+// rest of the world part, then the world, so every question has `count` buttons.
 function capitalOptions(answer: CatalogCountry, pool: CatalogCountry[], count: number, rng: Rng) {
   const right = quizCapital(answer)!;
   const seen = new Set([right.nameEt]);
   const others: Array<{ id: string; label: string }> = [];
-  for (const country of shuffle(pool, rng)) {
+  const inPool = new Set(pool.map((country) => country.id));
+  const samePart = CATALOG.countries.filter((country) => country.target && country.worldPart === answer.worldPart && !inPool.has(country.id));
+  const rest = CATALOG.countries.filter((country) => country.target && country.worldPart !== answer.worldPart && !inPool.has(country.id));
+  for (const country of [...shuffle(pool, rng), ...shuffle(samePart, rng), ...shuffle(rest, rng)]) {
     const capital = quizCapital(country);
     if (!capital || country.id === answer.id || seen.has(capital.nameEt)) continue;
     seen.add(capital.nameEt);
