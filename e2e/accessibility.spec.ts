@@ -135,7 +135,10 @@ test('an achievement tooltip is actually painted, not clipped by its own row', a
 test('child-specific history selects the child and contains no destructive controls', async ({ page }) => {
   await navigateStable(page, '/history?child=kiur');
   await expect(page).toHaveURL(/\/history\?child=kiur$/);
-  await expect(page.getByRole('button', { name: 'Kiur', exact: true })).toHaveClass(/active/);
+  // Opened from the child's page: their own history, without the child filter.
+  await expect(page.getByRole('heading', { name: 'Minu ajalugu' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Laps' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '← Kiur' })).toHaveAttribute('href', '/kiur');
   await expect(page.locator('.delete-button,.delete-text-button,.history-delete-all-link')).toHaveCount(0);
 });
 

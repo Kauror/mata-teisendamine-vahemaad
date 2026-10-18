@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ResultFilter from '@/app/components/ResultFilter';
 import { formatDateTime, formatElapsed } from '@/lib/validation';
 import { compactTopicLabel, dayWord, HELD_REWARD_MESSAGE, isHeldReward, isKirsiAttempt } from '@/lib/history';
 import { KIUR_LENGTH_TOPIC_ID } from '@/lib/kiurMathTopics';
@@ -163,21 +164,23 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
   return (
     <main className='result-page'>
       <section className='result-shell'>
-        <section className='result-summary-card'>
+        <div className='result-top'>
+          <Link className='practice-back-button' href='/history'>← Ajalugu</Link>
           <h1>Tulemus</h1>
+        </div>
+        <section className='result-summary-card'>
           {isHeldReward(row.rewardSettlementStatus) && (
             <p className='result-held-notice' role='status'>{HELD_REWARD_MESSAGE}</p>
           )}
-          <p className='result-score'>{row.score} / {row.questionCount} õige</p>
-          <div className='result-meta-grid'>
-            <span>Teema: {attemptLabel}</span>
-            <span>Aeg: {typeof row.elapsedSeconds === 'number' && Number.isFinite(row.elapsedSeconds) ? formatElapsed(row.elapsedSeconds) : 'aeg puudub'}</span>
-            <span>{formatDateTime(row.createdAt)}</span>
+          <div className='result-score-row'>
+            <p className='result-score'>{row.score} / {row.questionCount} <span>õige</span></p>
+            {(reward || canonicalReward) && <span className='result-earned'>+{formatStars(reward ? reward.awardedAmount : canonicalReward!.total)} ⭐</span>}
           </div>
+          <p className='result-meta-line'>
+            {attemptLabel} · aeg {typeof row.elapsedSeconds === 'number' && Number.isFinite(row.elapsedSeconds) ? formatElapsed(row.elapsedSeconds) : 'puudub'} · {formatDateTime(row.createdAt)}
+          </p>
           {reward && (
             <div className='result-meta-grid'>
-              <span>Teenitud: +{formatStars(reward.awardedAmount)} ⭐</span>
-              <span>Tähed kokku: {formatStars(reward.balanceAfter)} ⭐</span>
               <span>Õpiseeria: {reward.streakLength} {dayWord(reward.streakLength)}</span>
               {isRemediation && typeof remediationMetadata.resolvedCount === 'number' && <span>Parandatud: {remediationMetadata.resolvedCount}</span>}
               {reward.streakBonusAwarded && <span>Seeriaboonus: +{formatStars(reward.streakBonusAmount)} ⭐</span>}
@@ -185,17 +188,15 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
               {reward.capReached && reward.awardedAmount === 0 && <span>Tänane õppimise punktipiir on täis.</span>}
             </div>
           )}
-          {canonicalReward && (
+          {canonicalReward && (canonicalReward.streakBonus > 0 || canonicalReward.ruleRewards.length > 0) && (
             <div className='result-meta-grid'>
-              <span>Teenitud: +{formatStars(canonicalReward.total)} ⭐</span>
-              <span>Tähed kokku: {formatStars(canonicalReward.balanceAfter)} ⭐</span>
               {canonicalReward.streakBonus > 0 && <span>Seeriaboonus: +{formatStars(canonicalReward.streakBonus)} ⭐</span>}
               {canonicalReward.ruleRewards.map((ruleReward) => <span key={ruleReward.componentKey}>Auhind: +{formatStars(ruleReward.amount)} ⭐</span>)}
             </div>
           )}
         </section>
 
-        <section className='result-list'>
+        <ResultFilter wrongCount={questions.filter((q) => !q.isCorrect).length} total={questions.length}>
         {questions.map((q, i) => {
           const order = resolveCorrectOrder(q);
           const correctChoiceAnswer = resolveCorrectAnswer(q, reviewCtx);
@@ -223,13 +224,12 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
             </article>
           );
         })}
-      </section>
+        </ResultFilter>
 
       <div className='result-actions'>
         <Link className='btn' href={retryHref}>{isRemediation ? 'Tagasi' : `Tee ${attemptLabel.toLowerCase()} uuesti`}</Link>
         <Link className='btn chip active' href={row.learner === 'kirsi' || isKirsi ? '/kirsi' : '/kiur'}>Vali uus harjutus</Link>
       </div>
-      <Link className='practice-back-button result-history-back-link' href='/history'>Ajalugu</Link>
       </section>
     </main>
   );

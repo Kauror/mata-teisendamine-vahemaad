@@ -63,11 +63,6 @@ function dashboardHref(learner: Learner) {
   return learner === 'kiur' ? '/kiur' : '/kirsi';
 }
 
-function timeLabel(value: string) {
-  const date = new Date(value);
-  return date.toLocaleDateString('et-EE') + ' ' + date.toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
-}
-
 export default function ChildStorePage({ learner }: { learner: Learner }) {
   const { online } = useOffline();
   const [data, setData] = useState<StoreData | null>(null);
@@ -187,56 +182,49 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
   const recipientName = childName(recipient);
   const giftValue = Math.floor(Number(giftAmount)) || 0;
   const canGift = giftValue >= 1 && giftValue <= balance;
+  const latestPurchase = data?.purchases?.[0] ?? null;
 
   return (
     <main className='store-page'>
       <section className='store-shell' data-accent={learner === 'kiur' ? 'blue' : 'pink'}>
-        <Link className='practice-back-button' href={dashboardHref(learner)}>← Tagasi</Link>
-        <header className='store-header'>
-          <div>
-            <h1>Pood</h1>
-            <p>{childName(learner)}</p>
-          </div>
-          <div className='store-balance'>⭐ {formatStars(balance)} {starWord(formatStars(balance))}</div>
-        </header>
+        {/* One row: back to the child, the title, the balance. */}
+        <div className='store-top'>
+          <Link className='practice-back-button store-back' href={dashboardHref(learner)}>← {childName(learner)}</Link>
+          <h1>Pood</h1>
+          <span className='store-balance' aria-label={`Sul on ${formatStars(balance)} ${starWord(formatStars(balance))}`}>⭐ {formatStars(balance)}</span>
+        </div>
 
-        <Link className='history-link' href='/history'>📄 Ajalugu</Link>
         {!online && <p className='offline-warning' role='status'>Poe andmed võivad olla viimase sünkroonimise seisuga. Ostmine ja kinkimine on võrguühenduseta keelatud.</p>}
         {error && <p className='error'>{error}</p>}
 
         {freeze && (
-          <article className={freeze.canBuy ? 'freeze-card' : 'freeze-card disabled'}>
+          <section className={freeze.canBuy ? 'freeze-card' : 'freeze-card disabled'} aria-label='Külmutus'>
+            <span className='freeze-card-icon' aria-hidden>❄️</span>
             <div className='freeze-card-text'>
-              <h2><span aria-hidden>❄️</span> Külmutus</h2>
-              <p>Hoiab su õpiseeria alles, kui üks päev jääb harjutamata. Osta enne, kui vaja läheb.</p>
-              <div className='freeze-card-meta'>
-                <span>Hind: {freeze.price} ⭐</span>
-                <span>Sul on: {freeze.held}/{freeze.maxHeld}</span>
-              </div>
+              <h2>Külmutus · sul on {freeze.held}/{freeze.maxHeld}</h2>
+              <p>{freeze.canBuy || !freeze.blockedReason ? `Hoiab seeria alles, kui üks päev jääb vahele · ${freeze.price} ⭐` : freeze.blockedReason}</p>
             </div>
-            <button type='button' disabled={!online || !freeze.canBuy || freezeBusy} onClick={buyFreeze}>
-              {!online ? 'Vajab internetiühendust' : freeze.canBuy ? 'Osta külmutus' : freeze.blockedReason}
-            </button>
-          </article>
+            <button type='button' className='store-buy' disabled={!online || !freeze.canBuy || freezeBusy} onClick={buyFreeze}>Osta</button>
+          </section>
         )}
 
-        <section className='store-grid'>
-          {(data?.items ?? []).map((item) => (
-            <article key={item.id} className={item.canBuy ? 'store-item-card' : 'store-item-card disabled'}>
-              <h2>{item.title}</h2>
-              {item.description && <p>{item.description}</p>}
-              <div className='store-item-meta'>
-                <span>Hind: {item.price} ⭐</span>
-                {item.stockType === 'fixed_stock' && <span>Alles: {item.fixedStockRemaining ?? 0}</span>}
-                {item.stockType === 'daily_stock' && <span>Täna alles: {item.dailyRemaining ?? 0}</span>}
-              </div>
-              <button type='button' disabled={!online || !item.canBuy} onClick={() => online && item.canBuy && setConfirmItem(item)}>
-                {!online ? 'Vajab internetiühendust' : item.canBuy ? 'Osta' : item.stateLabel}
-              </button>
-            </article>
+        {/* A plain list, dearest first: the price is what the children compare. */}
+        <ul className='store-list' aria-label='Poe esemed'>
+          {[...(data?.items ?? [])].sort((first, second) => second.price - first.price).map((item) => (
+            <li key={item.id} className='store-row' data-can={item.canBuy}>
+              <span className='store-row-main'>
+                <strong>{item.title}</strong>
+                {item.description && <small>{item.description}</small>}
+                {item.stockType === 'fixed_stock' && <small>Alles: {item.fixedStockRemaining ?? 0}</small>}
+                {item.stockType === 'daily_stock' && <small>Täna alles: {item.dailyRemaining ?? 0}</small>}
+                {online && !item.canBuy && item.stateLabel && <small>{item.stateLabel}</small>}
+              </span>
+              <span className='store-price'>{item.price} ⭐</span>
+              <button type='button' className='store-buy' disabled={!online || !item.canBuy} aria-label={`Osta ${item.title}`} onClick={() => online && item.canBuy && setConfirmItem(item)}>Osta</button>
+            </li>
           ))}
-          {data && data.items.length === 0 && <p>Poes ei ole praegu esemeid.</p>}
-        </section>
+          {data && data.items.length === 0 && <li className='store-empty'>Poes ei ole praegu esemeid.</li>}
+        </ul>
 
         <details className='store-gift'>
           <summary className='store-gift-summary'>🎁 Kingi tähti {recipientName}le</summary>
@@ -262,13 +250,11 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
           </div>
         </details>
 
-        <section className='store-recent'>
-          <h2>Hiljuti ostetud</h2>
-          {(data?.purchases ?? []).map((purchase) => (
-            <p key={purchase.id}><strong>{purchase.titleSnapshot}</strong><span>-{purchase.priceSnapshot} ⭐ · {timeLabel(purchase.purchasedAt)}</span></p>
-          ))}
-          {data && data.purchases.length === 0 && <p>Oste veel ei ole.</p>}
-        </section>
+        {/* The latest purchase on one line; the rest is in the child's history. */}
+        <Link className='store-recent' href={`/history?child=${learner}`}>
+          <span>{latestPurchase ? <>Hiljuti ostetud · {latestPurchase.titleSnapshot} · −{latestPurchase.priceSnapshot} ⭐</> : 'Oste veel ei ole'}</span>
+          <span aria-hidden>›</span>
+        </Link>
       </section>
 
       {confirmItem && (
