@@ -38,11 +38,11 @@ the app, and audit and fix the whole app.
 
 | Unit | Title | Status | Validator | Questions / groups | Diagrams | Preview | Published |
 |---|---|---|---|---|---|---|---|
-| 10 | Maa kuju | already live | AVALDATAV | 54 / 39 | 4 + photo | yes | **yes** (by the parent, before tonight) |
-| 11 | Gloobus | already live | AVALDATAV | 74 / 64 | 4 | yes | no |
-| 12 | Kaart | already live | AVALDATAV | 94 / 68 | 4 | yes | no |
-| 13 | Kaardi mõõtkava | already live | AVALDATAV | 117 / 100 | 4 | yes | no |
-| 14 | Kaartide mitmekesisus | already live | AVALDATAV | 108 / 74 | 4 | yes | no |
+| 10 | Maa kuju | already live | AVALDATAV | 54 / 39 | 4 + photo | yes | **yes** (by the parent, 2026-10-17 07:28 UTC) |
+| 11 | Gloobus | already live | AVALDATAV | 74 / 64 | 4 | yes | **yes** (by the parent, 2026-10-17 09:47 UTC) |
+| 12 | Kaart | already live | AVALDATAV | 94 / 68 | 4 | yes | **yes** (by the parent, 2026-10-17 09:47 UTC) |
+| 13 | Kaardi mõõtkava | already live | AVALDATAV | 117 / 100 | 4 | yes | **yes** (by the parent, 2026-10-17 09:47 UTC) |
+| 14 | Kaartide mitmekesisus | already live | AVALDATAV | 108 / 74 | 4 | yes | **yes** (by the parent, 2026-10-17 09:47 UTC) |
 | 15 | Mandrid ja maailmajaod | **integrated tonight** | AVALDATAV, 0 warnings | 117 / 77 | 4 | yes | no |
 | 16 | Maailmameri | **integrated tonight** | AVALDATAV, 0 warnings | 99 / 64 | 4 | yes | no |
 | 17 | Eesti geograafiline asend | **integrated tonight** | AVALDATAV, 0 warnings | 111 / 70 | 4 | yes | no |
@@ -336,3 +336,27 @@ full `npm test` timed out in unrelated files such as `syncDelta` and
   - Unit 20 has no content;
   - the CI run on the PR is the final word on the Linux and WebKit layout
     (fonts differ from Windows).
+
+## K. Deployment (2026-10-18)
+
+- **Release:** PR #58 merged as **0d721cb** after CI was green on 7d9a4c7.
+- **Deployed to KOCORP** with Kaur's go-ahead:
+  - image `pikkuste-harjutaja:0d721cb`;
+  - backup `backups/data-pre-0d721cb.tgz` (11.6 MB, tar verified);
+  - released with `docker compose up -d --no-deps --force-recreate app`;
+  - the tunnel was untouched.
+- **Startup verification passed:**
+  - integrity ok, 0 foreign-key errors, 13 migrations;
+  - 408 attempts, 610 ledger rows;
+  - balances Kirsi 136.3, Kiur 134.6, identical to the pre-deploy snapshot.
+- **Publication** is unchanged: Units 10–14 published by the parent; Units
+  15–21 have no publication row, so they are unpublished.
+- **Live probes:**
+  - `/access` 200;
+  - child textbook API without a session 401;
+  - `/history/1.png` redirects to the gate (SEC-02);
+  - API `Cache-Control: no-store` (SEC-06).
+- **Rollback image:** `pikkuste-harjutaja:ed55a76` (with the backup above).
+
+Correction to B: Units 11–14 had already been published by the parent on
+2026-10-17. The first version of this report said they were unpublished.
