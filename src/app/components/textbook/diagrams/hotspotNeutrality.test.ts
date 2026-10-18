@@ -32,8 +32,8 @@ const strip = (markup: string, tag: string) => markup.replace(new RegExp(`<${tag
 const textOf = (markup: string) => [...markup.matchAll(/>([^<>]+)</g)].map((match) => match[1].trim()).filter(Boolean);
 
 describe('hotspot pictures of every ready unit', () => {
-  it('finds the ready units and at least one hotspot picture in each real unit 10–14', () => {
-    for (const id of ['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14']) {
+  it('finds the ready units and at least one hotspot picture in each real unit 10–15', () => {
+    for (const id of ['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14', 'lo-opik-u15']) {
       expect(READY_UNITS.map((unit) => unit.id)).toContain(id);
       expect(hotspotDiagramsOf(id).length, id).toBeGreaterThan(0);
     }

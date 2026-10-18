@@ -1,5 +1,5 @@
-// Kiur's textbook course "Loodusõpetus – Õpiku õppetükid". Units 10–14 have
-// their full authored content (./unit10.ts … ./unit14.ts). Units 15–22 are METADATA-ONLY drafts:
+// Kiur's textbook course "Loodusõpetus – Õpiku õppetükid". Units 10–15 have
+// their full authored content (./unit10.ts … ./unit15.ts). Units 16–22 are METADATA-ONLY drafts:
 // number, title and textbook pages. Their lessons, objectives and questions
 // will be authored later from the corrected textbook text — never invent them
 // here. A draft can never be published (the validator reports `unit_draft`).
@@ -12,11 +12,11 @@ import { unit11 } from '@/content/textbook/loodusopetus-opik/unit11';
 import { unit12 } from '@/content/textbook/loodusopetus-opik/unit12';
 import { unit13 } from '@/content/textbook/loodusopetus-opik/unit13';
 import { unit14 } from '@/content/textbook/loodusopetus-opik/unit14';
+import { unit15 } from '@/content/textbook/loodusopetus-opik/unit15';
 
 export const LOODUSOPETUS_OPIK_COURSE_ID = 'loodusopetus-opik';
 
 const DRAFTS: ReadonlyArray<{ number: number; title: string; from: number; to: number; note?: string }> = [
-  { number: 15, title: 'Mandrid ja maailmajaod', from: 60, to: 63 },
   { number: 16, title: 'Maailmameri', from: 64, to: 65 },
   { number: 17, title: 'Eesti geograafiline asend', from: 66, to: 67 },
   { number: 18, title: 'Euroopa kaart', from: 68, to: 69 },
@@ -39,7 +39,7 @@ const drafts: Unit[] = DRAFTS.map((draft) => ({
   questions: []
 }));
 
-const units: Unit[] = [unit10, unit11, unit12, unit13, unit14, ...drafts].sort((left, right) => left.number - right.number);
+const units: Unit[] = [unit10, unit11, unit12, unit13, unit14, unit15, ...drafts].sort((left, right) => left.number - right.number);
 
 export const loodusopetusOpikCourse: Course = {
   id: LOODUSOPETUS_OPIK_COURSE_ID,
