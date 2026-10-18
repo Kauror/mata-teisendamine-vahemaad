@@ -545,8 +545,10 @@ describe('preview isolation (A5, A6)', () => {
   // ready (15–22) is covered here without writing a new test. This is where
   // the full pass/fail logic of the real units is proved; the browser only
   // smoke-tests how they render (e2e/textbook-real-units.spec.ts).
-  it('lists the real Units 10–14 as ready, in order', () => {
+  it('lists the real Units 10–14 and 18 as ready, in order', () => {
     expect(REAL_READY.slice(0, 5)).toEqual(['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14']);
+    expect(REAL_READY).toContain('lo-opik-u18');
+    expect(REAL_READY).toEqual([...REAL_READY].sort((left, right) => Number(left.slice(9)) - Number(right.slice(9))));
   });
 
   it.each(REAL_READY)('runs the real unit %s in the preview after the earlier ready units: read, practise with a correction, 18/20 fails, targeted practice, 19/20 passes; Kiur sees nothing', (unitId) => {
