@@ -72,6 +72,26 @@ describe('server-owned score recomputation', () => {
     }
   });
 
+  // 🥖 is a baguette, «sai» in Estonian, and was labelled LEIB while SAI had 🍞;
+  // on one board a child pairing 🥖 with SAI was marked wrong (EDU-10). The
+  // pictures are swapped, and a sprint uploaded with the old picture still
+  // verifies.
+  it('shows SAI as 🥖 and LEIB as 🍞, and accepts a sprint saved with the old pictures', () => {
+    const sai = KIRSI_READING_PAIRS.find((pair) => pair.id === 'sai')!;
+    const leib = KIRSI_READING_PAIRS.find((pair) => pair.id === 'leib')!;
+    expect([sai.image, leib.image]).toEqual(['🥖', '🍞']);
+    expect(KIRSI_FIRST_SOUND_TASKS.filter((task) => task.id === 'sai' || task.id === 'leib').map((task) => task.image)).toEqual(['🥖', '🍞']);
+    const verify = (pair: typeof sai, question: string, selectedWord: string) => {
+      const id = `run:1:0:${pair.id}`;
+      return recomputeScore({ runnerId: 'kirsi-picture-word', learner: 'kirsi', subject: 'lugemine', topic: 'pilt-ja-sona', category: 'Pilt ja sõna', difficulty: 'normal', generatorVersion: 'fixed-dataset', seed: 1, questionIds: [id], questions: [{ id, question, vocabularyId: pair.id, selectedWord, isCorrect: false }] }).score;
+    };
+    expect(verify(sai, '🥖 — SAI', 'SAI')).toBe(1);
+    expect(verify(sai, '🍞 — SAI', 'SAI')).toBe(1);
+    expect(verify(leib, '🥖 — LEIB', 'LEIB')).toBe(1);
+    expect(verify(leib, '🍞 — LEIB', 'SAI')).toBe(0);
+    expect(() => verify(sai, '🍎 — SAI', 'SAI')).toThrow(AttemptContractError);
+  });
+
   it('accepts a corrected English label and the label it replaced, nothing else', () => {
     const so = ENGLISH_VOCABULARY.find((word) => word.formerEstonian?.length)!;
     const id = `run:1:0:${so.id}`;
