@@ -318,8 +318,12 @@ export function gradeAnswer(question: FrozenQuestion, state: QuestionState, answ
   }
   let removedOptionIds = state.removedOptionIds;
   if (question.answering === 'buttons') {
-    const removable = question.options!.find((option) => option.id !== question.answerId && option.id !== answerId);
-    removedOptionIds = removable ? [...removedOptionIds, answerId, removable.id] : [...removedOptionIds, answerId];
+    // The tapped button goes, and one more wrong one if that still leaves a
+    // choice: with three buttons (Avastaja) the retry must not be the answer alone.
+    removedOptionIds = [...removedOptionIds, answerId];
+    const left = question.options!.filter((option) => !removedOptionIds.includes(option.id));
+    const removable = left.find((option) => option.id !== question.answerId);
+    if (removable && left.length > 2) removedOptionIds = [...removedOptionIds, removable.id];
   }
   const tapped = question.answering === 'map' ? `See on ${nameOf(answerId)}. ` : '';
   return { outcome: 'wrong_retry', state: { ...state, attempts, wrongIds, removedOptionIds }, messageEt: `${tapped}Proovi veel. ${question.hintEt}`.trim() };

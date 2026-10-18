@@ -128,6 +128,20 @@ describe('gradeAnswer', () => {
     expect(result.state.removedOptionIds).not.toContain(buttons.answerId);
   });
 
+  it('leaves a real choice after a button miss, also with three options (Avastaja)', () => {
+    for (let seed = 1; seed < 30; seed++) {
+      for (const level of ['explorer', 'traveler'] as const) {
+        for (const buttons of round('europe-western', level, null, seed).questions.filter((q) => q.answering === 'buttons')) {
+          const wrong = buttons.options!.find((option) => option.id !== buttons.answerId)!.id;
+          const { state } = gradeAnswer(buttons, emptyState(), wrong);
+          const left = buttons.options!.filter((option) => !state.removedOptionIds.includes(option.id));
+          expect(left.length, `${level} ${buttons.prompt}`).toBeGreaterThanOrEqual(2);
+          expect(left.some((option) => option.id === buttons.answerId)).toBe(true);
+        }
+      }
+    }
+  });
+
   it('refuses an id that is not one of the buttons', () => {
     const buttons = round('europe-nordic', 'traveler', null, 5).questions.find((q) => q.answering === 'buttons')!;
     expect(() => gradeAnswer(buttons, emptyState(), 'XYZ')).toThrow();
