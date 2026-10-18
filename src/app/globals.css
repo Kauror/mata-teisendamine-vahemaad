@@ -1674,6 +1674,25 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-region[data-selected="true"] .tb-u14-pop,.tb-region[data-selected="true"] .tb-u14-panel{stroke:var(--tb-dia-selected);stroke-width:4}
 .tb-region[data-correct="true"] .tb-u14-pop,.tb-region[data-correct="true"] .tb-u14-panel{stroke:var(--tb-dia-correct);stroke-width:4}
 .tb-region[data-wrong="true"] .tb-u14-pop,.tb-region[data-wrong="true"] .tb-u14-panel{stroke:var(--tb-dia-wrong);stroke-width:4;stroke-dasharray:6 4}
+/* Unit 18 "Euroopa kaart": real generalised maps (existing diagram tokens only).
+   The country data is scaled down, so outlines keep a fixed on-screen width. */
+.tb-u18-sea{fill:var(--tb-dia-pol-sea)}
+.tb-u18-land{fill:var(--tb-dia-tint-b);stroke:var(--tb-dia-rock);stroke-width:.75;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.tb-u18-europe{fill:var(--tb-dia-pol-d)}
+.tb-u18-asia{fill:var(--tb-dia-land)}
+.tb-u18-divide{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
+.tb-u18-tint-1{fill:var(--tb-dia-land)}
+.tb-u18-tint-2{fill:var(--tb-dia-pol-b)}
+.tb-u18-tint-3{fill:var(--tb-dia-panel-line)}
+.tb-u18-tint-4{fill:var(--tb-dia-pol-a)}
+.tb-u18-tint-5{fill:var(--tb-dia-pol-c)}
+.tb-u18-ridge{fill:none;stroke:var(--tb-dia-soil);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.tb-u18-peak{fill:var(--tb-dia-soil);stroke:var(--tb-dia-soil-line);stroke-width:.75;stroke-linejoin:round}
+/* A tapped or revealed country is coloured itself (its square tap area would also cover its neighbours). */
+.tb-u18-shape-regions .tb-region[data-selected="true"] .tb-region-hit,.tb-u18-shape-regions .tb-region[data-correct="true"] .tb-region-hit,.tb-u18-shape-regions .tb-region[data-wrong="true"] .tb-region-hit{fill:transparent;stroke:none}
+.tb-region[data-selected="true"] .tb-u18-target{fill:var(--tb-dia-selected);fill-opacity:.55;stroke:var(--tb-dia-selected);stroke-width:2.5}
+.tb-region[data-correct="true"] .tb-u18-target{fill:var(--tb-dia-correct);fill-opacity:.45;stroke:var(--tb-dia-correct);stroke-width:2.5}
+.tb-region[data-wrong="true"] .tb-u18-target{fill:var(--tb-dia-wrong);fill-opacity:.35;stroke:var(--tb-dia-wrong);stroke-width:2}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}
