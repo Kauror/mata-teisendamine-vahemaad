@@ -26,11 +26,23 @@ export const MATH_GENERATOR_VERSION_V2 = 'math-2026-10';
 // question (question.visualLabels), so the answer is not always the same letter
 // or place; «Leia arvutusviga» is about half «Vale» with generated rows.
 export const MATH_GENERATOR_VERSION_V3 = 'math-2026-10b';
+// Content audit 2026-10-17 (EDU-01..EDU-08): «N m = mitu km?» asks for km and m
+// instead of keying a truncated answer, «__ km 300 m» only for totals that end
+// in 300 m, triangles that exist, «1 sajaline»/«2 plokki» number agreement, no
+// zero part in a division split, «kolmveerand ringi» without its answer printed
+// on the figure, and corrected Tekstülesanded (spelling, accepted answer forms).
+export const MATH_GENERATOR_VERSION_V4 = 'math-2026-10c';
 
-export const MATH_GENERATOR_VERSIONS = [MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3] as const;
+export const MATH_GENERATOR_VERSIONS = [MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3, MATH_GENERATOR_VERSION_V4] as const;
 export type MathGeneratorVersion = (typeof MATH_GENERATOR_VERSIONS)[number];
 
-export const MATH_GENERATOR_VERSION: MathGeneratorVersion = MATH_GENERATOR_VERSION_V3;
+export const MATH_GENERATOR_VERSION: MathGeneratorVersion = MATH_GENERATOR_VERSION_V4;
+
+// True when `version` is `minimum` or a later version. New branches use this
+// rather than listing every older version.
+export function isMathGeneratorAtLeast(version: MathGeneratorVersion, minimum: MathGeneratorVersion) {
+  return MATH_GENERATOR_VERSIONS.indexOf(version) >= MATH_GENERATOR_VERSIONS.indexOf(minimum);
+}
 
 export function isSupportedMathGeneratorVersion(value: unknown): value is MathGeneratorVersion {
   return typeof value === 'string' && (MATH_GENERATOR_VERSIONS as readonly string[]).includes(value);

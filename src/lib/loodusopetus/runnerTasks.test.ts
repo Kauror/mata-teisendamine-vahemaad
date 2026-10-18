@@ -26,3 +26,11 @@ describe('science runner task pool (EX-12)', () => {
     expect(pickRunnerScienceSession(count, seed).map((task) => task.id)).toEqual(pickScienceSession(count, seed).map((task) => task.id));
   });
 });
+
+describe('science task facts', () => {
+  // A snail is a mollusc («limus»), not «limune» (slimy) — EDU-11.
+  it('names the animal groups in «Putukas või mitte»', () => {
+    const task = LOODUSOPETUS_TASKS.find((candidate) => candidate.id === 'SCI-SORT-015')!;
+    expect(task.explanation).toBe('Putukatel on kuus jalga. Ämblik on ämblikulaadne, vihmauss on uss ja tigu on limus.');
+  });
+});

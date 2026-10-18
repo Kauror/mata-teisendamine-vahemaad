@@ -2,10 +2,19 @@ export type KirsiReadingPair = {
   id: string;
   word: string;
   image: string;
+  // A picture this word used to carry. An offline device can still upload a
+  // sprint answered with the old picture, and the score verifier accepts it.
+  formerImages?: string[];
 };
 
 export function buildKirsiPictureWordQuestion(pair: Pick<KirsiReadingPair, 'image' | 'word'>) {
   return `${pair.image} — ${pair.word}`;
+}
+
+// Every question text an uploaded sprint may carry for this pair: the current
+// picture and any it replaced.
+export function kirsiPictureWordQuestions(pair: KirsiReadingPair) {
+  return [pair.image, ...(pair.formerImages ?? [])].map((image) => buildKirsiPictureWordQuestion({ image, word: pair.word }));
 }
 
 export const KIRSI_READING_PAIRS: KirsiReadingPair[] = [
@@ -49,8 +58,9 @@ export const KIRSI_READING_PAIRS: KirsiReadingPair[] = [
   { id: 'kartul', word: 'KARTUL', image: '🥔' },
   { id: 'mais', word: 'MAIS', image: '🌽' },
   { id: 'sibul', word: 'SIBUL', image: '🧅' },
-  { id: 'sai', word: 'SAI', image: '🍞' },
-  { id: 'leib', word: 'LEIB', image: '🥖' },
+  // 🥖 (a baguette) is «sai», not «leib»; the two had them the other way round.
+  { id: 'sai', word: 'SAI', image: '🥖', formerImages: ['🍞'] },
+  { id: 'leib', word: 'LEIB', image: '🍞', formerImages: ['🥖'] },
   { id: 'juust', word: 'JUUST', image: '🧀' },
   { id: 'muna', word: 'MUNA', image: '🥚' },
   { id: 'piim', word: 'PIIM', image: '🥛' },

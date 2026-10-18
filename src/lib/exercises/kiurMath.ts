@@ -1,9 +1,9 @@
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateSession as generateLengthSession } from '@/lib/exercises/lengths';
 import { isKiurLengthTopic } from '@/lib/kiurMathTopics';
-import { kiurTextProblemPool } from '@/lib/kiurTextProblems';
+import { kiurTextProblemPool, kiurTextProblemPoolV4 } from '@/lib/kiurTextProblems';
 import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
-import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V4, isMathGeneratorAtLeast, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 import { FIGURE_LETTERS } from '@/lib/visualLabels';
 
 const rInt = randomInt;
@@ -17,6 +17,17 @@ const MULTIPLICATION_EXERCISE_KEY = 'kiur.math.multiplication';
 const TEXT_PROBLEM_EXERCISE_KEY = 'kiur.math.tekstulesanded';
 
 type TopicCategory = (typeof DIV_CATS)[number] | (typeof BIG_NUM_CATS)[number] | (typeof CIRCLE_CATS)[number] | (typeof PATTERN_CATS)[number] | 'Segaharjutus';
+
+// v4: Estonian number agreement. «1 sajaline», but «2 sajalist» (EDU-05). v1-v3
+// wrote «1 sajalist» and «2 plokk» / «1 plokki» (EDU-04).
+const isV4 = (v: MathGeneratorVersion) => isMathGeneratorAtLeast(v, MATH_GENERATOR_VERSION_V4);
+const PLACE_STEMS = ['tuhandel', 'sajal', 'kümnel', 'ühel'] as const;
+function placeCount(n: number, place: number, v: MathGeneratorVersion) {
+  return `${n} ${PLACE_STEMS[place]}${n === 1 && isV4(v) ? 'ine' : 'ist'}`;
+}
+function blockCount(n: number, v: MathGeneratorVersion) {
+  return `${n} ${n === 1 || !isV4(v) ? 'plokk' : 'plokki'}`;
+}
 
 function mixedPlan(rng: RNG, count: number, types: readonly TopicCategory[]) {
   const out: TopicCategory[] = [];
@@ -45,7 +56,7 @@ function mixedPlanV2(rng: RNG, count: number, types: readonly TopicCategory[]) {
   return shuffleWithRng(rng, [...base, ...extras]);
 }
 
-function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
   const mk = () => {
     const divisor = rInt(rng, 2, 9);
     // The only place difficulty changes what is generated. Note that 'Lihtne'
@@ -66,6 +77,10 @@ function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gene
     return { dividend, divisor, quotient };
   };
   const { dividend, divisor, quotient } = mk();
+  // The split «dividend − 2·divisor and 2·divisor». For a quotient of 2 its
+  // first part is 0 («(0 : 7) + (14 : 7)»), a split that splits nothing; v4
+  // splits into divisor + divisor instead (EDU-06).
+  const splitFirst = isV4(v) && quotient === 2 ? divisor : dividend - divisor * 2;
 
   if (cat === 'Arvuta jagatis') {
     return { id: `jd-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Arvuta jagatis: ${dividend} : ${divisor} = ?`, correctAnswer: quotient, explanation: `${dividend} : ${divisor} = ${quotient}, sest ${quotient} × ${divisor} = ${dividend}.` };
@@ -73,13 +88,13 @@ function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gene
   if (cat === 'Jaga osadeks') {
     const tens = Math.floor(dividend / 10) * 10;
     const rest = dividend - tens;
-    const splitA = rest % divisor === 0 && tens % divisor === 0 ? tens : dividend - divisor * 2;
+    const splitA = rest % divisor === 0 && tens % divisor === 0 && (rest > 0 || !isV4(v)) ? tens : splitFirst;
     const splitB = dividend - splitA;
     return { id: `jo-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `${dividend} : ${divisor} = (${splitA} : ${divisor}) + (${splitB} : ${divisor}). Arvuta jagatis.`, correctAnswer: quotient, explanation: `${splitA} : ${divisor} ja ${splitB} : ${divisor} annavad kokku ${quotient}.` };
   }
   if (cat === 'Vali sobiv jaotus') {
-    const a = dividend - divisor * 2;
-    const b = divisor * 2;
+    const a = splitFirst;
+    const b = dividend - splitFirst;
     return { id: `vj-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Milline jaotus aitab arvutada ${dividend} : ${divisor}?`, correctAnswer: 0, kind: 'choice', choiceOptions: [`${a} : ${divisor} ja ${b} : ${divisor}`, `${dividend - 1} : ${divisor} ja 1 : ${divisor}`, `${dividend} : 2 ja ${dividend} : 3`], explanation: 'Sobiv jaotus annab kaks osa, mis mõlemad jaguvad sama jagajaga.' };
   }
   if (cat === 'Jaga võrdselt') {
@@ -126,8 +141,8 @@ function divisionQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gene
     const ans = target == `${dividend} : ${divisor}` ? quotient : q2;
     return { id: `sa-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Arvuta järgmine jagatis: ${target}`, correctAnswer: ans, explanation: 'Jagame sama jagajaga.' };
   }
-  const helperA = dividend - divisor * 2;
-  const helperB = divisor * 2;
+  const helperA = splitFirst;
+  const helperB = dividend - splitFirst;
   return { id: `ab-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine', question: `Milline abitehe sobib arvutamiseks ${dividend} : ${divisor}?`, correctAnswer: 0, kind: 'choice', choiceOptions: [`${helperA} : ${divisor} ja ${helperB} : ${divisor}`, `${dividend} : 2 ja ${dividend} : 4`, `${dividend + 4} : ${divisor}`], explanation: `${dividend} saab jagada osadeks, mis jaguvad ${divisor}-ga.` };
 }
 
@@ -156,7 +171,7 @@ const PLACE_WEIGHT_MISTAKES: ReadonlyArray<readonly number[]> = (() => {
 // thousands gave two identical wrong options, and only the wrong options showed
 // «+ 0» terms. Here every option drops its zero terms, no wrong option sums to
 // the number, and no two options are the same.
-function placeValueSplitV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+function placeValueSplitV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
   for (;;) {
     const n = rInt(rng, 1001, 9999);
     const digits = String(n).split('').map(Number);
@@ -174,7 +189,7 @@ function placeValueSplitV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: numbe
       if (wrong.length === 2) break;
     }
     if (wrong.length < 2) continue;
-    return { id: `n9-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Milline on arvu ${n} õige lahutus?`, correctAnswer: 0, kind: 'choice', choiceOptions: [good, ...wrong], explanation: `Arvus ${n} on ${t} tuhandelist, ${s} sajalist, ${k} kümnelist ja ${y} ühelist.` };
+    return { id: `n9-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Milline on arvu ${n} õige lahutus?`, correctAnswer: 0, kind: 'choice', choiceOptions: [good, ...wrong], explanation: `Arvus ${n} on ${placeCount(t, 0, v)}, ${placeCount(s, 1, v)}, ${placeCount(k, 2, v)} ja ${placeCount(y, 3, v)}.` };
   }
 }
 
@@ -216,11 +231,11 @@ function roundingV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gen
 function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
   const mk4 = (min = 1200, max = 9800) => rInt(rng, min, max);
   if (v !== MATH_GENERATOR_VERSION_V1) {
-    if (cat === 'Lahuta arv järkudeks') return placeValueSplitV2(cat, d, rng, i);
+    if (cat === 'Lahuta arv järkudeks') return placeValueSplitV2(cat, d, rng, i, v);
     if (cat === 'Numbri väärtus') return digitValueV2(cat, d, rng, i);
     if (cat === 'Ümardamine') return roundingV2(cat, d, rng, i);
   }
-  if (cat === 'Leia arvutusviga' && v !== MATH_GENERATOR_VERSION_V1 && v !== MATH_GENERATOR_VERSION_V2) return calculationCheckV3(cat, d, rng, i);
+  if (cat === 'Leia arvutusviga' && v !== MATH_GENERATOR_VERSION_V1 && v !== MATH_GENERATOR_VERSION_V2) return calculationCheckV3(cat, d, rng, i, v);
 
   if (cat === 'Liida sajalised') {
     const a = rInt(rng, 20, 95) * 100;
@@ -275,7 +290,7 @@ function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: M
   if (cat === 'Pane arv kokku') {
     const t = rInt(rng, 1, 9), s = rInt(rng, 0, 9), k = rInt(rng, 0, 9), y = rInt(rng, 0, 9);
     const n = t * 1000 + s * 100 + k * 10 + y;
-    const parts = shuffleWithRng(rng, [`${t} tuhandelist`, `${s} sajalist`, `${k} kümnelist`, `${y} ühelist`]);
+    const parts = shuffleWithRng(rng, [placeCount(t, 0, v), placeCount(s, 1, v), placeCount(k, 2, v), placeCount(y, 3, v)]);
     return { id: `n10-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `${parts.join(', ')}. Milline arv tekib?`, correctAnswer: n, explanation: `${t * 1000} + ${s * 100} + ${k * 10} + ${y} = ${n}.` };
   }
   if (cat === 'Numbri väärtus') {
@@ -320,7 +335,7 @@ function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: M
   const t = rInt(rng, 2, 9), s = rInt(rng, 0, 9), k = rInt(rng, 0, 9), y = rInt(rng, 0, 9);
   const n = t * 1000 + s * 100 + k * 10 + y;
   const parts = shuffleWithRng(rng, [`tuhandelised: ${t}`, `sajalised: ${s}`, `kümnelised: ${k}`, `ühelised: ${y}`]);
-  return { id: `n15-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Millist arvu näitavad plokid? ${parts.join(', ')}.`, correctAnswer: n, explanation: `${t} tuhandelist, ${s} sajalist, ${k} kümnelist ja ${y} ühelist teeb kokku ${n}.`, visual: 'place-value-blocks' };
+  return { id: `n15-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Millist arvu näitavad plokid? ${parts.join(', ')}.`, correctAnswer: n, explanation: `${placeCount(t, 0, v)}, ${placeCount(s, 1, v)}, ${placeCount(k, 2, v)} ja ${placeCount(y, 3, v)} teeb kokku ${n}.`, visual: 'place-value-blocks' };
 }
 
 // v3 «Leia arvutusviga». v1/v2 picked from four fixed rows, three of them right,
@@ -329,7 +344,7 @@ function bigNumberQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: M
 // or whole thousands), and a wrong row carries exactly one typical slip:
 // hundreds and thousands mixed up, the carry or borrow forgotten, or one
 // hundred/thousand miscounted.
-function calculationCheckV3(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+function calculationCheckV3(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
   const add = rInt(rng, 0, 1) === 0;
   const thousands = rInt(rng, 0, 2) === 0;
   const unit = thousands ? 1000 : 100;
@@ -352,10 +367,10 @@ function calculationCheckV3(cat: TopicCategory, d: Difficulty, rng: RNG, i: numb
     ].filter(inRange);
     shown = pick(rng, slips);
   }
-  const unitWord = thousands ? 'tuhandelist' : 'sajalist';
+  const units = placeCount(k, thousands ? 0 : 1, v);
   const explanation = right
-    ? `${b} tähendab ${k} ${unitWord}. ${add ? 'Liitsime' : 'Lahutasime'} ${k} ${unitWord}: ${a} ${add ? '+' : '-'} ${b} = ${correct}.`
-    : `${b} tähendab ${k} ${unitWord}. Õige vastus on ${correct}.`;
+    ? `${b} tähendab ${units}. ${add ? 'Liitsime' : 'Lahutasime'} ${units}: ${a} ${add ? '+' : '-'} ${b} = ${correct}.`
+    : `${b} tähendab ${units}. Õige vastus on ${correct}.`;
   return { id: `n14-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Kas arvutus on õige? ${a} ${add ? '+' : '-'} ${b} = ${shown}`, correctAnswer: right ? 0 : 1, kind: 'choice', choiceOptions: ['Õige', 'Vale'], explanation };
 }
 
@@ -423,12 +438,17 @@ function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: Math
     }
     return { id: `cv-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `K raadius on ${mm} mm ja L raadius on ${cm} cm. Milline ringjoon on suurem?`, correctAnswer: 2, kind: 'choice', choiceOptions: ['K', 'L', 'sama suured'], explanation: `${cm} cm = ${mm} mm, seega on ringjooned sama suured.` };
   }
-  if (cat === 'Ringi kraadid') { const set = [{ q: 'Mitu kraadi on täisring?', a: 360, v: 'circle-full' as const }, { q: 'Mitu kraadi on pool ringi?', a: 180, v: 'circle-half' as const }, { q: 'Mitu kraadi on veerand ringi?', a: 90, v: 'circle-quarter' as const }, { q: 'Mitu kraadi on kolmveerand ringi?', a: 270, v: 'sector-missing' as const }] as const; const it = pick(rng, set); return { id: `ck-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: it.q, correctAnswer: it.a, explanation: `Täisring on 360° ja sellest leitakse osad.`, visual: it.v, visualKnownDegrees: it.v === 'sector-missing' ? it.a : undefined }; }
+  if (cat === 'Ringi kraadid') { const set = [{ q: 'Mitu kraadi on täisring?', a: 360, v: 'circle-full' as const }, { q: 'Mitu kraadi on pool ringi?', a: 180, v: 'circle-half' as const }, { q: 'Mitu kraadi on veerand ringi?', a: 90, v: 'circle-quarter' as const }, { q: 'Mitu kraadi on kolmveerand ringi?', a: 270, v: 'sector-missing' as const }] as const; const it = pick(rng, set);
+    // The sector figure prints the known part's degrees and puts «?» on the rest.
+    // v1-v3 made 270° the known part, printing the answer on the figure; v4
+    // prints the other quarter (90°) and asks for the «?» part (EDU-07).
+    const knownDegrees = it.v === 'sector-missing' ? (isV4(v) ? 360 - it.a : it.a) : undefined;
+    return { id: `ck-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: it.q, correctAnswer: it.a, explanation: `Täisring on 360° ja sellest leitakse osad.`, visual: it.v, visualKnownDegrees: knownDegrees }; }
   const knownA = pick(rng, [45, 60, 75, 90, 120, 135, 150, 180, 190, 210, 240, 270, 300]);
   return { id: `cm-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `Ring on jagatud kaheks osaks. Värvitud osa on ${knownA}°. Kui suur on teine osa?`, correctAnswer: 360 - knownA, explanation: `Täisring on 360°. 360° − ${knownA}° = ${360 - knownA}°.`, visual: 'sector-missing', visualKnownDegrees: knownA };
 }
 
-function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
   const t = rInt(rng, 0, 13);
 
   if (t === 0) {
@@ -517,7 +537,7 @@ function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): Gener
   if (t === 10) {
     const base = pick(rng, [1, 2]);
     const seq = [base, base * 2, base * 3];
-    return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'arvu-ja-loogikamustrid', question: `Vaata, kuidas muster kasvab: ${seq[0]} plokk, ${seq[1]} plokki, ${seq[2]} plokki. Mitu plokki on järgmises reas?`, correctAnswer: base * 4, explanation: `Igas reas on ${base} plokki rohkem.` };
+    return { id: `mp-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'arvu-ja-loogikamustrid', question: `Vaata, kuidas muster kasvab: ${blockCount(seq[0], v)}, ${seq[1]} plokki, ${seq[2]} plokki. Mitu plokki on järgmises reas?`, correctAnswer: base * 4, explanation: `Igas reas on ${isV4(v) ? blockCount(base, v) : `${base} plokki`} rohkem.` };
   }
 
   if (t === 11) {
@@ -590,9 +610,11 @@ function generateMultiplicationSession(count: number, seed: number): GeneratedQu
   return multiplicationFacts(rng).slice(0, count).map((fact, index) => multiplicationQ(fact, index));
 }
 
-function generateTextProblemSession(seed: number): GeneratedQuestion[] {
+function generateTextProblemSession(seed: number, v: MathGeneratorVersion): GeneratedQuestion[] {
   const rng = seededRng(seed);
-  return shuffleWithRng(rng, kiurTextProblemPool).slice(0, 5).map((task, index) => ({
+  // v4 corrects some tasks in place (same ids, same order), so a seed picks the
+  // same tasks in every version; v1-v3 replay the pool as it was.
+  return shuffleWithRng(rng, isV4(v) ? kiurTextProblemPoolV4 : kiurTextProblemPool).slice(0, 5).map((task, index) => ({
     id: `${task.id}-${index}`,
     type: 'text-problem',
     category: 'Tekstülesanded' as Category,
@@ -616,7 +638,7 @@ export function generateKiurMathSession(topic: string, category: string, difficu
   const v = generatorVersion;
   if (isKiurLengthTopic(topic)) return generateLengthSession(category as Category, difficulty, count, seed, v);
   if (topic === 'korrutamine') return generateMultiplicationSession(count, seed);
-  if (topic === 'tekstulesanded' || category === 'Tekstülesanded') return generateTextProblemSession(seed);
+  if (topic === 'tekstulesanded' || category === 'Tekstülesanded') return generateTextProblemSession(seed, v);
   const rng = seededRng(seed);
   const normalizedTopic = topic;
   const isBigNumbers = normalizedTopic === 'arvud-10000-piires' || normalizedTopic === 'arvud-10000';
@@ -638,11 +660,11 @@ export function generateKiurMathSession(topic: string, category: string, difficu
     let q: GeneratedQuestion;
     do {
       q = normalizedTopic === 'jagamine-kahekohaline-uhekohaline'
-        ? divisionQ(types[i], difficulty, rng, i + tries * 17)
+        ? divisionQ(types[i], difficulty, rng, i + tries * 17, v)
         : isBigNumbers
           ? bigNumberQ(types[i], difficulty, rng, i + tries * 17, v)
           : normalizedTopic === 'mustrid'
-            ? patternQ(types[i], difficulty, rng, i + tries * 17)
+            ? patternQ(types[i], difficulty, rng, i + tries * 17, v)
             : circleQ(types[i], difficulty, rng, i + tries * 17, v);
       tries++;
     } while (used.has(signature(q)) && tries < 20);
