@@ -5,7 +5,7 @@ import { CATALOG } from '@/content/kaardimang/catalog';
 import { DATA_VERSION, MAP_VIEWS } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 import { emptyState, NO_AREA_ANSWER, SEA_ANSWER, type ClientQuestion } from '@/lib/kaardimang/engine';
-import { answerIdFor, markerHitRadii, playAreaPaint, playPaint, scoreLine } from './mapAnswers';
+import { answerIdFor, contextNoteEt, markerHitRadii, playAreaPaint, playPaint, scoreLine } from './mapAnswers';
 
 function question(targetType: ClientQuestion['targetType'], extra: Partial<ClientQuestion> = {}): ClientQuestion {
   return {
@@ -63,6 +63,21 @@ describe('markerHitRadii', () => {
     const radii = markerHitRadii([{ id: 'MLT', x: 100, y: 100, hr: 12 }, { id: 'TUN', x: 400, y: 100, hr: 34 }], 3);
     expect(radii.get('MLT')).toBe(30);
     expect(radii.get('TUN')).toBe(34);
+  });
+});
+
+describe('contextNoteEt', () => {
+  const countryNames = new Set(CATALOG.countries.map((country) => country.nameEt));
+
+  it('says "the owner is in brackets" only when a country is in brackets', () => {
+    const notes = Object.fromEntries(Object.entries(CATALOG.contextNames).map(([id, name]) => [id, contextNoteEt(name, countryNames)]));
+    expect(notes.GRL).toMatch(/Sulgudes on riik/);
+    expect(notes.PRI).toMatch(/Sulgudes on riik/);
+    for (const id of ['ESH', 'PGA', 'SCR']) expect(notes[id], id).toBe('Selle ala staatus on vaidlustatud.');
+    for (const id of ['BRI', 'PYF', 'VIR', 'IOT']) expect(notes[id], id).toBe('See ala ei ole iseseisev riik.');
+    for (const [id, name] of Object.entries(CATALOG.contextNames)) {
+      if (notes[id].includes('Sulgudes')) expect(countryNames.has(/\(([^)]+)\)$/u.exec(name)![1]) || name.endsWith('(USA)'), id).toBe(true);
+    }
   });
 });
 

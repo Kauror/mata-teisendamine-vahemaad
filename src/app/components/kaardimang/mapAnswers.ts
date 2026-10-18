@@ -63,6 +63,16 @@ export function markerHitRadii(markers: Array<{ id: string; x: number; y: number
   }));
 }
 
+// Uuri's line under a map area that is not a country. Only "Gröönimaa (Taani)"
+// style names have the owner in brackets; "Lääne-Sahara (staatus vaidlustatud)"
+// and "Prantsuse Polüneesia" do not, and must not be told so.
+export function contextNoteEt(name: string, countryNames: ReadonlySet<string>): string {
+  const bracket = /\(([^)]+)\)$/u.exec(name)?.[1];
+  if (bracket && /vaidlustatud/u.test(bracket)) return 'Selle ala staatus on vaidlustatud.';
+  if (bracket && (countryNames.has(bracket) || bracket === 'USA')) return 'See ala ei ole iseseisev riik. Sulgudes on riik, kellele see kuulub.';
+  return 'See ala ei ole iseseisev riik.';
+}
+
 // "8 küsimusest 6 õiget": partitive after every number but 1.
 export function scoreLine(correct: number, total: number): string {
   return `${total} küsimusest ${correct} ${correct === 1 ? 'õige' : 'õiget'}`;
