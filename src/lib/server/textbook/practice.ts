@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { toClientQuestion } from '@/lib/textbook/clientQuestion';
 import db from '@/lib/db';
 import { nowIso } from '@/lib/tasks';
-import { toClientQuestion, type ObjectiveRef, type PracticeAnswerResponse, type PracticeFeedbackView, type PracticeSessionView, type TextbookLearner } from '@/lib/textbook/api';
+import { type ObjectiveRef, type PracticeAnswerResponse, type PracticeFeedbackView, type PracticeSessionView, type TextbookLearner } from '@/lib/textbook/api';
 import { TextbookRuleError } from '@/lib/textbook/errors';
 import { isResponseComplete, parseResponse } from '@/lib/textbook/grading';
 import {

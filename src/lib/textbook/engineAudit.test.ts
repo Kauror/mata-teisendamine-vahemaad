@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TEXTBOOK_COURSES } from '@/content/textbook/registry';
 import { seededRng, shuffleWithRng, type RNG } from '@/lib/random';
-import { toClientQuestion } from '@/lib/textbook/api';
+import { toClientQuestion } from '@/lib/textbook/clientQuestion';
 import { correctResponseFor, gradeAnswer, hotspotRegionIds, isResponseComplete, parseResponse } from '@/lib/textbook/grading';
 import { createPracticeState, currentPracticeQuestion, practiceProgress, recordPracticeAnswer } from '@/lib/textbook/practiceScheduler';
 import { freezeQuestionWithSeed } from '@/lib/textbook/presentation';

@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { toClientQuestion } from '@/lib/textbook/clientQuestion';
 import db from '@/lib/db';
 import { nowIso } from '@/lib/tasks';
 import {
-  toClientQuestion,
   type ObjectiveRef,
   type TestAnswerResponse,
   type TestResultView,

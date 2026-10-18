@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { toClientQuestion } from '@/lib/textbook/clientQuestion';
 import { childCourses, getChildCourse, getCourse, previewCourses, TEXTBOOK_COURSES } from '@/content/textbook/registry';
 import { textbookDemoCourse } from '@/content/textbook/textbook-demo';
 import { seededRng } from '@/lib/random';
-import { learnerApi, PREVIEW_LEARNER, TEXTBOOK_API, TEXTBOOK_PAGES, toClientQuestion } from '@/lib/textbook/api';
+import { learnerApi, PREVIEW_LEARNER, TEXTBOOK_API, TEXTBOOK_PAGES } from '@/lib/textbook/api';
 import { getDiagram } from '@/lib/textbook/diagramRegistry';
 import { freezeQuestion } from '@/lib/textbook/presentation';
 import { buildTestSnapshot } from '@/lib/textbook/testSelection';

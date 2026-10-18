@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loodusopetusOpikCourse } from '@/content/textbook/loodusopetus-opik';
 import { unit21 } from '@/content/textbook/loodusopetus-opik/unit21';
 import { seededRng } from '@/lib/random';
-import { toClientQuestion } from '@/lib/textbook/api';
+import { toClientQuestion } from '@/lib/textbook/clientQuestion';
 import { getDiagram } from '@/lib/textbook/diagramRegistry';
 import { correctResponseFor, gradeAnswer } from '@/lib/textbook/grading';
 import { freezeQuestion } from '@/lib/textbook/presentation';
