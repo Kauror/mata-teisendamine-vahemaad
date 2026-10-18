@@ -547,6 +547,7 @@ describe('preview isolation (A5, A6)', () => {
   // smoke-tests how they render (e2e/textbook-real-units.spec.ts).
   it('lists the real Units 10–14 as ready, in order', () => {
     expect(REAL_READY.slice(0, 5)).toEqual(['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14']);
+    expect(REAL_READY).toContain('lo-opik-u21');
   });
 
   it.each(REAL_READY)('runs the real unit %s in the preview after the earlier ready units: read, practise with a correction, 18/20 fails, targeted practice, 19/20 passes; Kiur sees nothing', (unitId) => {
@@ -607,7 +608,8 @@ describe('preview isolation (A5, A6)', () => {
     expect(realFootprint()).toEqual(before);
     expect(getCourseOverview(kiur(), REAL).units).toEqual([]);
     expectCode(() => getUnitDetail(kiur(), REAL, unitId), 'forbidden');
-  });
+    // Each run first passes every earlier ready unit, so later units take longer (Unit 21: about 6 s alone).
+  }, 60_000);
 
   it('keeps the real course\'s draft units out of the preview and unpublishable; the ready ones publishable and unpublished', () => {
     const drafts = REAL_UNITS.filter((unit) => unit.status !== 'ready').map((unit) => unit.id);
