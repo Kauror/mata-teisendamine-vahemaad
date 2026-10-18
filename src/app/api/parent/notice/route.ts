@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { setFamilyNotice } from '@/lib/noticeboard';
 
@@ -12,6 +13,6 @@ export async function POST(req: NextRequest) {
     const text = setFamilyNotice(String(body.text ?? ''));
     return NextResponse.json({ text });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Teksti ei saanud salvestada.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Teksti ei saanud salvestada.') }, { status: 400 });
   }
 }

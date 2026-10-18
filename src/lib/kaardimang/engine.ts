@@ -337,21 +337,35 @@ export function gradeAnswer(question: FrozenQuestion, state: QuestionState, answ
 
 /* ---------------------------------------------------------- client views */
 
-export type ClientQuestion = Omit<FrozenQuestion, 'answerId' | 'explainEt' | 'hintEt'> & {
+// The target (`targetId`, and the mastery key built from it) and the capital a
+// question hides are the answer itself for most kinds — "Leia kaardilt Eesti"
+// has targetId EST, "Mis on Norra pealinn?" hides nor-oslo — so they stay on
+// the server until the question is resolved, exactly like `answerId`.
+export type ClientQuestion = Omit<FrozenQuestion, 'answerId' | 'explainEt' | 'hintEt' | 'targetId' | 'targetKey' | 'hideCapitalId'> & {
   state: QuestionState;
   // Only once the question is resolved (or a hint has been earned).
+  targetId: string | null;
+  hideCapitalId: string | null;
   correctId: string | null;
   explainEt: string | null;
   hintEt: string | null;
 };
 
 export function toClientQuestion(question: FrozenQuestion, state: QuestionState): ClientQuestion {
-  const { answerId, explainEt, hintEt, ...rest } = question;
+  const resolved = Boolean(state.resolved);
   return {
-    ...rest,
+    id: question.id,
+    kind: question.kind,
+    answering: question.answering,
+    targetType: question.targetType,
+    prompt: question.prompt,
+    options: question.options,
+    highlightId: question.highlightId,
     state,
-    correctId: state.resolved ? answerId : null,
-    explainEt: state.resolved ? explainEt : null,
-    hintEt: state.attempts > 0 ? hintEt : null
+    targetId: resolved ? question.targetId : null,
+    hideCapitalId: resolved ? question.hideCapitalId : null,
+    correctId: resolved ? question.answerId : null,
+    explainEt: resolved ? question.explainEt : null,
+    hintEt: state.attempts > 0 ? question.hintEt : null
   };
 }

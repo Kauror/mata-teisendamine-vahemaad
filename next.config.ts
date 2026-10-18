@@ -18,6 +18,14 @@ const nextConfig: NextConfig = {
     return [
       { source: '/:path*', headers: securityHeaders },
       {
+        // Dynamic route handlers send no Cache-Control of their own, and the
+        // API carries child data, the parent area and answer keys: never let a
+        // browser, back/forward cache or proxy keep a copy. (The service
+        // worker already skips /api/.)
+        source: '/api/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }]
+      },
+      {
         // The service worker must never be served stale, so a new build is
         // always detected. Registration also uses updateViaCache: 'none'.
         source: '/sw.js',

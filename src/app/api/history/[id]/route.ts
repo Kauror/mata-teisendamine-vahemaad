@@ -20,7 +20,7 @@ function safeParseQuestions(raw: unknown) {
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const db = await getDb();
   const { id } = await params;
-  const row = db.prepare('SELECT * FROM attempts WHERE id = ?').get(id) as { [key: string]: unknown } | undefined;
+  const row = db.prepare('SELECT * FROM attempts WHERE id = ? AND deletedAt IS NULL').get(id) as { [key: string]: unknown } | undefined;
   if (!row) return NextResponse.json({ message: 'Ei leitud' }, { status: 404 });
   return NextResponse.json({ ...row, questions: safeParseQuestions(row.questions) });
 }

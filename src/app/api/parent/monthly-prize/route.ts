@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { ensureMonthlyPrizeAwarded, getMonthlyPrizeStars, getMonthlyStanding, setMonthlyPrizeStars } from '@/lib/monthlyCompetition';
 
@@ -22,6 +23,6 @@ export async function POST(req: NextRequest) {
     setMonthlyPrizeStars(Number(body.prizeStars));
     return NextResponse.json(payload());
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Auhinda ei saanud salvestada.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Auhinda ei saanud salvestada.') }, { status: 400 });
   }
 }

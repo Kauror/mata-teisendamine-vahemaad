@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import {
   getLearningExerciseCatalog,
@@ -30,6 +31,6 @@ export async function PATCH(req: NextRequest) {
     updateChildLearningExerciseStatus(exerciseId, learner, status);
     return NextResponse.json({ exercises: getLearningExerciseCatalog() });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Harjutust ei saanud muuta.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Harjutust ei saanud muuta.') }, { status: 400 });
   }
 }
