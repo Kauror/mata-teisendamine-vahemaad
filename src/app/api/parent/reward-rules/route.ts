@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { createRewardRule, listRewardRules, RewardLearnerScope } from '@/lib/rewardRules';
 
@@ -26,6 +27,6 @@ export async function POST(req: NextRequest) {
     const id = createRewardRule(parseBody(await req.json()));
     return NextResponse.json({ id, rules: listRewardRules() }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Auhinda ei saanud salvestada.' }, { status: 400 });
+    return NextResponse.json({ message: publicErrorMessage(error, 'Auhinda ei saanud salvestada.') }, { status: 400 });
   }
 }
