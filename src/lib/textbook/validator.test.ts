@@ -32,7 +32,7 @@ describe('shipped content', () => {
     }
   });
 
-  it('Units 10–14 are ready and publishable without warnings; Units 15–22 stay metadata-only drafts', () => {
+  it('Units 10–14 and 17 are ready and publishable without warnings; the other units up to 22 stay metadata-only drafts', () => {
     const result = validateCourse(loodusopetusOpikCourse, { imageExists: () => true });
     expect(result.errors).toEqual([]);
     expect(result.valid).toBe(true);
@@ -40,7 +40,8 @@ describe('shipped content', () => {
     const status = new Map(loodusopetusOpikCourse.units.map((unit) => [unit.id, unit.status]));
     const ready = result.units.filter((unit) => status.get(unit.unitId) === 'ready');
     const drafts = result.units.filter((unit) => status.get(unit.unitId) === 'draft');
-    expect(ready.map((unit) => unit.unitNumber)).toEqual([10, 11, 12, 13, 14]);
+    expect(ready.map((unit) => unit.unitNumber).slice(0, 5)).toEqual([10, 11, 12, 13, 14]);
+    expect(ready.map((unit) => unit.unitNumber)).toContain(17);
     expect(ready.length + drafts.length).toBe(result.units.length);
     // Every ready unit: no errors or warnings, publishable, tests buildable (each unit's details: its own test).
     for (const unit of ready) {
@@ -147,6 +148,46 @@ describe('shipped content', () => {
       attempts.push(snapshot);
     }
     // 74 groups are enough for three fully different tests (the package's witness proves it); the retakes reuse none.
+    expect(attempts.map((snapshot) => snapshot.reusedVariantGroupIds.length)).toEqual([0, 0, 0]);
+  });
+
+  it('Unit 17 "Eesti geograafiline asend" is ready and publishable without warnings (package counts)', () => {
+    const unit17 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u17')!;
+    expect(unit17).toMatchObject({ number: 17, status: 'ready', contentVersion: '2026-10-17.1', title: 'Eesti geograafiline asend', pages: { from: 66, to: 67 } });
+    const result = validateUnit(unit17, loodusopetusOpikCourse);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.publishable).toBe(true);
+    expect(result.buildability?.ok).toBe(true);
+    expect(result.stats).toMatchObject({
+      lessons: 4, requiredLessons: 4, sections: 13, blocks: 44, objectives: 8, requiredObjectives: 8,
+      questions: 111, practiceQuestions: 111, testQuestions: 111, testVariantGroups: 70,
+      testLevels: { factual: 36, understanding: 37, application: 38 },
+      answerTypes: { single_choice: 69, multiple_selection: 10, matching: 8, grouping: 7, ordering: 6, diagram_hotspot: 11 }
+    });
+  });
+
+  it('Unit 17 tests: 20 questions from 20 groups, 8/7/5, all 8 objectives, for every seed and across three retakes', () => {
+    const unit17 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u17')!;
+    const settings = loodusopetusOpikCourse.settings;
+    const strict = (snapshot: TestSnapshot) => {
+      const questions = snapshot.questions.map((frozen) => frozen.question);
+      expect(new Set(questions.map((question) => question.id)).size).toBe(20);
+      expect(new Set(questions.map((question) => question.variantGroupId)).size).toBe(20);
+      for (const level of COGNITIVE_LEVELS) expect(questions.filter((question) => question.cognitiveLevel === level)).toHaveLength(settings.levelDistribution[level]);
+      expect(new Set(questions.map((question) => question.primaryObjectiveId)).size).toBe(8);
+      expect(snapshot.relaxations).toEqual([]);
+      expect(snapshot.requiredCorrect).toBe(19);
+    };
+    for (let seed = 1; seed <= 40; seed++) strict(buildTestSnapshot({ courseId: loodusopetusOpikCourse.id, unit: unit17, settings, seed }));
+    // Three attempts in a row, each built with the earlier ones as history (as the server does).
+    const attempts: TestSnapshot[] = [];
+    for (const seed of [11, 12, 13]) {
+      const snapshot = buildTestSnapshot({ courseId: loodusopetusOpikCourse.id, unit: unit17, settings, seed, history: historyFromSnapshots(attempts) });
+      strict(snapshot);
+      attempts.push(snapshot);
+    }
+    // 70 groups are enough for three fully different tests (the package's witness proves it); the retakes reuse none.
     expect(attempts.map((snapshot) => snapshot.reusedVariantGroupIds.length)).toEqual([0, 0, 0]);
   });
 
