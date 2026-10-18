@@ -2,8 +2,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import db from '@/lib/db';
 import { updateChildLearningExerciseStatus } from '@/lib/learningExercises';
 import { insertAttempt } from '@/lib/offline/server/insertAttempt';
-import { cid, FIXTURE_EXERCISE as EXERCISE, resetAttemptData as resetData, serveGrant, v2Attempt } from '@/lib/offline/server/v2AttemptFixture';
+import { cid, FIXTURE_DEVICE_ID, FIXTURE_EXERCISE as EXERCISE, resetAttemptData as resetData, serveGrant, v2Attempt } from '@/lib/offline/server/v2AttemptFixture';
 import { getBalance } from '@/lib/tasks';
+import { getLearningPointSettings, updateLearningPointSettings } from '@/lib/learningPoints';
+import { runSyncPullV2 } from '@/lib/offline/server/syncService';
+import { approveHeldRewardAttempt } from '@/lib/server/rewards/projection';
 
 // insertAttempt only ever writes protocol-v2 attempts (its one production
 // caller is the v2 sync push), so every case here is a real v2 submission.
@@ -79,5 +82,45 @@ describe('insertAttempt', () => {
     const stored = db.prepare('SELECT rewardSettlementStatus, reviewReasonCode FROM attempts WHERE clientAttemptId = ?').get(cid('review-2'));
     expect(stored).toEqual({ rewardSettlementStatus: 'needs_review', reviewReasonCode: 'not_permitted' });
     expect(getBalance('kiur')).toBe(balance);
+  });
+});
+
+// The runner stamps the reward policy when the exercise starts; a parent's
+// settings edit plus a background pull mid-run refreshes the device's grant.
+describe('a reward policy edit during a run', () => {
+  it('keeps the finished attempt and holds it for the parent instead of rejecting it', () => {
+    const served = serveGrant();
+    const original = getLearningPointSettings();
+    try {
+      updateLearningPointSettings({ ...original, dailyCap: original.dailyCap + 2 });
+      // The device syncs (pull) while the exercise is still open.
+      runSyncPullV2({
+        protocolVersion: 2,
+        phase: 'pull',
+        device: { deviceId: FIXTURE_DEVICE_ID, appVersion: 'insert-attempt-test', timeZone: 'Europe/Tallinn', clientNow: new Date().toISOString() },
+        cursor: { lastServerAttemptId: 0, lastTombstoneId: 0, lastTaskChangeId: 0, lastRemediationChangeId: 0, lastAttemptChangeId: 0, historyEpoch: 0, catalogueVersions: { kiur: served.catalogue.version } },
+        knownCatalogues: { kiur: { catalogueVersion: served.catalogue.version, validUntil: served.grant.validUntil } }
+      });
+
+      const payload = v2Attempt(served, 'policy-mid-run', '2026-07-14T11:59:00.000Z');
+      const result = insertAttempt(payload);
+      expect(result).toMatchObject({ status: 'needs_review', reasonCode: 'reward_policy_changed' });
+      const stored = db.prepare('SELECT id, rewardSettlementStatus, rewardPolicyVersion FROM attempts WHERE clientAttemptId = ?').get(cid('policy-mid-run')) as { id: number; rewardSettlementStatus: string; rewardPolicyVersion: string };
+      expect(stored.rewardSettlementStatus).toBe('needs_review');
+      expect(stored.rewardPolicyVersion).toBe(served.grant.rewardPolicyVersion);
+      expect(getBalance('kiur')).toBe(0);
+
+      // A retry is a duplicate; the parent's approval settles it under the
+      // policy the child started with.
+      expect(insertAttempt(payload).status).toBe('duplicate');
+      approveHeldRewardAttempt(stored.id);
+      expect(getBalance('kiur')).toBe(1);
+
+      // Any other metadata drift is still refused.
+      const forged = { ...v2Attempt(served, 'policy-forged', '2026-07-14T11:59:30.000Z'), rewardPolicyVersion: 'rp2-not-a-real-policy' };
+      expect(insertAttempt(forged)).toMatchObject({ status: 'rejected', reasonCode: 'metadata_mismatch' });
+    } finally {
+      updateLearningPointSettings(original);
+    }
   });
 });
