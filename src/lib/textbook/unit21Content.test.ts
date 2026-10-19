@@ -68,11 +68,11 @@ const BLOCK_TEXTS: string[] = unit21.lessons.flatMap((lesson) => lesson.sections
 })));
 
 describe('unit 21 "Maavärinad" content', () => {
-  it('is in the course after Unit 14 (Unit 20 stays a draft), ready, with the four lessons', () => {
+  it('is in the course after Unit 20, ready, with the four lessons', () => {
     const numbers = loodusopetusOpikCourse.units.map((unit) => unit.number);
     expect(numbers.filter((number) => number === 21)).toHaveLength(1);
     expect(numbers).toEqual([...numbers].sort((left, right) => left - right));
-    expect(loodusopetusOpikCourse.units.find((unit) => unit.number === 20)).toMatchObject({ status: 'draft', title: 'Vulkaanid' });
+    expect(loodusopetusOpikCourse.units.find((unit) => unit.number === 20)).toMatchObject({ status: 'ready', title: 'Vulkaanid' });
     expect(unit21).toMatchObject({ id: 'lo-opik-u21', courseId: 'loodusopetus-opik', number: 21, title: 'Maavärinad', pages: { from: 78, to: 81 }, status: 'ready' });
     expect(unit21.lessons.map((lesson) => lesson.title)).toEqual([
       'Miks maa väriseb?', 'Kus maa väriseb?', 'Tsunami — ohtlik hiidlaine', 'Kuidas maavärina ajal õigesti tegutseda?'
