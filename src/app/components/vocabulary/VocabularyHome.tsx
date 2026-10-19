@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import PeekModeBanner from '@/app/components/PeekModeBanner';
 import type { ChildUnitCard, ChildVocabularyHome } from '@/lib/server/vocabulary/overview';
 import { VOCAB_ALL_PASSED_MESSAGE, VOCAB_HOME_ROUTE } from '@/lib/vocabulary/constants';
 
@@ -92,7 +91,6 @@ export default function VocabularyHome() {
           <Link className='practice-back-button' href='/kiur'>← Kiur</Link>
           <h1 className='vocab-home-title'>Inglise keel</h1>
         </div>
-        <PeekModeBanner />
 
         {failed ? (
           <div className='vocab-problem' role='alert'>

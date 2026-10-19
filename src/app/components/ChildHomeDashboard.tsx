@@ -6,7 +6,6 @@ import YesterdayPointsPopup from '@/app/components/YesterdayPointsPopup';
 import ChildAvatarEasterEgg from '@/app/components/ChildAvatarEasterEgg';
 import ChildExerciseGrid from '@/app/components/ChildExerciseGrid';
 import ChildTimetableSection from '@/app/components/ChildTimetableSection';
-import PeekModeBanner from '@/app/components/PeekModeBanner';
 import { ChildExerciseCard } from '@/lib/childExerciseCards';
 import { CHILD_PAGE_DATA_PRELOAD, childPageDataPreloads } from '@/lib/childPageData';
 import { getYesterdayPointsSummary } from '@/lib/dailyPointsSummary';
@@ -43,7 +42,6 @@ export default function ChildHomeDashboard({
     <main className='container child-home-page'>
       <YesterdayPointsPopup learner={child.learner} childName={child.name} summary={yesterdayPoints} />
       <section className='child-home-shell' data-accent={child.learner === 'kiur' ? 'blue' : 'pink'}>
-        <PeekModeBanner />
         <Link className='child-home-back' href='/'>← Tagasi</Link>
 
         {/* Identity, points, shop/history and achievements are one card now, and

@@ -73,7 +73,7 @@ test('a signed-in parent is told they are peeking, and leaves the recap unspent'
   await signInAsParent(page);
   await navigateStable(page, '/kirsi');
 
-  await expect(peekBanner(page)).toContainText('Vanema vaatlusrežiim');
+  await expect(peekBanner(page)).toContainText('Vaatlusrežiim');
 
   // The parent can read and close the recap; the marker must stay untouched, so
   // the child still gets it the next time they open their page.
@@ -88,7 +88,7 @@ test('a signed-in parent is told they are peeking, and leaves the recap unspent'
 test('the parent can drop into the child view and back, and only then spends the notice', async ({ page }) => {
   await signInAsParent(page);
   await navigateStable(page, '/kiur');
-  await expect(peekBanner(page)).toContainText('Vanema vaatlusrežiim');
+  await expect(peekBanner(page)).toContainText('Vaatlusrežiim');
 
   // The recap modal covers the banner, so clear it first — as the parent, which
   // must leave it unspent.
@@ -96,15 +96,30 @@ test('the parent can drop into the child view and back, and only then spends the
   expect(await readRecapMarker(page)).toBeNull();
 
   await page.getByRole('button', { name: 'Vaata nagu laps' }).click();
-  await expect(peekBanner(page)).toContainText('Vaatad nagu laps');
+  await expect(peekBanner(page)).toContainText('Nagu laps');
 
   // The opt-out survives the navigation, so this second dismissal is the child's
   // and does spend the notice.
   await reopenPage(page);
-  await expect(peekBanner(page)).toContainText('Vaatad nagu laps');
+  await expect(peekBanner(page)).toContainText('Nagu laps');
   await dismissRecap(page);
   expect(await readRecapMarker(page)).not.toBeNull();
 
   await page.getByRole('button', { name: 'Tagasi vaatlusesse' }).click();
-  await expect(peekBanner(page)).toContainText('Vanema vaatlusrežiim');
+  await expect(peekBanner(page)).toContainText('Vaatlusrežiim');
 });
+
+test('the review bar is on every child page, links back to the parent area, and stays out of it', async ({ page }) => {
+  await signInAsParent(page);
+  // The parent area links to the children's home page, and has no bar of its own.
+  await expect(page.getByRole('link', { name: '← Avaleht' })).toHaveAttribute('href', '/');
+  await expect(peekBanner(page)).toHaveCount(0);
+
+  // Pages that used to have no banner: the home page, the shop, the history.
+  for (const path of ['/', '/kiur/pood', '/history?child=kiur']) {
+    await navigateStable(page, path);
+    await expect(peekBanner(page), path).toContainText('Vaatlusrežiim');
+    await expect(peekBanner(page).getByRole('link', { name: 'Vanema ala' }), path).toHaveAttribute('href', '/vanem');
+  }
+});
+

@@ -108,6 +108,9 @@ function ParentHubView({ view, tab }: { view: ParentView; tab?: ParentHaldaTab }
 
   return (
     <section className='parent-hub pv-page' data-view={view}>
+      {/* Back to the children's home page; the parent session stays, so the
+          child pages open in review mode. */}
+      <Link className='pv-home' href='/'>← Avaleht</Link>
       {header}
 
       <ParentToasts />

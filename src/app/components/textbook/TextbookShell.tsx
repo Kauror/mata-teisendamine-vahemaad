@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { TextbookScope } from '@/lib/textbook/api';
-import PeekModeBanner from '@/app/components/PeekModeBanner';
 import type { TextbookClientError } from '@/app/components/textbook/textbookClient';
 
 // The frame every textbook screen shares: page background, card column, a way
@@ -24,7 +23,7 @@ export function TextbookShell({ scope, title, eyebrow, titleNote, backHref, back
     <main className='tb-page' data-scope={scope}>
       <section className={wide ? 'tb-shell tb-shell-wide' : 'tb-shell'}>
         <Link className='practice-back-button tb-back' href={backHref}>{backLabel}</Link>
-        {scope === 'preview' ? <PreviewBanner /> : <PeekModeBanner />}
+        {scope === 'preview' ? <PreviewBanner /> : null}
         {title ? (
           <header className='tb-header'>
             {eyebrow ? <p className='tb-eyebrow'>{eyebrow}</p> : null}
