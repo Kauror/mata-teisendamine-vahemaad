@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { TextbookScope, UnitDetailResponse } from '@/lib/textbook/api';
 import { textbookPaths } from '@/app/components/textbook/pages';
-import { correctWord, nextAction, pagesLabel, statusLabel, unitSteps, UNIT_STATUS_ICONS } from '@/app/components/textbook/status';
+import { correctWord, nextAction, pagesLabel, unitSteps } from '@/app/components/textbook/status';
 import { TextbookLoading, TextbookProblem, TextbookShell } from '@/app/components/textbook/TextbookShell';
 import { useLearnerClient, useTextbookLoad } from '@/app/components/textbook/useTextbook';
 
@@ -48,10 +48,8 @@ export default function TextbookUnit({ scope, courseId, unitId }: { scope: Textb
   const pages = pagesLabel(unit.pages);
 
   return (
-    <TextbookShell scope={scope} eyebrow={`Õppetükk ${unit.number}${pages ? ` · õpik ${pages}` : ''}`} title={unit.title} backHref={paths.course} backLabel='← Õppetükid'>
-      <p className='tb-unit-status-line'>
-        <span className='tb-status-chip' data-status={unit.status}><span aria-hidden>{UNIT_STATUS_ICONS[unit.status]}</span> {statusLabel(unit.status)}</span>
-      </p>
+    <TextbookShell scope={scope} title={`${unit.number}. ${unit.title}`} titleNote={pages ? `õpik ${pages}` : undefined} backHref={paths.course} backLabel='← Õppetükid'>
+      {/* The steps say where the child is; a status chip on top only repeated it. */}
       <UnitStepper detail={data} />
 
       <section className='tb-next-card' data-next-step={data.nextStep} aria-labelledby='tb-next-title'>
@@ -119,10 +117,10 @@ export default function TextbookUnit({ scope, courseId, unitId }: { scope: Textb
       </section>
 
       {data.objectives.length > 0 ? (
-        <section className='tb-panel' aria-labelledby='tb-objectives-title'>
-          <h2 id='tb-objectives-title'>🎯 Mida sa õpid</h2>
+        <details className='tb-panel tb-objectives'>
+          <summary>🎯 Mida sa õpid</summary>
           <ul className='tb-objective-list'>{data.objectives.map((objective) => <li key={objective.objectiveId}>{objective.description}</li>)}</ul>
-        </section>
+        </details>
       ) : null}
     </TextbookShell>
   );

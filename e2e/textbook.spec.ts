@@ -224,7 +224,9 @@ test('preview learning: reading gate, section pager and refresh', async ({ page 
   await expect(page.getByText('Eelvaade — lapse andmeid ei muudeta.')).toBeVisible();
   const water = page.locator(`.tb-unit-card[data-unit-id="${WATER}"]`);
   const plant = page.locator(`.tb-unit-card[data-unit-id="${PLANT}"]`);
-  await expect(water.locator('.tb-status-chip')).toContainText('Alusta õppimist');
+  // A unit that is ready to start shows no chip: its button already says it.
+  await expect(water).toHaveAttribute('data-status', 'start_learning');
+  await expect(water.locator('.tb-status-chip')).toHaveCount(0);
   await expect(plant.locator('.tb-status-chip')).toContainText('Lukus');
   await expect(plant.locator('.tb-unit-lock')).toContainText('Vesi ja selle olekud');
 
@@ -270,7 +272,6 @@ test('preview learning: reading gate, section pager and refresh', async ({ page 
   await page.reload();
   await expect(page.getByText('✓ Loetud. Võid siin rahulikult üle lugeda.')).toBeVisible();
   await navigateStable(page, previewUnit(WATER));
-  await expect(page.locator('.tb-unit-status-line .tb-status-chip')).toContainText('Harjuta');
   await expect(page.locator('.tb-step[data-state="current"]')).toContainText('Harjuta');
 });
 
@@ -356,12 +357,12 @@ test('preview test: pause and resume, 18/20 fails, targeted practice, 19/20 pass
     await answerInUi(page, keys.get(id)!, true);
     await page.getByRole('button', { name: 'Järgmine →' }).click();
   }
-  await page.getByRole('button', { name: 'Peata test' }).click();
+  await page.getByRole('button', { name: 'Lõpeta praegu' }).click();
   await expect(page).toHaveURL(new RegExp(`${previewUnit(WATER)}$`));
-  await expect(page.locator('.tb-unit-status-line .tb-status-chip')).toContainText('Test pooleli');
+  await expect(page.locator('.tb-step[data-state="current"]')).toContainText('Test');
   await page.getByRole('link', { name: 'Jätka testi' }).first().click();
   await expect(page.locator('.tb-question-eyebrow')).toHaveText('Küsimus 6/20');
-  await expect(page.locator('.tb-progress-row strong')).toHaveText('5/20');
+  await expect(page.locator('.tb-test-grid-button[data-answered="true"]')).toHaveCount(5);
 
   // Two wrong answers → 18/20.
   await answerTestInUi(page, keys, 5, [6, 9]);
@@ -388,7 +389,7 @@ test('preview test: pause and resume, 18/20 fails, targeted practice, 19/20 pass
 
   await navigateStable(page, previewCourse);
   await expect(page.locator(`.tb-unit-card[data-unit-id="${WATER}"] .tb-status-chip`)).toContainText('Läbitud');
-  await expect(page.locator(`.tb-unit-card[data-unit-id="${PLANT}"] .tb-status-chip`)).toContainText('Alusta õppimist');
+  await expect(page.locator(`.tb-unit-card[data-unit-id="${PLANT}"]`)).toHaveAttribute('data-status', 'start_learning');
 });
 
 test('preview test: an ordering row can be dragged into a new place', async ({ page }) => {

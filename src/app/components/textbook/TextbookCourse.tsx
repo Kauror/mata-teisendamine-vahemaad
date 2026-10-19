@@ -17,7 +17,8 @@ function UnitCard({ unit, units, paths }: { unit: UnitSummary; units: UnitSummar
     <article className='tb-unit-card' data-status={unit.status} data-unit-id={unit.unitId} aria-labelledby={`tb-unit-${unit.unitId}`}>
       <div className='tb-unit-head'>
         <h2 id={`tb-unit-${unit.unitId}`}><span className='tb-unit-number'>{unit.number}.</span> {unit.title}</h2>
-        <span className='tb-status-chip' data-status={unit.status}><span aria-hidden>{UNIT_STATUS_ICONS[unit.status]}</span> {statusLabel(unit.status)}</span>
+        {/* "Alusta õppimist" would only repeat the button below it. */}
+        {unit.status === 'start_learning' ? null : <span className='tb-status-chip' data-status={unit.status}><span aria-hidden>{UNIT_STATUS_ICONS[unit.status]}</span> {statusLabel(unit.status)}</span>}
       </div>
       {pages || progress ? <p className='tb-unit-meta'>{[pages ? `Õpik ${pages}` : '', progress].filter(Boolean).join(' · ')}</p> : null}
       {unit.status === 'locked' ? <p className='tb-unit-lock'>{lockExplanation(units, unit.unitId)}</p> : null}
@@ -79,7 +80,7 @@ export default function TextbookCourse({ scope, courseId }: { scope: TextbookSco
   return (
     <TextbookShell
       scope={scope}
-      eyebrow={scope === 'preview' ? 'Eelvaade' : 'Loodusõpetus'}
+      eyebrow={scope === 'preview' ? 'Eelvaade' : undefined}
       title={data?.course.title ?? 'Õpiku õppetükid'}
       backHref={paths.home}
       backLabel={scope === 'preview' ? '← Vanema ala' : '← Loodusõpetus'}

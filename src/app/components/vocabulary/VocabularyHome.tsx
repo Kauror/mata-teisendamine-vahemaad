@@ -23,7 +23,14 @@ function lockExplanation(card: ChildUnitCard) {
   return 'See õppetükk avaneb hiljem.';
 }
 
-function UnitCard({ card }: { card: ChildUnitCard }) {
+// The approved compact list (Harjutaja UI 18.10): the unit to work on is a
+// full card, passed and locked units are slim rows, and only the first
+// locked unit says why it is locked.
+function firstLockedId(units: ChildUnitCard[]) {
+  return units.find((card) => card.status === 'locked')?.id ?? null;
+}
+
+function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boolean }) {
   const base = `${VOCAB_HOME_ROUTE}/${card.id}`;
   const actions: Array<{ href: string; label: string; primary?: boolean }> = [];
   if (card.status === 'new') actions.push({ href: `${base}/opi`, label: 'Alusta õppimist', primary: true });
@@ -42,7 +49,7 @@ function UnitCard({ card }: { card: ChildUnitCard }) {
   }
 
   return (
-    <article className='vocab-unit-card' data-status={card.status} aria-labelledby={`unit-${card.id}`}>
+    <article className='vocab-unit-card' data-status={card.status} data-compact={card.status === 'passed' || card.status === 'locked'} aria-labelledby={`unit-${card.id}`}>
       <div className='vocab-unit-head'>
         <h2 id={`unit-${card.id}`}>{card.label}</h2>
         <span className='vocab-unit-status'>{STATUS_LABEL[card.status]}</span>
@@ -51,7 +58,7 @@ function UnitCard({ card }: { card: ChildUnitCard }) {
         {card.wordCount} sõna
         {card.weakCount > 0 ? <> · {card.weakCount} sõna vajab kordamist</> : null}
       </p>
-      {card.status === 'locked' ? <p className='vocab-unit-lock'>{lockExplanation(card)}</p> : null}
+      {card.status === 'locked' && explainLock ? <p className='vocab-unit-lock'>{lockExplanation(card)}</p> : null}
       {card.status === 'new_words' ? <p className='vocab-unit-lock'>{card.newWordsCount === 1 ? 'Õppetükki on lisandunud 1 uus sõna. Õpi see enne testi kaartidega läbi.' : `Õppetükki on lisandunud ${card.newWordsCount} uut sõna. Õpi need enne testi kaartidega läbi.`}</p> : null}
       {actions.length > 0 ? (
         <div className='vocab-unit-actions'>
@@ -81,12 +88,11 @@ export default function VocabularyHome() {
   return (
     <main className='english-page vocab-page'>
       <section className='practice-shell english-shell vocab-shell'>
-        <Link className='practice-back-button' href='/kiur'>← Harjutused</Link>
+        <div className='practice-top-row vocab-home-top'>
+          <Link className='practice-back-button' href='/kiur'>← Kiur</Link>
+          <h1 className='vocab-home-title'>Inglise keel</h1>
+        </div>
         <PeekModeBanner />
-        <header className='subject-header vocab-home-header'>
-          <div className='subject-emoji' aria-hidden>🔤</div>
-          <h1>Inglise keel</h1>
-        </header>
 
         {failed ? (
           <div className='vocab-problem' role='alert'>
@@ -106,17 +112,15 @@ export default function VocabularyHome() {
                 {data.weakTotal > 0 ? (
                   <Link className='vocab-weak-banner' href={`${VOCAB_HOME_ROUTE}/korda`}>
                     <span className='vocab-weak-icon' aria-hidden>↻</span>
-                    <span>
-                      <strong>Korda eksitud sõnu</strong>
-                      <small>{data.weakTotal} sõna vajab veel kordamist</small>
-                    </span>
+                    <strong>Korda eksitud sõnu</strong>
+                    <small>{data.weakTotal} sõna</small>
                   </Link>
                 ) : null}
                 {data.units.every((card) => card.status === 'passed') ? (
                   <p className='vocab-empty vocab-all-passed' role='status'>{VOCAB_ALL_PASSED_MESSAGE}</p>
                 ) : null}
                 <div className='vocab-unit-list'>
-                  {data.units.map((card) => <UnitCard key={card.id} card={card} />)}
+                  {data.units.map((card) => <UnitCard key={card.id} card={card} explainLock={card.id === firstLockedId(data.units)} />)}
                 </div>
               </>
             )}
