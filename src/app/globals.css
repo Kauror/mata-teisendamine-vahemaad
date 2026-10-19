@@ -528,9 +528,6 @@ a.child-status:focus-visible{outline:3px solid var(--focus-ring);outline-offset:
 .pv-bar i{display:block;height:8px;border-radius:999px;background:#eef0f3;overflow:hidden}
 .pv-bar i b{display:block;height:100%;border-radius:999px;background:var(--c)}
 .pv-bar span:last-child{text-align:right;font-weight:600;font-variant-numeric:tabular-nums;color:#111827}
-.pv-left{margin:0;font-size:13.5px;line-height:1.45;color:#374151}
-.pv-left b{font-weight:600;color:#6b7280}
-.pv-more{justify-self:start;min-height:44px;margin:-8px 0;padding:0;border:0;background:none;color:#111827;font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .pv-list{display:grid;margin:0;padding:0;list-style:none;border-top:1px solid #f0f1f3}
 .pv-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:34px;border-bottom:1px solid #f0f1f3;font-size:14px}
 .pv-row i{width:8px;height:8px;border-radius:50%;background:#d1d5db}
@@ -2376,14 +2373,16 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .km-bar-title{margin:0;font-size:20px;line-height:1.2}
 .km-error{margin:0;padding:10px 12px;border-radius:var(--tb-radius-small);background:var(--tb-danger-bg);color:var(--tb-danger-ink);border:1px solid var(--tb-danger-line);font-weight:750}
 .km-feedback{margin:0;color:var(--tb-text);font-weight:750}
+.km-feedback[data-empty='true']{display:none}
 .km-feedback[data-tone='correct']{color:var(--tb-good-ink)}
 .km-feedback[data-tone='wrong_retry'],.km-feedback[data-tone='revealed']{color:var(--tb-bad-ink)}
 .km-play,.km-explore{display:grid;gap:12px;min-width:0}
 .km-question{gap:10px}
-.km-progress{color:var(--tb-muted);font-size:14px;font-weight:850}
+.km-question-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.km-progress{flex:none;margin-top:3px;padding:2px 8px;border-radius:999px;background:var(--tb-surface-soft);color:var(--tb-muted);font-size:13px;font-weight:850;white-space:nowrap}
 .km-prompt{font-size:22px;line-height:1.25}
-.km-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.km-option{min-height:52px;padding:8px 12px;border-radius:var(--tb-radius-small);border:1px solid var(--tb-line);background:var(--tb-surface-soft);color:var(--tb-ink);font:inherit;font-size:17px;font-weight:850;overflow-wrap:anywhere;hyphens:auto;cursor:pointer}
+.km-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
+.km-option{min-height:44px;padding:6px 10px;border-radius:var(--tb-radius-small);border:1px solid var(--tb-line);background:var(--tb-surface-soft);color:var(--tb-ink);font:inherit;font-size:17px;font-weight:850;overflow-wrap:anywhere;hyphens:auto;cursor:pointer}
 .km-option[data-state='correct']{background:var(--tb-good-bg);border-color:var(--tb-good-line);color:var(--tb-good-ink)}
 .km-option[data-state='wrong']{background:var(--tb-bad-bg);border-color:var(--tb-bad-line);color:var(--tb-bad-ink);text-decoration:line-through}
 .km-option:disabled{cursor:default}
@@ -2399,8 +2398,11 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .km-parent{display:grid;gap:10px}
 .km-preview-note{margin:0;padding:10px 12px;border-radius:var(--tb-radius-small);background:var(--tb-preview-bg);border:1px solid var(--tb-preview-line);color:var(--tb-preview-ink);font-weight:800}
 .km-parent p{margin:0}
-.km-map{border-radius:var(--tb-radius);overflow:hidden;background:var(--km-sea);border:var(--card-border);box-shadow:var(--card-shadow)}
-.km-map svg{display:block;width:100%;height:auto;max-height:var(--km-map-max-height);margin:0 auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.km-map{position:relative;border-radius:var(--tb-radius);overflow:hidden;background:var(--km-sea);border:var(--card-border);box-shadow:var(--card-shadow)}
+.km-map svg{display:block;width:100%;height:auto;max-height:var(--km-map-max-height);margin:0 auto;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+.km-zoom{position:absolute;top:8px;right:8px;display:grid;gap:6px}
+.km-zoom-button{width:44px;height:44px;border-radius:var(--tb-radius-small);border:1px solid var(--tb-line);background:var(--tb-surface);color:var(--tb-ink);font:inherit;font-size:22px;font-weight:850;line-height:1;box-shadow:var(--card-shadow);cursor:pointer;opacity:.92}
+.km-zoom-button:disabled{opacity:.4;cursor:default}
 .km-sea{fill:var(--km-sea)}
 .km-sphere{fill:var(--km-sphere)}
 .km-area{fill:transparent;stroke:none}
@@ -2419,6 +2421,8 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .km-feature[data-paint='wrong']{fill:var(--km-wrong);stroke:var(--km-wrong-line);stroke-width:1.5}
 .km-feature[data-paint='selected']{fill:var(--km-selected);stroke:var(--km-selected-line);stroke-width:1.5}
 .km-map[data-interactive='true'] .km-feature,.km-map[data-interactive='true'] .km-area,.km-map[data-interactive='true'] .km-marker{cursor:pointer}
+/* A tap focuses the shape too; without this the browser draws a box around it. */
+.km-feature:focus,.km-area:focus,.km-marker:focus{outline:none}
 .km-feature:focus-visible,.km-area:focus-visible,.km-marker:focus-visible{outline:none;stroke:var(--focus-ring);stroke-width:3}
 .km-marker-tap{fill:var(--km-marker-hit);stroke:none}
 .km-marker-hit{fill:var(--km-marker-hit);stroke:none;pointer-events:none}

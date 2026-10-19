@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { formatStars } from '@/lib/formatStars';
 import type { ParentToday, ParentTodayChild, ParentTodayRow } from '@/lib/parentToday';
 import { learnerLabel } from './format';
@@ -32,7 +31,6 @@ function Rows({ title, rows }: { title: string; rows: ParentTodayRow[] }) {
 }
 
 function ChildToday({ child }: { child: ParentTodayChild }) {
-  const [open, setOpen] = useState(false);
   const name = learnerLabel(child.learner);
   return (
     <section className='pv-card pv-kid' data-learner={child.learner} aria-label={`${name} täna`}>
@@ -44,23 +42,16 @@ function ChildToday({ child }: { child: ParentTodayChild }) {
         <div className='pv-bar'><span>Harjutused</span><i aria-hidden><b style={{ width: percent(child.exercises.done, child.exercises.total) }} /></i><span>{child.exercises.done}/{child.exercises.total}</span></div>
         <div className='pv-bar'><span>Tegevused</span><i aria-hidden><b style={{ width: percent(child.tasks.done, child.tasks.total) }} /></i><span>{child.tasks.done}/{child.tasks.total}</span></div>
       </div>
-      {open ? (
-        <>
-          <Rows title='Harjutused' rows={child.exercises.rows} />
-          <Rows title='Tegevused' rows={child.tasks.rows} />
-        </>
-      ) : child.left.length > 0 ? (
-        <p className='pv-left'><b>Veel teha:</b> {child.left.join(', ')}</p>
-      ) : (
-        <p className='pv-done'>✓ Kõik tänane on tehtud</p>
-      )}
-      <button type='button' className='pv-more' aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Peida' : 'Näita kõike'}</button>
+      {/* Always the full lists: the one-line summary was unreadable on a phone. */}
+      <Rows title='Harjutused' rows={child.exercises.rows} />
+      <Rows title='Tegevused' rows={child.tasks.rows} />
+      {child.left.length === 0 ? <p className='pv-done'>✓ Kõik tänane on tehtud</p> : null}
     </section>
   );
 }
 
-// One card per child: today's exercises and tasks as two bars, what is left,
-// and the full list on demand.
+// One card per child: today's exercises and tasks as two bars, then the full
+// list of both with each row's state.
 export function TodayChildren() {
   const { data } = useParentResource<ParentToday>('today');
   if (!data) return <p className='pv-hint'>Laadin...</p>;

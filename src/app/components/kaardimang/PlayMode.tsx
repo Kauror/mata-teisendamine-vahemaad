@@ -100,6 +100,7 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
   const summary = round.summary;
   const options = question.options?.filter((option) => !question.state.removedOptionIds.includes(option.id) || option.id === question.correctId) ?? [];
   const tone = feedback?.questionIndex === shown ? feedback.outcome : null;
+  const message = feedback?.questionIndex === shown ? feedback.messageEt : question.state.attempts > 0 && !resolved ? `Proovi veel. ${question.hintEt ?? ''}`.trim() : '';
 
   return (
     <section className='km-play' aria-label={`${title}: mäng`}>
@@ -119,8 +120,10 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
         </div>
       ) : (
         <div className='km-card km-question'>
-          <p className='km-progress'>Küsimus {shown + 1} / {round.questions.length}</p>
-          <h2 className='km-prompt'>{question.prompt}</h2>
+          <div className='km-question-head'>
+            <h2 className='km-prompt'>{question.prompt}</h2>
+            <p className='km-progress' aria-label={`Küsimus ${shown + 1} / ${round.questions.length}`}>{shown + 1} / {round.questions.length}</p>
+          </div>
           {question.answering === 'buttons' ? (
             <div className='km-options'>
               {options.map((option) => {
@@ -140,9 +143,9 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
               })}
             </div>
           ) : null}
-          <p className='km-feedback' role='status' aria-live='polite' data-tone={tone ?? undefined}>
-            {tone === 'correct' ? '✓ ' : tone === 'revealed' ? '→ ' : ''}
-            {feedback?.questionIndex === shown ? feedback.messageEt : question.state.attempts > 0 && !resolved ? `Proovi veel. ${question.hintEt ?? ''}` : question.answering === 'map' ? 'Puuduta kaardil.' : 'Vali õige vastus.'}
+          {/* Empty until there is something to say: the prompt already says what to do. */}
+          <p className='km-feedback' role='status' aria-live='polite' data-tone={tone ?? undefined} data-empty={message ? undefined : 'true'}>
+            {message ? `${tone === 'correct' ? '✓ ' : tone === 'revealed' ? '→ ' : ''}${message}` : null}
           </p>
           {error ? <p className='km-error' role='alert'>{error}</p> : null}
           {resolved ? (

@@ -23,10 +23,19 @@ Mäng ei ole õpiku osa (see on paralleelne õppetükkidega 10–22), ei anna t�
   - Geograaf: lisaks „millise riigi pealinn see on“ ja neli vastusevarianti.
 - **Voor** on kuni 8 küsimust. Väikese rühma puhul on voor lühem: iga koht tuleb kuni kaks korda, eri viisil ja mitte järjest. Esimese vale vastuse järel tuleb vihje, teise järel näidatakse õige vastus. Vale vastust ei nimetata „halvaks“. Varem eksitud kohad tulevad sagedamini tagasi.
 
-## Kaart ei liigu
+## Kaart ei liigu iseenesest
 
-Iga õpperühm on eraldi, ette lõigatud kaart. Seda ei saa vabalt suumida ega lohistada ja see ei hüppa vooru ajal.
+Iga õpperühm on eraldi, ette lõigatud kaart, mis ei hüppa vooru ajal.
 Uus küsimus muudab ainult värve, esiletõstu, silte ja teksti, sest sama `<svg>` jääb kogu vooru ajaks paigale.
+
+Mängija võib kaarti ise suurendada (kuni 8×) ja lohistada, aga ainult kaardi kasti sees:
+- telefonis kahe sõrmega näpistades, arvutis hiirerattaga;
+- nuppudega + ja −, ning ⟲ näitab jälle kogu kaarti.
+
+Suurendus jääb küsimuste vahel samaks ja uus voor algab kogu kaardiga.
+Sõrm, mis liigub üle 8 px, lohistab kaarti ja see ei ole vastus. Kui kaart pole suurendatud, kerib sama liigutus lehte.
+Piirid jäävad suurendades peenikeseks ning täpid ja sildid jäävad ekraanil sama suureks.
+Kood on failides `MapView.tsx` ja `mapZoom.ts`.
 
 Riikidel, mis on liiga väikesed või kitsad, et neid umbes 10 px täpsusega puudutada, on täpp ja nähtav puuteala. Kui puutealad kattuksid (viis Kariibi väikesaart Kariibide vaates), küsitakse neid seal ainult vastusenuppudega.
 Merre või rannikust kaugemale puudutamine pole kunagi vale vastus: mäng palub puudutada ookeani keskele või maad.
@@ -60,6 +69,5 @@ Toorallikad (13 MB GeoJSON-i) repos ei ole.
 ## Teadlikult tegemata
 
 - Pealinnapunkti puudutamine kaardil ja naabrite küsimused. Kaur valis esimeseks versiooniks põhikomplekti.
-- Vaba suum ja lohistamine. Selle asemel on valmis lähivaated.
 - Tähed: neid ei anta, kuni reward-v2 kasutus on eraldi kokku lepitud.
 - Windowsi brauser lipuemojisid ei kuva (seal paistavad tähed, nt „GH“). Telefonides on lipud olemas.
