@@ -1196,6 +1196,24 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .vocab-weak-banner strong{font-size:17px;font-weight:900}
 .vocab-weak-banner small{font-size:14px;font-weight:700}
 .vocab-weak-icon{width:40px;height:40px;display:grid;place-items:center;border-radius:14px;background:#fff;font-size:22px;font-weight:900}
+
+/* v2 compact English list (Harjutaja UI 18.10): one header row, the unit
+   to work on as a card, passed and locked units as slim rows. */
+.vocab-home-top{position:relative;justify-content:flex-start}
+.vocab-home-title{position:absolute;left:50%;transform:translateX(-50%);margin:0;font-size:18px;font-weight:900;color:var(--vocab-ink);white-space:nowrap;pointer-events:none}
+.vocab-shell .vocab-unit-list{gap:8px}
+.vocab-shell .vocab-weak-banner{min-height:48px;padding:8px 12px;border-radius:14px;gap:10px}
+.vocab-shell .vocab-weak-banner strong{flex:1;font-size:16px}
+.vocab-shell .vocab-weak-banner small{font-size:14px}
+.vocab-shell .vocab-weak-icon{width:28px;height:28px;border-radius:999px;font-size:16px}
+.vocab-unit-card[data-compact="true"]{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:8px 12px;border-radius:14px}
+.vocab-unit-card[data-compact="true"] .vocab-unit-head{display:contents}
+.vocab-unit-card[data-compact="true"] .vocab-unit-head h2{grid-column:1;font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vocab-unit-card[data-compact="true"] .vocab-unit-status{grid-column:2;grid-row:1;padding:3px 8px;font-size:12px}
+.vocab-unit-card[data-compact="true"] .vocab-unit-meta,.vocab-unit-card[data-compact="true"] .vocab-unit-lock,.vocab-unit-card[data-compact="true"] .vocab-unit-actions{grid-column:1/-1;font-size:14px}
+.vocab-unit-card[data-compact="true"] .vocab-unit-actions{gap:12px 8px}
+.vocab-unit-card[data-compact="true"] .vocab-action{position:relative;min-height:32px;padding:0 10px;border-radius:999px;font-size:14px}
+.vocab-unit-card[data-compact="true"] .vocab-action::after{content:'';position:absolute;inset:-6px 0}
 .vocab-sprint-link{margin-top:6px}
 
 .vocab-progress{display:grid;gap:6px}
@@ -1443,6 +1461,26 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .tb-lesson-copy small{color:var(--tb-muted);font-size:13px;font-weight:700}
 .tb-attempt-list li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;padding:8px 10px;border-radius:12px;background:var(--tb-bad-bg);color:var(--tb-bad-ink);font-size:14px}
 .tb-attempt-list li[data-passed="true"]{background:var(--tb-good-bg);color:var(--tb-good-ink)}
+
+/* v2 compact textbook (Harjutaja UI 18.10): smaller headers and cards, the
+   page numbers next to the unit title, the objectives folded away. */
+.tb-shell{gap:10px}
+.tb-header h1{font-size:clamp(22px,5.4vw,30px)}
+.tb-title-note{color:var(--tb-muted);font-size:.55em;font-weight:750;letter-spacing:0;white-space:nowrap}
+.tb-unit-list{gap:8px}
+.tb-unit-card{gap:6px;padding:12px 14px}
+.tb-unit-head h2{font-size:clamp(17px,4.2vw,20px)}
+.tb-step{padding:6px 2px}
+.tb-step-dot{width:24px;height:24px;font-size:13px}
+.tb-next-card,.tb-panel,.tb-card,.tb-result-card{gap:8px;padding:12px 14px}
+.tb-next-card h2,.tb-panel h2,.tb-result-card h2{font-size:18px}
+.tb-objectives{gap:0}
+.tb-objectives>summary{position:relative;min-height:44px;margin:-8px 0;display:flex;align-items:center;gap:6px;cursor:pointer;list-style:none;color:var(--tb-ink);font-size:16px;font-weight:850}
+.tb-objectives>summary::-webkit-details-marker{display:none}
+.tb-objectives>summary::after{content:'▾';margin-left:auto;color:var(--tb-muted);transition:transform 160ms ease}
+.tb-objectives[open]>summary::after{transform:rotate(180deg)}
+.tb-objectives[open]>.tb-objective-list{margin-top:8px}
+.tb-objectives>summary:focus-visible{outline:2px solid var(--tb-accent);outline-offset:4px;border-radius:8px}
 .tb-details summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:850;color:var(--tb-accent-ink)}
 
 /* Reader. */

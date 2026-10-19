@@ -9,10 +9,12 @@ import type { TextbookClientError } from '@/app/components/textbook/textbookClie
 // The frame every textbook screen shares: page background, card column, a way
 // back, and the banner that says whose data this is — the peek banner on the
 // child's screens, the preview banner in the parent preview.
-export function TextbookShell({ scope, title, eyebrow, backHref, backLabel, children, wide = false }: {
+export function TextbookShell({ scope, title, eyebrow, titleNote, backHref, backLabel, children, wide = false }: {
   scope: TextbookScope;
   title?: string;
   eyebrow?: string;
+  // A short note beside the title ("õpik lk 44–47"), instead of a line above it.
+  titleNote?: string;
   backHref: string;
   backLabel: string;
   children: ReactNode;
@@ -26,7 +28,7 @@ export function TextbookShell({ scope, title, eyebrow, backHref, backLabel, chil
         {title ? (
           <header className='tb-header'>
             {eyebrow ? <p className='tb-eyebrow'>{eyebrow}</p> : null}
-            <h1>{title}</h1>
+            <h1>{title}{titleNote ? <span className='tb-title-note'> · {titleNote}</span> : null}</h1>
           </header>
         ) : null}
         {children}

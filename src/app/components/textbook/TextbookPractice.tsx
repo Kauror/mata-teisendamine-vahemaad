@@ -100,7 +100,7 @@ export default function TextbookPractice({ scope, courseId, unitId }: { scope: T
   const counter = practiceCounter(progress, showFeedback);
 
   return (
-    <TextbookShell scope={scope} title={title} eyebrow={targeted ? 'Harjutus enne uut testi' : 'Harjutus'} backHref={paths.unit(unitId)} backLabel='← Õppetükk'>
+    <TextbookShell scope={scope} title={title} eyebrow={targeted ? 'Harjutus enne uut testi' : undefined} backHref={paths.unit(unitId)} backLabel='← Õppetükk'>
       <TextbookProgress value={counter.done} total={counter.total} label={counter.headline} detail={counter.detail} />
       {targeted && view.status === 'active' ? (
         <details className='tb-panel tb-details'>

@@ -361,7 +361,9 @@ export function QuestionCard({ question, value, onChange, disabled, eyebrow }: {
       {eyebrow ? <p className='tb-question-eyebrow'>{eyebrow}</p> : null}
       {question.context ? <QuestionContextView context={question.context} hotspotDiagramId={hotspotDiagram} /> : null}
       <h2 className='tb-question-stem' id={`${question.id}-stem`}>{question.stem}</h2>
-      <p className='tb-question-hint'>{ANSWER_HINTS[question.answer.type]}</p>
+      {/* A single choice needs no instruction; several answers, pairs, groups,
+          order and a diagram do. */}
+      {question.answer.type === 'single_choice' ? null : <p className='tb-question-hint'>{ANSWER_HINTS[question.answer.type]}</p>}
       <AnswerInput question={question} value={value} onChange={onChange} disabled={disabled} />
     </section>
   );

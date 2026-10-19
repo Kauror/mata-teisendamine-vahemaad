@@ -10,9 +10,9 @@ import { AnswerFeedback } from '@/app/components/textbook/AnswerFeedback';
 import { QuestionCard } from '@/app/components/textbook/AnswerInputs';
 import { textbookPaths, type TextbookPaths } from '@/app/components/textbook/pages';
 import { draftFrom, isDraftComplete, sameResponse, type AnswerDraft } from '@/app/components/textbook/responses';
-import { correctWord, questionCountWord } from '@/app/components/textbook/status';
+import { correctWord } from '@/app/components/textbook/status';
 import { firstOpenQuestion, testAnsweredCount } from '@/app/components/textbook/testState';
-import { TextbookLoading, TextbookProblem, TextbookProgress, TextbookShell } from '@/app/components/textbook/TextbookShell';
+import { TextbookLoading, TextbookProblem, TextbookShell } from '@/app/components/textbook/TextbookShell';
 import { useLearnerClient, useSessionRunner } from '@/app/components/textbook/useTextbook';
 
 const AUTOSAVE_MS = 600;
@@ -198,8 +198,7 @@ export default function TextbookTest({ scope, courseId, unitId }: { scope: Textb
   const savedAll = view.answeredCount === view.total;
 
   return (
-    <TextbookShell scope={scope} title='Test' eyebrow={`${view.total} ${questionCountWord(view.total)} · läbimiseks ${view.requiredCorrect} ${correctWord(view.requiredCorrect)}`} backHref={paths.unit(unitId)} backLabel='← Õppetükk'>
-      <TextbookProgress value={answered} total={view.total} label='Vastatud' />
+    <TextbookShell scope={scope} title='Test' backHref={paths.unit(unitId)} backLabel='← Õppetükk'>
 
       {runner.error ? <TextbookProblem error={runner.error} onRetry={runner.retry} retrying={runner.retrying} backHref={paths.unit(unitId)} backLabel='Tagasi õppetüki juurde' /> : null}
 
@@ -210,7 +209,6 @@ export default function TextbookTest({ scope, courseId, unitId }: { scope: Textb
       <nav className='tb-test-nav' aria-label='Testi küsimused'>
         <div className='tb-pager tb-pager-compact'>
           <button type='button' className='tb-button tb-button-small' disabled={index === 0} onClick={() => goTo(index - 1)}>← Eelmine</button>
-          <span className='tb-pager-label'>{index + 1}/{view.total}</span>
           <button type='button' className='tb-button tb-button-small tb-button-primary' disabled={index === questions.length - 1} onClick={() => goTo(index + 1)}>Järgmine →</button>
         </div>
 
@@ -247,9 +245,8 @@ export default function TextbookTest({ scope, courseId, unitId }: { scope: Textb
         ) : (
           <button type='button' className='tb-button tb-button-primary tb-button-wide' disabled={!allAnswered || leaving} onClick={() => setConfirming(true)}>Esita test</button>
         )}
-        {!allAnswered ? <p className='tb-hint'>Esitada saab, kui kõik on vastatud. Vastamata: {view.total - answered}.</p> : null}
         {allAnswered && !savedAll && !runner.busy ? <p className='tb-hint'>Salvestan viimaseid vastuseid…</p> : null}
-        <button type='button' className='tb-button tb-button-small tb-test-pause' disabled={leaving} onClick={() => void pause()}>{leaving ? 'Salvestan…' : 'Peata test'}</button>
+        <button type='button' className='tb-button tb-button-small tb-test-pause' disabled={leaving} onClick={() => void pause()}>{leaving ? 'Salvestan…' : 'Lõpeta praegu'}</button>
       </div>
     </TextbookShell>
   );
