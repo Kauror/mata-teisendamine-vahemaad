@@ -2400,8 +2400,10 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .km-parent p{margin:0}
 .km-map{position:relative;border-radius:var(--tb-radius);overflow:hidden;background:var(--km-sea);border:var(--card-border);box-shadow:var(--card-shadow)}
 .km-map svg{display:block;width:100%;height:auto;max-height:var(--km-map-max-height);margin:0 auto;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
-.km-zoom{position:absolute;top:8px;right:8px;display:grid;gap:6px}
-.km-zoom-button{width:44px;height:44px;border-radius:var(--tb-radius-small);border:1px solid var(--tb-line);background:var(--tb-surface);color:var(--tb-ink);font:inherit;font-size:22px;font-weight:850;line-height:1;box-shadow:var(--card-shadow);cursor:pointer;opacity:.92}
+/* Small on the map (32 px) so they hide less of it; the ::before keeps a 44 px tap area. 32 + 12 gap = 44 px pitch, so tap areas never overlap. */
+.km-zoom{position:absolute;top:12px;right:12px;display:grid;gap:12px}
+.km-zoom-button{position:relative;width:32px;height:32px;padding:0;border-radius:8px;border:1px solid var(--tb-line);background:var(--tb-surface);color:var(--tb-ink);font:inherit;font-size:18px;font-weight:850;line-height:1;box-shadow:var(--card-shadow);cursor:pointer;opacity:.88}
+.km-zoom-button::before{content:'';position:absolute;inset:-6px}
 .km-zoom-button:disabled{opacity:.4;cursor:default}
 .km-sea{fill:var(--km-sea)}
 .km-sphere{fill:var(--km-sphere)}
