@@ -12,8 +12,9 @@ export type MapFrame = { bounds: ZoomView; base: ZoomView };
 export const MAX_ZOOM = 8;
 // A finger that moves further than this is dragging the map, not tapping it.
 export const TAP_SLOP_PX = 8;
-// The map box is this much taller than the map's own shape.
-export const FRAME_TALLER = 1.1;
+// The map box is this much taller than the map's own shape: 10% and then
+// another 10% on Kaur's request (19.10), so the map fills more of a phone.
+export const FRAME_TALLER = 1.21;
 
 // A map whose land runs to its edges is shown a little narrower (the sides can
 // be dragged into view); a world map, drawn as a globe with empty space

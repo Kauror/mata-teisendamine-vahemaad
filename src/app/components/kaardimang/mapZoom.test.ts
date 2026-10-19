@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_ZOOM, clampView, isBase, mapFrame, panBy, toMap, zoomAround, zoomOf } from './mapZoom';
+import { FRAME_TALLER, MAX_ZOOM, clampView, isBase, mapFrame, panBy, toMap, zoomAround, zoomOf } from './mapZoom';
 
 // Views compared to 6 decimals: the arithmetic is floating point.
 function expectView(actual: { x: number; y: number; w: number; h: number }, wanted: typeof actual) {
@@ -9,16 +9,18 @@ function expectView(actual: { x: number; y: number; w: number; h: number }, want
 const W = 1100;
 const H = 600;
 // A regional map (land to its edges): 1000 × 600 shown at 1×, 50 hidden each side.
-const REGION = mapFrame(W, H, false);
+const REGION = mapFrame(W, H, false, 1.1);
 // The drawing shown 500 × 300 px, 20 px from the left and 100 px down.
 const BOX = { left: 20, top: 100, width: 500, height: 300 };
 
 describe('Kaardimäng zoom', () => {
-  it('makes the map box 10% taller than the map', () => {
+  it('makes the map box taller than the map', () => {
+    expect(FRAME_TALLER).toBeCloseTo(1.21);
+    expect((W / H) / (mapFrame(W, H, false).base.w / H)).toBeCloseTo(1.21);
     expectView(REGION.base, { x: 50, y: 0, w: 1000, h: 600 });
     expect((W / H) / (REGION.base.w / REGION.base.h)).toBeCloseTo(1.1);
     // A globe gets the height as empty space above and below instead.
-    const world = mapFrame(1000, 500, true);
+    const world = mapFrame(1000, 500, true, 1.1);
     expectView(world.base, { x: 0, y: -25, w: 1000, h: 550 });
     expect(world.bounds).toEqual(world.base);
   });
