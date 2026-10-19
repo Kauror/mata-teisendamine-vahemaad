@@ -190,6 +190,42 @@ test('the world oceans: the Pacific counts on the right edge too', async ({ page
   await playRound(page, { pacificFromRight: true });
 });
 
+test('the map zooms and drags inside its box; a drag is never an answer and a tap leaves no focus box', async ({ page }) => {
+  await navigateStable(page, PAGE);
+  await openPart(page, 'Euroopa');
+  await page.getByRole('button', { name: /^Baltikum/ }).click();
+  await page.getByRole('button', { name: /Mängi/ }).click();
+  await expect(page.locator('.km-prompt')).toBeVisible();
+  // The prompt says what to do; there is no extra instruction line.
+  await expect(page.locator('.km-feedback')).toHaveAttribute('data-empty', 'true');
+  const svg = page.locator('.km-map svg');
+  const whole = await svg.getAttribute('viewBox');
+  await expect(page.getByRole('button', { name: 'Vähenda kaarti' })).toBeDisabled();
+
+  await page.getByRole('button', { name: 'Suurenda kaarti' }).click();
+  const zoomed = await svg.getAttribute('viewBox');
+  expect(zoomed).not.toBe(whole);
+
+  const box = (await svg.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 - 60, box.y + box.height / 2 - 40, { steps: 6 });
+  await page.mouse.up();
+  expect(await svg.getAttribute('viewBox')).not.toBe(zoomed);
+  await expect(page.locator('.km-feedback')).toHaveAttribute('data-empty', 'true');
+
+  if (await page.locator('.km-options').count() === 0) {
+    const land = page.locator('.km-map .km-feature[data-role="t"]').first();
+    await land.click({ force: true });
+    await expect(page.locator('.km-feedback')).not.toHaveAttribute('data-empty', 'true');
+    expect(await page.evaluate(() => document.activeElement ? getComputedStyle(document.activeElement).outlineStyle : 'none')).toBe('none');
+  }
+
+  await page.getByRole('button', { name: 'Näita kogu kaarti' }).click();
+  expect(await svg.getAttribute('viewBox')).toBe(whole);
+  await noSideScroll(page);
+});
+
 test('the parent preview plays without touching Kiur and can be reset', async ({ page }) => {
   test.setTimeout(90_000);
   const kiurBefore = await (await page.request.get('/api/parent/kaardimang')).json() as ParentKaardimangResponse;
