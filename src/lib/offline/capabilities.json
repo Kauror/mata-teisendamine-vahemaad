@@ -25,7 +25,8 @@
     "/kiur/paarid",
     "/kirsi/paarid",
     "/kiur/tunniplaan",
-    "/kirsi/tunniplaan"
+    "/kirsi/tunniplaan",
+    "/tunniplaan"
   ],
   "publicAssets": [
     "/manifest.webmanifest",

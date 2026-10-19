@@ -46,7 +46,8 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, bala
       <div className='child-card-body'>
         <div className='child-card-top'>
           <h2 className='child-name' id={`${learner}-dashboard-name`}><Link className='child-card-link' href={href}>{name}</Link></h2>
-          {status && <span className='child-status' data-kind={status.kind}><span aria-hidden>{status.icon}</span> {status.text}</span>}
+          {/* A quiet shortcut: the school line opens both children's timetables. */}
+          {status && <Link className='child-status' data-kind={status.kind} href='/tunniplaan'><span aria-hidden>{status.icon}</span> {status.text}</Link>}
         </div>
         <div className='child-overview'>
           <MetricTooltip className='streak-badge' label={streakTooltip(streak)}><span aria-hidden>🔥</span><strong>{streak}</strong></MetricTooltip>
