@@ -8,6 +8,7 @@ import { U18_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit18/l
 import { U17_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit17/layouts';
 import { U16_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit16/layouts';
 import { U21_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit21/layouts';
+import { U22_DIAGRAM_LAYOUTS } from '@/app/components/textbook/diagrams/unit22/layouts';
 
 // Where each registered diagram puts its region labels and hotspot markers,
 // as data, so a unit test can prove every label fits inside the picture at
@@ -123,7 +124,8 @@ export const DIAGRAM_LAYOUTS: Record<string, DiagramLayout> = {
   ...U18_DIAGRAM_LAYOUTS,
   ...U17_DIAGRAM_LAYOUTS,
   ...U16_DIAGRAM_LAYOUTS,
-  ...U21_DIAGRAM_LAYOUTS
+  ...U21_DIAGRAM_LAYOUTS,
+  ...U22_DIAGRAM_LAYOUTS
 };
 
 // DejaVu Sans Bold advance widths in em (font units / 2048), for the letters
