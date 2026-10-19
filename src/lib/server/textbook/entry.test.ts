@@ -25,7 +25,7 @@ describe('the textbook link on the child page', () => {
   });
 
   it('ignores a publication row for a unit that is still a draft', () => {
-    publish('lo-opik-u22', 1);
+    publish('lo-opik-u20', 1);
     expect(childLoodusopetusHref('kiur')).toBeNull();
   });
 });
