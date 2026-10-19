@@ -12,21 +12,27 @@ export type MapFrame = { bounds: ZoomView; base: ZoomView };
 export const MAX_ZOOM = 8;
 // A finger that moves further than this is dragging the map, not tapping it.
 export const TAP_SLOP_PX = 8;
-// The map box is this much taller than the map's own shape: 10% and then
-// another 10% on Kaur's request (19.10), so the map fills more of a phone.
-export const FRAME_TALLER = 1.21;
+// Kaur (19.10): the map box is square when it can be. A wide map is cut at the
+// sides to a square, but never loses more than this share of its width
+// (the hidden sides slide into view with a sideways drag).
+export const MAX_HIDDEN_SHARE = 0.25;
+// The world globe would lose half of itself as a square, so its box is only
+// this much taller than the globe, with empty space above and below.
+export const WORLD_TALLER = 1.21;
 
-// A map whose land runs to its edges is shown a little narrower (the sides can
-// be dragged into view); a world map, drawn as a globe with empty space
-// around it, gets the extra height as empty space above and below instead.
-export function mapFrame(width: number, height: number, padded: boolean, taller = FRAME_TALLER): MapFrame {
+// A map already square or taller keeps its own shape and hides nothing.
+export function mapFrame(width: number, height: number, padded: boolean): MapFrame {
+  const bounds = { x: 0, y: 0, w: width, h: height };
   if (padded) {
-    const pad = (height * (taller - 1)) / 2;
-    const bounds = { x: 0, y: -pad, w: width, h: height + 2 * pad };
-    return { bounds, base: bounds };
+    const pad = (height * (WORLD_TALLER - 1)) / 2;
+    const room = { x: 0, y: -pad, w: width, h: height + 2 * pad };
+    return { bounds: room, base: room };
   }
-  const w = width / taller;
-  return { bounds: { x: 0, y: 0, w: width, h: height }, base: { x: (width - w) / 2, y: 0, w, h: height } };
+  const aspect = width / height;
+  if (aspect <= 1) return { bounds, base: bounds };
+  const boxAspect = Math.max(1, aspect * (1 - MAX_HIDDEN_SHARE));
+  const w = height * boxAspect;
+  return { bounds, base: { x: (width - w) / 2, y: 0, w, h: height } };
 }
 
 export function zoomOf(view: ZoomView, frame: MapFrame) {
