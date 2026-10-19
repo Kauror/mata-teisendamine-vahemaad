@@ -54,6 +54,28 @@ test('the home cards say when school starts, from the evening before', async ({ 
   await expect(childCard(page, 'Kirsi').locator('.child-status')).toHaveText(/kool algab 9\.05/);
 });
 
+test('the school line on a home card opens both timetables', async ({ page }) => {
+  await page.clock.setFixedTime(WEDNESDAY_2100);
+  await navigateStable(page, '/');
+  // Checked by its link rather than a tap: the page can open with yesterday's
+  // points recap over it.
+  await expect(childCard(page, 'Kiur').getByRole('link', { name: /kool algab 8\.15/ })).toHaveAttribute('href', '/tunniplaan');
+  await expect(childCard(page, 'Kirsi').getByRole('link', { name: /kool algab 9\.05/ })).toHaveAttribute('href', '/tunniplaan');
+
+  await navigateStable(page, '/tunniplaan');
+  const kiur = page.getByRole('region', { name: 'Kiur' });
+  const kirsi = page.getByRole('region', { name: 'Kirsi' });
+  // Both days are over, so each timetable has turned to Thursday.
+  for (const child of [kiur, kirsi]) {
+    await expect(child.getByRole('tab', { name: 'Homme' })).toHaveAttribute('aria-selected', 'true');
+    await expect(child.getByRole('heading', { name: 'Homme · neljapäev' })).toBeVisible();
+  }
+  // Each child's tabs are their own.
+  await kiur.getByRole('tab', { name: 'Nädal' }).click();
+  await expect(kiur.getByRole('table', { name: 'Nädala tunniplaan' })).toBeVisible();
+  await expect(kirsi.getByRole('tab', { name: 'Homme' })).toHaveAttribute('aria-selected', 'true');
+});
+
 test('the home cards fit an iPhone mini without sideways scrolling', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-12T09:10:00Z'));
   await page.setViewportSize({ width: 375, height: 667 });

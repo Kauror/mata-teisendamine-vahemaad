@@ -267,6 +267,14 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #99a8
 .child-status{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800;line-height:1.2;white-space:nowrap;background:var(--school-home-soft);color:var(--school-home-ink)}
 .child-status[data-kind="school"]{background:var(--school-now-soft);color:var(--school-now-ink)}
 .child-status[data-kind="club"]{background:var(--school-club-soft);color:var(--school-club-ink)}
+/* The status line is also a link to both timetables (/tunniplaan): it sits
+   above the card's own link and looks exactly like the plain chip. */
+a.child-status{position:relative;z-index:1;text-decoration:none}
+a.child-status::after{content:'';position:absolute;inset:-12px -4px}
+a.child-status:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+.both-timetables{display:grid;gap:14px}
+.both-timetables-title{margin:0;font-size:clamp(24px,5vw,32px);line-height:1.1;color:#0b1b45}
+.timetable-head h2{margin:0;font-size:var(--identity-name);line-height:1.1;color:#0b1b45}
 .child-last{margin:0;display:flex;gap:6px;min-width:0;font-size:12.5px;line-height:1.3;color:#33416f}
 .child-last-label{flex:none;color:#64748b;font-weight:800}
 .child-last-what{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
