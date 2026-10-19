@@ -34,16 +34,20 @@ function englishFor(estonian: string) {
 }
 
 async function signInAsParent(page: Page) {
-  await navigateStable(page, '/vanem');
+  // Halda opens on its exercise list; the vocabulary is under Õppesisu.
+  await navigateStable(page, '/vanem/halda?tab=harjutused');
   const password = page.getByLabel('Sisesta parool');
   if (await password.count() > 0) {
     await password.click();
     await password.pressSequentially('e2e-parent-password');
-    const dashboardLoaded = page.waitForResponse((response) => response.url().endsWith('/api/parent/dashboard') && response.ok());
     await page.getByRole('button', { name: 'Sisene' }).click();
-    await dashboardLoaded;
   }
-  await expect(page.getByRole('button', { name: /Harjutuste kogu/ })).toBeVisible();
+  await expect(page.locator('.learning-compact-row').first()).toBeVisible();
+}
+
+async function openVocabularyAdmin(page: Page) {
+  await page.getByRole('button', { name: 'Õppesisu', exact: true }).click();
+  await page.getByRole('button', { name: /Inglise keele sõnavara/ }).click();
 }
 
 function unitRow(page: Page, unitNumber: number) {
@@ -66,13 +70,12 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   await signInAsParent(page);
 
   // Enable the exercise for Kiur. It starts hidden.
-  await page.getByRole('button', { name: /Harjutuste kogu/ }).click();
   const libraryRow = page.locator('.learning-learner-group').filter({ hasText: 'Kiur' }).locator('.learning-compact-row').filter({ hasText: 'Sõnavara' });
   await libraryRow.getByRole('button', { name: 'Püsiv' }).click();
   await expect(libraryRow.getByRole('button', { name: 'Püsiv' })).toHaveAttribute('aria-pressed', 'true');
 
   // Import: the layout is recognised without touching the mapping.
-  await page.getByRole('button', { name: /Inglise keele sõnavara/ }).click();
+  await openVocabularyAdmin(page);
   await page.locator('input[type="file"][accept*=".xlsx"]').setInputFiles({ name: 'sonad.csv', mimeType: 'text/csv', buffer: Buffer.from(csvFor(first), 'utf8') });
   await expect(page.getByLabel(/Õppetükke alustavad pealkirjaread/)).toBeChecked();
   await page.getByRole('button', { name: 'Kontrolli' }).click();
@@ -248,7 +251,7 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
 
   // The parent sees the result.
   await signInAsParent(page);
-  await page.getByRole('button', { name: /Inglise keele sõnavara/ }).click();
+  await openVocabularyAdmin(page);
   await expect(unitRow(page, first).getByText(/^Läbitud /)).toBeVisible();
   await expect(unitRow(page, first).locator('dd').filter({ hasText: '2/3 (66%)' })).toBeVisible();
 });

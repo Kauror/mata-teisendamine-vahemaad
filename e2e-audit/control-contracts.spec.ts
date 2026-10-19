@@ -35,37 +35,44 @@ test('every parent section opens and closes through its public control', async (
   await authenticateFamily(page);
   await authenticateParent(page);
 
-  const expectedSections = [
-    'Tähed ja karikad',
-    'Nädala kokkuvõte',
-    'Võrguühenduseta kasutus',
-    'Harjutuste kogu',
-    'Inglise keele sõnavara',
-    'Loodusõpetuse õppetükid',
-    'Kaardimäng',
-    'Tegevused',
-    'Pood',
-    'Õppimise punktid',
-    'Parool',
-    'Teated ja reeglid',
-    'Auhinnad',
-    'Ajaloo haldamine'
+  // Täna, Halda → Õppesisu and Seaded each list their own sections; Halda's
+  // other lists (tasks, shop, exercises) are tabs, not sections.
+  const views = [
+    { path: '/vanem', sections: ['Tähed ja karikad', 'Nädala kokkuvõte'] },
+    { path: '/vanem/halda?tab=sisu', sections: ['Loodusõpetuse õppetükid', 'Inglise keele sõnavara', 'Kaardimäng'] },
+    { path: '/vanem/seaded', sections: ['Tähed harjutuste eest', 'Auhinnad', 'Teade laste avalehel', 'Võrguühenduseta kasutus', 'Ajaloo haldamine', 'Minu parool'] }
   ];
-  const toggles = page.locator('.parent-accordion-toggle');
-  await expect(toggles).toHaveCount(expectedSections.length);
 
-  for (const title of expectedSections) {
-    await test.step(title, async () => {
-      const toggle = toggles.filter({ hasText: title });
-      await expect(toggle).toHaveCount(1);
-      if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
-      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-      await toggle.click();
-      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      await expect(toggle.locator('xpath=following-sibling::*[1]')).toBeVisible();
-      await toggle.click();
-      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    });
+  for (const view of views) {
+    await gotoStable(page, view.path);
+    const toggles = page.locator('.parent-accordion-toggle');
+    await expect(toggles).toHaveCount(view.sections.length);
+    for (const title of view.sections) {
+      await test.step(title, async () => {
+        const toggle = toggles.filter({ hasText: title });
+        await expect(toggle).toHaveCount(1);
+        if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        await expect(toggle.locator('xpath=following-sibling::*[1]')).toBeVisible();
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      });
+    }
+  }
+  // The children's PIN is not changed from here.
+  await expect(page.getByText(/PIN/)).toHaveCount(0);
+
+  // Halda's four lists switch in place.
+  await gotoStable(page, '/vanem/halda');
+  for (const tab of ['Pood', 'Õppesisu', 'Harjutused', 'Tegevused']) {
+    const chip = page.getByRole('button', { name: tab, exact: true });
+    // A tap before hydration does nothing; retry until the tab is picked.
+    await expect(async () => {
+      await chip.click();
+      await expect(chip).toHaveAttribute('aria-pressed', 'true', { timeout: 1000 });
+    }).toPass({ timeout: 30_000 });
   }
 });
 

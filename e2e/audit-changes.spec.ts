@@ -11,19 +11,17 @@ const SCIENCE_TITLE = 'Loodusõpetus';
 // The parent session outlives a navigation, so this has to cope with arriving
 // already logged in — the second visit in a test never shows the form.
 async function openParentLibrary(page: Page) {
-  await navigateStable(page, '/vanem');
+  await navigateStable(page, '/vanem/halda?tab=harjutused');
   const password = page.getByLabel('Sisesta parool');
   if (await password.count() > 0) {
     await password.click();
     await password.pressSequentially('e2e-parent-password');
-    const dashboardLoaded = page.waitForResponse((response) => response.url().endsWith('/api/parent/dashboard') && response.ok());
+    const libraryLoaded = page.waitForResponse((response) => response.url().endsWith('/api/parent/learning-exercises') && response.ok());
     await page.getByRole('button', { name: 'Sisene' }).click();
-    await dashboardLoaded;
+    await libraryLoaded;
   }
 
-  const library = page.getByRole('button', { name: /Harjutuste kogu/ });
-  await expect(library).toBeVisible();
-  if (await library.getAttribute('aria-expanded') !== 'true') await library.click();
+  await expect(page.getByRole('button', { name: 'Harjutused', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.learning-compact-row').first()).toBeVisible();
 }
 

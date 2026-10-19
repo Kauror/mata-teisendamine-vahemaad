@@ -75,7 +75,7 @@ async function openPart(page: Page, part: string) {
 }
 
 async function signInAsParent(page: Page) {
-  await navigateStable(page, '/vanem');
+  await navigateStable(page, '/vanem/halda?tab=sisu');
   const password = page.getByLabel('Sisesta parool');
   if (await password.count() > 0) {
     await password.click();
@@ -204,7 +204,7 @@ test('the parent preview plays without touching Kiur and can be reset', async ({
   const preview = await (await page.request.get('/api/parent/kaardimang/preview')).json() as OverviewResponse;
   expect(preview.practiced['europe-baltics'][0]).toBeGreaterThan(0);
 
-  await navigateStable(page, '/vanem');
+  await navigateStable(page, '/vanem/halda?tab=sisu');
   await openParentSection(page);
   await page.getByRole('button', { name: 'Lähtesta eelvaade' }).click();
   await page.getByRole('button', { name: 'Jah, lähtesta' }).click();

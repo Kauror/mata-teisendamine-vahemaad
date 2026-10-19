@@ -38,8 +38,9 @@ function storeFormFor(item: StoreItem): typeof emptyStoreForm {
   };
 }
 
-// "Pood": shop items, today's visibility and the purchase log.
-export function StorePanel({ onSummary }: { onSummary: (summary: string) => void }) {
+// "Pood": shop items, today's visibility and the purchase log. The form shows
+// while adding (Halda's "+ Lisa") or editing an item.
+export function StorePanel({ onSummary, adding = false, onAddDone }: { onSummary: (summary: string) => void; adding?: boolean; onAddDone?: () => void }) {
   const api = useParentApi();
   const saving = useParentSaving();
   const { data: store, setData: setStore } = useParentResource<StoreDashboard>('store');
@@ -69,6 +70,7 @@ export function StorePanel({ onSummary }: { onSummary: (summary: string) => void
       }
       api.setNotice(editingStoreId ? 'Poe ese muudetud.' : 'Poe ese lisatud.');
       resetStoreForm();
+      onAddDone?.();
       api.bus.after('storeItem');
     });
   };
@@ -113,9 +115,14 @@ export function StorePanel({ onSummary }: { onSummary: (summary: string) => void
     });
   };
 
+  const cancelForm = () => {
+    resetStoreForm();
+    onAddDone?.();
+  };
+
   return (
     <>
-      <section className='parent-card'>
+      {(adding || editingStoreId) && <section className='parent-card pv-card' aria-label={editingStoreId ? 'Muuda poe eset' : 'Uus poe ese'}>
         <form className='parent-form parent-task-form' onSubmit={saveStoreItem}>
           <fieldset className='parent-form-fieldset' disabled={saving}>
             <label><span>Nimi</span><input value={storeForm.title} maxLength={80} onChange={(event) => setStoreForm({ ...storeForm, title: event.target.value })} placeholder='30 min ekraaniaega' /></label>
@@ -133,14 +140,13 @@ export function StorePanel({ onSummary }: { onSummary: (summary: string) => void
               {WEEKDAYS.map((day) => <button type='button' key={day.id} className={storeForm.availableWeekdays.includes(day.id) ? 'filter-chip active' : 'filter-chip'} onClick={() => setStoreForm((prev) => ({ ...prev, availableWeekdays: prev.availableWeekdays.includes(day.id) ? prev.availableWeekdays.filter((x) => x !== day.id) : [...prev.availableWeekdays, day.id] }))}>{day.label}</button>)}
             </div>
             <div className='parent-action-row'>
-              {editingStoreId && <button type='button' className='filter-chip' onClick={resetStoreForm}>Tühista</button>}
+              <button type='button' className='filter-chip' onClick={cancelForm}>Loobu</button>
               <button type='submit'>{editingStoreId ? 'Muuda poe eset' : 'Lisa poe ese'}</button>
             </div>
           </fieldset>
         </form>
-      </section>
-      <section className='parent-card'>
-        <h3>Laoseis</h3>
+      </section>}
+      <section className='parent-card pv-card' aria-label='Poe esemed'>
         <div className='stock-list'>
           {(store?.items ?? []).map((item) => (
             <div key={item.id} className='stock-row'>
@@ -160,10 +166,11 @@ export function StorePanel({ onSummary }: { onSummary: (summary: string) => void
               </div>
             </div>
           ))}
-          {store && store.items.length === 0 && <p>Poe esemeid ei ole loodud.</p>}
+          {!store && <p className='pv-hint'>Laadin...</p>}
+          {store && store.items.length === 0 && <p className='pv-hint'>Poe esemeid ei ole loodud. Lisa esimene nupuga „+ Lisa“.</p>}
         </div>
       </section>
-      <section className='parent-card'>
+      <section className='parent-card pv-card' aria-label='Ostud'>
         <h3>Ostud</h3>
         <div className='stock-list'>
           {(store?.purchases ?? []).map((purchase) => (

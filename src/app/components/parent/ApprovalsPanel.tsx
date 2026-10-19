@@ -15,8 +15,8 @@ const reviewsFrom = (body: unknown) => {
 };
 
 // Everything waiting on the parent: chores that need a yes, offline chores done
-// against a since-changed task, and exercise stars held back. Always loaded —
-// it is not inside an accordion section.
+// against a since-changed task, and exercise stars held back. The first card
+// on Täna, always loaded.
 export function ApprovalsPanel() {
   const api = useParentApi();
   const { data: dashboard } = useParentResource<Dashboard>('dashboard');
@@ -62,68 +62,60 @@ export function ApprovalsPanel() {
     api.bus.after('taskReview');
   });
 
+  const total = pendingApprovals.length + reviews.length + held.length;
+
   return (
-    <>
-      {pendingApprovals.length > 0 && (
-        <section className='parent-approvals' aria-label='Vanema kinnitus'>
-          <h2>✋ Vanema kinnitus ({pendingApprovals.length})</h2>
-          <p>Need tegevused ootavad sinu kinnitust, enne kui laps tähed saab.</p>
-          <div className='parent-approval-list'>
-            {pendingApprovals.map((item) => (
-              <div key={item.assignmentId} className='parent-approval-row'>
-                <div className='parent-approval-info'>
-                  <strong>{learnerLabel(item.learner)} · {item.title}</strong>
-                  <span>{approvalMeta(item)}</span>
-                </div>
-                <div className='parent-approval-actions'>
-                  <button type='button' className='view-button' onClick={() => resolveApproval(item.assignmentId, 'approve')}>Kinnita</button>
-                  <button type='button' className='filter-chip' onClick={() => resolveApproval(item.assignmentId, 'reject')}>Lükka tagasi</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+    <section className='pv-card pv-asks' aria-label='Vajab sinu otsust'>
+      <h2 className='pv-h'><span>Vajab sinu otsust</span><span>{total}</span></h2>
+      {total === 0 && <p className='pv-done'>✓ Praegu ei oota midagi</p>}
 
-      {reviews.length > 0 && (
-        <section className='parent-approvals' aria-label='Offline tegevuste ülevaatus'>
-          <h2>📥 Offline tegevuste ülevaatus ({reviews.length})</h2>
-          <p>Need tegevused tehti vanema muudetud või kustutatud ülesande alusel. Otsusta, kas algne punktisumma kehtib.</p>
-          <div className='parent-approval-list'>
-            {reviews.map((item) => (
-              <div key={item.clientActionId} className='parent-approval-row'>
-                <div className='parent-approval-info'><strong>{learnerLabel(item.learner)} · {item.title}</strong><span>+{item.points} ⭐ · {item.taskDate}{item.reasonCode ? ` · ${item.reasonCode}` : ''}</span></div>
-                <div className='parent-approval-actions'><button type='button' className='view-button' onClick={() => resolveOfflineTaskReview(item.clientActionId, 'approve')}>Kinnita</button><button type='button' className='filter-chip' onClick={() => resolveOfflineTaskReview(item.clientActionId, 'reject')}>Lükka tagasi</button></div>
-              </div>
-            ))}
+      {pendingApprovals.map((item) => (
+        <div key={`a-${item.assignmentId}`} className='pv-ask'>
+          <div className='pv-ask-line'>
+            <span>{learnerLabel(item.learner)} · {item.title}<small>{approvalMeta(item)}</small></span>
+            <span>+{item.points} ⭐</span>
           </div>
-        </section>
-      )}
+          <div className='pv-btns'>
+            <button type='button' className='pv-btn' data-k='ok' onClick={() => resolveApproval(item.assignmentId, 'approve')}>Kinnita</button>
+            <button type='button' className='pv-btn' data-k='no' onClick={() => resolveApproval(item.assignmentId, 'reject')}>Lükka tagasi</button>
+          </div>
+        </div>
+      ))}
 
-      {held.length > 0 && (
-        <section className='parent-approvals' aria-label='Ülevaatust ootavad tähed'>
-          <h2>🔎 Ülevaatust ootavad tähed ({held.length})</h2>
-          <p>Need harjutused tehti valmis, kuid tähed on kinni peetud (nt kella nihe või katalooginõue). Kinnita, et laps tähed saab.</p>
-          <div className='parent-approval-list'>
-            {held.map((item) => (
-              <div key={item.id} className='parent-approval-row'>
-                <div className='parent-approval-info'>
-                  <strong>{learnerLabel(item.learner)} · {item.exerciseId ?? 'harjutus'}</strong>
-                  <span>
-                    {item.score}/{item.questionCount}
-                    {item.completionDate ? ` · ${item.completionDate}` : ''}
-                    {item.status === 'needs_review' ? ' · ülevaatus' : ' · kinni peetud'}
-                    {item.reviewReasonCode ? ` (${item.reviewReasonCode})` : ''}
-                  </span>
-                </div>
-                <div className='parent-approval-actions'>
-                  <button type='button' className='view-button' onClick={() => approveHeldReward(item.id)}>Kinnita tähed</button>
-                </div>
-              </div>
-            ))}
+      {/* Done offline against a task the parent has since changed or deleted:
+          does the original star count still stand? */}
+      {reviews.map((item) => (
+        <div key={`r-${item.clientActionId}`} className='pv-ask'>
+          <div className='pv-ask-line'>
+            <span>{learnerLabel(item.learner)} · {item.title}<small>Tehtud võrguühenduseta, tegevus on vahepeal muutunud · {item.taskDate}{item.reasonCode ? ` · ${item.reasonCode}` : ''}</small></span>
+            <span>+{item.points} ⭐</span>
           </div>
-        </section>
-      )}
-    </>
+          <div className='pv-btns'>
+            <button type='button' className='pv-btn' data-k='ok' onClick={() => resolveOfflineTaskReview(item.clientActionId, 'approve')}>Kinnita</button>
+            <button type='button' className='pv-btn' data-k='no' onClick={() => resolveOfflineTaskReview(item.clientActionId, 'reject')}>Lükka tagasi</button>
+          </div>
+        </div>
+      ))}
+
+      {/* An exercise was finished but its stars were held back (a clock jump,
+          a catalogue rule): the parent lets them through. */}
+      {held.map((item) => (
+        <div key={`h-${item.id}`} className='pv-ask'>
+          <div className='pv-ask-line'>
+            <span>
+              {learnerLabel(item.learner)} · {item.exerciseId ?? 'harjutus'}
+              <small>
+                Harjutuse tähed on kinni peetud · {item.score}/{item.questionCount}
+                {item.completionDate ? ` · ${item.completionDate}` : ''}
+                {item.reviewReasonCode ? ` · ${item.reviewReasonCode}` : ''}
+              </small>
+            </span>
+          </div>
+          <div className='pv-btns'>
+            <button type='button' className='pv-btn' data-k='ok' onClick={() => approveHeldReward(item.id)}>Kinnita tähed</button>
+          </div>
+        </div>
+      ))}
+    </section>
   );
 }

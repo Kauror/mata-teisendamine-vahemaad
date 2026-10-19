@@ -38,6 +38,6 @@ export function textbookPaths(scope: TextbookScope, courseId: string): TextbookP
     lesson: (unitId, lessonId) => `${unit(unitId)}/lugemine/${enc(lessonId)}`,
     practice: (unitId) => `${unit(unitId)}/harjuta`,
     test: (unitId) => `${unit(unitId)}/test`,
-    home: '/vanem'
+    home: '/vanem/halda?tab=sisu'
   };
 }

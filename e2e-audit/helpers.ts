@@ -59,7 +59,7 @@ export async function authenticateParent(page: Page) {
     await page.getByRole('button', { name: 'Sisene' }).click();
     await dashboardLoaded;
   }
-  await expect(page.getByRole('heading', { name: 'Lapsevanema ala' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Täna', exact: true })).toBeVisible();
 }
 
 export async function dismissPointsRecap(page: Page) {

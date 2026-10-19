@@ -21,7 +21,7 @@ async function signInAsParent(page: Page) {
   // Let the parent hub finish rendering before navigating away. Leaving while
   // `next dev` is still streaming it aborts the page's HMR chunk request, which
   // surfaces as an unhandled ChunkLoadError in WebKit.
-  await expect(page.getByRole('button', { name: /Harjutuste kogu/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Vajab sinu otsust' })).toBeVisible();
 }
 
 function recapDialog(page: Page) {
