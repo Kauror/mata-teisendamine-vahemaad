@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Nunito } from 'next/font/google';
 import { OfflineProvider } from '@/app/components/offline/OfflineProvider';
 import { OfflineStatusBar, UpdateAvailableNotice } from '@/app/components/offline/OfflineStatusBar';
+import PeekModeBanner from '@/app/components/PeekModeBanner';
 
 // Self-hosted by next/font: the files land under _next/static and therefore in
 // the service worker's precache, so headings keep their face offline. A
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="et" className={nunito.variable}>
       <body>
         <OfflineProvider>
+          <PeekModeBanner />
           <UpdateAvailableNotice />
           {children}
           <OfflineStatusBar />
