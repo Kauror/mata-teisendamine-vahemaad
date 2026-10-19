@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import type { MapViewData, MapViewFeature } from '@/content/kaardimang/types';
 import { MARKER_MIN_HIT_PX, markerHitRadii } from './mapAnswers';
-import { MAX_ZOOM, TAP_SLOP_PX, fullView, panBy, toMap, zoomAround, zoomOf, type ScreenBox, type ZoomView } from './mapZoom';
+import { MAX_ZOOM, TAP_SLOP_PX, isBase, mapFrame, panBy, toMap, zoomAround, zoomOf, type MapFrame, type ScreenBox, type ZoomView } from './mapZoom';
 
 // One pre-projected map view as SVG. It never moves, zooms or reloads by
 // itself: a new question only changes the paint, the pins and the labels
@@ -77,8 +77,8 @@ type Gesture =
 // written straight to the DOM (hundreds of paths must not re-render per
 // frame); React state catches up when the gesture ends, which re-sizes the
 // labels and dots for the new zoom.
-function useMapZoom(ref: React.RefObject<SVGSVGElement | null>, width: number, height: number) {
-  const [view, setView] = useState<ZoomView>(() => fullView(width, height));
+function useMapZoom(ref: React.RefObject<SVGSVGElement | null>, frame: MapFrame) {
+  const [view, setView] = useState<ZoomView>(() => frame.base);
   const live = useRef(view);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const gesture = useRef<Gesture>({ kind: 'idle' });
@@ -92,8 +92,8 @@ function useMapZoom(ref: React.RefObject<SVGSVGElement | null>, width: number, h
   }, [ref]);
 
   useEffect(() => {
-    if (live.current.w !== width || live.current.h !== height || live.current.x !== 0 || live.current.y !== 0) apply(fullView(width, height), true);
-  }, [apply, width, height]);
+    if (!isBase(live.current, frame)) apply(frame.base, true);
+  }, [apply, frame]);
 
   const onPointerDown = (event: PointerEvent<SVGSVGElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
@@ -109,7 +109,7 @@ function useMapZoom(ref: React.RefObject<SVGSVGElement | null>, width: number, h
     if (pointers.current.size !== 2 || !a || !b || !box) return;
     const mx = (a.x + b.x) / 2;
     const my = (a.y + b.y) / 2;
-    gesture.current = { kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, k0: zoomOf(live.current, width), at: toMap(live.current, box, mx, my) };
+    gesture.current = { kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, k0: zoomOf(live.current, frame), at: toMap(live.current, box, mx, my) };
     dragged.current = true;
   };
 
@@ -123,7 +123,7 @@ function useMapZoom(ref: React.RefObject<SVGSVGElement | null>, width: number, h
       const box = screenBox(svg, live.current);
       if (!a || !b || !box) return;
       const k = current.k0 * (Math.hypot(a.x - b.x, a.y - b.y) / current.d0);
-      apply(zoomAround(width, height, box, k, current.at, (a.x + b.x) / 2, (a.y + b.y) / 2), false);
+      apply(zoomAround(frame, box, k, current.at, (a.x + b.x) / 2, (a.y + b.y) / 2), false);
       return;
     }
     if (current.kind === 'press' && current.id === event.pointerId) {
@@ -138,13 +138,15 @@ function useMapZoom(ref: React.RefObject<SVGSVGElement | null>, width: number, h
     const dx = event.clientX - pan.x;
     const dy = event.clientY - pan.y;
     gesture.current = { ...pan, x: event.clientX, y: event.clientY };
-    if (zoomOf(live.current, width) <= 1.001) {
-      // Not zoomed in: a finger drag scrolls the page as it would elsewhere.
+    const box = screenBox(svg, live.current);
+    if (zoomOf(live.current, frame) <= 1.001) {
+      // Not zoomed in: a finger's up-down scrolls the page as it would
+      // elsewhere; sideways slides the slightly cropped map.
       if (pan.touch) window.scrollBy(0, -dy);
+      if (box) apply(panBy(live.current, box, dx, 0, frame), false);
       return;
     }
-    const box = screenBox(svg, live.current);
-    if (box) apply(panBy(live.current, box, dx, dy, width, height), false);
+    if (box) apply(panBy(live.current, box, dx, dy, frame), false);
   };
 
   const onPointerEnd = (event: PointerEvent<SVGSVGElement>) => {
@@ -169,8 +171,8 @@ function useMapZoom(ref: React.RefObject<SVGSVGElement | null>, width: number, h
       const box = screenBox(svg, live.current);
       if (!box) return;
       event.preventDefault();
-      const k = zoomOf(live.current, width) * Math.exp(-event.deltaY * (event.ctrlKey ? 0.01 : 0.002));
-      apply(zoomAround(width, height, box, k, toMap(live.current, box, event.clientX, event.clientY), event.clientX, event.clientY), true);
+      const k = zoomOf(live.current, frame) * Math.exp(-event.deltaY * (event.ctrlKey ? 0.01 : 0.002));
+      apply(zoomAround(frame, box, k, toMap(live.current, box, event.clientX, event.clientY), event.clientX, event.clientY), true);
     };
     // Safari's own pinch gesture would zoom the whole page.
     const stop = (event: Event) => event.preventDefault();
@@ -182,7 +184,7 @@ function useMapZoom(ref: React.RefObject<SVGSVGElement | null>, width: number, h
       svg.removeEventListener('gesturestart', stop);
       svg.removeEventListener('gesturechange', stop);
     };
-  }, [ref, apply, width, height]);
+  }, [ref, apply, frame]);
 
   const zoomBy = (factor: number) => {
     const svg = ref.current;
@@ -190,16 +192,17 @@ function useMapZoom(ref: React.RefObject<SVGSVGElement | null>, width: number, h
     if (!box) return;
     const cx = box.left + box.width / 2;
     const cy = box.top + box.height / 2;
-    apply(zoomAround(width, height, box, zoomOf(live.current, width) * factor, toMap(live.current, box, cx, cy), cx, cy), true);
+    apply(zoomAround(frame, box, zoomOf(live.current, frame) * factor, toMap(live.current, box, cx, cy), cx, cy), true);
   };
 
   return {
     view,
-    zoom: zoomOf(view, width),
+    zoom: zoomOf(view, frame),
+    atBase: isBase(view, frame),
     wasDrag: () => dragged.current,
     handlers: { onPointerDown, onPointerMove, onPointerUp: onPointerEnd, onPointerCancel: onPointerEnd },
     zoomBy,
-    reset: () => apply(fullView(width, height), true),
+    reset: () => apply(frame.base, true),
   };
 }
 
@@ -250,7 +253,8 @@ const Land = memo(function Land({ features, paint, focusable, nameOf, interactiv
 
 export default function MapView({ data, ariaLabel, paint, areaPaint, showAreas, labels, pins, focusable, nameOf, onPick, uniform = false }: Props) {
   const ref = useRef<SVGSVGElement>(null);
-  const { view, zoom, wasDrag, handlers, zoomBy, reset } = useMapZoom(ref, data.width, data.height);
+  const frame = useMemo(() => mapFrame(data.width, data.height, Boolean(data.sphere)), [data.width, data.height, data.sphere]);
+  const { view, zoom, atBase, wasDrag, handlers, zoomBy, reset } = useMapZoom(ref, frame);
   const units = useUnitsPerPixel(ref, view.w, view.h);
   const placed = useMemo(() => placeLabels(labels, units), [labels, units]);
   const tapRadii = useMemo(() => markerHitRadii(data.markers, units), [data.markers, units]);
@@ -292,7 +296,7 @@ export default function MapView({ data, ariaLabel, paint, areaPaint, showAreas, 
         onKeyDown={onKeyDown}
         {...handlers}
       >
-        <rect className='km-sea' data-pick='sea' x={0} y={0} width={data.width} height={data.height} />
+        <rect className='km-sea' data-pick='sea' x={frame.bounds.x} y={frame.bounds.y} width={frame.bounds.w} height={frame.bounds.h} />
         {data.sphere ? <path className='km-sphere' data-pick='sea' d={data.sphere} /> : null}
         {data.areas.map((area, index) => (
           <path
@@ -353,7 +357,7 @@ export default function MapView({ data, ariaLabel, paint, areaPaint, showAreas, 
       <div className='km-zoom'>
         <button type='button' className='km-zoom-button' aria-label='Suurenda kaarti' disabled={zoom >= MAX_ZOOM - 0.01} onClick={() => zoomBy(2)}>+</button>
         <button type='button' className='km-zoom-button' aria-label='Vähenda kaarti' disabled={zoom <= 1.01} onClick={() => zoomBy(0.5)}>−</button>
-        {zoom > 1.01 ? <button type='button' className='km-zoom-button' aria-label='Näita kogu kaarti' onClick={reset}>⟲</button> : null}
+        {!atBase ? <button type='button' className='km-zoom-button' aria-label='Näita kogu kaarti' onClick={reset}>⟲</button> : null}
       </div>
     </div>
   );

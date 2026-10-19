@@ -1,35 +1,55 @@
 // Kaardimäng zoom: the pure arithmetic behind pinching, dragging and the
-// +/− buttons. A view is the SVG viewBox; it always keeps the map's own
-// aspect ratio, so the drawing never changes size on screen, only scale.
+// +/− buttons. A view is the SVG viewBox. Every view keeps the frame's aspect
+// ratio, so the drawing never changes size on screen, only scale.
 
 export type ZoomView = { x: number; y: number; w: number; h: number };
 // Where the drawing sits on screen (CSS px). It does not change while zooming,
 // because every view has the same aspect ratio.
 export type ScreenBox = { left: number; top: number; width: number; height: number };
+// The area the view may roam (`bounds`) and the whole-map view at 1× (`base`).
+export type MapFrame = { bounds: ZoomView; base: ZoomView };
 
 export const MAX_ZOOM = 8;
 // A finger that moves further than this is dragging the map, not tapping it.
 export const TAP_SLOP_PX = 8;
+// The map box is this much taller than the map's own shape.
+export const FRAME_TALLER = 1.1;
 
-export function fullView(width: number, height: number): ZoomView {
-  return { x: 0, y: 0, w: width, h: height };
+// A map whose land runs to its edges is shown a little narrower (the sides can
+// be dragged into view); a world map, drawn as a globe with empty space
+// around it, gets the extra height as empty space above and below instead.
+export function mapFrame(width: number, height: number, padded: boolean, taller = FRAME_TALLER): MapFrame {
+  if (padded) {
+    const pad = (height * (taller - 1)) / 2;
+    const bounds = { x: 0, y: -pad, w: width, h: height + 2 * pad };
+    return { bounds, base: bounds };
+  }
+  const w = width / taller;
+  return { bounds: { x: 0, y: 0, w: width, h: height }, base: { x: (width - w) / 2, y: 0, w, h: height } };
 }
 
-export function zoomOf(view: ZoomView, width: number) {
-  return width / view.w;
+export function zoomOf(view: ZoomView, frame: MapFrame) {
+  return frame.base.w / view.w;
 }
 
-// Keeps the zoom between 1× and MAX_ZOOM and the view inside the map.
-export function clampView(view: ZoomView, width: number, height: number): ZoomView {
-  const k = Math.min(MAX_ZOOM, Math.max(1, width / view.w));
-  const w = width / k;
-  const h = height / k;
+// Keeps the zoom between 1× and MAX_ZOOM and the view inside the bounds.
+export function clampView(view: ZoomView, frame: MapFrame): ZoomView {
+  const { bounds, base } = frame;
+  const k = Math.min(MAX_ZOOM, Math.max(1, base.w / view.w));
+  const w = base.w / k;
+  const h = base.h / k;
   return {
-    x: Math.min(width - w, Math.max(0, view.x)),
-    y: Math.min(height - h, Math.max(0, view.y)),
+    x: Math.min(bounds.x + bounds.w - w, Math.max(bounds.x, view.x)),
+    y: Math.min(bounds.y + bounds.h - h, Math.max(bounds.y, view.y)),
     w,
     h,
   };
+}
+
+export function isBase(view: ZoomView, frame: MapFrame) {
+  const { base } = frame;
+  const near = (a: number, b: number) => Math.abs(a - b) < base.w * 1e-6;
+  return near(view.x, base.x) && near(view.y, base.y) && near(view.w, base.w);
 }
 
 // The map point under a screen point.
@@ -38,14 +58,14 @@ export function toMap(view: ZoomView, box: ScreenBox, sx: number, sy: number) {
 }
 
 // Zooms to `k` so that map point `at` stays under screen point (sx, sy).
-export function zoomAround(width: number, height: number, box: ScreenBox, k: number, at: { x: number; y: number }, sx: number, sy: number): ZoomView {
+export function zoomAround(frame: MapFrame, box: ScreenBox, k: number, at: { x: number; y: number }, sx: number, sy: number): ZoomView {
   const zoom = Math.min(MAX_ZOOM, Math.max(1, k));
-  const w = width / zoom;
-  const h = height / zoom;
-  return clampView({ x: at.x - ((sx - box.left) / box.width) * w, y: at.y - ((sy - box.top) / box.height) * h, w, h }, width, height);
+  const w = frame.base.w / zoom;
+  const h = frame.base.h / zoom;
+  return clampView({ x: at.x - ((sx - box.left) / box.width) * w, y: at.y - ((sy - box.top) / box.height) * h, w, h }, frame);
 }
 
 // Moves the view by a screen-pixel drag.
-export function panBy(view: ZoomView, box: ScreenBox, dx: number, dy: number, width: number, height: number): ZoomView {
-  return clampView({ ...view, x: view.x - (dx / box.width) * view.w, y: view.y - (dy / box.height) * view.h }, width, height);
+export function panBy(view: ZoomView, box: ScreenBox, dx: number, dy: number, frame: MapFrame): ZoomView {
+  return clampView({ ...view, x: view.x - (dx / box.width) * view.w, y: view.y - (dy / box.height) * view.h }, frame);
 }
