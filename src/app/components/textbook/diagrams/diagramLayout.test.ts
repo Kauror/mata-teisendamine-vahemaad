@@ -12,6 +12,7 @@ import { U19_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit19/lay
 import { U18_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit18/layouts';
 import { U17_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit17/layouts';
 import { U16_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit16/layouts';
+import { U20_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit20/layouts';
 import { U21_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit21/layouts';
 import { aboveSightLine, above, surfacePoint } from '@/app/components/textbook/diagrams/curvedSurface';
 import {
@@ -41,6 +42,7 @@ const COMPONENT_FILES: Record<string, string> = {
   ...U18_DIAGRAM_FILES,
   ...U17_DIAGRAM_FILES,
   ...U16_DIAGRAM_FILES,
+  ...U20_DIAGRAM_FILES,
   ...U21_DIAGRAM_FILES
 };
 

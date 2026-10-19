@@ -2043,6 +2043,48 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .tb-region[data-selected="true"] .tb-u21-panel{stroke:var(--tb-dia-selected);stroke-width:3}
 .tb-region[data-correct="true"] .tb-u21-panel{stroke:var(--tb-dia-correct);stroke-width:3}
 .tb-region[data-wrong="true"] .tb-u21-panel{stroke:var(--tb-dia-wrong);stroke-width:3;stroke-dasharray:6 4}
+/* Unit 20 "Vulkaanid" diagrams. Magma and lava share one colour on purpose (the place names them); ash is grey rock dust, geyser water blue. */
+.tb-u20-frame{fill:var(--tb-dia-sky)}
+.tb-u20-panel{fill:var(--tb-dia-tower);stroke:var(--tb-dia-panel-line);stroke-width:1.5}
+.tb-u20-ground{fill:var(--tb-dia-relief-mid)}
+.tb-u20-layer{fill:none;stroke:var(--tb-dia-soil);stroke-width:1.5;stroke-opacity:.6}
+.tb-u20-surface{fill:none;stroke:var(--tb-dia-soil-line);stroke-width:2.5;stroke-linecap:round}
+.tb-u20-crack{fill:none;stroke:var(--tb-dia-soil-line);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.tb-u20-cone{fill:var(--tb-dia-rock);stroke:var(--tb-dia-rock-line);stroke-width:2;stroke-linejoin:round}
+.tb-u20-cone-layer{fill:none;stroke:var(--tb-dia-rock-line);stroke-width:1.5;stroke-opacity:.5}
+.tb-u20-magma,.tb-u20-lava{fill:var(--tb-dia-flag);stroke:var(--tb-dia-sun);stroke-width:2;stroke-linejoin:round}
+.tb-u20-magma-line{fill:none;stroke:var(--tb-dia-flag);stroke-width:5;stroke-linejoin:round;stroke-linecap:round}
+.tb-u20-plume{fill:var(--tb-dia-flag);stroke:var(--tb-dia-sun);stroke-width:2}
+.tb-u20-crater{fill:var(--tb-dia-rock-line);stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-ash{fill:var(--tb-dia-elephant);stroke:var(--tb-dia-elephant-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-grain{fill:var(--tb-dia-elephant-line)}
+.tb-u20-path{fill:none;stroke:var(--tb-dia-rock-line);stroke-width:1.5;stroke-dasharray:3 4}
+.tb-u20-lump{fill:var(--tb-dia-rock-line);stroke:var(--tb-dia-ink);stroke-width:1;stroke-linejoin:round}
+.tb-u20-solid{fill:var(--tb-dia-rock-line);stroke:var(--tb-dia-ink);stroke-width:1;stroke-linejoin:round}
+.tb-u20-old-flow{fill:none;stroke:var(--tb-dia-rock-line);stroke-width:5;stroke-linecap:round}
+.tb-u20-step{fill:var(--tb-dia-tower-line)}
+.tb-u20-mantle{fill:var(--tb-dia-pol-d)}
+.tb-u20-plate-a{fill:var(--tb-dia-tint-a);stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-plate-b{fill:var(--tb-dia-tint-b);stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-move{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:3;stroke-linecap:round}
+.tb-u20-head{fill:var(--tb-dia-tower-line)}
+.tb-u20-tuft{fill:none;stroke:var(--tb-dia-stem);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tb-u20-hill{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:2;stroke-linejoin:round}
+.tb-u20-tree{fill:var(--tb-dia-stem)}
+.tb-u20-lake,.tb-u20-pool{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:1.5}
+.tb-u20-rain{fill:none;stroke:var(--tb-dia-rain);stroke-width:2;stroke-linecap:round}
+.tb-u20-seep{fill:none;stroke:var(--tb-dia-rain);stroke-width:2;stroke-dasharray:4 4;stroke-linecap:round}
+.tb-u20-cool-water{fill:var(--tb-dia-sea);stroke:var(--tb-dia-sea-line);stroke-width:1.5}
+.tb-u20-hot-water{fill:none;stroke:var(--tb-dia-globe-light);stroke-width:8;stroke-linecap:round;stroke-linejoin:round}
+.tb-u20-hot-rock{fill:var(--tb-dia-flag);fill-opacity:.75;stroke:var(--tb-dia-flag);stroke-width:1.5}
+.tb-u20-heat{fill:none;stroke:var(--tb-dia-flag);stroke-width:2;stroke-linecap:round}
+.tb-u20-jet{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-steam{fill:var(--tb-dia-cloud);stroke:var(--tb-dia-cloud-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-wisp{fill:none;stroke:var(--tb-dia-cloud-line);stroke-width:2;stroke-linecap:round}
+/* A chosen, correct or wrong card is outlined as a whole (its hit area already is). */
+.tb-region[data-selected="true"] .tb-u20-panel{stroke:var(--tb-dia-selected);stroke-width:3}
+.tb-region[data-correct="true"] .tb-u20-panel{stroke:var(--tb-dia-correct);stroke-width:3}
+.tb-region[data-wrong="true"] .tb-u20-panel{stroke:var(--tb-dia-wrong);stroke-width:3;stroke-dasharray:6 4}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}

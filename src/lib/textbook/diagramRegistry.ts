@@ -7,6 +7,7 @@ import { UNIT19_DIAGRAMS } from '@/lib/textbook/diagrams/unit19';
 import { UNIT18_DIAGRAMS } from '@/lib/textbook/diagrams/unit18';
 import { UNIT17_DIAGRAMS } from '@/lib/textbook/diagrams/unit17';
 import { UNIT16_DIAGRAMS } from '@/lib/textbook/diagrams/unit16';
+import { UNIT20_DIAGRAMS } from '@/lib/textbook/diagrams/unit20';
 import { UNIT21_DIAGRAMS } from '@/lib/textbook/diagrams/unit21';
 
 // The diagrams content may reference — data only. Every `diagram` block,
@@ -129,6 +130,7 @@ export const DIAGRAMS: readonly DiagramDefinition[] = [
   ...UNIT18_DIAGRAMS,
   ...UNIT17_DIAGRAMS,
   ...UNIT16_DIAGRAMS,
+  ...UNIT20_DIAGRAMS,
   ...UNIT21_DIAGRAMS
 ];
 
