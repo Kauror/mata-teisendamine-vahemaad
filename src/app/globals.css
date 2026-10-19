@@ -2051,6 +2051,144 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .tb-region[data-selected="true"] .tb-u21-panel{stroke:var(--tb-dia-selected);stroke-width:3}
 .tb-region[data-correct="true"] .tb-u21-panel{stroke:var(--tb-dia-correct);stroke-width:3}
 .tb-region[data-wrong="true"] .tb-u21-panel{stroke:var(--tb-dia-wrong);stroke-width:3;stroke-dasharray:6 4}
+/* Unit 20 "Vulkaanid" diagrams. Magma and lava share one colour on purpose (the place names them); ash is grey rock dust, geyser water blue. */
+.tb-u20-frame{fill:var(--tb-dia-sky)}
+.tb-u20-panel{fill:var(--tb-dia-tower);stroke:var(--tb-dia-panel-line);stroke-width:1.5}
+.tb-u20-ground{fill:var(--tb-dia-relief-mid)}
+.tb-u20-layer{fill:none;stroke:var(--tb-dia-soil);stroke-width:1.5;stroke-opacity:.6}
+.tb-u20-surface{fill:none;stroke:var(--tb-dia-soil-line);stroke-width:2.5;stroke-linecap:round}
+.tb-u20-crack{fill:none;stroke:var(--tb-dia-soil-line);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.tb-u20-cone{fill:var(--tb-dia-rock);stroke:var(--tb-dia-rock-line);stroke-width:2;stroke-linejoin:round}
+.tb-u20-cone-layer{fill:none;stroke:var(--tb-dia-rock-line);stroke-width:1.5;stroke-opacity:.5}
+.tb-u20-magma,.tb-u20-lava{fill:var(--tb-dia-flag);stroke:var(--tb-dia-sun);stroke-width:2;stroke-linejoin:round}
+.tb-u20-magma-line{fill:none;stroke:var(--tb-dia-flag);stroke-width:5;stroke-linejoin:round;stroke-linecap:round}
+.tb-u20-plume{fill:var(--tb-dia-flag);stroke:var(--tb-dia-sun);stroke-width:2}
+.tb-u20-crater{fill:var(--tb-dia-rock-line);stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-ash{fill:var(--tb-dia-elephant);stroke:var(--tb-dia-elephant-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-grain{fill:var(--tb-dia-elephant-line)}
+.tb-u20-path{fill:none;stroke:var(--tb-dia-rock-line);stroke-width:1.5;stroke-dasharray:3 4}
+.tb-u20-lump{fill:var(--tb-dia-rock-line);stroke:var(--tb-dia-ink);stroke-width:1;stroke-linejoin:round}
+.tb-u20-solid{fill:var(--tb-dia-rock-line);stroke:var(--tb-dia-ink);stroke-width:1;stroke-linejoin:round}
+.tb-u20-old-flow{fill:none;stroke:var(--tb-dia-rock-line);stroke-width:5;stroke-linecap:round}
+.tb-u20-step{fill:var(--tb-dia-tower-line)}
+.tb-u20-mantle{fill:var(--tb-dia-pol-d)}
+.tb-u20-plate-a{fill:var(--tb-dia-tint-a);stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-plate-b{fill:var(--tb-dia-tint-b);stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-move{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:3;stroke-linecap:round}
+.tb-u20-head{fill:var(--tb-dia-tower-line)}
+.tb-u20-tuft{fill:none;stroke:var(--tb-dia-stem);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tb-u20-hill{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:2;stroke-linejoin:round}
+.tb-u20-tree{fill:var(--tb-dia-stem)}
+.tb-u20-lake,.tb-u20-pool{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:1.5}
+.tb-u20-rain{fill:none;stroke:var(--tb-dia-rain);stroke-width:2;stroke-linecap:round}
+.tb-u20-seep{fill:none;stroke:var(--tb-dia-rain);stroke-width:2;stroke-dasharray:4 4;stroke-linecap:round}
+.tb-u20-cool-water{fill:var(--tb-dia-sea);stroke:var(--tb-dia-sea-line);stroke-width:1.5}
+.tb-u20-hot-water{fill:none;stroke:var(--tb-dia-globe-light);stroke-width:8;stroke-linecap:round;stroke-linejoin:round}
+.tb-u20-hot-rock{fill:var(--tb-dia-flag);fill-opacity:.75;stroke:var(--tb-dia-flag);stroke-width:1.5}
+.tb-u20-heat{fill:none;stroke:var(--tb-dia-flag);stroke-width:2;stroke-linecap:round}
+.tb-u20-jet{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-steam{fill:var(--tb-dia-cloud);stroke:var(--tb-dia-cloud-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u20-wisp{fill:none;stroke:var(--tb-dia-cloud-line);stroke-width:2;stroke-linecap:round}
+/* A chosen, correct or wrong card is outlined as a whole (its hit area already is). */
+.tb-region[data-selected="true"] .tb-u20-panel{stroke:var(--tb-dia-selected);stroke-width:3}
+.tb-region[data-correct="true"] .tb-u20-panel{stroke:var(--tb-dia-correct);stroke-width:3}
+.tb-region[data-wrong="true"] .tb-u20-panel{stroke:var(--tb-dia-wrong);stroke-width:3;stroke-dasharray:6 4}
+/* Unit 22 "Loodusõnnetused" diagrams. Blue = water, grey = wind; the flood-safety cards share one colour, so no tint marks the safe ones. */
+.tb-u22-frame{fill:var(--tb-dia-sky)}
+.tb-u22-panel{fill:var(--tb-dia-tower);stroke:var(--tb-dia-panel-line);stroke-width:1.5}
+.tb-u22-cloud{fill:var(--tb-dia-panel-line)}
+.tb-u22-cloud.tb-u22-cloud-dark{fill:var(--tb-dia-elephant)}
+.tb-u22-rain{fill:none;stroke:var(--tb-dia-rain);stroke-width:3;stroke-linecap:round}
+.tb-u22-drizzle{fill:none;stroke:var(--tb-dia-rain);stroke-width:1.5;stroke-linecap:round;stroke-opacity:.7}
+.tb-u22-grass,.tb-u22-ground{fill:var(--tb-dia-land);stroke:var(--tb-dia-land-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u22-ground-line{fill:none;stroke:var(--tb-dia-land-line);stroke-width:3;stroke-linecap:round}
+.tb-u22-stem{fill:none;stroke:var(--tb-dia-stem);stroke-width:2}
+.tb-u22-flower{fill:var(--tb-dia-petal);stroke:var(--tb-dia-petal-line);stroke-width:1}
+.tb-u22-wall{fill:var(--tb-dia-root);stroke:var(--tb-dia-soil-line);stroke-width:1.5}
+.tb-u22-roof{fill:var(--tb-dia-flag);stroke:var(--tb-dia-soil-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-u22-roof-line{fill:none;stroke:var(--tb-dia-soil-line);stroke-width:1;stroke-opacity:.5}
+.tb-u22-door{fill:var(--tb-dia-soil)}
+.tb-u22-window{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-tower-line);stroke-width:1}
+.tb-u22-trunk-line{fill:none;stroke:var(--tb-dia-soil);stroke-width:6;stroke-linecap:round}
+.tb-u22-crown{fill:var(--tb-dia-leaf);stroke:var(--tb-dia-leaf-line);stroke-width:1.5}
+.tb-u22-branch{fill:none;stroke:var(--tb-dia-soil);stroke-width:3;stroke-linecap:round}
+.tb-u22-break{fill:none;stroke:var(--tb-dia-soil-line);stroke-width:2}
+.tb-u22-tile{fill:var(--tb-dia-flag)}
+.tb-u22-sun{fill:var(--tb-dia-sun);stroke:var(--tb-dia-sun-line);stroke-width:2}
+.tb-u22-ray,.tb-u22-heat{fill:none;stroke:var(--tb-dia-sun-line);stroke-width:3;stroke-linecap:round}
+.tb-u22-heat{stroke-width:2.5}
+.tb-u22-wind,.tb-u22-wind-arrow{fill:none;stroke:var(--tb-dia-hidden);stroke-width:3;stroke-linecap:round}
+.tb-u22-wind-arrow{stroke-width:4}
+.tb-u22-head-grey{fill:var(--tb-dia-hidden)}
+.tb-u22-head-blue{fill:var(--tb-dia-sea-line)}
+.tb-u22-head-green{fill:var(--tb-dia-land-line)}
+.tb-u22-snow{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:1.8;stroke-linecap:round}
+.tb-u22-snowdrift{fill:var(--tb-dia-cloud);stroke:var(--tb-dia-shadow-line);stroke-width:1.5}
+.tb-u22-eave{fill:var(--tb-dia-hull)}
+.tb-u22-ice{fill:var(--tb-dia-pol-sea);stroke:var(--tb-dia-sea-line);stroke-width:1;stroke-linejoin:round}
+.tb-u22-thermo{fill:var(--tb-dia-cloud);stroke:var(--tb-dia-tower-line);stroke-width:2}
+.tb-u22-thermo-cold{fill:var(--tb-dia-sea-line)}
+.tb-u22-thermo-hot{fill:var(--tb-dia-key-line)}
+.tb-u22-tick{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:1.5}
+.tb-u22-sea{fill:var(--tb-dia-sea)}
+.tb-u22-flood-water,.tb-u22-puddle{fill:var(--tb-dia-sea);fill-opacity:.75}
+.tb-u22-wave,.tb-u22-wave-light{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:2;stroke-linecap:round}
+.tb-u22-current{fill:none;stroke:var(--tb-dia-globe-light);stroke-width:2;stroke-linecap:round}
+.tb-u22-old-level,.tb-u22-old-ground{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:2;stroke-dasharray:6 5}
+.tb-u22-reed{fill:none;stroke:var(--tb-dia-stem);stroke-width:2;stroke-linejoin:round}
+.tb-u22-fence{fill:none;stroke:var(--tb-dia-hull);stroke-width:3;stroke-linecap:round}
+.tb-u22-flow{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:4;stroke-linecap:round}
+.tb-u22-flow-thin{fill:none;stroke:var(--tb-dia-sea-line);stroke-width:2.5;stroke-linecap:round}
+.tb-u22-pipe{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
+.tb-u22-pipe-under{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:6;stroke-opacity:.45;stroke-linejoin:round}
+.tb-u22-grate{fill:var(--tb-dia-tower-line)}
+.tb-u22-grate-bar{fill:none;stroke:var(--tb-dia-tower);stroke-width:1.5}
+.tb-u22-soil{fill:var(--tb-dia-rock)}
+.tb-u22-road{fill:var(--tb-dia-rock-line)}
+.tb-u22-road-top{fill:none;stroke:var(--tb-dia-rock-line);stroke-width:5;stroke-linejoin:round}
+.tb-u22-road-mark{fill:none;stroke:var(--tb-dia-ink-light);stroke-width:2}
+.tb-u22-post{fill:none;stroke:var(--tb-dia-tower-line);stroke-width:3}
+.tb-u22-sign{fill:var(--tb-dia-estonia);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u22-car{fill:var(--tb-dia-pol-c);stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-linejoin:round}
+.tb-u22-wheel{fill:var(--tb-dia-ink)}
+.tb-u22-room{fill:var(--tb-dia-tower);stroke:var(--tb-dia-soil-line);stroke-width:1.5}
+.tb-u22-shelf{fill:var(--tb-dia-hull)}
+.tb-u22-box{fill:var(--tb-dia-pol-d);stroke:var(--tb-dia-soil-line);stroke-width:1}
+.tb-u22-box-alt{fill:var(--tb-dia-sand);stroke:var(--tb-dia-sand-line);stroke-width:1}
+.tb-u22-lift{fill:none;stroke:var(--tb-dia-land-line);stroke-width:3;stroke-dasharray:5 4;stroke-linecap:round}
+.tb-u22-bag{fill:var(--tb-dia-pol-d);stroke:var(--tb-dia-soil-line);stroke-width:1.5}
+.tb-u22-bag-handle{fill:none;stroke:var(--tb-dia-soil-line);stroke-width:4;stroke-linecap:round}
+.tb-u22-bag-line{fill:none;stroke:var(--tb-dia-soil-line);stroke-width:1.5}
+.tb-u22-bottle{fill:var(--tb-dia-globe-light);stroke:var(--tb-dia-sea-line);stroke-width:1.5}
+.tb-u22-bottle-band{fill:var(--tb-dia-cloud);stroke:var(--tb-dia-sea-line);stroke-width:1}
+.tb-u22-cap{fill:var(--tb-dia-sea-line)}
+.tb-u22-lamp{fill:var(--tb-dia-tower-line)}
+.tb-u22-lamp-body{fill:var(--tb-dia-tower-line);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u22-lamp-head{fill:var(--tb-dia-hidden);stroke:var(--tb-dia-ink);stroke-width:1.5;stroke-linejoin:round}
+.tb-u22-lamp-button{fill:var(--tb-dia-key-line)}
+.tb-u22-beam{fill:var(--tb-dia-sunlight)}
+.tb-u22-antenna{fill:none;stroke:var(--tb-dia-ink);stroke-width:3;stroke-linecap:round}
+.tb-u22-radio{fill:var(--tb-dia-pol-c);stroke:var(--tb-dia-ink);stroke-width:2}
+.tb-u22-speaker,.tb-u22-dial{fill:var(--tb-dia-tower);stroke:var(--tb-dia-ink);stroke-width:2}
+.tb-u22-dial{stroke-width:1.5}
+.tb-u22-speaker-line{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u22-knob{fill:var(--tb-dia-sun);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u22-battery{fill:var(--tb-dia-land-line);stroke:var(--tb-dia-ink);stroke-width:1}
+.tb-u22-phone{fill:var(--tb-dia-space);stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u22-screen{fill:var(--tb-dia-tint-a)}
+.tb-u22-battery-outline{fill:none;stroke:var(--tb-dia-ink);stroke-width:1.5}
+.tb-u22-battery-full{fill:var(--tb-dia-land-line)}
+.tb-u22-home{fill:var(--tb-dia-tower)}
+.tb-u22-paper{fill:var(--tb-dia-cloud);stroke:var(--tb-dia-tower-line);stroke-width:1.5}
+.tb-u22-warn{fill:var(--tb-dia-estonia);stroke:var(--tb-dia-ink);stroke-width:2;stroke-linejoin:round}
+.tb-u22-warn-mark{fill:var(--tb-dia-ink)}
+.tb-u22-text-line{fill:none;stroke:var(--tb-dia-shadow-line);stroke-width:3;stroke-linecap:round}
+.tb-u22-pole{fill:none;stroke:var(--tb-dia-hull-line);stroke-width:5;stroke-linecap:round}
+.tb-u22-wire{fill:none;stroke:var(--tb-dia-ink);stroke-width:2.5;stroke-linecap:round}
+.tb-u22-spark{fill:var(--tb-dia-sun);stroke:var(--tb-dia-sun-line);stroke-width:1.5;stroke-linejoin:round}
+.tb-region[data-selected="true"] .tb-u22-panel{stroke:var(--tb-dia-selected);stroke-width:3}
+.tb-region[data-correct="true"] .tb-u22-panel{stroke:var(--tb-dia-correct);stroke-width:3}
+.tb-region[data-wrong="true"] .tb-u22-panel{stroke:var(--tb-dia-wrong);stroke-width:3;stroke-dasharray:6 4}
 /* Photographs (image blocks): the box is reserved by width/height, so nothing jumps while loading. */
 .tb-photo{margin:0;display:grid;gap:6px}
 .tb-photo-img{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border-radius:var(--tb-radius-small);background:var(--tb-photo-bg)}

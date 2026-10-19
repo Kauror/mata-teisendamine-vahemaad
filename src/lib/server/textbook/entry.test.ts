@@ -24,8 +24,10 @@ describe('the textbook link on the child page', () => {
     expect(childLoodusopetusHref('kirsi')).toBeNull();
   });
 
-  it('ignores a publication row for a unit that is still a draft', () => {
-    publish('lo-opik-u22', 1);
+  // Every real unit is ready content now, so this stands in for a draft: a
+  // row for a unit that is not ready content in the course never counts.
+  it('ignores a publication row for a unit that is not ready content', () => {
+    publish('lo-opik-u99', 1);
     expect(childLoodusopetusHref('kiur')).toBeNull();
   });
 });
