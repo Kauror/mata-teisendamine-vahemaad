@@ -1,8 +1,10 @@
 // Kiur's textbook course "Loodusõpetus – Õpiku õppetükid". The units imported
-// below have their full authored content (./unitNN.ts). The other units of 10–22 are METADATA-ONLY drafts:
-// number, title and textbook pages. Their lessons, objectives and questions
-// will be authored later from the corrected textbook text — never invent them
-// here. A draft can never be published (the validator reports `unit_draft`).
+// below have their full authored content (./unitNN.ts); since Units 20 and 22
+// every unit of 10–22 has. DRAFTS stays for a unit announced before its
+// content: a METADATA-ONLY draft (number, title, textbook pages) whose lessons,
+// objectives and questions are authored later from the textbook text — never
+// invent them here. A draft can never be published (the validator reports
+// `unit_draft`).
 // A 'ready' unit is still unpublished for the child until the parent switches
 // it on in the parent area; the parent preview shows it right away.
 
@@ -19,12 +21,11 @@ import { unit17 } from '@/content/textbook/loodusopetus-opik/unit17';
 import { unit16 } from '@/content/textbook/loodusopetus-opik/unit16';
 import { unit20 } from '@/content/textbook/loodusopetus-opik/unit20';
 import { unit21 } from '@/content/textbook/loodusopetus-opik/unit21';
+import { unit22 } from '@/content/textbook/loodusopetus-opik/unit22';
 
 export const LOODUSOPETUS_OPIK_COURSE_ID = 'loodusopetus-opik';
 
-const DRAFTS: ReadonlyArray<{ number: number; title: string; from: number; to: number; note?: string }> = [
-  { number: 22, title: 'Loodusõnnetused', from: 82, to: 83, note: 'Õpiku tekst võib olla puudulik.' }
-];
+const DRAFTS: ReadonlyArray<{ number: number; title: string; from: number; to: number; note?: string }> = [];
 
 const drafts: Unit[] = DRAFTS.map((draft) => ({
   id: `lo-opik-u${draft.number}`,
@@ -39,7 +40,7 @@ const drafts: Unit[] = DRAFTS.map((draft) => ({
   questions: []
 }));
 
-const units: Unit[] = [unit10, unit11, unit12, unit13, unit14, unit15, unit16, unit17, unit18, unit19, unit20, unit21, ...drafts].sort((left, right) => left.number - right.number);
+const units: Unit[] = [unit10, unit11, unit12, unit13, unit14, unit15, unit16, unit17, unit18, unit19, unit20, unit21, unit22, ...drafts].sort((left, right) => left.number - right.number);
 
 export const loodusopetusOpikCourse: Course = {
   id: LOODUSOPETUS_OPIK_COURSE_ID,

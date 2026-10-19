@@ -43,7 +43,8 @@ const LAZY_UNITS: Record<string, ComponentType<UnitDiagramProps>> = {
   u18: dynamic(() => import('@/app/components/textbook/diagrams/unit18').then((m) => fromMap(m.U18_DIAGRAM_COMPONENTS)), { loading: Loading }),
   u19: dynamic(() => import('@/app/components/textbook/diagrams/unit19').then((m) => fromMap(m.U19_DIAGRAM_COMPONENTS)), { loading: Loading }),
   u20: dynamic(() => import('@/app/components/textbook/diagrams/unit20').then((m) => fromMap(m.U20_DIAGRAM_COMPONENTS)), { loading: Loading }),
-  u21: dynamic(() => import('@/app/components/textbook/diagrams/unit21').then((m) => fromMap(m.U21_DIAGRAM_COMPONENTS)), { loading: Loading })
+  u21: dynamic(() => import('@/app/components/textbook/diagrams/unit21').then((m) => fromMap(m.U21_DIAGRAM_COMPONENTS)), { loading: Loading }),
+  u22: dynamic(() => import('@/app/components/textbook/diagrams/unit22').then((m) => fromMap(m.U22_DIAGRAM_COMPONENTS)), { loading: Loading })
 };
 
 function unitFor(diagramId: string) {

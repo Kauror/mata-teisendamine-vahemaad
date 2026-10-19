@@ -435,7 +435,7 @@ test('preview test: an ordering row can be dragged into a new place', async ({ p
   await expect(page.locator('.tb-test-grid-button').nth(position)).toHaveAttribute('data-answered', 'true');
 });
 
-test('parent panel: drafts cannot be published, questions with answers, preview reset', async ({ page }) => {
+test('parent panel: preview-only demo, questions with answers, preview reset', async ({ page }) => {
   test.setTimeout(90_000);
   await signInAsParent(page);
   await resetPreview(page);
@@ -448,14 +448,8 @@ test('parent panel: drafts cannot be published, questions with answers, preview 
     if (await section.getAttribute('aria-expanded') !== 'true') await section.click();
     await expect(section).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
   }).toPass({ timeout: 30_000 });
-  // Unit 22 is a metadata-only draft (Units 10–14 are ready content, so they are not used here: they would publish).
-  const draft = page.locator('.tb-admin-unit[data-unit-id="lo-opik-u22"]');
-  await expect(draft).toContainText('Loodusõnnetused');
-  await expect(draft.locator('.tb-admin-chip').first()).toHaveText('Mustand');
-  await draft.getByRole('button', { name: 'Avalda' }).click();
-  await expect(draft.locator('.tb-admin-problems')).toContainText('Avaldada ei saa');
-  await expect(draft.locator('.tb-admin-chip', { hasText: 'Avaldamata' })).toBeVisible();
-
+  // Every real unit is ready content since Units 20 and 22, so there is no
+  // draft to try publishing here; the server tests cover a draft's refusal.
   const demo = page.locator(`.tb-admin-course[data-course-id="${DEMO}"]`);
   await expect(demo).toContainText('Ainult eelvaade');
   await expect(demo.getByRole('button', { name: 'Avalda' })).toHaveCount(0);

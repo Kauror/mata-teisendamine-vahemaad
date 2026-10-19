@@ -22,7 +22,7 @@ import { childHandlers } from '@/lib/server/textbook/http';
 // DB-backed tests of the textbook server (SPEC B12 1–19 server side, A5, A7).
 // A child course "opik-test" is a real-learner copy of the two demo units
 // plus a metadata-only draft, so the child flow can be exercised without
-// touching the real course (its ready units are unpublished; the rest are drafts).
+// touching the real course (every unit 10–22 is ready content, all unpublished here).
 
 const COURSE_ID = 'opik-test';
 const WATER = 'demo-vesi';
@@ -385,7 +385,6 @@ describe('parent controls', () => {
     const error = expectCode(() => setPublished(COURSE_ID, DRAFT, true), 'validation_failed');
     expect(error.extra.problems?.length).toBeGreaterThan(0);
     expect(error.extra.problems?.[0].message).toMatch(/[a-zäöüõ]/u);
-    expectCode(() => setPublished('loodusopetus-opik', 'lo-opik-u22', true), 'validation_failed');
     expectCode(() => setPublished(DEMO, 'demo-vesi', true), 'forbidden');
     const broken = makeCourse((units) => { units[0].questions = units[0].questions.slice(0, 5); });
     useCourse(broken);
@@ -416,7 +415,8 @@ describe('parent controls', () => {
       const ready = REAL_UNITS.find((item) => item.number === unit.number)!.status === 'ready';
       expect(unit, String(unit.number)).toMatchObject({ contentStatus: ready ? 'ready' : 'draft', published: false, validation: { publishable: ready } });
     }
-    expect(real.units[12]).toMatchObject({ number: 22, contentStatus: 'draft' });
+    expect(real.units[10]).toMatchObject({ number: 20, contentStatus: 'ready', published: false, validation: { publishable: true } });
+    expect(real.units[12]).toMatchObject({ number: 22, contentStatus: 'ready', published: false, validation: { publishable: true } });
     expect(overview.courses[1]).toMatchObject({ previewOnly: true, learners: [] });
     expect(overview.courses[1].units.every((unit) => unit.progress.length === 0 && unit.validation.publishable)).toBe(true);
     const water = overview.courses[2].units[0];
@@ -549,7 +549,7 @@ describe('preview isolation (A5, A6)', () => {
   // the full pass/fail logic of the real units is proved; the browser only
   // smoke-tests how they render (e2e/textbook-real-units.spec.ts).
   it('lists the real authored units as ready, in order', () => {
-    expect(REAL_READY).toEqual(['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14', 'lo-opik-u15', 'lo-opik-u16', 'lo-opik-u17', 'lo-opik-u18', 'lo-opik-u19', 'lo-opik-u20', 'lo-opik-u21']);
+    expect(REAL_READY).toEqual(['lo-opik-u10', 'lo-opik-u11', 'lo-opik-u12', 'lo-opik-u13', 'lo-opik-u14', 'lo-opik-u15', 'lo-opik-u16', 'lo-opik-u17', 'lo-opik-u18', 'lo-opik-u19', 'lo-opik-u20', 'lo-opik-u21', 'lo-opik-u22']);
   });
 
   it.each(REAL_READY)('runs the real unit %s in the preview after the earlier ready units: read, practise with a correction, 18/20 fails, targeted practice, 19/20 passes; Kiur sees nothing', (unitId) => {
@@ -614,13 +614,14 @@ describe('preview isolation (A5, A6)', () => {
     // later units take several seconds each; the 5 s default is too tight.
   }, 60_000);
 
-  it('keeps the real course\'s draft units out of the preview and unpublishable; the ready ones publishable and unpublished', () => {
-    const drafts = REAL_UNITS.filter((unit) => unit.status !== 'ready').map((unit) => unit.id);
-    expect(drafts).toContain('lo-opik-u22');
+  // Since Units 20 and 22 the real course has no draft left; a draft's rules
+  // (hidden from the child, never publishable) are tested on the test course's
+  // DRAFT above.
+  it('lists every real unit as ready content, publishable and unpublished', () => {
+    expect(REAL_UNITS.filter((unit) => unit.status !== 'ready')).toEqual([]);
     const listed = getCourseOverview(preview(), REAL).units.map((unit) => unit.unitId);
-    for (const id of drafts) expect(listed).not.toContain(id);
+    expect(listed).toEqual(REAL_READY);
     const real = getParentOverview().courses.find((course) => course.courseId === REAL)!;
-    for (const id of drafts) expect(real.units.find((unit) => unit.unitId === id), id).toMatchObject({ published: false, validation: { publishable: false } });
     for (const id of REAL_READY) expect(real.units.find((unit) => unit.unitId === id), id).toMatchObject({ contentStatus: 'ready', published: false, validation: { publishable: true } });
   });
 

@@ -12,6 +12,7 @@ import { U18_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit1
 import { U19_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit19';
 import { U20_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit20';
 import { U21_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit21';
+import { U22_DIAGRAM_COMPONENTS } from '@/app/components/textbook/diagrams/unit22';
 
 // Every React SVG component by registry ID (src/lib/textbook/diagramRegistry.ts),
 // imported eagerly. For tests and tooling only: the app renders through
@@ -29,5 +30,6 @@ export const DIAGRAM_COMPONENTS: Record<string, ComponentType<DiagramProps>> = {
   ...U18_DIAGRAM_COMPONENTS,
   ...U19_DIAGRAM_COMPONENTS,
   ...U20_DIAGRAM_COMPONENTS,
-  ...U21_DIAGRAM_COMPONENTS
+  ...U21_DIAGRAM_COMPONENTS,
+  ...U22_DIAGRAM_COMPONENTS
 };

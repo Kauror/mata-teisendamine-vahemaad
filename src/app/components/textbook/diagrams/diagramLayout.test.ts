@@ -14,6 +14,7 @@ import { U17_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit17/lay
 import { U16_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit16/layouts';
 import { U20_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit20/layouts';
 import { U21_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit21/layouts';
+import { U22_DIAGRAM_FILES } from '@/app/components/textbook/diagrams/unit22/layouts';
 import { aboveSightLine, above, surfacePoint } from '@/app/components/textbook/diagrams/curvedSurface';
 import {
   BEACH_EYE_POINT, BEACH_HORIZON, BEACH_X, FAR_SHIP_X, HEIGHT_SEA, NEAR_SHIP_X, SHIP_EYE, SHIP_HORIZON, SHIP_HULL_TOP, SHIP_MAST_TOP, SHIP_SEA,
@@ -43,7 +44,8 @@ const COMPONENT_FILES: Record<string, string> = {
   ...U17_DIAGRAM_FILES,
   ...U16_DIAGRAM_FILES,
   ...U20_DIAGRAM_FILES,
-  ...U21_DIAGRAM_FILES
+  ...U21_DIAGRAM_FILES,
+  ...U22_DIAGRAM_FILES
 };
 
 // The narrowest picture a phone draws: 360 px screen − page, card and diagram
