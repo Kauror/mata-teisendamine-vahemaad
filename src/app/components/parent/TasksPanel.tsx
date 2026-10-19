@@ -10,7 +10,8 @@ import { useParentApi, useParentResource, useParentSaving } from './useParentApi
 
 // "Tegevused": the chore templates. Their list lives in the dashboard, so a
 // change here refreshes the dashboard topic (balances and approvals with it).
-export function TasksPanel({ onSummary }: { onSummary: (summary: string) => void }) {
+// The form shows while adding (Halda's "+ Lisa") or editing a task.
+export function TasksPanel({ onSummary, adding = false, onAddDone }: { onSummary: (summary: string) => void; adding?: boolean; onAddDone?: () => void }) {
   const api = useParentApi();
   const saving = useParentSaving();
   const { data } = useParentResource<Dashboard>('dashboard');
@@ -71,6 +72,7 @@ export function TasksPanel({ onSummary }: { onSummary: (summary: string) => void
       }
       api.setNotice(editingTaskId ? 'Tegevus muudetud.' : 'Tegevus lisatud.');
       resetTaskForm();
+      onAddDone?.();
       api.bus.after('taskTemplate');
     });
   };
@@ -92,9 +94,14 @@ export function TasksPanel({ onSummary }: { onSummary: (summary: string) => void
     });
   };
 
+  const cancelForm = () => {
+    resetTaskForm();
+    onAddDone?.();
+  };
+
   return (
     <>
-      <section className='parent-card'>
+      {(adding || editingTaskId) && <section className='parent-card pv-card' aria-label={editingTaskId ? 'Muuda tegevust' : 'Uus tegevus'}>
         <form className='parent-form parent-task-form' onSubmit={saveTask}>
           <fieldset className='parent-form-fieldset' disabled={saving}>
             <label><span>Tegevuse nimi</span><input value={title} maxLength={80} onChange={(event) => setTitle(event.target.value)} placeholder='Pese hambad' /></label>
@@ -105,14 +112,13 @@ export function TasksPanel({ onSummary }: { onSummary: (summary: string) => void
             {recurrenceType === 'selected_weekdays' && <div className='weekday-picker'>{WEEKDAYS.map((day) => <button type='button' key={day.id} className={selectedWeekdays.includes(day.id) ? 'filter-chip active' : 'filter-chip'} onClick={() => setSelectedWeekdays((prev) => prev.includes(day.id) ? prev.filter((x) => x !== day.id) : [...prev, day.id])}>{day.label}</button>)}</div>}
             <label className='parent-checkbox parent-approval-toggle'><input type='checkbox' checked={requiresApproval} onChange={(event) => setRequiresApproval(event.target.checked)} /> Vajab vanema kinnitust</label>
             <div className='parent-action-row'>
-              {editingTaskId && <button type='button' className='filter-chip' onClick={resetTaskForm}>Tühista</button>}
+              <button type='button' className='filter-chip' onClick={cancelForm}>Loobu</button>
               <button type='submit'>{editingTaskId ? 'Muuda tegevust' : 'Salvesta'}</button>
             </div>
           </fieldset>
         </form>
-      </section>
-      <section className='parent-card'>
-        <h3>Olemasolevad tegevused</h3>
+      </section>}
+      <section className='parent-card pv-card' aria-label='Tegevused'>
         <div className='stock-list'>
           {(data?.templates ?? []).map((task) => (
             <div key={task.id} className={editingTaskId === task.id ? 'stock-row editing' : 'stock-row'}>
@@ -126,7 +132,8 @@ export function TasksPanel({ onSummary }: { onSummary: (summary: string) => void
               </div>
             </div>
           ))}
-          {data && data.templates.length === 0 && <p>Tegevusi ei ole loodud.</p>}
+          {!data && <p className='pv-hint'>Laadin...</p>}
+          {data && data.templates.length === 0 && <p className='pv-hint'>Tegevusi ei ole loodud. Lisa esimene nupuga „+ Lisa“.</p>}
         </div>
       </section>
     </>

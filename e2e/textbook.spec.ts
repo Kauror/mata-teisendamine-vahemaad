@@ -32,14 +32,13 @@ function actionId() {
 }
 
 async function signInAsParent(page: Page) {
-  await navigateStable(page, '/vanem');
+  // Halda → Õppesisu holds the textbook panel.
+  await navigateStable(page, '/vanem/halda?tab=sisu');
   const password = page.getByLabel('Sisesta parool');
   if (await password.count() > 0) {
     await password.click();
     await password.pressSequentially('e2e-parent-password');
-    const dashboardLoaded = page.waitForResponse((response) => response.url().endsWith('/api/parent/dashboard') && response.ok());
     await page.getByRole('button', { name: 'Sisene' }).click();
-    await dashboardLoaded;
   }
   await expect(page.getByRole('button', { name: /Loodusõpetuse õppetükid/ })).toBeVisible();
 }
@@ -443,7 +442,12 @@ test('parent panel: drafts cannot be published, questions with answers, preview 
   const water = await unitKeys(page, WATER);
   await apiPost(page, `${PREVIEW_API}/courses/${DEMO}/units/${WATER}/lessons/${water.lessons[0].id}/complete`, { actionId: actionId() });
 
-  await page.getByRole('button', { name: /Loodusõpetuse õppetükid/ }).click();
+  // A click before hydration does nothing, so retry until the section opens.
+  const section = page.getByRole('button', { name: /Loodusõpetuse õppetükid/ });
+  await expect(async () => {
+    if (await section.getAttribute('aria-expanded') !== 'true') await section.click();
+    await expect(section).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
+  }).toPass({ timeout: 30_000 });
   // Unit 22 is a metadata-only draft (Units 10–14 are ready content, so they are not used here: they would publish).
   const draft = page.locator('.tb-admin-unit[data-unit-id="lo-opik-u22"]');
   await expect(draft).toContainText('Loodusõnnetused');

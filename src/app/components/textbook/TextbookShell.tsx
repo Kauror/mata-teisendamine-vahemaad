@@ -42,7 +42,7 @@ export function PreviewBanner() {
     <div className='tb-preview-banner' role='status'>
       <span aria-hidden>👁️</span>
       <span className='tb-preview-banner-text'><strong>Eelvaade — lapse andmeid ei muudeta.</strong> Tähti ei anta ja lapse õppetükid ei avane.</span>
-      <Link className='tb-preview-banner-link' href='/vanem'>Vanema ala</Link>
+      <Link className='tb-preview-banner-link' href='/vanem/halda?tab=sisu'>Vanema ala</Link>
     </div>
   );
 }

@@ -26,14 +26,13 @@ export function actionId() {
 }
 
 export async function signInAsParent(page: Page) {
-  await navigateStable(page, '/vanem');
+  // Halda → Õppesisu holds the textbook panel.
+  await navigateStable(page, '/vanem/halda?tab=sisu');
   const password = page.getByLabel('Sisesta parool');
   if (await password.count() > 0) {
     await password.click();
     await password.pressSequentially('e2e-parent-password');
-    const dashboardLoaded = page.waitForResponse((response) => response.url().endsWith('/api/parent/dashboard') && response.ok());
     await page.getByRole('button', { name: 'Sisene' }).click();
-    await dashboardLoaded;
   }
   await expect(page.getByRole('button', { name: /Loodusõpetuse õppetükid/ })).toBeVisible();
 }

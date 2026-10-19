@@ -80,7 +80,7 @@ export function createSaveGuard(onSavingChange: (saving: boolean) => void, onFai
 // The data a panel can show. A panel subscribes to the topics it reads and
 // re-fetches when one is invalidated; a mutation invalidates exactly the
 // topics whose numbers it changes (see PARENT_INVALIDATIONS).
-export type ParentTopic = 'dashboard' | 'heldRewards' | 'taskReviews' | 'monthly' | 'freeze' | 'weekly' | 'store' | 'library' | 'learning' | 'rewards';
+export type ParentTopic = 'dashboard' | 'heldRewards' | 'taskReviews' | 'monthly' | 'freeze' | 'weekly' | 'store' | 'library' | 'learning' | 'rewards' | 'today';
 
 export const PARENT_RESOURCE_URLS: Record<ParentTopic, string> = {
   dashboard: '/api/parent/dashboard',
@@ -92,7 +92,8 @@ export const PARENT_RESOURCE_URLS: Record<ParentTopic, string> = {
   store: '/api/parent/store',
   library: '/api/parent/learning-exercises',
   learning: '/api/parent/learning-settings',
-  rewards: '/api/parent/reward-rules'
+  rewards: '/api/parent/reward-rules',
+  today: '/api/parent/today'
 };
 
 // Which panels' numbers each mutation changes. The dashboard holds the star
@@ -101,15 +102,15 @@ export const PARENT_RESOURCE_URLS: Record<ParentTopic, string> = {
 // exercises. Mutations whose response carries the new state (reward rules,
 // learning settings, library status) update in place and need no entry.
 export const PARENT_INVALIDATIONS = {
-  taskApproval: ['dashboard', 'weekly'],
-  heldReward: ['heldRewards', 'dashboard', 'monthly', 'weekly'],
-  taskReview: ['taskReviews', 'dashboard', 'weekly'],
-  starAdjust: ['dashboard', 'weekly'],
+  taskApproval: ['dashboard', 'weekly', 'today'],
+  heldReward: ['heldRewards', 'dashboard', 'monthly', 'weekly', 'today'],
+  taskReview: ['taskReviews', 'dashboard', 'weekly', 'today'],
+  starAdjust: ['dashboard', 'weekly', 'today'],
   trophyAdjust: ['monthly', 'weekly'],
   freezeGrant: ['freeze'],
-  taskTemplate: ['dashboard'],
+  taskTemplate: ['dashboard', 'today'],
   storeItem: ['store'],
-  library: ['library']
+  library: ['library', 'today']
 } as const satisfies Record<string, readonly ParentTopic[]>;
 
 export type ParentMutation = keyof typeof PARENT_INVALIDATIONS;
