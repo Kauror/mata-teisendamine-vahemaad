@@ -34,7 +34,7 @@ export default function StudyEntryScreen({
         <span className='study-entry-icon' aria-hidden>{icon}</span>
         <h1>{title}</h1>
       </div>
-      <p className='study-entry-intro'>{intro}</p>
+      {intro ? <p className='study-entry-intro'>{intro}</p> : null}
       {subIntro ? <p className='study-entry-subintro'>{subIntro}</p> : null}
       {themes?.length ? (
         <div className='study-theme-grid'>

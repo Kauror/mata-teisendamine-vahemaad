@@ -49,8 +49,7 @@ const STUDY_META: Record<StudyKey, StudyMeta> = {
   },
   loodusopetus: {
     icon: '🔬', title: 'Loodusõpetus',
-    intro: 'Kordame enne harjutamist üle kõige tähtsamad teadmised.',
-    subIntro: 'Vali teema, mida soovid vaadata, või liigu järjest läbi kõikide teemade.',
+    intro: '',
     readyText: 'Kas oled valmis oma teadmisi proovima?', Material: ScienceStudyMaterial,
     themes: SCIENCE_THEMES
   }

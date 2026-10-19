@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import ResultFilter from '@/app/components/ResultFilter';
 import { useEffect, useState } from 'react';
 import Celebration from '@/app/components/Celebration';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
@@ -87,7 +88,7 @@ export default function LocalResultContent({ clientId }: { clientId: string | nu
         {result.kind === 'local' && !online && !isHeld && <p style={{ color: '#64748b', fontSize: 13 }}>Tähed liidetakse kontole, kui internet naaseb.</p>}
       </section>
       {questions.length > 0 && (
-        <section className='result-list'>
+        <ResultFilter wrongCount={questions.filter((question) => !question.isCorrect).length} total={questions.length}>
           {questions.map((question, index) => {
             const unit = shouldAppendUnit(question, ctx) ? ` ${question.expectedUnit || ''}` : '';
             return (
@@ -101,7 +102,7 @@ export default function LocalResultContent({ clientId }: { clientId: string | nu
               </article>
             );
           })}
-        </section>
+        </ResultFilter>
       )}
       <div className='dashboard-footer-links'>
         <Link href={backHref} className='dashboard-history-link'>Tagasi</Link>

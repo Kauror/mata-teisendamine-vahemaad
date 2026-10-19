@@ -3,8 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Difficulty, GeneratedQuestion } from '@/lib/types';
-import { compactTopicLabel } from '@/lib/history';
-import { formatElapsed, validateAnswerInput } from '@/lib/validation';
+import { validateAnswerInput } from '@/lib/validation';
 import AnalogClockVisual from '@/app/components/AnalogClockVisual';
 import { ShapeVisual } from '@/app/components/visuals/CircleVisual';
 import {
@@ -57,12 +56,6 @@ function normalizeNumberEntry(value: string) {
   const compact = value.replace(/\s/g, '').replace(',', '.');
   if (!/^\d*(?:\.\d*)?$/.test(compact)) return null;
   return compact.replace('.', ',');
-}
-
-function testTopicLabel(topic: string, category: string, isKirsiMath: boolean) {
-  if (isKirsiMath) return category;
-  if (topic === 'ring-ja-ringjoon') return 'Ring ja ringjoon';
-  return compactTopicLabel(topic, category) || category;
 }
 
 function TestPageContent() {
@@ -395,22 +388,10 @@ function TestPageContent() {
   };
 
   const percent = Math.round(((index + 1) / count) * 100);
-  const topicEmoji = topic === 'mootuhikud-pikkused' || topic === 'pikkused' ? '📏' : topic === 'jagamine-kahekohaline-uhekohaline' ? '➗' : topic === 'arvud-10000-piires' || topic === 'arvud-10000' ? '🔢' : topic === 'ring-ja-ringjoon' ? '⭕' : '🧮';
-  const metaLabel = testTopicLabel(topic, categoryParam, isKirsiMath);
 
   return (
     <main className='test-page'>
       <section className='test-shell'>
-        <header className='test-header'>
-          <div className='test-meta'>
-            <span aria-hidden>{topicEmoji}</span>
-            <div>
-              <p>{metaLabel}</p>
-              <strong>{count} küsimust</strong>
-            </div>
-          </div>
-          <div className='test-timer'><span aria-hidden>⏱️</span><span>Aeg {formatElapsed(elapsed)}</span></div>
-        </header>
 
         <section className='test-progress-card'>
           <div className='progress-row'><strong>Küsimus {index + 1} / {count}</strong><span>{percent}%</span></div>

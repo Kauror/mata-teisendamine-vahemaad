@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { formatElapsed } from '@/lib/validation';
-import { compactTopicLabel, dayLabel, entryWord, groupHistoryByMonth, HELD_REWARD_MESSAGE, isHeldReward, learnerLabel, scorePercent, subjectLabel } from '@/lib/history';
+import { compactTopicLabel, dayLabel, entryWord, groupHistoryByMonth, HELD_REWARD_MESSAGE, isHeldReward, learnerLabel, subjectLabel } from '@/lib/history';
 import { formatStars } from '@/lib/formatStars';
 import { getMergedExerciseHistory } from '@/lib/offline/api';
 import { mergeLocalHistoryRows } from '@/lib/offline/historyMerge';
@@ -62,11 +61,6 @@ function itemDate(item: HistoryItem) {
   return item.kind === 'store' ? item.purchasedAt : item.createdAt;
 }
 
-function avgPercent(items: ExerciseHistory[]) {
-  if (!items.length) return null;
-  return Math.round(items.reduce((sum, a) => sum + scorePercent(a.score, a.questionCount), 0) / items.length);
-}
-
 // Net stars for that day: learning points from exercises plus task, bonus and
 // parent-adjustment ledger amounts, minus store spending. Purchases count as
 // negative so the day total (and the store-filtered view) can show a minus.
@@ -114,6 +108,9 @@ export default function HistoryPage() {
   const [taskHistory, setTaskHistory] = useState<TaskHistory[]>([]);
   const [storeHistory, setStoreHistory] = useState<PurchaseHistory[]>([]);
   const [childFilter, setChildFilter] = useState<ChildFilter>('all');
+  // Opened from a child's own page (?child=): their history only, titled as theirs.
+  const [ownChild, setOwnChild] = useState<'kiur' | 'kirsi' | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
   const [openDays, setOpenDays] = useState<Set<string>>(() => new Set([todayKey]));
   const [nextHistoryCursor, setNextHistoryCursor] = useState<string | null>(null);
@@ -121,7 +118,10 @@ export default function HistoryPage() {
 
   useEffect(() => {
     const requestedChild = new URLSearchParams(window.location.search).get('child');
-    if (requestedChild === 'kiur' || requestedChild === 'kirsi') setChildFilter(requestedChild);
+    if (requestedChild === 'kiur' || requestedChild === 'kirsi') {
+      setChildFilter(requestedChild);
+      setOwnChild(requestedChild);
+    }
   }, []);
 
   const loadLocalExercises = useCallback(async () => {
@@ -227,38 +227,35 @@ export default function HistoryPage() {
       const meta = h.kind === 'task' ? taskMeta(h.metadataJson) : {};
       const firstCompleter = h.kind === 'task' && (h.assignmentModeSnapshot === 'first_completer' || meta.assignmentMode === 'first_completer');
       const exercise = isExercise ? compactTopicLabel(h.topic, h.category) || h.category : '';
-      const percent = isExercise ? scorePercent(h.score, h.questionCount) : null;
-      const elapsed = isExercise && typeof h.elapsedSeconds === 'number' && Number.isFinite(h.elapsedSeconds) ? formatElapsed(h.elapsedSeconds) : 'aeg puudub';
-      const title = h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? h.titleSnapshot : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
-      const scoreText = h.kind === 'task' ? `${h.amount > 0 ? '+' : ''}${h.amount} ⭐` : h.kind === 'store' ? `-${h.priceSnapshot} ⭐` : `${h.score}/${h.questionCount} · ${percent}% · ${elapsed}`;
+      const title = h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? `🛒 ${h.titleSnapshot}` : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
+      const amount = h.kind === 'task'
+        ? `${h.amount > 0 ? '+' : ''}${formatStars(h.amount)} ⭐`
+        : h.kind === 'store'
+          ? `−${h.priceSnapshot} ⭐`
+          : typeof h.earnedStars === 'number' ? `+${formatStars(h.earnedStars)} ⭐` : '';
       const isPending = isExercise && (h as ExerciseHistory).pending === true;
       const isHeld = isExercise && isHeldReward((h as ExerciseHistory).rewardSettlementStatus);
       const localStatus = isExercise ? (h as ExerciseHistory).localStatus : undefined;
-      const detailText = localStatus === 'rejected' ? 'Sünkroonimine lükati tagasi — vajab parandust või uuendust.' : localStatus === 'needs_review' ? 'Tulemus ootab vanema ülevaatust.' : isPending ? 'Ootab sünkroonimist' : isHeld ? HELD_REWARD_MESSAGE : h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'Esimene tegija' : h.kind === 'store' ? `Ostetud: ${time}` : isExercise && typeof h.earnedStars === 'number' ? `Teenitud: +${h.earnedStars.toLocaleString('et-EE', { maximumFractionDigits: 1 })} ⭐` : '';
-
-      return (
-        <div key={`${h.kind}-${h.id}`} className='history-row'>
-          <div className='history-card-main'>
-            <div className='learner-cell' data-accent={learner === 'Kiur' ? 'blue' : 'pink'}>{learner}</div>
-            <div className='exercise-cell'>
-              <span>{title} · {time}</span>
-              {detailText && <span>{detailText}</span>}
-            </div>
-            <div className='meta-cell'>{scoreText}</div>
-          </div>
-          <div className='row-actions'>
-            {isExercise && (isPending
-              ? <Link className='view-button' href={`/tulemus?clientId=${encodeURIComponent((h as ExerciseHistory).clientAttemptId ?? '')}`}>Vaata</Link>
-              : <Link className='view-button' href={`/history/offline?id=${h.id}`}>Vaata</Link>)}
-          </div>
-        </div>
+      const status = localStatus === 'rejected' ? 'Sünkroonimine lükati tagasi — vajab parandust või uuendust.' : localStatus === 'needs_review' ? 'Tulemus ootab vanema ülevaatust.' : isPending ? 'Ootab sünkroonimist' : isHeld ? HELD_REWARD_MESSAGE : h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'esimene tegija' : h.kind === 'store' ? 'pood' : '';
+      const metaLine = [time, isExercise ? `${h.score}/${h.questionCount}` : '', status].filter(Boolean).join(' · ');
+      const body = (
+        <>
+          {!ownChild && <span className='history-who' data-accent={learner === 'Kiur' ? 'blue' : 'pink'}>{learner}</span>}
+          <span className='history-what'><span className='history-title'>{title}</span><small>{metaLine}</small></span>
+          <span className='history-amount' data-negative={amount.startsWith('−') || amount.startsWith('-')}>{amount}</span>
+        </>
       );
+      // An exercise row opens its result; tasks and purchases have nothing more to show.
+      if (isExercise) {
+        const href = isPending
+          ? `/tulemus?clientId=${encodeURIComponent((h as ExerciseHistory).clientAttemptId ?? '')}`
+          : `/history/offline?id=${h.id}`;
+        return <Link key={`${h.kind}-${h.id}`} className='history-row' data-own={Boolean(ownChild)} href={href}>{body}</Link>;
+      }
+      return <div key={`${h.kind}-${h.id}`} className='history-row' data-own={Boolean(ownChild)}>{body}</div>;
   }
 
-  const summary = (items: HistoryItem[]) => {
-    const groupAvg = avgPercent(items.filter((item): item is ExerciseHistory => item.kind === 'exercise'));
-    return `${items.length} ${entryWord(items.length)} · Keskmine ${groupAvg === null ? '—' : `${groupAvg}%`} · ⭐ ${formatStars(earnedStars(items))}`;
-  };
+  const summary = (items: HistoryItem[]) => `${items.length} ${entryWord(items.length)} · ⭐ ${formatStars(earnedStars(items))}`;
 
   const renderDays = (days: Map<string, HistoryItem[]>) => Array.from(days.entries()).map(([day, items]) => {
     const isOpen = openDays.has(day);
@@ -276,33 +273,28 @@ export default function HistoryPage() {
   return (
     <main className='history-page'>
       <div className='history-shell'>
-        <Link className='subject-back-button' href='/'>← Esilehele</Link>
-        <header className='history-header'>
-          <div>
-            <h1>Ajalugu</h1>
-            <p>Kõik harjutused, päevategevused ja poe ostud</p>
-          </div>
-        </header>
+        <div className='history-top'>
+          <Link className='subject-back-button' href={ownChild ? `/${ownChild}` : '/'}>{ownChild ? `← ${ownChild === 'kiur' ? 'Kiur' : 'Kirsi'}` : '← Esilehele'}</Link>
+          <h1>{ownChild ? 'Minu ajalugu' : 'Ajalugu'}</h1>
+          <button type='button' className='history-stats-toggle' aria-expanded={statsOpen} aria-label='Statistika' title='Statistika' onClick={() => setStatsOpen((open) => !open)}><span aria-hidden>📊</span></button>
+        </div>
 
         {!online && <p className='offline-warning' role='status'>Võrguühenduseta kuvatakse seadmesse salvestatud ajalugu.</p>}
 
-        <HistoryStats />
+        {statsOpen && <HistoryStats />}
 
-        <section className='filter-bar'>
-          <button type='button' className={childFilter === 'all' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('all')}>Kõik</button>
-          <button type='button' className={childFilter === 'kiur' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('kiur')}>Kiur</button>
-          <button type='button' className={childFilter === 'kirsi' ? 'filter-chip active' : 'filter-chip'} onClick={() => setChildFilter('kirsi')}>Kirsi</button>
-          <span className='filter-divider' aria-hidden />
-          <button type='button' className={subjectFilter === 'all' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('all')}>Kõik ained</button>
-          <button type='button' className={subjectFilter === 'harjutused' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('harjutused')}>Harjutused</button>
-          <button type='button' className={subjectFilter === 'matemaatika' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('matemaatika')}>Matemaatika</button>
-          <button type='button' className={subjectFilter === 'inglise-keel' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('inglise-keel')}>Inglise keel</button>
-          <button type='button' className={subjectFilter === 'lugemine' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('lugemine')}>Lugemine</button>
-          <button type='button' className={subjectFilter === 'loodusopetus' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('loodusopetus')}>🔬 Loodusõpetus</button>
-          <button type='button' className={subjectFilter === 'kordamine' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('kordamine')}>Kordamine</button>
-          <button type='button' className={subjectFilter === 'paevategevused' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('paevategevused')}>⭐ Päevategevused</button>
-          <button type='button' className={subjectFilter === 'pood' ? 'filter-chip active' : 'filter-chip'} onClick={() => setSubjectFilter('pood')}>🛒 Pood</button>
-        </section>
+        {!ownChild && (
+          <div className='history-seg' role='group' aria-label='Laps'>
+            {([['all', 'Kõik'], ['kiur', 'Kiur'], ['kirsi', 'Kirsi']] as const).map(([value, label]) => (
+              <button key={value} type='button' aria-pressed={childFilter === value} onClick={() => setChildFilter(value)}>{label}</button>
+            ))}
+          </div>
+        )}
+        <div className='history-seg' role='group' aria-label='Liik'>
+          {([['all', 'Kõik'], ['harjutused', 'Harjutused'], ['paevategevused', 'Tegevused'], ['pood', 'Pood']] as const).map(([value, label]) => (
+            <button key={value} type='button' aria-pressed={subjectFilter === value} onClick={() => setSubjectFilter(value)}>{label}</button>
+          ))}
+        </div>
 
         {history.length === 0 && taskHistory.length === 0 && storeHistory.length === 0 ? (
           <p>Ajalugu puudub.</p>

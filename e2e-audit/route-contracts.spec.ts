@@ -7,10 +7,10 @@ import {
 } from './helpers';
 
 const ROUTES = [
-  { name: 'home', path: '/', visible: /Harjutused/ },
+  { name: 'home', path: '/', visible: /Lapsevanema ala/ },
   { name: 'Kiur dashboard', path: '/kiur', visible: /Harjutused/ },
   { name: 'Kirsi dashboard', path: '/kirsi', visible: /Harjutused/ },
-  { name: 'history', path: '/history?child=kiur', visible: /Ajalugu/ },
+  { name: 'history', path: '/history?child=kiur', visible: /Minu ajalugu/ },
   { name: 'offline fallback', path: '/offline', visible: /Võrguühendus puudub/ },
   { name: 'Kiur shop', path: '/kiur/pood', visible: /Pood/ },
   { name: 'Kirsi shop', path: '/kirsi/pood', visible: /Pood/ },
