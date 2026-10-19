@@ -201,6 +201,10 @@ test('the map zooms and drags inside its box; a drag is never an answer and a ta
   const svg = page.locator('.km-map svg');
   const whole = await svg.getAttribute('viewBox');
   await expect(page.getByRole('button', { name: 'Vähenda kaarti' })).toBeDisabled();
+  // The zoom buttons look small (32 px) but keep a 44 px tap area.
+  const plus = (await page.getByRole('button', { name: 'Suurenda kaarti' }).boundingBox())!;
+  expect(plus.width).toBeLessThan(40);
+  expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('aria-label') ?? null, { x: plus.x - 5, y: plus.y + plus.height / 2 })).toBe('Suurenda kaarti');
 
   await page.getByRole('button', { name: 'Suurenda kaarti' }).click();
   const zoomed = await svg.getAttribute('viewBox');
