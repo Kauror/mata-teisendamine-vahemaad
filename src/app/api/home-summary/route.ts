@@ -5,6 +5,7 @@ import { ensureMonthlyPrizeAwarded, getMonthlyTrophies } from '@/lib/monthlyComp
 import { settleStreakFreezes } from '@/lib/streakFreeze';
 import { getBalance, todayDateString, type Learner } from '@/lib/tasks';
 import { queryHistoryRows } from '@/lib/server/historyRows';
+import { queryLearningActivity } from '@/lib/server/learningActivity';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,20 +24,23 @@ const LEARNERS: Learner[] = ['kiur', 'kirsi'];
 //   /api/child-dashboard, so a saved streak never shows as broken;
 // - today's standings are the stored daily_leaderboard row, as /api/leaderboard
 //   (with its backfill), but only today's row is read;
-// - recent attempts are /api/history rows with its learner rule.
+// - recent attempts are /api/history rows with its learner rule;
+// - latestActivity is the newest star-free English or Loodusõpetus work
+//   (/api/learning-activity), so "Viimati" also shows practice and reading.
 export async function GET() {
   const today = todayDateString();
   const standings = getDailyStandings(today);
   ensureMonthlyPrizeAwarded(today);
 
-  const children = {} as Record<Learner, { streak: number; balance: number; trophies: number; recent: unknown[] }>;
+  const children = {} as Record<Learner, { streak: number; balance: number; trophies: number; recent: unknown[]; latestActivity: unknown }>;
   for (const learner of LEARNERS) {
     settleStreakFreezes(learner, today);
     children[learner] = {
       streak: getActiveLearningStreak(learner, today),
       balance: getBalance(learner),
       trophies: getMonthlyTrophies(learner, today),
-      recent: await queryHistoryRows({ learner, limit: RECENT_PER_CHILD })
+      recent: await queryHistoryRows({ learner, limit: RECENT_PER_CHILD }),
+      latestActivity: queryLearningActivity({ learner, limit: 1 })[0] ?? null
     };
   }
 

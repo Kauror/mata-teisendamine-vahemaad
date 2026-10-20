@@ -28,17 +28,24 @@ type H = {
   topic?: string | null;
 };
 
-type HomeChild = { streak?: number; balance?: number; trophies?: number; recent?: H[] };
+// The newest star-free English or Loodusõpetus work (practice, reading, a test
+// that did not count), so "Viimati" is not stuck on an older exercise.
+type Activity = { createdAt: string; subject: string; title: string };
+type HomeChild = { streak?: number; balance?: number; trophies?: number; recent?: H[]; latestActivity?: Activity | null };
 type HomeSummary = { today?: { kiur?: number; kirsi?: number }; children?: { kiur?: HomeChild; kirsi?: HomeChild } };
 
 // "Choose your character": the whole card opens the child's page. The name is
 // the link and its ::after stretches over the card; the metric tooltips sit
 // above that layer so a tap on a number still explains it.
-function ChildDashboardCard({ name, href, avatar, accent, attempts, streak, balance, trophies, clock }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; streak: number; balance: number; trophies: number; clock: AppClock | null }) {
+function ChildDashboardCard({ name, href, avatar, accent, attempts, activity, streak, balance, trophies, clock }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; activity: Activity | null; streak: number; balance: number; trophies: number; clock: AppClock | null }) {
   const learner = name === 'Kiur' ? 'kiur' : 'kirsi';
-  const latest = attempts[0];
+  const exercise = attempts[0];
   const status = clock ? homeStatus(learner, clock) : null;
-  const latestWhat = latest ? (compactTopicLabel(latest.topic, latest.category) || subjectLabel(latest.subject)) : '';
+  const activityIsNewer = Boolean(activity && (!exercise || Date.parse(activity.createdAt) > Date.parse(exercise.createdAt)));
+  const latest = activityIsNewer ? activity : exercise;
+  const latestWhat = activityIsNewer && activity
+    ? subjectLabel(activity.subject)
+    : exercise ? (compactTopicLabel(exercise.topic, exercise.category) || subjectLabel(exercise.subject)) : '';
 
   return (
     <section className='child-dashboard-card' data-accent={accent} aria-labelledby={`${learner}-dashboard-name`}>
@@ -116,6 +123,7 @@ function TodayLeaderboard({ kiurCount, kirsiCount }: { kiurCount: number; kirsiC
 
 export default function Home() {
   const [history, setHistory] = useState<{ kiur: H[]; kirsi: H[] }>({ kiur: [], kirsi: [] });
+  const [activity, setActivity] = useState<{ kiur: Activity | null; kirsi: Activity | null }>({ kiur: null, kirsi: null });
   const [streaks, setStreaks] = useState({ kiur: 0, kirsi: 0 });
   const [balances, setBalances] = useState({ kiur: 0, kirsi: 0 });
   const [trophies, setTrophies] = useState({ kiur: 0, kirsi: 0 });
@@ -137,6 +145,7 @@ export default function Home() {
       .then((summary) => {
         const child = (learner: 'kiur' | 'kirsi') => summary?.children?.[learner];
         setHistory({ kiur: child('kiur')?.recent ?? [], kirsi: child('kirsi')?.recent ?? [] });
+        setActivity({ kiur: child('kiur')?.latestActivity ?? null, kirsi: child('kirsi')?.latestActivity ?? null });
         setToday({ kiur: summary?.today?.kiur ?? 0, kirsi: summary?.today?.kirsi ?? 0 });
         setStreaks({ kiur: child('kiur')?.streak ?? 0, kirsi: child('kirsi')?.streak ?? 0 });
         setBalances({ kiur: child('kiur')?.balance ?? 0, kirsi: child('kirsi')?.balance ?? 0 });
@@ -150,8 +159,8 @@ export default function Home() {
     <main className='container dashboard'>
       <TodayLeaderboard kiurCount={today.kiur} kirsiCount={today.kirsi} />
       <div className='children-list'>
-        <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} streak={streaks.kiur} balance={balances.kiur} trophies={trophies.kiur} clock={clock} />
-        <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} streak={streaks.kirsi} balance={balances.kirsi} trophies={trophies.kirsi} clock={clock} />
+        <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} activity={activity.kiur} streak={streaks.kiur} balance={balances.kiur} trophies={trophies.kiur} clock={clock} />
+        <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} activity={activity.kirsi} streak={streaks.kirsi} balance={balances.kirsi} trophies={trophies.kirsi} clock={clock} />
       </div>
       <NoticeBoard />
       <div className='dashboard-footer-links'>
