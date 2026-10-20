@@ -53,7 +53,19 @@ type PurchaseHistory = {
   purchasedAt: string;
 };
 
-type HistoryItem = ExerciseHistory | TaskHistory | PurchaseHistory;
+// English and Loodusõpetus work that is not a passed test (/api/learning-activity):
+// practice, reading and tests that did not count. Star-free and not a link.
+type ActivityHistory = {
+  kind: 'activity';
+  id: number;
+  createdAt: string;
+  learner: 'kiur' | 'kirsi';
+  subject: 'inglise-keel' | 'loodusopetus';
+  title: string;
+  detail: string;
+};
+
+type HistoryItem = ExerciseHistory | TaskHistory | PurchaseHistory | ActivityHistory;
 type ChildFilter = 'all' | 'kiur' | 'kirsi';
 type SubjectFilter = 'all' | 'harjutused' | 'matemaatika' | 'inglise-keel' | 'lugemine' | 'loodusopetus' | 'kordamine' | 'paevategevused' | 'pood';
 
@@ -106,6 +118,7 @@ export default function HistoryPage() {
   const todayKey = dayLabel(new Date().toISOString());
   const [history, setHistory] = useState<ExerciseHistory[]>([]);
   const [taskHistory, setTaskHistory] = useState<TaskHistory[]>([]);
+  const [activityHistory, setActivityHistory] = useState<ActivityHistory[]>([]);
   const [storeHistory, setStoreHistory] = useState<PurchaseHistory[]>([]);
   const [childFilter, setChildFilter] = useState<ChildFilter>('all');
   // Opened from a child's own page (?child=): their history only, titled as theirs.
@@ -152,10 +165,13 @@ export default function HistoryPage() {
     const loadTasks = fetchWholeTimeline<Omit<TaskHistory, 'kind'>>('/api/task-history')
       .then((tasks) => setTaskHistory(tasks.map((item) => ({ ...item, kind: 'task' }))))
       .catch(() => setTaskHistory([]));
+    const loadActivity = fetchWholeTimeline<Omit<ActivityHistory, 'kind'>>('/api/learning-activity')
+      .then((rows) => setActivityHistory(rows.map((item) => ({ ...item, kind: 'activity' }))))
+      .catch(() => setActivityHistory([]));
     const loadStore = fetchWholeTimeline<Omit<PurchaseHistory, 'kind'>>('/api/store/history')
       .then((purchases) => setStoreHistory(purchases.map((item) => ({ ...item, kind: 'store' }))))
       .catch(() => setStoreHistory([]));
-    void Promise.allSettled([loadExercises, loadTasks, loadStore]);
+    void Promise.allSettled([loadExercises, loadTasks, loadStore, loadActivity]);
     // Merge by id instead of replacing: the shown list also holds server pages
     // ("Laadi rohkem") that the local 200-row window does not contain.
     const onRevision = () => void getMergedExerciseHistory()
@@ -194,15 +210,15 @@ export default function HistoryPage() {
   };
 
   const filtered = useMemo(() => {
-    const allItems: HistoryItem[] = [...history, ...taskHistory, ...storeHistory].sort((a, b) => new Date(itemDate(b)).getTime() - new Date(itemDate(a)).getTime());
+    const allItems: HistoryItem[] = [...history, ...taskHistory, ...storeHistory, ...activityHistory].sort((a, b) => new Date(itemDate(b)).getTime() - new Date(itemDate(a)).getTime());
     return allItems.filter((item) => {
       const learner = item.kind === 'exercise' ? learnerLabel(item.category, item.learner).toLowerCase() : item.learner;
       const childOk = childFilter === 'all' || learner === childFilter;
-      const subject = item.kind === 'task' ? 'paevategevused' : item.kind === 'store' ? 'pood' : subjectKey(item);
-      const subjectOk = subjectFilter === 'all' || (subjectFilter === 'harjutused' ? item.kind === 'exercise' : subject === subjectFilter);
+      const subject = item.kind === 'task' ? 'paevategevused' : item.kind === 'store' ? 'pood' : item.kind === 'activity' ? item.subject : subjectKey(item);
+      const subjectOk = subjectFilter === 'all' || (subjectFilter === 'harjutused' ? item.kind === 'exercise' || item.kind === 'activity' : subject === subjectFilter);
       return childOk && subjectOk;
     });
-  }, [history, taskHistory, storeHistory, childFilter, subjectFilter]);
+  }, [history, taskHistory, storeHistory, activityHistory, childFilter, subjectFilter]);
 
   // The current month day by day; each earlier month folded into one group
   // (closed until opened), so long histories stay short.
@@ -227,17 +243,17 @@ export default function HistoryPage() {
       const meta = h.kind === 'task' ? taskMeta(h.metadataJson) : {};
       const firstCompleter = h.kind === 'task' && (h.assignmentModeSnapshot === 'first_completer' || meta.assignmentMode === 'first_completer');
       const exercise = isExercise ? compactTopicLabel(h.topic, h.category) || h.category : '';
-      const title = h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? `🛒 ${h.titleSnapshot}` : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
+      const title = h.kind === 'activity' ? `${h.subject === 'loodusopetus' ? 'Loodusõpetus' : 'Inglise keel'} · ${h.title}` : h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? `🛒 ${h.titleSnapshot}` : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
       const amount = h.kind === 'task'
         ? `${h.amount > 0 ? '+' : ''}${formatStars(h.amount)} ⭐`
         : h.kind === 'store'
           ? `−${h.priceSnapshot} ⭐`
-          : typeof h.earnedStars === 'number' ? `+${formatStars(h.earnedStars)} ⭐` : '';
+          : h.kind === 'exercise' && typeof h.earnedStars === 'number' ? `+${formatStars(h.earnedStars)} ⭐` : '';
       const isPending = isExercise && (h as ExerciseHistory).pending === true;
       const isHeld = isExercise && isHeldReward((h as ExerciseHistory).rewardSettlementStatus);
       const localStatus = isExercise ? (h as ExerciseHistory).localStatus : undefined;
       const status = localStatus === 'rejected' ? 'Sünkroonimine lükati tagasi — vajab parandust või uuendust.' : localStatus === 'needs_review' ? 'Tulemus ootab vanema ülevaatust.' : isPending ? 'Ootab sünkroonimist' : isHeld ? HELD_REWARD_MESSAGE : h.kind === 'task' && h.source === 'manual_adjustment' && meta.reason ? `Põhjus: ${meta.reason}` : h.kind === 'task' && firstCompleter ? 'esimene tegija' : h.kind === 'store' ? 'pood' : '';
-      const metaLine = [time, isExercise ? `${h.score}/${h.questionCount}` : '', status].filter(Boolean).join(' · ');
+      const metaLine = [time, isExercise ? `${h.score}/${h.questionCount}` : '', h.kind === 'activity' ? h.detail : '', status].filter(Boolean).join(' · ');
       const body = (
         <>
           {!ownChild && <span className='history-who' data-accent={learner === 'Kiur' ? 'blue' : 'pink'}>{learner}</span>}
@@ -296,7 +312,7 @@ export default function HistoryPage() {
           ))}
         </div>
 
-        {history.length === 0 && taskHistory.length === 0 && storeHistory.length === 0 ? (
+        {history.length === 0 && taskHistory.length === 0 && storeHistory.length === 0 && activityHistory.length === 0 ? (
           <p>Ajalugu puudub.</p>
         ) : filtered.length === 0 ? (
           <p>Selle valikuga tulemusi ei ole.</p>
