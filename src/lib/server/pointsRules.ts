@@ -5,13 +5,15 @@ import { snapshotCurrentRewardPolicy } from '@/lib/server/rewards/policy';
 import { parseSelectedWeekdays } from '@/lib/shared/taskProjection';
 import { todayDateString, type AssignmentMode, type RecurrenceType } from '@/lib/tasks';
 
-// "Mille eest tärne saab" on the home page (Kaur, 21.10). It is built from the
+// "Mille eest tähti saab" on the home page (Kaur, 21.10). It is built from the
 // live settings on every request, so it changes by itself when the parent edits
 // learning points, adds a streak rule, a daily task or the monthly prize.
 //
 // Every point_ledger source that EARNS stars must appear here; pointsRules.test
-// fails when code inserts a new earning source that is not listed below.
+// fails when code inserts (INSERT or INSERT OR …) a source not listed below.
 export const EARNING_LEDGER_SOURCES = {
+  // Protocol-v2 exercise stars: study, the streak bonus and streak rules in one row each.
+  reward_v2: 'harjutused',
   study_exercise: 'harjutused',
   streak_bonus: 'jarjest',
   reward_streak: 'jarjest',
@@ -47,7 +49,7 @@ function when(template: { recurrenceType: RecurrenceType; selectedWeekdaysJson: 
 function learningSection(): PointsRuleSection {
   const { learning } = snapshotCurrentRewardPolicy();
   if (!learning.learningPointsEnabled) {
-    return { id: 'harjutused', title: '📚 Harjutused', lines: ['Harjutustest praegu tärne ei saa.'] };
+    return { id: 'harjutused', title: '📚 Harjutused', lines: ['Harjutustest praegu tähti ei saa.'] };
   }
   const lines = [
     `Iga tehtud harjutus annab ${stars(learning.baseValue)}, kui vähemalt ${Math.round(learning.minimumScorePercent * 100)}% vastustest on õiged.`
@@ -56,7 +58,7 @@ function learningSection(): PointsRuleSection {
     lines.push(`Sama harjutus samal päeval uuesti: iga kord ${stars(learning.decayStep)} vähem${learning.minimumValue > 0 ? `, aga vähemalt ${stars(learning.minimumValue)}` : ''}.`);
   }
   lines.push(`Harjutustest saab päevas kokku kuni ${stars(learning.dailyCap)}.`);
-  lines.push('Loodusõpetuse õpik ja inglise sõnavara: tärnid tulevad läbitud testi eest. Lugemine ja harjutamine on ajaloos näha, aga tärne ei anna.');
+  lines.push('Loodusõpetuse õpik ja inglise sõnavara: tähed tulevad läbitud testi eest. Lugemine ja harjutamine on ajaloos näha, aga tähti ei anna.');
   lines.push('Inglise sprint loeb, kui tulemus on vähemalt pool senisest rekordist.');
   return { id: 'harjutused', title: '📚 Harjutused', lines };
 }
@@ -114,6 +116,6 @@ export function pointsRules(today = todayDateString()): PointsRuleSection[] {
     streakSection(),
     tasksSection(today),
     monthSection(),
-    { id: 'vanem', title: '🎁 Vanemalt', lines: ['Vanem võib tärne ka kinkida või parandada.'] }
+    { id: 'vanem', title: '🎁 Vanemalt', lines: ['Vanem võib tähti ka kinkida või parandada.'] }
   ].filter((section): section is PointsRuleSection => section !== null);
 }

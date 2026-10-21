@@ -5,7 +5,7 @@ import { NOTICE_URL } from '@/lib/childPageData';
 
 type PointsRuleSection = { id: string; title: string; lines: string[] };
 
-// The parent's notice text, and under it "Mille eest tärne saab": a list the
+// The parent's notice text, and under it "Mille eest tähti saab": a list the
 // server builds from the live settings (/api/points-rules), so it changes by
 // itself when the parent adds a task, a streak rule or changes the points.
 export default function NoticeBoard() {
@@ -36,7 +36,7 @@ export default function NoticeBoard() {
       ) : null}
       {rules.length > 0 ? (
         <details className='noticeboard-points'>
-          <summary className='noticeboard-title'>⭐ Mille eest tärne saab</summary>
+          <summary className='noticeboard-title'>⭐ Mille eest tähti saab</summary>
           <div className='noticeboard-points-body'>
             {rules.map((section) => (
               <div key={section.id} className='noticeboard-points-section'>
