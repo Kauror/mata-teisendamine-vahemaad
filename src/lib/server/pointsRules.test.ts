@@ -33,7 +33,7 @@ function addTask(title: string, points: number, extra: Partial<{ assignmentMode:
     VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`).run(title, points, task.assignmentMode, task.recurrenceType, task.selectedWeekdaysJson, task.onceDate, task.requiresApproval, NOW, task.deletedAt);
 }
 
-describe('Mille eest tärne saab', () => {
+describe('Mille eest tähti saab', () => {
   it('describes exercises from the parent\'s learning-point settings', () => {
     expect(lines('harjutused').slice(0, 3)).toEqual([
       'Iga tehtud harjutus annab 1,5 ⭐, kui vähemalt 50% vastustest on õiged.',
@@ -68,7 +68,7 @@ describe('Mille eest tärne saab', () => {
   it('shows the monthly prize the parent set, and says when exercises give nothing', () => {
     expect(lines('kuu')).toContain('Kuu lõpus saab kõige rohkem karikaid kogunu +15 ⭐, kui harjutas üle poole kuu päevadest.');
     db.prepare('UPDATE learning_point_settings SET learningPointsEnabled = 0').run();
-    expect(lines('harjutused')).toEqual(['Harjutustest praegu tärne ei saa.']);
+    expect(lines('harjutused')).toEqual(['Harjutustest praegu tähti ei saa.']);
     expect(lines('jarjest')).toEqual(['3 päeva järjest harjutatud (Kirsi): +1 ⭐.', '10 päeva järjest harjutatud: +5 ⭐.']);
   });
 
@@ -86,14 +86,16 @@ describe('Mille eest tärne saab', () => {
         if (statSync(file).isDirectory()) walk(file);
         else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name)) {
           const text = readFileSync(file, 'utf8');
-          for (const match of text.matchAll(/INSERT INTO point_ledger[\s\S]{0,300}?VALUES\s*\(([^)]*)\)/g)) {
-            const literal = /'([a-z_]+)'/.exec(match[1].split(',').slice(2).join(','));
+          for (const match of text.matchAll(/INSERT (?:OR \w+ )?INTO point_ledger[\s\S]{0,1200}?VALUES\s*\(([^)]*)\)/g)) {
+            const literal = /'([a-z0-9_]+)'/.exec(match[1].split(',').slice(2).join(','));
             if (literal) sources.add(literal[1]);
           }
         }
       }
     };
     walk(path.resolve(process.cwd(), 'src'));
+    // The protocol-v2 exercise reward is an INSERT OR IGNORE; it must still be seen.
+    expect(sources).toContain('reward_v2');
     expect(sources.size).toBeGreaterThan(5);
     const known = new Set<string>([...Object.keys(EARNING_LEDGER_SOURCES), ...SPENDING_LEDGER_SOURCES]);
     expect([...sources].filter((source) => !known.has(source))).toEqual([]);
