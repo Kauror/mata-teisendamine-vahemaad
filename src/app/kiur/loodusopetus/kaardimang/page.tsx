@@ -2,7 +2,7 @@ import Link from 'next/link';
 import KaardimangApp from '@/app/components/kaardimang/KaardimangApp';
 import { KAARDIMANG_CHILD_ENABLED } from '@/lib/kaardimang/api';
 
-// Kiur's map game: every world part, its countries and capitals. Online only.
+// Kiur's map game: Eesti and every world part, the family competition. Online only.
 // While the game is in parent testing this page only says so.
 export default function KaardimangPage() {
   if (!KAARDIMANG_CHILD_ENABLED) {
@@ -15,5 +15,5 @@ export default function KaardimangPage() {
       </main>
     );
   }
-  return <KaardimangApp scope='child' backHref='/kiur/loodusopetus' backLabel='Loodusõpetus' />;
+  return <KaardimangApp scope='child' player='kiur' backHref='/kiur/loodusopetus' backLabel='Loodusõpetus' />;
 }

@@ -43,6 +43,10 @@ export type QuestionState = {
   removedOptionIds: string[];
   resolved: null | 'correct' | 'revealed';
   firstTry: boolean | null;
+  // Competition timing (server clock): when the question first appeared on
+  // screen, and when it was answered. Absent in rounds from before 23.10.
+  shownAt?: string;
+  resolvedAt?: string;
 };
 
 export type RoundState = { questions: FrozenQuestion[]; states: QuestionState[]; cursor: number };

@@ -74,7 +74,7 @@ describe('Mille eest tähti saab', () => {
 
   it('is served at /api/points-rules', async () => {
     const body = await (await GET()).json() as { sections: Array<{ id: string }> };
-    expect(body.sections.map((section) => section.id)).toEqual(['harjutused', 'jarjest', 'kuu', 'vanem']);
+    expect(body.sections.map((section) => section.id)).toEqual(['harjutused', 'jarjest', 'kuu', 'kaardimang', 'vanem']);
   });
 
   // A new way to earn stars must also be explained on the home page.

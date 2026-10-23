@@ -6,6 +6,8 @@ import YesterdayPointsPopup from '@/app/components/YesterdayPointsPopup';
 import ChildAvatarEasterEgg from '@/app/components/ChildAvatarEasterEgg';
 import ChildExerciseGrid from '@/app/components/ChildExerciseGrid';
 import ChildTimetableSection from '@/app/components/ChildTimetableSection';
+import KaardimangTile from '@/app/components/kaardimang/KaardimangTile';
+import { KAARDIMANG_CHILD_ENABLED, KAARDIMANG_PAGES } from '@/lib/kaardimang/api';
 import { ChildExerciseCard } from '@/lib/childExerciseCards';
 import { CHILD_PAGE_DATA_PRELOAD, childPageDataPreloads } from '@/lib/childPageData';
 import { getYesterdayPointsSummary } from '@/lib/dailyPointsSummary';
@@ -61,6 +63,8 @@ export default function ChildHomeDashboard({
           loodusopetusHref={loodusopetusHref}
           completedExerciseCounts={completedExerciseCounts ?? {}}
         />
+
+        {KAARDIMANG_CHILD_ENABLED ? <KaardimangTile learner={child.learner} href={child.learner === 'kiur' ? KAARDIMANG_PAGES.child : KAARDIMANG_PAGES.kirsi} /> : null}
 
         <NoticeBoard />
       </section>

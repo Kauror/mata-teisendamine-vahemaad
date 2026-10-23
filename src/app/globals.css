@@ -2406,6 +2406,38 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .km-map{position:relative;border-radius:var(--tb-radius);overflow:hidden;background:var(--km-sea);border:var(--card-border);box-shadow:var(--card-shadow)}
 .km-map svg{display:block;width:100%;height:auto;max-height:var(--km-map-max-height);margin:0 auto;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 /* Small on the map (32 px) so they hide less of it; the ::before keeps a 44 px tap area. 32 + 12 gap = 44 px pitch, so tap areas never overlap. */
+.km-comp{gap:6px;border-color:#fde68a;background:#fffbeb}
+.km-comp-title{font-weight:850}
+.km-comp-table{display:grid;gap:2px;margin:2px 0 0;padding:0;list-style:none}
+.km-comp-table li{display:grid;grid-template-columns:2.2em 1fr auto;gap:8px;align-items:center;font-size:15px}
+.km-comp-table li[data-me='true'] strong{text-decoration:underline;text-underline-offset:3px}
+.km-comp-mark{font-size:.85em}
+.km-comp-points{font-weight:750}
+.km-level-own{margin:0}
+.km-progress-points{color:#a16207}
+.km-tile{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;min-height:64px;margin-top:12px;padding:12px 14px;border-radius:16px;background:var(--tb-surface,#fff);border:1px solid var(--tb-line,#e5e7eb);color:inherit;text-decoration:none;box-shadow:var(--card-shadow)}
+.km-tile-icon{font-size:28px}
+.km-tile-body{display:grid;gap:2px;min-width:0}
+.km-tile-body small{color:var(--tb-muted,#6b7280);font-weight:650;overflow-wrap:anywhere}
+.km-tile-medals{font-size:20px;letter-spacing:2px}
+.km-tile-arrow{font-size:20px;font-weight:850}
+.km-parent-comp{display:grid;gap:10px;margin-bottom:12px}
+.km-parent h3{margin:8px 0 0;font-size:15px}
+.km-levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.km-level-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
+.km-level-row select,.km-comp-form input,.km-inline input{min-height:44px;font:inherit}
+.km-comp-form{display:grid;gap:10px}
+.km-comp-form fieldset{border:0;margin:0;padding:0;display:grid;gap:6px}
+.km-comp-form legend{font-weight:750;margin-bottom:4px}
+.km-rewards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.km-inline{display:inline-flex;align-items:center;gap:6px}
+.km-inline input{width:5em}
+.km-comp-history{margin-top:8px}
+.km-home{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:9px 12px}
+.km-home-title{margin:0 0 4px;font-size:13px;font-weight:800;color:#92400e;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.km-home-title span{font-weight:700;opacity:.85}
+.km-home-table{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 12px;margin:0;padding:0;list-style:none}
+.km-home-table li{display:grid;grid-template-columns:1.8em 1fr auto;gap:6px;align-items:center;font-size:14px;color:#6b5a32}
 .km-zoom{position:absolute;top:12px;right:12px;display:grid;gap:12px}
 .km-zoom-button{position:relative;width:32px;height:32px;padding:0;border-radius:8px;border:1px solid var(--tb-line);background:var(--tb-surface);color:var(--tb-ink);font:inherit;font-size:18px;font-weight:850;line-height:1;box-shadow:var(--card-shadow);cursor:pointer;opacity:.88}
 .km-zoom-button::before{content:'';position:absolute;inset:-6px}

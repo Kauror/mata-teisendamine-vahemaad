@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { findCountry, nameOf, quizCapital } from '@/content/kaardimang/catalog';
 import { findCounty } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
@@ -32,6 +32,14 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
   const question = round.questions[shown];
   const resolved = Boolean(question?.state.resolved);
   const finished = showSummary && Boolean(round.summary);
+
+  // Start the question's speed clock on the server once it is on screen.
+  const markedShown = useRef(new Set<number>());
+  useEffect(() => {
+    if (finished || resolved || round.status !== 'active' || shown !== round.cursor || markedShown.current.has(shown)) return;
+    markedShown.current.add(shown);
+    void client.shown(round.roundId, shown);
+  }, [client, finished, resolved, round.cursor, round.roundId, round.status, shown]);
 
   const send = useCallback(async (answerId: string) => {
     if (busy || resolved || round.status !== 'active') return;
@@ -120,6 +128,7 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
         <div className='km-card km-summary' role='status'>
           <h2>Voor läbi!</h2>
           <p className='km-summary-score'>{scoreLine(summary.correct, summary.total)}</p>
+          {round.competition ? <p className='km-comp-points'>🏆 Võistluspunkte selles voorus: <strong>{round.competition.points}</strong></p> : null}
           {summary.firstTryCorrect < summary.correct ? <p className='tb-muted'>Esimese korraga õigesti: {summary.firstTryCorrect}</p> : null}
           {summary.practicedOf > 0 && round.setId !== 'continents' && round.setId !== 'worldParts' && round.setId !== 'oceans' ? (
             <p>{map.id === 'estonia' ? 'Harjutatud maakondi' : 'Harjutatud riike'} {summary.practiced} / {summary.practicedOf}</p>
@@ -134,7 +143,9 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
         <div className='km-card km-question'>
           <div className='km-question-head'>
             <h2 className='km-prompt'>{question.prompt}</h2>
-            <p className='km-progress' aria-label={`Küsimus ${shown + 1} / ${round.questions.length}`}>{shown + 1} / {round.questions.length}</p>
+            <p className='km-progress' aria-label={`Küsimus ${shown + 1} / ${round.questions.length}${round.competition ? `, võistluspunkte ${round.competition.points}` : ''}`}>
+              {round.competition ? <span className='km-progress-points'>🏆 {round.competition.points} · </span> : null}{shown + 1} / {round.questions.length}
+            </p>
           </div>
           {question.answering === 'buttons' ? (
             <div className='km-options'>

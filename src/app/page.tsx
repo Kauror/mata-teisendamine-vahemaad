@@ -16,6 +16,7 @@ import { useAppClock } from '@/app/components/useAppClock';
 import { homeStatus, type AppClock } from '@/lib/schoolTimetable';
 import { APP_VERSION } from '@/lib/shared/types';
 import { starsTooltip, streakTooltip, trophiesTooltip } from '@/lib/metricTooltips';
+import { MEDALS, PLAYER_NAMES, type StandingRow } from '@/lib/kaardimang/competition';
 
 type H = {
   id: number;
@@ -32,7 +33,26 @@ type H = {
 // that did not count), so "Viimati" is not stuck on an older exercise.
 type Activity = { createdAt: string; subject: string; title: string };
 type HomeChild = { streak?: number; balance?: number; trophies?: number; recent?: H[]; latestActivity?: Activity | null };
-type HomeSummary = { today?: { kiur?: number; kirsi?: number }; children?: { kiur?: HomeChild; kirsi?: HomeChild } };
+type KaardimangHome = { title: string; status: 'active' | 'ended'; endDate: string; daysLeftEt: string | null; standings: StandingRow[] };
+type HomeSummary = { today?: { kiur?: number; kirsi?: number }; children?: { kiur?: HomeChild; kirsi?: HomeChild }; kaardimang?: KaardimangHome | null };
+
+// The family's map-game competition: places 1–4 and points, nothing more.
+function KaardimangStandings({ competition }: { competition: KaardimangHome }) {
+  return (
+    <section className='km-home' aria-label={`Kaardimängu võistlus ${competition.title}`}>
+      <p className='km-home-title'>🗺️ Kaardimäng · „{competition.title}“ <span>{competition.status === 'active' ? competition.daysLeftEt : 'lõppes'}</span></p>
+      <ol className='km-home-table'>
+        {competition.standings.map((row) => (
+          <li key={row.player}>
+            <span aria-hidden>{row.rank <= 3 && row.points > 0 ? MEDALS[row.rank - 1] : `${row.rank}.`}</span>
+            <strong>{PLAYER_NAMES[row.player]}</strong>
+            <span>{row.points} p</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
 
 // "Choose your character": the whole card opens the child's page. The name is
 // the link and its ::after stretches over the card; the metric tooltips sit
@@ -128,6 +148,7 @@ export default function Home() {
   const [balances, setBalances] = useState({ kiur: 0, kirsi: 0 });
   const [trophies, setTrophies] = useState({ kiur: 0, kirsi: 0 });
   const [today, setToday] = useState({ kiur: 0, kirsi: 0 });
+  const [kaardimang, setKaardimang] = useState<KaardimangHome | null>(null);
 
   const clock = useAppClock();
 
@@ -147,6 +168,7 @@ export default function Home() {
         setHistory({ kiur: child('kiur')?.recent ?? [], kirsi: child('kirsi')?.recent ?? [] });
         setActivity({ kiur: child('kiur')?.latestActivity ?? null, kirsi: child('kirsi')?.latestActivity ?? null });
         setToday({ kiur: summary?.today?.kiur ?? 0, kirsi: summary?.today?.kirsi ?? 0 });
+        setKaardimang(summary?.kaardimang ?? null);
         setStreaks({ kiur: child('kiur')?.streak ?? 0, kirsi: child('kirsi')?.streak ?? 0 });
         setBalances({ kiur: child('kiur')?.balance ?? 0, kirsi: child('kirsi')?.balance ?? 0 });
         setTrophies({ kiur: child('kiur')?.trophies ?? 0, kirsi: child('kirsi')?.trophies ?? 0 });
@@ -162,6 +184,7 @@ export default function Home() {
         <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} activity={activity.kiur} streak={streaks.kiur} balance={balances.kiur} trophies={trophies.kiur} clock={clock} />
         <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} activity={activity.kirsi} streak={streaks.kirsi} balance={balances.kirsi} trophies={trophies.kirsi} clock={clock} />
       </div>
+      {kaardimang ? <KaardimangStandings competition={kaardimang} /> : null}
       <NoticeBoard />
       <div className='dashboard-footer-links'>
         <Link href='/history' className='dashboard-history-link'>Ajalugu</Link>

@@ -1220,6 +1220,118 @@ function addKaardimang(connection: DatabaseConnection) {
   `);
 }
 
+// Kaardimäng for the whole family (backlog KM-02): Kairi and Kaur play too,
+// rounds can count for a competition, places remember when they were learned,
+// and a competition's points and prizes are kept. The two tables from
+// migration 13 are rebuilt because SQLite cannot widen a CHECK constraint;
+// every existing row is copied.
+function addKaardimangCompetition(connection: DatabaseConnection) {
+  connection.exec(`
+    DROP INDEX IF EXISTS idx_kaardimang_rounds_active;
+    ALTER TABLE kaardimang_rounds RENAME TO kaardimang_rounds_v13;
+    CREATE TABLE kaardimang_rounds (
+      id TEXT PRIMARY KEY,
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'kairi', 'kaur', 'preview')),
+      viewId TEXT NOT NULL,
+      setId TEXT,
+      level TEXT NOT NULL CHECK (level IN ('explorer', 'traveler', 'geographer')),
+      dataVersion TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('active', 'completed', 'abandoned')),
+      stateJson TEXT NOT NULL,
+      revision INTEGER NOT NULL DEFAULT 0,
+      startActionId TEXT NOT NULL,
+      lastActionId TEXT,
+      lastResultJson TEXT,
+      correct INTEGER NOT NULL DEFAULT 0,
+      firstTryCorrect INTEGER NOT NULL DEFAULT 0,
+      total INTEGER NOT NULL,
+      startedAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      completedAt TEXT,
+      -- The competition this round counts for (null: practice), and the app day it started on.
+      competitionId INTEGER,
+      playDate TEXT,
+      UNIQUE (learner, startActionId)
+    );
+    INSERT INTO kaardimang_rounds (id, learner, viewId, setId, level, dataVersion, status, stateJson, revision, startActionId,
+      lastActionId, lastResultJson, correct, firstTryCorrect, total, startedAt, updatedAt, completedAt)
+    SELECT id, learner, viewId, setId, level, dataVersion, status, stateJson, revision, startActionId,
+      lastActionId, lastResultJson, correct, firstTryCorrect, total, startedAt, updatedAt, completedAt
+    FROM kaardimang_rounds_v13;
+    DROP TABLE kaardimang_rounds_v13;
+    CREATE UNIQUE INDEX idx_kaardimang_rounds_active ON kaardimang_rounds(learner) WHERE status = 'active';
+    CREATE INDEX idx_kaardimang_rounds_counted ON kaardimang_rounds(learner, competitionId, playDate);
+
+    ALTER TABLE kaardimang_target_stats RENAME TO kaardimang_target_stats_v13;
+    CREATE TABLE kaardimang_target_stats (
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi', 'kairi', 'kaur', 'preview')),
+      targetKey TEXT NOT NULL,
+      seen INTEGER NOT NULL DEFAULT 0,
+      firstTryCorrect INTEGER NOT NULL DEFAULT 0,
+      missCount INTEGER NOT NULL DEFAULT 0,
+      lastSeenAt TEXT NOT NULL,
+      lastMissedAt TEXT,
+      -- A place is learned once it was right on the first try on two different app days.
+      firstTryDays INTEGER NOT NULL DEFAULT 0,
+      lastFirstTryDay TEXT,
+      learnedAt TEXT,
+      PRIMARY KEY (learner, targetKey)
+    );
+    INSERT INTO kaardimang_target_stats (learner, targetKey, seen, firstTryCorrect, missCount, lastSeenAt, lastMissedAt)
+    SELECT learner, targetKey, seen, firstTryCorrect, missCount, lastSeenAt, lastMissedAt FROM kaardimang_target_stats_v13;
+    DROP TABLE kaardimang_target_stats_v13;
+
+    -- Each player's level, set by the parent.
+    CREATE TABLE IF NOT EXISTS kaardimang_player_settings (
+      player TEXT PRIMARY KEY CHECK (player IN ('kiur', 'kirsi', 'kairi', 'kaur')),
+      level TEXT NOT NULL CHECK (level IN ('explorer', 'traveler', 'geographer')),
+      updatedAt TEXT NOT NULL
+    );
+
+    -- A competition the parent opens: its map areas, its days and its prizes.
+    CREATE TABLE IF NOT EXISTS kaardimang_competitions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      viewsJson TEXT NOT NULL,
+      startDate TEXT NOT NULL,
+      endDate TEXT NOT NULL,
+      rewardsJson TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('active', 'ended')),
+      createdAt TEXT NOT NULL,
+      endedAt TEXT,
+      resultsJson TEXT
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_kaardimang_competitions_active ON kaardimang_competitions(status) WHERE status = 'active';
+
+    -- The points one answered question earned in a counted round.
+    CREATE TABLE IF NOT EXISTS kaardimang_points (
+      roundId TEXT NOT NULL,
+      questionIndex INTEGER NOT NULL,
+      competitionId INTEGER NOT NULL,
+      player TEXT NOT NULL,
+      targetKey TEXT NOT NULL,
+      points INTEGER NOT NULL,
+      speedBonus INTEGER NOT NULL,
+      newlyLearned INTEGER NOT NULL,
+      createdAt TEXT NOT NULL,
+      PRIMARY KEY (roundId, questionIndex)
+    );
+    CREATE INDEX IF NOT EXISTS idx_kaardimang_points_player ON kaardimang_points(competitionId, player);
+
+    -- A finished competition's top three: the medal, and for a child the stars paid.
+    CREATE TABLE IF NOT EXISTS kaardimang_awards (
+      competitionId INTEGER NOT NULL,
+      player TEXT NOT NULL,
+      place INTEGER NOT NULL CHECK (place IN (1, 2, 3)),
+      points INTEGER NOT NULL,
+      stars REAL NOT NULL,
+      ledgerEntryId INTEGER,
+      createdAt TEXT NOT NULL,
+      PRIMARY KEY (competitionId, player)
+    );
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -1302,6 +1414,12 @@ const migrations: Migration[] = [
     name: 'kaardimang',
     checksumSource: 'kaardimang:v1:2026-10-17',
     up: addKaardimang
+  },
+  {
+    id: 14,
+    name: 'kaardimang_competition',
+    checksumSource: 'kaardimang_competition:v1:2026-10-23',
+    up: addKaardimangCompetition
   }
 ];
 
@@ -1315,7 +1433,8 @@ function migrationChecksum(migration: Migration) {
     .digest('hex');
 }
 
-export function runMigrations(connection: DatabaseConnection) {
+// `upTo` stops after that migration (tests of a later migration's data copy).
+export function runMigrations(connection: DatabaseConnection, upTo = Number.POSITIVE_INFINITY) {
   connection.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       id INTEGER PRIMARY KEY,
@@ -1333,6 +1452,7 @@ export function runMigrations(connection: DatabaseConnection) {
   const byId = new Map(applied.map((row) => [row.id, row]));
 
   for (const migration of migrations) {
+    if (migration.id > upTo) break;
     const checksum = migrationChecksum(migration);
     const previous = byId.get(migration.id);
     if (previous) {

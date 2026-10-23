@@ -5,7 +5,8 @@
 
 import { csrfHeaders } from '@/lib/auth/client';
 import { ACTION_ID_PATTERN } from '@/lib/textbook/api';
-import { mapUrl } from '@/content/kaardimang/regions';
+import { mapUrl, type LevelId } from '@/content/kaardimang/regions';
+import type { KaardimangPlayer } from '@/lib/kaardimang/competition';
 import type { MapViewData } from '@/content/kaardimang/types';
 import {
   KAARDIMANG_PARENT_API,
@@ -15,6 +16,7 @@ import {
   type KaardimangErrorResponse,
   type KaardimangScope,
   type OverviewResponse,
+  type ParentCompetitionResponse,
   type ParentKaardimangResponse,
   type RoundView,
   type StartRoundRequest
@@ -66,19 +68,30 @@ const get = <T,>(scope: KaardimangScope | 'parent', url: string) => send<T>(scop
 const post = <T,>(scope: KaardimangScope | 'parent', url: string, body: unknown) =>
   send<T>(scope, url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, RETRY_DELAYS_MS.length);
 
-export function createKaardimangClient(scope: KaardimangScope) {
-  const routes = kaardimangApi(scope);
+export function createKaardimangClient(scope: KaardimangScope, player: KaardimangPlayer | null = null) {
+  const routes = kaardimangApi(scope, player);
   return {
     overview: () => get<OverviewResponse>(scope, routes.overview),
     start: (body: StartRoundRequest) => post<RoundView>(scope, routes.start, body),
     round: (roundId: string) => get<RoundView>(scope, routes.round(roundId)),
-    answer: (roundId: string, body: AnswerRequest) => post<AnswerResponse>(scope, routes.answer(roundId), body)
+    answer: (roundId: string, body: AnswerRequest) => post<AnswerResponse>(scope, routes.answer(roundId), body),
+    // Starts the question's speed clock; a lost one only costs the speed point.
+    shown: (roundId: string, questionIndex: number) => send<{ ok: true }>(scope, routes.shown(roundId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionIndex }) }, 0)
   };
 }
 
+export type CompetitionAction =
+  | { action: 'create'; title: string; views: string[]; days: number; rewards: [number, number, number] }
+  | { action: 'end'; id: number }
+  | { action: 'extend'; id: number; days: number };
+
 export const parentKaardimangClient = {
   overview: () => get<ParentKaardimangResponse>('parent', KAARDIMANG_PARENT_API.overview),
-  resetPreview: () => post<{ deletedRounds: number }>('parent', KAARDIMANG_PARENT_API.previewReset, { actionId: newActionId() })
+  resetPreview: () => post<{ deletedRounds: number }>('parent', KAARDIMANG_PARENT_API.previewReset, { actionId: newActionId() }),
+  competition: () => get<ParentCompetitionResponse>('parent', KAARDIMANG_PARENT_API.competition),
+  // Not retried: creating twice would be refused anyway, and ending is final.
+  changeCompetition: (body: CompetitionAction) => send<ParentCompetitionResponse>('parent', KAARDIMANG_PARENT_API.competition, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 0),
+  setLevel: (player: KaardimangPlayer, level: LevelId) => post<ParentCompetitionResponse>('parent', KAARDIMANG_PARENT_API.levels, { player, level })
 };
 
 // Map files are immutable per data version: fetch each once per page.

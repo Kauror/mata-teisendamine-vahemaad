@@ -15,6 +15,7 @@ import {
 } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 import type { KaardimangScope, OverviewResponse, RoundView } from '@/lib/kaardimang/api';
+import { MEDALS, PLAYER_NAMES, type KaardimangPlayer } from '@/lib/kaardimang/competition';
 import ExploreMode from './ExploreMode';
 import PlayMode from './PlayMode';
 import { createKaardimangClient, loadMap, newActionId } from './kaardimangClient';
@@ -61,8 +62,13 @@ function useMap(id: string | null) {
   return state && state.id === id ? state : null;
 }
 
-export default function KaardimangApp({ scope, backHref, backLabel }: { scope: KaardimangScope; backHref: string; backLabel: string }) {
-  const client = useMemo(() => createKaardimangClient(scope), [scope]);
+// A competition map: the view itself, or (for a world part) any of its views.
+function inCompetition(views: string[] | undefined, id: string) {
+  return Boolean(views?.some((view) => view === id || view.startsWith(`${id}-`)));
+}
+
+export default function KaardimangApp({ scope, backHref, backLabel, player = null }: { scope: KaardimangScope; backHref: string; backLabel: string; player?: KaardimangPlayer | null }) {
+  const client = useMemo(() => createKaardimangClient(scope, player), [scope, player]);
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [subregion, setSubregion] = useState<Record<string, string | null>>({});
@@ -113,6 +119,30 @@ export default function KaardimangApp({ scope, backHref, backLabel }: { scope: K
   );
 
   const problem = error ? <p className='km-error' role='alert'>{error}</p> : null;
+  const competition = overview?.competition ?? null;
+  const competitionViews = competition?.views;
+  const trophy = (id: string) => (inCompetition(competitionViews, id) ? <span className='km-comp-mark' title='Võistluse kaart'> 🏆</span> : null);
+  const myRow = competition && overview?.player ? competition.standings.find((row) => row.player === overview.player) : null;
+  const competitionBanner = competition ? (
+    <div className='km-card km-comp' role='status'>
+      <p className='km-comp-title'>🏆 Võistlus „{competition.title}“ · {competition.daysLeftEt}</p>
+      {competition.countedLeftToday !== null ? (
+        <p className='tb-muted'>
+          {competition.countedLeftToday > 0 ? `Täna loeb veel ${competition.countedLeftToday} ${competition.countedLeftToday === 1 ? 'voor' : 'vooru'} 🏆 kaartidel.` : 'Tänased võistlusvoorud on tehtud – edasi saad harjutada.'}
+          {myRow ? ` Sinu punktid: ${myRow.points} (${myRow.rank}. koht).` : ''}
+        </p>
+      ) : <p className='tb-muted'>Eelvaates võistlus ei loe.</p>}
+      <ol className='km-comp-table'>
+        {competition.standings.map((row) => (
+          <li key={row.player} data-me={row.player === overview?.player ? 'true' : undefined}>
+            <span>{row.rank <= 3 && row.points > 0 ? MEDALS[row.rank - 1] : `${row.rank}.`}</span>
+            <strong>{PLAYER_NAMES[row.player]}</strong>
+            <span>{row.points} p</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  ) : null;
 
   if (screen.name === 'home') {
     const active = overview?.activeRound;
@@ -125,7 +155,9 @@ export default function KaardimangApp({ scope, backHref, backLabel }: { scope: K
             <p className='tb-muted'>Vali, millist maailma osa täna uurid. Vajab internetiühendust.</p>
           </header>
           {scope === 'preview' ? <p className='km-preview-note'>Eelvaade: siin mängitud voorud ei muuda Kiuri andmeid.</p> : null}
+          {scope === 'parent' && player ? <p className='km-preview-note'>Mängid kui {PLAYER_NAMES[player]}.</p> : null}
           {problem}
+          {competitionBanner}
           {active ? (
             <div className='km-card km-resume'>
               <p><strong>Pooleli mäng:</strong> {viewTitle(active.viewId, active.setId)} · {active.answered} / {active.total}</p>
@@ -134,11 +166,11 @@ export default function KaardimangApp({ scope, backHref, backLabel }: { scope: K
           ) : null}
           <button type='button' className='km-place km-place-world' onClick={() => openPart('estonia')}>
             <span className='km-place-icon' aria-hidden>{ESTONIA.icon}</span>
-            <span><strong>{ESTONIA.nameEt}</strong><small>{overview?.practiced.estonia ? `Harjutatud ${overview.practiced.estonia[0]} / ${overview.practiced.estonia[1]}` : 'Maakonnad ja maakonnakeskused'}</small></span>
+            <span><strong>{ESTONIA.nameEt}{trophy('estonia')}</strong><small>{overview?.practiced.estonia ? `Harjutatud ${overview.practiced.estonia[0]} / ${overview.practiced.estonia[1]}` : 'Maakonnad ja maakonnakeskused'}</small></span>
           </button>
           <button type='button' className='km-place km-place-world' onClick={() => openPart('world')}>
             <span className='km-place-icon' aria-hidden>{WORLD.icon}</span>
-            <span><strong>Maailm</strong><small>Mandrid, maailmajaod, ookeanid ja suurimad riigid</small></span>
+            <span><strong>Maailm{trophy('world')}</strong><small>Mandrid, maailmajaod, ookeanid ja suurimad riigid</small></span>
           </button>
           <div className='km-places'>
             {WORLD_PARTS.map((part) => {
@@ -147,7 +179,7 @@ export default function KaardimangApp({ scope, backHref, backLabel }: { scope: K
                 <button key={part.id} type='button' className='km-place' onClick={() => openPart(part.id)}>
                   <span className='km-place-icon' aria-hidden>{part.icon}</span>
                   <span>
-                    <strong>{part.nameEt}</strong>
+                    <strong>{part.nameEt}{trophy(part.id)}</strong>
                     <small>{part.id === 'antarctica' ? 'Lõunapoolus ja Lõuna-Jäämeri' : practiced ? `Harjutatud ${practiced[0]} / ${practiced[1]}` : 'Riigid ja pealinnad'}</small>
                   </span>
                 </button>
@@ -185,19 +217,22 @@ export default function KaardimangApp({ scope, backHref, backLabel }: { scope: K
             <fieldset className='km-choice'>
               <legend>Kus harjutame?</legend>
               <div className='km-chips'>
-                <button type='button' className='filter-chip' aria-pressed={chosen === null} onClick={() => setSubregion({ ...subregion, [place]: null })}>Kogu {part.nameEt}</button>
+                <button type='button' className='filter-chip' aria-pressed={chosen === null} onClick={() => setSubregion({ ...subregion, [place]: null })}>Kogu {part.nameEt}{competitionViews?.includes(part.id) ? ' 🏆' : ''}</button>
                 {part.subregions.map((sub) => {
                   const practiced = overview?.practiced[viewId(part.id, sub.id)];
                   return (
                     <button key={sub.id} type='button' className='filter-chip' aria-pressed={chosen === sub.id} onClick={() => setSubregion({ ...subregion, [place]: sub.id })}>
-                      {sub.nameEt}{practiced ? <span className='km-chip-count'> {practiced[0]}/{practiced[1]}</span> : null}
+                      {sub.nameEt}{competitionViews?.includes(viewId(part.id, sub.id)) ? ' 🏆' : ''}{practiced ? <span className='km-chip-count'> {practiced[0]}/{practiced[1]}</span> : null}
                     </button>
                   );
                 })}
               </div>
             </fieldset>
           ) : null}
-          {place !== 'antarctica' && (place !== 'world' || worldSet === 'largest') ? (
+          {overview?.level && place !== 'antarctica' && (place !== 'world' || worldSet === 'largest') ? (
+            <p className='km-level-own'>Sinu tase: <strong>{LEVELS.find((item) => item.id === overview.level)?.nameEt}</strong> <span className='tb-muted'>(vanem saab seda muuta)</span></p>
+          ) : null}
+          {!overview?.level && place !== 'antarctica' && (place !== 'world' || worldSet === 'largest') ? (
             <fieldset className='km-choice'>
               <legend>Raskusaste</legend>
               <div className='km-chips'>

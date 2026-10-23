@@ -2,7 +2,7 @@
 
 Kiuri maailmakaardimäng Loodusõpetuse all: `/kiur/loodusopetus/kaardimang`.
 Lapsevanema eelvaade on aadressil `/vanem/kaardimang`; vanema ala jaotis „Kaardimäng“ näitab ka andmete ulatust ja Kiuri edenemist.
-Mäng ei ole õpiku osa (see on paralleelne õppetükkidega 10–22), ei anna tähti ja vajab internetiühendust.
+Mäng ei ole õpiku osa (see on paralleelne õppetükkidega 10–22) ja vajab internetiühendust. Tähti annab ainult perevõistluse lõpp.
 
 ## Mis on sees
 
@@ -22,6 +22,20 @@ Mäng ei ole õpiku osa (see on paralleelne õppetükkidega 10–22), ei anna t�
   - Rändur: kõik riigid ja pealinnaküsimused.
   - Geograaf: lisaks „millise riigi pealinn see on“ ja neli vastusevarianti.
 - **Voor** on kuni 8 küsimust. Väikese rühma puhul on voor lühem: iga koht tuleb kuni kaks korda, eri viisil ja mitte järjest. Esimese vale vastuse järel tuleb vihje, teise järel näidatakse õige vastus. Vale vastust ei nimetata „halvaks“. Varem eksitud kohad tulevad sagedamini tagasi.
+
+## Perevõistlus
+
+Kaardimäng on kogu pere jaoks (Kauri otsused 19.10, backlog KM-02).
+- **Mängijad:** Kiur ja Kirsi mängivad oma lehtedelt (`?player=kiur|kirsi`). Kairi ja Kaur mängivad vanema alast („Mängi Kairina / Kaurina“, vanema sessioon). Eelvaade jääb eraldi ja võistlusesse ei loe.
+- **Tase:** igal mängijal on oma tase, mille määrab vanem. Algväärtused: Kirsi Avastaja, Kiur Rändur, vanemad Geograaf.
+- **Võistlus:** vanem avab võistluse nime, kaartide ja päevade arvuga ning määrab tähed 1.–3. kohale (vaikimisi 20 / 10 / 5). Korraga käib üks võistlus. Võistluse saab lõpetada varem või pikendada ning see lõpeb ise pärast viimast päeva.
+- **Punktid** tulevad päeva kolmest esimesest voorust võistluse kaartidel; iga alustatud voor kasutab ühe neist, nii et vooru uuesti alustamine ei aita. Õige vastus esimesel katsel annab uue koha eest 3 punkti, varem nähtud koha eest 2 ja õpitud koha eest 1. Pärast vihjet on 1 punkt, näidatud vastuse eest 0; miinuspunkte ei ole. Lisaks +1, kui vastad kiiremini kui Avastaja 20 s, Rändur 10 s või Geograaf 5 s. Aega mõõdab server alates sellest, kui küsimus ekraanile ilmus.
+- **Õpitud koht** = õige esimesel katsel kahel eri päeval.
+- **Järjestus:** punktid; viigi korral otsustab võistluse ajal õpitud uute kohtade arv. Täielik viik jagab kohta.
+- **Lõpus** saavad esikolm medali. Lapsed saavad lisaks tähed (`point_ledger.source = 'kaardimang_prize'`, ainult üks kord, `kaardimang_awards`). Tähed lähevad päris koha järgi: vanem esikolmikus ei tõsta lapsi ülespoole.
+- **Kus näha:** avalehel on tabel 1.–4. koht. Laste lehtedel on Kaardimängu kaart, kus näeb võistlust ja medaleid. „Mille eest tähti saab“ nimetab avatud võistluse auhinnad.
+- **Andmebaas:** migratsioon 14 (`kaardimang_competition`). See ehitab `kaardimang_rounds` ja `kaardimang_target_stats` uuesti, et lubada Kairit ja Kauri; kõik vanad read kopeeritakse. Lisaks tabelid `kaardimang_player_settings`, `kaardimang_competitions`, `kaardimang_points` ja `kaardimang_awards`.
+- **Reeglid** on failis `src/lib/kaardimang/competition.ts`, server failides `src/lib/server/kaardimang/competition.ts` ja `rounds.ts`.
 
 ## Eesti
 
@@ -84,5 +98,5 @@ Toorallikad (13 MB GeoJSON-i) repos ei ole.
 ## Teadlikult tegemata
 
 - Pealinnapunkti puudutamine kaardil ja naabrite küsimused. Kaur valis esimeseks versiooniks põhikomplekti.
-- Tähed: neid ei anta, kuni reward-v2 kasutus on eraldi kokku lepitud.
+- Tähed vastuste eest: neid ei anta. Tähti annab ainult perevõistluse lõpp (vt „Perevõistlus“).
 - Windowsi brauser lipuemojisid ei kuva (seal paistavad tähed, nt „GH“). Telefonides on lipud olemas.

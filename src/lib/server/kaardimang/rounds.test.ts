@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it } from 'vitest';
 import db from '@/lib/db';
 import { isChildWritePath } from '@/lib/peekMode';
@@ -151,23 +152,26 @@ describe('Kaardimäng preview', () => {
     expect(summary.noCapitalQuestion.map((item) => item.nameEt)).toEqual(expect.arrayContaining(['Lõuna-Aafrika Vabariik', 'Boliivia', 'Vatikan']));
   });
 
-  it('keeps every child route closed while the game is in parent testing', async () => {
-    expect(KAARDIMANG_CHILD_ENABLED).toBe(false);
-    const response = await kaardimangHandlers('child').overview.GET();
-    expect(response.status).toBe(403);
-    expect((await response.json()).code).toBe('forbidden');
-    // Every other child route too, before it reads the body or the round.
+  it('opens the child routes for Kiur and Kirsi only, each to their own rounds', async () => {
+    expect(KAARDIMANG_CHILD_ENABLED).toBe(true);
+    const overview = (query: string) => kaardimangHandlers('child').overview.GET(new NextRequest(`https://example.test/api/kaardimang${query}`));
+    expect((await overview('?player=kiur')).status).toBe(200);
+    expect((await (await overview('?player=kirsi')).json()).player).toBe('kirsi');
+    // A page from before Kirsi could play sends no player: it was Kiur's.
+    expect((await (await overview('')).json()).player).toBe('kiur');
+    // A parent (or anyone else) is not a child player.
+    expect((await overview('?player=kaur')).status).toBe(400);
+    expect((await overview('?player=preview')).status).toBe(400);
+    // Kirsi cannot read Kiur's round.
     const round = startRound(kiur, { actionId: aid(), viewId: 'europe-baltics', setId: null, level: 'explorer' });
-    const post = (body: unknown) => new Request('http://localhost/api/kaardimang', { method: 'POST', body: JSON.stringify(body) }) as never;
     const params = { params: Promise.resolve({ roundId: round.roundId }) };
-    const handlers = kaardimangHandlers('child');
-    const responses = [
-      await handlers.start.POST(post({ actionId: aid(), viewId: 'europe-baltics', setId: null, level: 'explorer' })),
-      await handlers.round.GET(post({}), params),
-      await handlers.answer.POST(post({ actionId: aid(), revision: 0, questionIndex: 0, answerId: 'EST' }), params)
-    ];
-    expect(responses.map((item) => item.status)).toEqual([403, 403, 403]);
-    expect(getRound(kiur, round.roundId).revision).toBe(0);
+    const asKirsi = await kaardimangHandlers('child').round.GET(new NextRequest(`https://example.test/api/kaardimang/rounds/${round.roundId}?player=kirsi`), params);
+    expect(asKirsi.status).toBe(404);
+  });
+
+  it('lets only a parent session play as Kairi or Kaur', async () => {
+    const response = await kaardimangHandlers('parent').overview.GET(new NextRequest('https://example.test/api/parent/kaardimang/play?player=kaur'));
+    expect(response.status).toBe(401);
   });
 
   it('treats child map-game writes as child writes for peek mode', () => {
