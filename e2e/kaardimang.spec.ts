@@ -134,6 +134,14 @@ test.beforeEach(async ({ page }) => {
   await signInAsParent(page);
 });
 
+// A competition left open by a failed test would lock the maps for the next
+// ones (and the other browser's run, which shares the database): end it.
+test.afterEach(async ({ page }) => {
+  const response = await page.request.get('/api/parent/kaardimang/competition').catch(() => null);
+  const active = response && response.ok() ? (await response.json() as { active: { id: number } | null }).active : null;
+  if (active) await page.request.post('/api/parent/kaardimang/competition', { data: { action: 'cancel', id: active.id }, headers: await parentCsrf(page) });
+});
+
 test('Kiur and Kirsi open Kaardimäng from their own pages, each as themselves', async ({ page }) => {
   test.setTimeout(90_000);
   await navigateStable(page, '/kirsi');
@@ -330,13 +338,25 @@ test('a family competition: the parent opens it, Kaur and Kirsi score, the home 
   await navigateStable(page, '/vanem/halda?tab=sisu');
   await openParentSection(page);
   await page.getByLabel('Nimi').fill('Eesti nädal');
+  // The chosen map is clearly marked: a ✓ and a different colour from the others.
+  const form = page.locator('.km-comp-form');
+  const chosen = form.getByRole('button', { name: '✓ Eesti' });
+  await expect(chosen).toHaveAttribute('aria-pressed', 'true');
+  const background = (button: typeof chosen) => button.evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(await background(chosen)).not.toBe(await background(form.getByRole('button', { name: 'Maailm', exact: true })));
   await page.getByRole('button', { name: 'Ava võistlus' }).click();
   await expect(page.locator('.km-parent-comp .km-comp-title')).toContainText('Eesti nädal');
   await page.locator('.km-parent-comp').screenshot({ path: 'C:/Users/kaur/AppData/Local/Temp/claude/C--CC/9087efb9-063d-4cfc-bf65-b2f2de760393/scratchpad/shots/23-parent-competition.png' });
 
   // Kaur plays from the parent area: his round counts.
   await page.getByRole('link', { name: '▶ Mängi Kaurina' }).click();
+  // The parent panel shows the same title, so wait for Kaur's own page first.
+  await page.waitForURL('**/vanem/kaardimang/kaur', { timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: '🗺️ Kaardimäng' })).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('.km-comp-title')).toContainText('Eesti nädal');
+  // Only the competition's map is open while it runs.
+  await expect(page.locator('.km-place:disabled')).toHaveCount(7);
+  await expect(page.getByRole('button', { name: /^Eesti / })).toBeEnabled();
   await page.getByRole('button', { name: /^Eesti / }).click();
   await expect(page.getByText('Sinu tase:')).toContainText('Geograaf');
   await page.getByRole('button', { name: /Mängi/ }).click();

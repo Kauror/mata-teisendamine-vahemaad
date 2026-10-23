@@ -83,6 +83,8 @@ export function createKaardimangClient(scope: KaardimangScope, player: Kaardiman
 export type CompetitionAction =
   | { action: 'create'; title: string; views: string[]; days: number; rewards: [number, number, number] }
   | { action: 'end'; id: number }
+  | { action: 'cancel'; id: number }
+  | { action: 'delete'; id: number }
   | { action: 'extend'; id: number; days: number };
 
 export const parentKaardimangClient = {

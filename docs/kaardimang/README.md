@@ -29,6 +29,12 @@ Kaardimäng on kogu pere jaoks (Kauri otsused 19.10, backlog KM-02).
 - **Mängijad:** Kiur ja Kirsi mängivad oma lehtedelt (`?player=kiur|kirsi`). Kairi ja Kaur mängivad vanema alast („Mängi Kairina / Kaurina“, vanema sessioon). Eelvaade jääb eraldi ja võistlusesse ei loe.
 - **Tase:** igal mängijal on oma tase, mille määrab vanem. Algväärtused: Kirsi Avastaja, Kiur Rändur, vanemad Geograaf.
 - **Võistlus:** vanem avab võistluse nime, kaartide ja päevade arvuga ning määrab tähed 1.–3. kohale (vaikimisi 20 / 10 / 5). Korraga käib üks võistlus. Võistluse saab lõpetada varem või pikendada ning see lõpeb ise pärast viimast päeva.
+- **Kaardid võistluse ajal:** mängijatele on lahti ainult võistluse kaardid. Teised kohad on lukus („🔒 Võistluse ajal kinni“) ja server keeldub neil voorust. Kui võistlust ei käi, on kõik lahti; eelvaade ei ole kunagi lukus.
+- **Võistluse lõpetamine** (vanema alas), kolm võimalust:
+  - „Lõpeta kohe“ – esikolmik saab auhinnad;
+  - „Tühista ilma auhindadeta“ – keegi ei saa tähti ega medalit, tabel jääb ajalukku märkega „tühistatud“;
+  - „Kustuta täielikult“ – nagu võistlust poleks olnudki: punktid ja tabel kaovad, mängitud voorud jäävad harjutuseks ja õpitud kohad õpituks. Lõppenud (auhinnad jagatud) võistlust kustutada ei saa.
+  Migratsioon 15 lisab võistlusele oleku „tühistatud“.
 - **Punktid** tulevad päeva kolmest esimesest voorust võistluse kaartidel; iga alustatud voor kasutab ühe neist, nii et vooru uuesti alustamine ei aita. Õige vastus esimesel katsel annab uue koha eest 3 punkti, varem nähtud koha eest 2 ja õpitud koha eest 1. Pärast vihjet on 1 punkt, näidatud vastuse eest 0; miinuspunkte ei ole. Lisaks +1, kui vastad kiiremini kui Avastaja 20 s, Rändur 10 s või Geograaf 5 s. Aega mõõdab server alates sellest, kui küsimus ekraanile ilmus.
 - **Õpitud koht** = õige esimesel katsel kahel eri päeval.
 - **Järjestus:** punktid; viigi korral otsustab võistluse ajal õpitud uute kohtade arv. Täielik viik jagab kohta.

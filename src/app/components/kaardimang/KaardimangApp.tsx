@@ -15,7 +15,7 @@ import {
 } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 import type { KaardimangScope, OverviewResponse, RoundView } from '@/lib/kaardimang/api';
-import { MEDALS, PLAYER_NAMES, type KaardimangPlayer } from '@/lib/kaardimang/competition';
+import { MEDALS, PLAYER_NAMES, placeOpen, viewOpen, type KaardimangPlayer } from '@/lib/kaardimang/competition';
 import ExploreMode from './ExploreMode';
 import PlayMode from './PlayMode';
 import KaardimangShelf from './KaardimangShelf';
@@ -92,7 +92,18 @@ export default function KaardimangApp({ scope, backHref, backLabel, player = nul
   const goHome = () => { setError(null); setScreen({ name: 'home' }); refresh(); };
   const openPart = (place: Place) => { setError(null); setScreen({ name: 'part', place }); };
 
-  const selectedViewId = (place: Place) => (place === 'world' || place === 'estonia' ? place : viewId(place, subregion[place] ?? null));
+  const selectedViewId = (place: Place) => {
+    if (place === 'world' || place === 'estonia') return place;
+    const picked = viewId(place, subregion[place] ?? null);
+    if (viewOpen(lockedToNow(), picked)) return picked;
+    // An earlier choice outside the competition: the first open map of this place.
+    const views = lockedToNow() ?? [];
+    return views.includes(place) ? place : views.find((view) => view.startsWith(`${place}-`)) ?? picked;
+  };
+
+  function lockedToNow() {
+    return scope !== 'preview' && overview?.competition ? overview.competition.views : null;
+  }
 
   const start = async (place: Place) => {
     setBusy(true);
@@ -122,6 +133,9 @@ export default function KaardimangApp({ scope, backHref, backLabel, player = nul
   const problem = error ? <p className='km-error' role='alert'>{error}</p> : null;
   const competition = overview?.competition ?? null;
   const competitionViews = competition?.views;
+  // During a competition a player sees only its maps open; the preview sees everything.
+  const lockedTo = scope !== 'preview' && competition ? competition.views : null;
+  const lockNote = <small className='km-locked-note'>🔒 Võistluse ajal kinni</small>;
   const trophy = (id: string) => (inCompetition(competitionViews, id) ? <span className='km-comp-mark' title='Võistluse kaart'> 🏆</span> : null);
   const myRow = competition && overview?.player ? competition.standings.find((row) => row.player === overview.player) : null;
   const competitionBanner = competition ? (
@@ -166,23 +180,23 @@ export default function KaardimangApp({ scope, backHref, backLabel, player = nul
               <button type='button' className='tb-button tb-button-primary' disabled={busy} onClick={() => void resume()}>Jätka</button>
             </div>
           ) : null}
-          <button type='button' className='km-place km-place-world' onClick={() => openPart('estonia')}>
+          <button type='button' className='km-place km-place-world' disabled={!placeOpen(lockedTo, 'estonia')} onClick={() => openPart('estonia')}>
             <span className='km-place-icon' aria-hidden>{ESTONIA.icon}</span>
-            <span><strong>{ESTONIA.nameEt}{trophy('estonia')}</strong><small>{overview?.practiced.estonia ? `Harjutatud ${overview.practiced.estonia[0]} / ${overview.practiced.estonia[1]}` : 'Maakonnad ja maakonnakeskused'}</small></span>
+            <span><strong>{ESTONIA.nameEt}{trophy('estonia')}</strong>{placeOpen(lockedTo, 'estonia') ? <small>{overview?.practiced.estonia ? `Harjutatud ${overview.practiced.estonia[0]} / ${overview.practiced.estonia[1]}` : 'Maakonnad ja maakonnakeskused'}</small> : lockNote}</span>
           </button>
-          <button type='button' className='km-place km-place-world' onClick={() => openPart('world')}>
+          <button type='button' className='km-place km-place-world' disabled={!placeOpen(lockedTo, 'world')} onClick={() => openPart('world')}>
             <span className='km-place-icon' aria-hidden>{WORLD.icon}</span>
-            <span><strong>Maailm{trophy('world')}</strong><small>Mandrid, maailmajaod, ookeanid ja suurimad riigid</small></span>
+            <span><strong>Maailm{trophy('world')}</strong>{placeOpen(lockedTo, 'world') ? <small>Mandrid, maailmajaod, ookeanid, mered ja suurimad riigid</small> : lockNote}</span>
           </button>
           <div className='km-places'>
             {WORLD_PARTS.map((part) => {
               const practiced = overview?.practiced[part.id];
               return (
-                <button key={part.id} type='button' className='km-place' onClick={() => openPart(part.id)}>
+                <button key={part.id} type='button' className='km-place' disabled={!placeOpen(lockedTo, part.id)} onClick={() => openPart(part.id)}>
                   <span className='km-place-icon' aria-hidden>{part.icon}</span>
                   <span>
                     <strong>{part.nameEt}{trophy(part.id)}</strong>
-                    <small>{part.id === 'antarctica' ? 'Lõunapoolus ja Lõuna-Jäämeri' : practiced ? `Harjutatud ${practiced[0]} / ${practiced[1]}` : 'Riigid ja pealinnad'}</small>
+                    {placeOpen(lockedTo, part.id) ? <small>{part.id === 'antarctica' ? 'Lõunapoolus ja Lõuna-Jäämeri' : practiced ? `Harjutatud ${practiced[0]} / ${practiced[1]}` : 'Riigid ja pealinnad'}</small> : lockNote}
                   </span>
                 </button>
               );
@@ -196,7 +210,11 @@ export default function KaardimangApp({ scope, backHref, backLabel, player = nul
   if (screen.name === 'part') {
     const { place } = screen;
     const part = place === 'world' || place === 'estonia' ? null : WORLD_PARTS.find((item) => item.id === place)!;
-    const chosen = subregion[place] ?? null;
+    // During a competition only its regions are offered; an earlier choice outside them falls back to the first open one.
+    const openSubs = part ? part.subregions.filter((sub) => viewOpen(lockedTo, viewId(part.id, sub.id))) : [];
+    const wholeOpen = part ? viewOpen(lockedTo, part.id) : true;
+    const picked = subregion[place] ?? null;
+    const chosen = part && !viewOpen(lockedTo, viewId(part.id, picked)) ? (wholeOpen ? null : openSubs[0]?.id ?? null) : picked;
     return (
       <main className='tb-page km-page' data-scope={scope}>
         <section className='tb-shell'>
@@ -219,8 +237,8 @@ export default function KaardimangApp({ scope, backHref, backLabel, player = nul
             <fieldset className='km-choice'>
               <legend>Kus harjutame?</legend>
               <div className='km-chips'>
-                <button type='button' className='filter-chip' aria-pressed={chosen === null} onClick={() => setSubregion({ ...subregion, [place]: null })}>Kogu {part.nameEt}{competitionViews?.includes(part.id) ? ' 🏆' : ''}</button>
-                {part.subregions.map((sub) => {
+                {wholeOpen ? <button type='button' className='filter-chip' aria-pressed={chosen === null} onClick={() => setSubregion({ ...subregion, [place]: null })}>Kogu {part.nameEt}{competitionViews?.includes(part.id) ? ' 🏆' : ''}</button> : null}
+                {(lockedTo ? openSubs : part.subregions).map((sub) => {
                   const practiced = overview?.practiced[viewId(part.id, sub.id)];
                   return (
                     <button key={sub.id} type='button' className='filter-chip' aria-pressed={chosen === sub.id} onClick={() => setSubregion({ ...subregion, [place]: sub.id })}>

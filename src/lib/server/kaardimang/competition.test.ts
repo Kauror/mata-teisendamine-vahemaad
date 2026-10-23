@@ -4,7 +4,10 @@ import db, { runMigrations } from '@/lib/db';
 import { type RoundState } from '@/lib/kaardimang/engine';
 import {
   activeCompetition,
+  cancelCompetition,
+  competitionHistory,
   createCompetition,
+  deleteCompetition,
   endCompetitionNow,
   extendCompetition,
   medalsOf,
@@ -86,7 +89,8 @@ describe('Kaardimäng family competition', () => {
     const counted = [start(as('kirsi')), start(as('kirsi')), start(as('kirsi'))];
     expect(counted.every((round) => round.competition?.title === 'Eesti')).toBe(true);
     expect(start(as('kirsi')).competition).toBeNull();
-    expect(start(as('kirsi'), 'europe-baltics').competition).toBeNull();
+    // Other maps are closed while it runs (Kaur, 23.10).
+    expect(() => start(as('kirsi'), 'europe-baltics')).toThrow('Võistluse ajal on lahti ainult võistluse kaardid.');
     expect(getOverview(as('kirsi')).competition?.countedLeftToday).toBe(0);
     at('2026-10-24T09:00:00.000Z');
     expect(getOverview(as('kirsi')).competition?.countedLeftToday).toBe(3);
@@ -108,7 +112,10 @@ describe('Kaardimäng family competition', () => {
     play(as('kaur'), fast.roundId, { secondsEach: 3 });
     const kaur = db.prepare('SELECT SUM(speedBonus) AS bonus, COUNT(*) AS n FROM kaardimang_points WHERE roundId = ?').get(fast.roundId) as { bonus: number; n: number };
     expect(kaur.bonus).toBe(kaur.n);
-    const practice = start(as('kiur'), 'europe-baltics');
+    // Practice: Kiur's fourth round of the day on the competition map scores nothing.
+    start(as('kiur')); start(as('kiur')); start(as('kiur'));
+    const practice = start(as('kiur'));
+    expect(practice.competition).toBeNull();
     play(as('kiur'), practice.roundId);
     expect(standingsFor(competition.id).find((row) => row.player === 'kiur')!.points).toBe(0);
   });
@@ -189,6 +196,63 @@ describe('migration 14', () => {
     // One open round per player still holds.
     connection.prepare("UPDATE kaardimang_rounds SET status = 'active' WHERE id = 'km_kairi'").run();
     expect(() => connection.prepare("INSERT INTO kaardimang_rounds (id, learner, viewId, level, dataVersion, status, stateJson, startActionId, total, startedAt, updatedAt) VALUES ('km_k2', 'kairi', 'estonia', 'explorer', 'v', 'active', '{}', 'k2', 8, 't', 't')").run()).toThrow();
+    connection.close();
+  });
+});
+
+describe('maps during a competition', () => {
+  it('opens only the competition maps for players, every map without one, and every map in the preview', () => {
+    expect(start(as('kiur'), 'europe-baltics').viewId).toBe('europe-baltics');
+    createCompetition({ title: 'Baltikum', views: ['europe-baltics'], days: 3 });
+    expect(() => start(as('kairi'), 'estonia')).toThrow('Võistluse ajal on lahti ainult võistluse kaardid.');
+    expect(start(as('kairi'), 'europe-baltics').competition).not.toBeNull();
+    expect(startRound({ scope: 'preview', learner: 'preview' }, { actionId: aid(), viewId: 'africa', setId: null, level: 'explorer' }).viewId).toBe('africa');
+  });
+});
+
+describe('cancelling a competition (Kaur, 23.10)', () => {
+  it('cancels without prizes: no stars, no medals, the table kept as cancelled', () => {
+    const competition = createCompetition({ title: 'Eesti', views: ['estonia'], days: 7 });
+    play(as('kiur'), start(as('kiur')).roundId);
+    const cancelled = cancelCompetition(competition.id);
+    expect(cancelled.status).toBe('cancelled');
+    expect(cancelled.standings.find((row) => row.player === 'kiur')!.points).toBeGreaterThan(0);
+    expect(medalsOf('kiur')).toEqual([]);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM point_ledger WHERE source = 'kaardimang_prize'").get() as { n: number }).n).toBe(0);
+    expect(activeCompetition()).toBeNull();
+    // A new one can start right away, and the maps are open again.
+    expect(start(as('kiur'), 'europe-baltics').viewId).toBe('europe-baltics');
+    expect(competitionHistory().map((item) => item.status)).toEqual(['cancelled']);
+  });
+
+  it('deletes fully: points and table gone, rounds kept as practice, learned places kept', () => {
+    const competition = createCompetition({ title: 'Eesti', views: ['estonia'], days: 7 });
+    const round = start(as('kirsi'));
+    play(as('kirsi'), round.roundId);
+    const seen = (db.prepare("SELECT COUNT(*) AS n FROM kaardimang_target_stats WHERE learner = 'kirsi'").get() as { n: number }).n;
+    deleteCompetition(competition.id);
+    expect(competitionHistory()).toEqual([]);
+    expect((db.prepare('SELECT COUNT(*) AS n FROM kaardimang_points').get() as { n: number }).n).toBe(0);
+    expect(getRound(as('kirsi'), round.roundId)).toMatchObject({ status: 'completed', competition: null });
+    expect((db.prepare("SELECT COUNT(*) AS n FROM kaardimang_target_stats WHERE learner = 'kirsi'").get() as { n: number }).n).toBe(seen);
+  });
+
+  it('cannot delete a competition that already paid its prizes', () => {
+    const competition = createCompetition({ title: 'Eesti', views: ['estonia'], days: 7 });
+    play(as('kiur'), start(as('kiur')).roundId);
+    endCompetitionNow(competition.id);
+    expect(() => deleteCompetition(competition.id)).toThrow('Lõppenud võistlust ei saa kustutada');
+  });
+
+  it('migration 15 keeps every competition and allows the cancelled status', () => {
+    const connection = new Database(':memory:');
+    runMigrations(connection, 14);
+    connection.prepare(`INSERT INTO kaardimang_competitions (title, viewsJson, startDate, endDate, rewardsJson, status, createdAt, endedAt, resultsJson)
+      VALUES ('Vana', '["estonia"]', '2026-10-01', '2026-10-07', '[20,10,5]', 'ended', 't', 't', '[]')`).run();
+    runMigrations(connection);
+    expect(connection.prepare('SELECT id, title, status, resultsJson FROM kaardimang_competitions').all()).toEqual([{ id: 1, title: 'Vana', status: 'ended', resultsJson: '[]' }]);
+    connection.prepare("UPDATE kaardimang_competitions SET status = 'cancelled' WHERE id = 1").run();
+    expect(() => connection.prepare("UPDATE kaardimang_competitions SET status = 'paused' WHERE id = 1").run()).toThrow();
     connection.close();
   });
 });

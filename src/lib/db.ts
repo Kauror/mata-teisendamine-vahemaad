@@ -1332,6 +1332,32 @@ function addKaardimangCompetition(connection: DatabaseConnection) {
   `);
 }
 
+// A Kaardimäng competition can be cancelled (Kaur, 23.10): ended without
+// prizes. SQLite cannot widen the status CHECK, so the table is rebuilt and
+// every competition copied, as in migration 14.
+function addKaardimangCancelledCompetitions(connection: DatabaseConnection) {
+  connection.exec(`
+    DROP INDEX IF EXISTS idx_kaardimang_competitions_active;
+    ALTER TABLE kaardimang_competitions RENAME TO kaardimang_competitions_v14;
+    CREATE TABLE kaardimang_competitions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      viewsJson TEXT NOT NULL,
+      startDate TEXT NOT NULL,
+      endDate TEXT NOT NULL,
+      rewardsJson TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('active', 'ended', 'cancelled')),
+      createdAt TEXT NOT NULL,
+      endedAt TEXT,
+      resultsJson TEXT
+    );
+    INSERT INTO kaardimang_competitions (id, title, viewsJson, startDate, endDate, rewardsJson, status, createdAt, endedAt, resultsJson)
+    SELECT id, title, viewsJson, startDate, endDate, rewardsJson, status, createdAt, endedAt, resultsJson FROM kaardimang_competitions_v14;
+    DROP TABLE kaardimang_competitions_v14;
+    CREATE UNIQUE INDEX idx_kaardimang_competitions_active ON kaardimang_competitions(status) WHERE status = 'active';
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -1420,6 +1446,12 @@ const migrations: Migration[] = [
     name: 'kaardimang_competition',
     checksumSource: 'kaardimang_competition:v1:2026-10-23',
     up: addKaardimangCompetition
+  },
+  {
+    id: 15,
+    name: 'kaardimang_cancelled_competitions',
+    checksumSource: 'kaardimang_cancelled_competitions:v1:2026-10-23',
+    up: addKaardimangCancelledCompetitions
   }
 ];
 

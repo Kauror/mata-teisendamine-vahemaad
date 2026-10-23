@@ -579,6 +579,8 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .pv-page .parent-form button[type='submit'],.pv-page .parent-card button[type='submit']{border-radius:10px;background:#111827;color:#fff;font-size:14px;font-weight:600}
 .pv-page .filter-chip{border-color:#d1d5db;color:#111827;font-weight:600;font-size:13.5px}
 .pv-page .filter-chip.active{background:#111827;border-color:#111827;color:#fff}
+/* Toggle chips in the parent area (Kaardimäng competition maps): same look as .active. */
+.pv-page .filter-chip[aria-pressed='true']{background:#111827;border-color:#111827;color:#fff}
 .pv-page .stock-list{gap:0}
 .pv-page .stock-row{padding:8px 0;border-radius:0;background:none;border-bottom:1px solid #f0f1f3}
 .pv-page .stock-row:last-child{border-bottom:0}
@@ -2450,6 +2452,10 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .km-shelf-bar{display:block;height:5px;border-radius:3px;background:var(--tb-line,#e5e7eb);overflow:hidden}
 .km-shelf-bar b{display:block;height:100%;background:#f59e0b}
 .km-tile-badges{font-size:18px;letter-spacing:2px}
+.km-place:disabled{opacity:.55;cursor:not-allowed}
+.km-locked-note{color:var(--tb-muted,#6b7280);font-weight:750}
+.km-confirm{display:grid;gap:6px;padding:10px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca}
+.km-confirm p{margin:0;font-weight:650}
 .km-zoom{position:absolute;top:12px;right:12px;display:grid;gap:12px}
 .km-zoom-button{position:relative;width:32px;height:32px;padding:0;border-radius:8px;border:1px solid var(--tb-line);background:var(--tb-surface);color:var(--tb-ink);font:inherit;font-size:18px;font-weight:850;line-height:1;box-shadow:var(--card-shadow);cursor:pointer;opacity:.88}
 .km-zoom-button::before{content:'';position:absolute;inset:-6px}

@@ -86,7 +86,7 @@ export type CompetitionSummary = {
   startDate: string;
   endDate: string;
   rewards: [number, number, number];
-  status: 'active' | 'ended';
+  status: 'active' | 'ended' | 'cancelled';
   daysLeftEt: string;
   standings: StandingRow[];
   // Counted rounds still left for this player today (null in the preview).
