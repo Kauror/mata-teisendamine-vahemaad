@@ -54,7 +54,8 @@ export default function KaardimangCompetitionPanel() {
   const [days, setDays] = useState(14);
   const [rewards, setRewards] = useState<[number, number, number]>([...DEFAULT_REWARDS]);
   const [extendBy, setExtendBy] = useState(3);
-  const [confirmEnd, setConfirmEnd] = useState(false);
+  // Which irreversible action waits for its "Jah": end with prizes, cancel without, or delete.
+  const [confirm, setConfirm] = useState<null | 'end' | 'cancel' | 'delete'>(null);
 
   useEffect(() => {
     void parentKaardimangClient.competition().then((result) => {
@@ -68,7 +69,7 @@ export default function KaardimangCompetitionPanel() {
     setMessage(null);
     const result = await work();
     setBusy(false);
-    setConfirmEnd(false);
+    setConfirm(null);
     if (result.ok) { setData(result.data); setMessage(done); } else setMessage(result.error.message);
   };
 
@@ -108,13 +109,24 @@ export default function KaardimangCompetitionPanel() {
               <div className='tb-actions'>
                 <label className='km-inline'>Pikenda <input type='number' min={1} max={60} value={extendBy} onChange={(event) => setExtendBy(Number(event.target.value))} /> päeva</label>
                 <button type='button' className='filter-chip' disabled={busy} onClick={() => void apply(() => parentKaardimangClient.changeCompetition({ action: 'extend', id: active.id, days: extendBy }), 'Võistlust pikendati.')}>Pikenda</button>
-                {confirmEnd ? (
-                  <>
-                    <button type='button' className='filter-chip' disabled={busy} onClick={() => void apply(() => parentKaardimangClient.changeCompetition({ action: 'end', id: active.id }), 'Võistlus lõpetati, auhinnad on jagatud.')}>Jah, lõpeta ja jaga auhinnad</button>
-                    <button type='button' className='filter-chip' onClick={() => setConfirmEnd(false)}>Loobu</button>
-                  </>
-                ) : <button type='button' className='filter-chip' onClick={() => setConfirmEnd(true)}>Lõpeta kohe</button>}
               </div>
+              {confirm ? (
+                <div className='km-confirm' role='group' aria-label='Kinnita'>
+                  <p>{confirm === 'end' ? 'Võistlus lõpeb kohe ja esikolmik saab auhinnad.' : confirm === 'cancel' ? 'Võistlus lõpeb kohe ilma auhindadeta. Tabel jääb ajalukku märkega „tühistatud“.' : 'Võistlus kustutatakse täielikult: punktid ja tabel kaovad, mängitud voorud jäävad harjutuseks.'}</p>
+                  <div className='tb-actions'>
+                    <button type='button' className='filter-chip' disabled={busy} onClick={() => void apply(() => parentKaardimangClient.changeCompetition({ action: confirm, id: active.id }), confirm === 'end' ? 'Võistlus lõpetati, auhinnad on jagatud.' : confirm === 'cancel' ? 'Võistlus tühistati ilma auhindadeta.' : 'Võistlus kustutati.')}>
+                      {confirm === 'end' ? 'Jah, lõpeta ja jaga auhinnad' : confirm === 'cancel' ? 'Jah, tühista' : 'Jah, kustuta'}
+                    </button>
+                    <button type='button' className='filter-chip' onClick={() => setConfirm(null)}>Loobu</button>
+                  </div>
+                </div>
+              ) : (
+                <div className='tb-actions'>
+                  <button type='button' className='filter-chip' onClick={() => setConfirm('end')}>Lõpeta kohe</button>
+                  <button type='button' className='filter-chip' onClick={() => setConfirm('cancel')}>Tühista ilma auhindadeta</button>
+                  <button type='button' className='filter-chip' onClick={() => setConfirm('delete')}>Kustuta täielikult</button>
+                </div>
+              )}
             </div>
           ) : (
             <form className='km-card km-comp-form' onSubmit={(event) => {
@@ -123,11 +135,11 @@ export default function KaardimangCompetitionPanel() {
             }}>
               <label>Nimi <input value={title} maxLength={60} onChange={(event) => setTitle(event.target.value)} required /></label>
               <fieldset>
-                <legend>Kaardid</legend>
+                <legend>Kaardid <span className='tb-muted'>({views.length ? views.map(viewLabel).join(', ') : 'vali vähemalt üks'})</span></legend>
                 {VIEW_GROUPS.map((group) => (
                   <div key={group.label} className='km-chips'>
                     {group.ids.map((id) => (
-                      <button key={id} type='button' className='filter-chip' aria-pressed={views.includes(id)} onClick={() => toggleView(id)}>{viewLabel(id)}</button>
+                      <button key={id} type='button' className='filter-chip' aria-pressed={views.includes(id)} onClick={() => toggleView(id)}>{views.includes(id) ? '✓ ' : ''}{viewLabel(id)}</button>
                     ))}
                   </div>
                 ))}
@@ -152,7 +164,7 @@ export default function KaardimangCompetitionPanel() {
               <summary>Varasemad võistlused ({data.history.length})</summary>
               {data.history.map((competition) => (
                 <div key={competition.id} className='km-comp-history'>
-                  <p><strong>„{competition.title}“</strong> · lõppes {competition.endDate.split('-').reverse().join('.')}</p>
+                  <p><strong>„{competition.title}“</strong> · {competition.status === 'cancelled' ? 'tühistatud, auhindu ei jagatud' : `lõppes ${competition.endDate.split('-').reverse().join('.')}`}</p>
                   <Standings competition={competition} />
                 </div>
               ))}

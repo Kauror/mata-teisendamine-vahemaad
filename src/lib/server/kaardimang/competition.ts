@@ -27,7 +27,7 @@ export type CompetitionRow = {
   startDate: string;
   endDate: string;
   rewardsJson: string;
-  status: 'active' | 'ended';
+  status: 'active' | 'ended' | 'cancelled';
   createdAt: string;
   endedAt: string | null;
   resultsJson: string | null;
@@ -40,7 +40,7 @@ export type CompetitionView = {
   startDate: string;
   endDate: string;
   rewards: [number, number, number];
-  status: 'active' | 'ended';
+  status: 'active' | 'ended' | 'cancelled';
   standings: StandingRow[];
 };
 
@@ -88,7 +88,7 @@ export function standingsFor(competitionId: number): StandingRow[] {
 }
 
 function toView(row: CompetitionRow): CompetitionView {
-  const standings = row.status === 'ended' && row.resultsJson ? JSON.parse(row.resultsJson) as StandingRow[] : standingsFor(row.id);
+  const standings = row.status !== 'active' && row.resultsJson ? JSON.parse(row.resultsJson) as StandingRow[] : standingsFor(row.id);
   return {
     id: row.id,
     title: row.title,
@@ -227,6 +227,31 @@ export function endCompetitionNow(id: unknown): CompetitionView {
     const row = loadActive(id);
     settle(row, nowIso());
     return toView(db.prepare('SELECT * FROM kaardimang_competitions WHERE id = ?').get(row.id) as CompetitionRow);
+  }).immediate();
+}
+
+// Cancel (Kaur, 23.10): the competition stops now, its table is kept and
+// shown as cancelled, and nobody gets a medal or stars.
+export function cancelCompetition(id: unknown): CompetitionView {
+  return db.transaction(() => {
+    const row = loadActive(id);
+    db.prepare("UPDATE kaardimang_competitions SET status = 'cancelled', endedAt = ?, resultsJson = ? WHERE id = ? AND status = 'active'")
+      .run(nowIso(), JSON.stringify(standingsFor(row.id)), row.id);
+    return toView(db.prepare('SELECT * FROM kaardimang_competitions WHERE id = ?').get(row.id) as CompetitionRow);
+  }).immediate();
+}
+
+// Delete fully: as if the competition never happened. Its points go, its
+// rounds stay as ordinary practice, and what the players learned stays learned.
+// A competition that paid prizes cannot be deleted: its stars are spent money.
+export function deleteCompetition(id: unknown): void {
+  db.transaction(() => {
+    const row = typeof id === 'number' ? db.prepare('SELECT * FROM kaardimang_competitions WHERE id = ?').get(id) as CompetitionRow | undefined : undefined;
+    if (!row) throw new CompetitionError('Seda võistlust ei ole.');
+    if (row.status === 'ended') throw new CompetitionError('Lõppenud võistlust ei saa kustutada: auhinnad on juba jagatud.');
+    db.prepare('DELETE FROM kaardimang_points WHERE competitionId = ?').run(row.id);
+    db.prepare('UPDATE kaardimang_rounds SET competitionId = NULL WHERE competitionId = ?').run(row.id);
+    db.prepare('DELETE FROM kaardimang_competitions WHERE id = ?').run(row.id);
   }).immediate();
 }
 

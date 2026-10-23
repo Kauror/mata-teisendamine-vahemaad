@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysLeftEt, masteryOf, rankStandings, scoreAnswer } from '@/lib/kaardimang/competition';
+import { daysLeftEt, masteryOf, placeOpen, rankStandings, scoreAnswer, viewOpen } from '@/lib/kaardimang/competition';
 
 describe('Kaardimäng competition scoring', () => {
   it('scores a first-try answer by how well the place was known', () => {
@@ -42,5 +42,14 @@ describe('Kaardimäng competition scoring', () => {
     expect(daysLeftEt('2026-10-23', '2026-10-30')).toBe('veel 7 päeva');
     expect(daysLeftEt('2026-10-29', '2026-10-30')).toBe('veel 1 päev');
     expect(daysLeftEt('2026-10-30', '2026-10-30')).toBe('täna viimane päev');
+  });
+});
+
+describe('maps open during a competition', () => {
+  it('opens a map or a place only if the competition has it, and everything without one', () => {
+    const views = ['estonia', 'europe-baltics', 'europe-nordic'];
+    expect([viewOpen(views, 'europe-baltics'), viewOpen(views, 'europe'), viewOpen(views, 'world')]).toEqual([true, false, false]);
+    expect([placeOpen(views, 'estonia'), placeOpen(views, 'europe'), placeOpen(views, 'asia'), placeOpen(views, 'world')]).toEqual([true, true, false, false]);
+    expect([viewOpen(null, 'asia'), placeOpen(null, 'antarctica')]).toEqual([true, true]);
   });
 });

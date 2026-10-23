@@ -16,7 +16,7 @@ import {
   type ViewGeometry
 } from '@/lib/kaardimang/engine';
 import type { AnswerResponse, CompetitionSummary, KaardimangErrorCode, KaardimangScope, OverviewResponse, ParentKaardimangResponse, RoundSummary, RoundView } from '@/lib/kaardimang/api';
-import { daysLeftEt, masteryOf, scoreAnswer, type KaardimangPlayer, type Mastery } from '@/lib/kaardimang/competition';
+import { daysLeftEt, masteryOf, scoreAnswer, viewOpen, type KaardimangPlayer, type Mastery } from '@/lib/kaardimang/competition';
 import { todayDateString } from '@/lib/appDate';
 import { seededRng } from '@/lib/random';
 import { kaardimangAchievements } from '@/lib/server/kaardimang/achievements';
@@ -137,7 +137,7 @@ function roundCompetition(row: RoundRow): RoundView['competition'] {
 export function competitionSummaryFor(id: number, today = todayDateString()): CompetitionSummary {
   const row = db.prepare('SELECT * FROM kaardimang_competitions WHERE id = ?').get(id) as CompetitionRow;
   const summary = competitionSummary(row, 'preview', today);
-  return row.status === 'ended' && row.resultsJson ? { ...summary, standings: JSON.parse(row.resultsJson) } : summary;
+  return row.status !== 'active' && row.resultsJson ? { ...summary, standings: JSON.parse(row.resultsJson) } : summary;
 }
 
 function competitionSummary(row: CompetitionRow, learner: KaardimangLearner, today: string): CompetitionSummary {
@@ -210,6 +210,11 @@ export function startRound(context: KaardimangContext, input: { actionId: string
   return db.transaction(() => {
     const repeated = db.prepare('SELECT * FROM kaardimang_rounds WHERE learner = ? AND startActionId = ?').get(context.learner, input.actionId) as RoundRow | undefined;
     if (repeated) return toView(repeated);
+    // While a competition runs, a player plays only its maps (the preview plays anything).
+    const open = context.learner === 'preview' ? null : activeCompetitionRow(todayDateString());
+    if (open && !viewOpen(JSON.parse(open.viewsJson) as string[], view.id)) {
+      throw new KaardimangApiError('forbidden', 'Võistluse ajal on lahti ainult võistluse kaardid.');
+    }
     const now = nowIso();
     db.prepare("UPDATE kaardimang_rounds SET status = 'abandoned', updatedAt = ? WHERE learner = ? AND status = 'active'").run(now, context.learner);
     const seed = Math.floor(Math.random() * 2 ** 31);

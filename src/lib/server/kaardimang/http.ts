@@ -3,7 +3,7 @@ import { hasParentSession } from '@/lib/parentAuth';
 import { ACTION_ID_PATTERN } from '@/lib/textbook/api';
 import { KAARDIMANG_CHILD_ENABLED, KAARDIMANG_ERROR_STATUS, ROUND_ID_PATTERN, type KaardimangErrorResponse, type KaardimangScope } from '@/lib/kaardimang/api';
 import { CHILD_PLAYERS, isPlayer, PARENT_PLAYERS } from '@/lib/kaardimang/competition';
-import { CompetitionError, competitionHistory, createCompetition, endCompetitionNow, extendCompetition, playerLevels, setPlayerLevel } from '@/lib/server/kaardimang/competition';
+import { cancelCompetition, CompetitionError, competitionHistory, createCompetition, deleteCompetition, endCompetitionNow, extendCompetition, playerLevels, setPlayerLevel } from '@/lib/server/kaardimang/competition';
 import { answer, competitionSummaryFor, getOverview, getRound, KaardimangApiError, markShown, parentOverview, resetPreview, startRound, type KaardimangContext } from '@/lib/server/kaardimang/rounds';
 
 // HTTP glue for every Kaardimäng route. The ROUTE decides who plays: child
@@ -120,7 +120,7 @@ function parentCompetitionView() {
   const history = competitionHistory();
   return {
     active: history.find((item) => item.status === 'active') ? competitionSummaryFor(history.find((item) => item.status === 'active')!.id) : null,
-    history: history.filter((item) => item.status === 'ended').map((item) => competitionSummaryFor(item.id)),
+    history: history.filter((item) => item.status !== 'active').map((item) => competitionSummaryFor(item.id)),
     levels: playerLevels()
   };
 }
@@ -140,7 +140,8 @@ export const parentKaardimangHandlers = {
     })
   },
   // GET: the open competition, the finished ones and every player's level.
-  // POST { action: 'create', title, views, days, rewards? } | { action: 'end', id } | { action: 'extend', id, days }.
+  // POST { action: 'create', title, views, days, rewards? } | { action: 'end', id } (with prizes)
+  // | { action: 'cancel', id } (no prizes) | { action: 'delete', id } (gone) | { action: 'extend', id, days }.
   competition: {
     GET: () => run(() => asParent(parentCompetitionView)),
     POST: (req: NextRequest) => run(async () => {
@@ -149,6 +150,8 @@ export const parentKaardimangHandlers = {
         if (body.action === 'create') createCompetition({ title: body.title, views: body.views, days: body.days, rewards: body.rewards });
         else if (body.action === 'end') endCompetitionNow(body.id);
         else if (body.action === 'extend') extendCompetition(body.id, body.days);
+        else if (body.action === 'cancel') cancelCompetition(body.id);
+        else if (body.action === 'delete') deleteCompetition(body.id);
         else throw new CompetitionError('Tundmatu tegevus.');
         return parentCompetitionView();
       });

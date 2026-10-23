@@ -32,6 +32,16 @@ export const MASTERY_POINTS = { new: 3, learning: 2, learned: 1 } as const;
 export const AFTER_HINT_POINTS = 1;
 export type Mastery = keyof typeof MASTERY_POINTS;
 
+// Kaur (23.10): while a competition runs, a player can open only its maps;
+// with none running every map is open. `views` null = no competition. A place
+// (Eesti, Maailm or a world part) is open if any of its maps is.
+export function viewOpen(views: string[] | null | undefined, viewId: string): boolean {
+  return !views || views.includes(viewId);
+}
+export function placeOpen(views: string[] | null | undefined, place: string): boolean {
+  return !views || views.some((view) => view === place || view.startsWith(`${place}-`));
+}
+
 // +1 for a first-try answer faster than this, per level.
 export const SPEED_LIMIT_SECONDS: Record<LevelId, number> = { explorer: 20, traveler: 10, geographer: 5 };
 
