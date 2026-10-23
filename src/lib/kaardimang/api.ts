@@ -73,7 +73,11 @@ export type OverviewResponse = {
   competition: CompetitionSummary | null;
   // The player's medals from finished competitions, newest first.
   medals: Array<{ competitionId: number; title: string; place: 1 | 2 | 3; stars: number; endDate: string }>;
+  // The player's achievement shelf (empty in the preview).
+  achievements: KaardimangAchievementView[];
 };
+
+export type KaardimangAchievementView = { id: string; emoji: string; title: string; description: string; current: number; target: number; unlocked: boolean };
 
 export type CompetitionSummary = {
   id: number;

@@ -21,6 +21,7 @@ export default function KaardimangTile({ learner, href }: { learner: 'kiur' | 'k
   const competition = overview?.competition ?? null;
   const me = competition?.standings.find((row) => row.player === learner);
   const medals = overview?.medals ?? [];
+  const earned = (overview?.achievements ?? []).filter((item) => item.unlocked);
 
   return (
     <Link className='km-tile' href={href}>
@@ -30,6 +31,11 @@ export default function KaardimangTile({ learner, href }: { learner: 'kiur' | 'k
         {competition && me ? (
           <small>🏆 „{competition.title}“: {me.rank}. koht, {me.points} p · {competition.daysLeftEt}{competition.countedLeftToday ? ` · täna veel ${competition.countedLeftToday}` : ''}</small>
         ) : <small>Eesti, Euroopa ja kogu maailm</small>}
+        {earned.length ? (
+          <span className='km-tile-badges' aria-label={`Saavutused: ${earned.map((item) => item.title).join(', ')}`}>
+            {earned.map((item) => <span key={item.id} title={item.title}>{item.emoji}</span>)}
+          </span>
+        ) : null}
         {medals.length ? (
           <span className='km-tile-medals' aria-label={`Medalid: ${medals.map((medal) => `${medal.place}. koht „${medal.title}“`).join(', ')}`}>
             {medals.map((medal) => <span key={medal.competitionId} title={`${medal.place}. koht – ${medal.title}`}>{MEDALS[medal.place - 1]}</span>)}
