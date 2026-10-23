@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CATALOG } from '@/content/kaardimang/catalog';
-import { DATA_VERSION, MAP_VIEWS } from '@/content/kaardimang/regions';
+import { MAP_VIEWS, mapPath } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 import { emptyState, NO_AREA_ANSWER, SEA_ANSWER, type ClientQuestion } from '@/lib/kaardimang/engine';
 import { answerIdFor, contextNoteEt, markerHitRadii, playAreaPaint, playPaint, scoreLine } from './mapAnswers';
@@ -35,7 +35,7 @@ describe('answerIdFor', () => {
 });
 
 describe('markerHitRadii', () => {
-  const views = MAP_VIEWS.map((view) => JSON.parse(readFileSync(path.join(process.cwd(), 'public', 'kaardimang', 'maps', DATA_VERSION, `${view.id}.json`), 'utf8')) as MapViewData);
+  const views = MAP_VIEWS.map((view) => JSON.parse(readFileSync(path.join(process.cwd(), 'public', ...mapPath(view.id).split('/')), 'utf8')) as MapViewData);
 
   // 360 px phone (≈338 px of map), a tablet and a wide desktop map.
   it.each([1000 / 338, 1000 / 740, 1])('never lets two hit circles overlap, so a tap means one country (%f units/px)', (units) => {

@@ -4,7 +4,7 @@ import path from 'node:path';
 import db from '@/lib/db';
 import { nowIso } from '@/lib/tasks';
 import { CATALOG, nameOf, quizCapital, viewCountries } from '@/content/kaardimang/catalog';
-import { DATA_VERSION, findView, LEVELS, MAP_VIEWS, WORLD_SETS, type LevelId, type WorldSetId } from '@/content/kaardimang/regions';
+import { COUNTIES, DATA_VERSION, dataVersionOf, findView, LEVELS, MAP_VIEWS, mapPath, WORLD_SETS, type LevelId, type WorldSetId } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 import {
   ANSWER_ID_PATTERN,
@@ -56,7 +56,7 @@ const geometryCache = new Map<string, ViewGeometry | null>();
 function viewGeometry(viewId: string): ViewGeometry | null {
   if (!geometryCache.has(viewId)) {
     try {
-      const file = path.join(process.cwd(), 'public', 'kaardimang', 'maps', DATA_VERSION, `${viewId}.json`);
+      const file = path.join(process.cwd(), 'public', ...mapPath(viewId).split('/'));
       const data = JSON.parse(readFileSync(file, 'utf8')) as MapViewData;
       geometryCache.set(viewId, { width: data.width, height: data.height, labels: data.labels, markers: data.markers });
     } catch {
@@ -71,10 +71,14 @@ function loadStats(learner: KaardimangLearner): Map<string, TargetStat> {
   return new Map(rows.map((row) => [row.targetKey, row]));
 }
 
-// Countries in the view's set that the learner has met in any question.
+// Countries (Eesti: counties) in the view's set that the learner has met in any question.
 function practicedIn(viewId: string, stats: Map<string, TargetStat>): [number, number] {
   const view = findView(viewId);
   if (!view) return [0, 0];
+  if (view.kind === 'estonia') {
+    const seen = COUNTIES.filter((county) => (stats.get(`county:${county.id}`)?.seen ?? 0) + (stats.get(`countyCentre:${county.id}`)?.seen ?? 0) > 0);
+    return [seen.length, COUNTIES.length];
+  }
   const countries = view.kind === 'world'
     ? CATALOG.countries.filter((country) => country.target && (country.tappableIn ?? []).includes('world'))
     : viewCountries(view);
@@ -123,7 +127,7 @@ export function getOverview(context: KaardimangContext): OverviewResponse {
   const active = db.prepare("SELECT * FROM kaardimang_rounds WHERE learner = ? AND status = 'active'").get(context.learner) as RoundRow | undefined;
   const stats = loadStats(context.learner);
   const practiced: OverviewResponse['practiced'] = {};
-  for (const view of MAP_VIEWS) if (view.kind === 'part' || view.kind === 'subregion') practiced[view.id] = practicedIn(view.id, stats);
+  for (const view of MAP_VIEWS) if (view.kind === 'part' || view.kind === 'subregion' || view.kind === 'estonia') practiced[view.id] = practicedIn(view.id, stats);
   let activeRound: OverviewResponse['activeRound'] = null;
   if (active) {
     const state = JSON.parse(active.stateJson) as RoundState;
@@ -163,7 +167,7 @@ export function startRound(context: KaardimangContext, input: { actionId: string
     db.prepare(`
       INSERT INTO kaardimang_rounds (id, learner, viewId, setId, level, dataVersion, status, stateJson, revision, startActionId, total, startedAt, updatedAt)
       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, 0, ?, ?, ?, ?)
-    `).run(id, context.learner, view.id, setId, level, DATA_VERSION, JSON.stringify(state), input.actionId, state.questions.length, now, now);
+    `).run(id, context.learner, view.id, setId, level, dataVersionOf(view.id), JSON.stringify(state), input.actionId, state.questions.length, now, now);
     return toView(loadRow(context, id));
   }).immediate();
 }

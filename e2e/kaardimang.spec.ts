@@ -2,7 +2,7 @@ import { expect, test, type Page } from './test';
 import { authenticateFamily } from './auth';
 import { navigateStable } from './navigation';
 import { CATALOG, quizCapital } from '../src/content/kaardimang/catalog';
-import { CONTINENTS, OCEANS, WORLD_PARTS } from '../src/content/kaardimang/regions';
+import { CONTINENTS, COUNTIES, OCEANS, WORLD_PARTS } from '../src/content/kaardimang/regions';
 import type { OverviewResponse, ParentKaardimangResponse } from '../src/lib/kaardimang/api';
 
 // Kaardimäng end to end on a 375 px phone. While the game is in parent testing
@@ -33,13 +33,28 @@ async function pick(page: Page, selector: string, which: 'first' | 'last' = 'fir
 
 async function answerCurrent(page: Page, options: { pacificFromRight?: boolean } = {}) {
   const prompt = (await page.locator('.km-prompt').textContent())!.trim();
+  // Eesti
+  if (prompt === 'Mis maakond on kaardil esile tõstetud?') {
+    const id = await page.locator('.km-map [data-paint="highlight"]').first().getAttribute('data-id');
+    await page.locator('.km-option', { hasText: new RegExp(`^${COUNTIES.find((county) => county.id === id)!.nameEt}$`) }).click();
+    return;
+  }
+  let county = /^Mis on (.+) keskus\?$/.exec(prompt);
+  if (county) {
+    await page.locator('.km-option', { hasText: new RegExp(`^${COUNTIES.find((item) => item.nameEt === county![1])!.centreEt}$`) }).click();
+    return;
+  }
+  county = /^Leia kaardilt (.+maa)\.$/.exec(prompt);
+  if (county && COUNTIES.some((item) => item.nameEt === county![1])) return pick(page, `[data-id="${COUNTIES.find((item) => item.nameEt === county![1])!.id}"]`);
+  county = /^Millise maakonna keskus on (.+)\? Puuduta/.exec(prompt);
+  if (county) return pick(page, `[data-id="${COUNTIES.find((item) => item.centreEt === county![1])!.id}"]`);
   if (prompt === 'Mis riik on kaardil esile tõstetud?') {
     const id = await page.locator('.km-map [data-paint="highlight"]').first().getAttribute('data-id');
     const name = CATALOG.countries.find((country) => country.id === id)!.nameEt;
     await page.locator('.km-option', { hasText: new RegExp(`^${name}$`) }).click();
     return;
   }
-  let match = /^Mis on (.+) pealinn\?$/.exec(prompt);
+  let match: RegExpExecArray | null = /^Mis on (.+) pealinn\?$/.exec(prompt);
   if (match) {
     await page.locator('.km-option', { hasText: new RegExp(`^${quizCapital(byGenitive.get(match[1])!)!.nameEt}$`) }).click();
     return;
@@ -119,7 +134,8 @@ test('the parent opens Kaardimäng from the parent area and every world part has
   await page.getByRole('link', { name: 'Ava eelvaade' }).click();
   await expect(page.getByRole('heading', { name: '🗺️ Kaardimäng' })).toBeVisible();
   await expect(page.locator('.km-preview-note')).toBeVisible();
-  await expect(page.locator('.km-place')).toHaveCount(7);
+  // Eesti, Maailm and the six world parts.
+  await expect(page.locator('.km-place')).toHaveCount(8);
   await noSideScroll(page);
 
   for (const part of ['Maailm', 'Euroopa', 'Aasia', 'Aafrika', 'Ameerika', 'Austraalia ja Okeaania', 'Antarktika']) {
@@ -178,6 +194,25 @@ test('a whole round: retry after a miss, the same map throughout, a neutral summ
   await expect(page.locator('.km-summary-score')).toContainText('küsimusest');
   await expect(page.locator('.km-summary')).toContainText('Järgmine kord võiksid üle vaadata');
   expect(await page.locator('.km-map svg').evaluate((svg) => (svg as SVGElement & { kmMark?: boolean }).kmMark)).toBe(true);
+  await noSideScroll(page);
+});
+
+test('Eesti: the counties in Uuri, then a whole Geograaf round of counties and their keskused', async ({ page }) => {
+  test.setTimeout(90_000);
+  await navigateStable(page, PAGE);
+  await page.getByRole('button', { name: /^Eesti / }).click();
+  await expect(page.getByRole('heading', { level: 1, name: /Eesti/ })).toBeVisible();
+  await page.getByRole('button', { name: /Uuri kaarti/ }).click();
+  await expect(page.locator('.km-map .km-feature[data-role="t"]')).toHaveCount(15);
+  await pick(page, '.km-feature[data-id="ee-saare"]');
+  await expect(page.locator('.km-info h2')).toHaveText('Saaremaa');
+  await expect(page.locator('.km-info')).toContainText('Kuressaare');
+  await page.getByRole('button', { name: /^← Eesti/ }).click();
+  await page.getByRole('button', { name: 'Geograaf' }).click();
+  await page.getByRole('button', { name: /Mängi/ }).click();
+  await expect(page.locator('.km-prompt')).toBeVisible();
+  await playRound(page);
+  await expect(page.locator('.km-summary')).toContainText('Harjutatud maakondi');
   await noSideScroll(page);
 });
 

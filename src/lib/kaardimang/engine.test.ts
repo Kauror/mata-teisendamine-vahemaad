@@ -2,14 +2,14 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { findCountry } from '@/content/kaardimang/catalog';
-import { DATA_VERSION, findView, LEVELS, MAP_VIEWS, WORLD_SETS, type WorldSetId } from '@/content/kaardimang/regions';
+import { COUNTIES, findView, LEVELS, MAP_VIEWS, WORLD_SETS, type WorldSetId, mapPath } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 import { seededRng } from '@/lib/random';
 import { buildRound, directionHint, emptyState, gradeAnswer, NO_AREA_ANSWER, orderWithoutRepeats, ROUND_LENGTH, SEA_ANSWER, toClientQuestion, type TargetStat, type ViewGeometry } from '@/lib/kaardimang/engine';
 
 const geometries = new Map<string, ViewGeometry>();
 function geometry(id: string): ViewGeometry {
-  if (!geometries.has(id)) geometries.set(id, JSON.parse(readFileSync(path.join(process.cwd(), 'public', 'kaardimang', 'maps', DATA_VERSION, `${id}.json`), 'utf8')) as MapViewData);
+  if (!geometries.has(id)) geometries.set(id, JSON.parse(readFileSync(path.join(process.cwd(), 'public', ...mapPath(id).split('/')), 'utf8')) as MapViewData);
   return geometries.get(id)!;
 }
 
@@ -202,5 +202,51 @@ describe('helpers', () => {
 
   it('orders without putting the same target twice in a row when possible', () => {
     expect(orderWithoutRepeats(['A', 'A', 'B', 'B'], (item) => item)).toEqual(['A', 'B', 'A', 'B']);
+  });
+});
+
+describe('Eesti', () => {
+  const kindsOf = (level: 'explorer' | 'traveler' | 'geographer') => {
+    const kinds = new Set<string>();
+    for (let seed = 1; seed < 40; seed++) for (const question of round('estonia', level, null, seed).questions) kinds.add(question.kind);
+    return kinds;
+  };
+
+  it('asks Avastaja only to find and name the best-known counties', () => {
+    const known = new Set<string>(COUNTIES.filter((county) => county.wellKnown).map((county) => county.id));
+    for (let seed = 1; seed < 20; seed++) {
+      for (const question of round('estonia', 'explorer', null, seed).questions) expect(known.has(question.targetId), question.targetId).toBe(true);
+    }
+    expect([...kindsOf('explorer')].sort()).toEqual(['find_county', 'name_highlighted_county']);
+  });
+
+  it('adds the county towns for Rändur, and tapping a town\'s county for Geograaf', () => {
+    expect(kindsOf('traveler').has('centre_of_county')).toBe(true);
+    expect(kindsOf('traveler').has('county_of_centre')).toBe(false);
+    expect(kindsOf('geographer').has('county_of_centre')).toBe(true);
+  });
+
+  it('asks in natural Estonian, with towns as the answers to a keskus question', () => {
+    const questions = Array.from({ length: 30 }, (_, seed) => round('estonia', 'geographer', null, seed + 1).questions).flat();
+    const centre = questions.find((question) => question.kind === 'centre_of_county')!;
+    const county = COUNTIES.find((item) => item.id === centre.targetId)!;
+    expect(centre.prompt).toBe(`Mis on ${county.nameEt} keskus?`);
+    expect(centre.answerId).toBe(county.centreId);
+    expect(centre.options!.map((option) => option.label)).toContain(county.centreEt);
+    expect(centre.options!.every((option) => COUNTIES.some((item) => item.centreId === option.id))).toBe(true);
+    const find = questions.find((question) => question.kind === 'find_county')!;
+    expect(find.prompt).toMatch(/^Leia kaardilt [A-ZÕÄÖÜ][\p{L}-]+maa\.$/u);
+    const tap = questions.find((question) => question.kind === 'county_of_centre')!;
+    expect(tap.answering).toBe('map');
+    expect(tap.answerId).toBe(tap.targetId);
+  });
+
+  it('grades a county tap and names a wrong county in the feedback', () => {
+    const question = round('estonia', 'explorer', null, 3).questions.find((item) => item.kind === 'find_county')!;
+    const wrong = COUNTIES.find((county) => county.id !== question.answerId)!;
+    const missed = gradeAnswer(question, emptyState(), wrong.id);
+    expect(missed.outcome).toBe('wrong_retry');
+    expect(missed.messageEt).toContain(`See on ${wrong.nameEt}.`);
+    expect(gradeAnswer(question, missed.state, question.answerId).outcome).toBe('correct');
   });
 });

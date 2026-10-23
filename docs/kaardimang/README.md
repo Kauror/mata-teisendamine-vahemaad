@@ -6,7 +6,7 @@ Mäng ei ole õpiku osa (see on paralleelne õppetükkidega 10–22), ei anna t�
 
 ## Mis on sees
 
-- **Seitse vaadet:** Maailm, Euroopa, Aasia, Aafrika, Ameerika, Austraalia ja Okeaania ning Antarktika. Igas vaates saab valida „Uuri kaarti“ või „Mängi“.
+- **Kaheksa vaadet:** Eesti, Maailm, Euroopa, Aasia, Aafrika, Ameerika, Austraalia ja Okeaania ning Antarktika. Igas vaates saab valida „Uuri kaarti“ või „Mängi“.
 - **25 õpperühma** pakettidest (`MAAILMAJAOD_JA_TASEMED.json`), mis on täiendatud nii, et iga riik kuulub vähemalt ühte rühma. Kaardivaateid on kokku 32, igal oma eelnevalt projitseeritud kaart.
 - **194 sihtriiki:** kõik 193 ÜRO liiget ja Vatikan. Palestiina, Kosovo ja Taiwan on kaardil ning „Uuri“ selgitab nende staatust neutraalselt, aga hinnatud küsimustes neid ei ole.
 - **Maailmas** on õpiku järgi kuus mandrit, kuus maailmajagu ja viis ookeani. Vaikne ookean on puudutatav kaardi mõlemal serval. Venemaa, Kasahstan ja Türgi on maailmajagude küsimustes jagatud Euroopa ja Aasia vahel.
@@ -22,6 +22,21 @@ Mäng ei ole õpiku osa (see on paralleelne õppetükkidega 10–22), ei anna t�
   - Rändur: kõik riigid ja pealinnaküsimused.
   - Geograaf: lisaks „millise riigi pealinn see on“ ja neli vastusevarianti.
 - **Voor** on kuni 8 küsimust. Väikese rühma puhul on voor lühem: iga koht tuleb kuni kaks korda, eri viisil ja mitte järjest. Esimese vale vastuse järel tuleb vihje, teise järel näidatakse õige vastus. Vale vastust ei nimetata „halvaks“. Varem eksitud kohad tulevad sagedamini tagasi.
+
+## Eesti
+
+Kõige lihtsam etapp, Kirsi jaoks: 15 maakonda ja nende keskused.
+- **Avastaja:** tuntumad maakonnad (Harju-, Hiiu-, Ida-Viru-, Pärnu-, Saare- ja Tartumaa). Küsimused on „Leia kaardilt Harjumaa.“ ja „Mis maakond on kaardil esile tõstetud?“.
+- **Rändur:** kõik maakonnad, lisaks „Mis on Harjumaa keskus?“ (nuppudel maakonnakeskused).
+- **Geograaf:** lisaks „Millise maakonna keskus on Pärnu? Puuduta seda maakonda kaardil.“
+- **Nimed:** küsimustes on igapäevane -maa nimi, „Uuri“ näitab ka ametlikku nime („Harju maakond“).
+- **Kaart:** ruudukujuline (1000 × 1000), et ruudukujuline kaardikast ei lõikaks Hiiu- ja Saaremaad ega Ida-Virumaad ära. Peipsi, Pihkva järv, Võrtsjärv ja Narva veehoidla on lõigatud maast välja ja paistavad veena. Naabrid (Soome, Läti, Venemaa) on taustaks.
+- **Andmed:** eraldi skript `scripts/kaardimang/build-estonia.ts` ja oma versioon (`ESTONIA_DATA_VERSION`). Fail asub kaustas `public/kaardimang/eesti/`, sest maailma ehitus tühjendab kausta `maps/`. Maailma kaardid ja kataloog jäid baidi täpsusega samaks.
+  ```bash
+  npx tsx scripts/kaardimang/build-estonia.ts <kaust, kus on admin-1, riikide ja järvede GeoJSON>
+  ```
+- **Allikad:** maakonnad on Natural Earth 5.1.2 admin-1 failist, järved Natural Earth 10m järvedest. Keskuste koordinaadid on Vikipeediast ja Wikidatast, viited on `sources.json`-is. Skript kontrollib, et iga keskus on oma maakonna sees.
+- Natural Earth kasutab vanu ISO koode (EE-37 jne), aga maakonnad ise on samad.
 
 ## Kaart ei liigu iseenesest
 
