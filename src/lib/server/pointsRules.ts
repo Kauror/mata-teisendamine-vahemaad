@@ -1,6 +1,7 @@
 import db from '@/lib/db';
 import { formatStars } from '@/lib/formatStars';
 import { getMonthlyPrizeStars } from '@/lib/monthlyCompetition';
+import { activeCompetition } from '@/lib/server/kaardimang/competition';
 import { snapshotCurrentRewardPolicy } from '@/lib/server/rewards/policy';
 import { parseSelectedWeekdays } from '@/lib/shared/taskProjection';
 import { todayDateString, type AssignmentMode, type RecurrenceType } from '@/lib/tasks';
@@ -20,6 +21,7 @@ export const EARNING_LEDGER_SOURCES = {
   real_world_task: 'tegevused',
   daily_task_bonus: 'tegevused',
   monthly_trophy_prize: 'kuu',
+  kaardimang_prize: 'kaardimang',
   point_gift: 'vanem',
   manual_adjustment: 'vanem'
 } as const;
@@ -110,12 +112,30 @@ function monthSection(): PointsRuleSection {
   return { id: 'kuu', title: '🏆 Karikad ja kuu võitja', lines };
 }
 
+// The open Kaardimäng competition's prizes; without one, how it works.
+function kaardimangSection(today: string): PointsRuleSection {
+  const competition = activeCompetition(today);
+  if (!competition) {
+    return { id: 'kaardimang', title: '🗺️ Kaardimäng', lines: ['Kui vanem avab kaardimängu võistluse, saavad lapsed esikolmikusse jõudmise eest tähti.'] };
+  }
+  const [first, second, third] = competition.rewards;
+  return {
+    id: 'kaardimang',
+    title: '🗺️ Kaardimäng',
+    lines: [
+      `Võistlus „${competition.title}“: 1. koht +${stars(first)}, 2. koht +${stars(second)}, 3. koht +${stars(third)} (lastele, kui võistlus lõpeb).`,
+      'Punkte annavad päeva kolm esimest vooru võistluse kaartidel; vanemad saavad medali.'
+    ]
+  };
+}
+
 export function pointsRules(today = todayDateString()): PointsRuleSection[] {
   return [
     learningSection(),
     streakSection(),
     tasksSection(today),
     monthSection(),
+    kaardimangSection(today),
     { id: 'vanem', title: '🎁 Vanemalt', lines: ['Vanem võib tähti ka kinkida või parandada.'] }
   ].filter((section): section is PointsRuleSection => section !== null);
 }

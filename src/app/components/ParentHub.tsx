@@ -155,7 +155,7 @@ function ParentHubView({ view, tab }: { view: ParentView; tab?: ParentHaldaTab }
                 <ParentAccordionSection title='Inglise keele sõnavara' summary='Õppetükid, import ja edenemine' {...section('vocabulary')} keepMounted>
                   <ParentEnglishVocabulary setNotice={api.setNotice} setError={api.setError} />
                 </ParentAccordionSection>
-                <ParentAccordionSection title='Kaardimäng' summary='Maailma riigid ja pealinnad, eelvaade' {...section('kaardimang')}>
+                <ParentAccordionSection title='Kaardimäng' summary='Perevõistlus, tasemed, mängi ise, eelvaade' {...section('kaardimang')}>
                   <KaardimangPanel />
                 </ParentAccordionSection>
               </div>

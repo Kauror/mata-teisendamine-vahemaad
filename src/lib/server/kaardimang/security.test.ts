@@ -59,18 +59,18 @@ describe('Kaardimäng answer secrecy (SEC-01)', () => {
   });
 });
 
-describe('Kaardimäng child routes while closed', () => {
-  it('refuses every child route with 403 before reading the request', async () => {
+describe('Kaardimäng child routes', () => {
+  it('refuses a player who is not a child before writing anything', async () => {
     const child = kaardimangHandlers('child');
-    const post = (body: unknown) => new NextRequest('https://example.test/api/kaardimang/rounds', { method: 'POST', body: JSON.stringify(body) });
+    const post = (query: string, body: unknown) => new NextRequest(`https://example.test/api/kaardimang/rounds${query}`, { method: 'POST', body: JSON.stringify(body) });
     const params = { params: Promise.resolve({ roundId: `km_${'0'.repeat(8)}-0000-0000-0000-${'0'.repeat(12)}` }) };
     const responses = [
-      await child.overview.GET(),
-      await child.start.POST(post({ actionId: aid(), viewId: 'europe-baltics', setId: null, level: 'explorer' })),
-      await child.round.GET(new NextRequest('https://example.test/api/kaardimang/rounds/x'), params),
-      await child.answer.POST(post({ actionId: aid(), revision: 0, questionIndex: 0, answerId: 'EST' }), params)
+      await child.start.POST(post('?player=kaur', { actionId: aid(), viewId: 'europe-baltics', setId: null, level: 'explorer' })),
+      await child.start.POST(post('?player=preview', { actionId: aid(), viewId: 'europe-baltics', setId: null, level: 'explorer' })),
+      await child.answer.POST(post('?player=kairi', { actionId: aid(), revision: 0, questionIndex: 0, answerId: 'EST' }), params),
+      await child.shown.POST(post('?player=nobody', { questionIndex: 0 }), params)
     ];
-    expect(responses.map((response) => response.status)).toEqual([403, 403, 403, 403]);
+    expect(responses.map((response) => response.status)).toEqual([400, 400, 400, 400]);
     expect((db.prepare('SELECT COUNT(*) AS count FROM kaardimang_rounds').get() as { count: number }).count).toBe(0);
   });
 });

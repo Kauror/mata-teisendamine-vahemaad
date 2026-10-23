@@ -6,6 +6,8 @@ import { settleStreakFreezes } from '@/lib/streakFreeze';
 import { getBalance, todayDateString, type Learner } from '@/lib/tasks';
 import { queryHistoryRows } from '@/lib/server/historyRows';
 import { queryLearningActivity } from '@/lib/server/learningActivity';
+import { homeCompetition } from '@/lib/server/kaardimang/competition';
+import { daysLeftEt } from '@/lib/kaardimang/competition';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -44,5 +46,15 @@ export async function GET() {
     };
   }
 
-  return NextResponse.json({ today: standings, children });
+  // The Kaardimäng competition table (open, or ended in the last week).
+  const competition = homeCompetition(today);
+  const kaardimang = competition ? {
+    title: competition.title,
+    status: competition.status,
+    endDate: competition.endDate,
+    daysLeftEt: competition.status === 'active' ? daysLeftEt(today, competition.endDate) : null,
+    standings: competition.standings
+  } : null;
+
+  return NextResponse.json({ today: standings, children, kaardimang });
 }

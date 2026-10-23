@@ -10,14 +10,18 @@
 // version: a round changes only the map game's own tables.
 
 import type { LevelId, WorldSetId } from '@/content/kaardimang/regions';
+import type { KaardimangPlayer, StandingRow } from '@/lib/kaardimang/competition';
 import type { AnswerOutcome, ClientQuestion } from '@/lib/kaardimang/engine';
 
-export type KaardimangScope = 'child' | 'preview';
+// child: Kiur or Kirsi on their own pages; parent: Kairi or Kaur from the
+// parent area (parent session); preview: the parent's isolated test learner.
+export type KaardimangScope = 'child' | 'parent' | 'preview';
 
-// The game is in parent testing: only the parent preview can play it. While
-// false the child page shows a notice, the Loodusõpetus entry card is hidden
-// and every child route answers 'forbidden'. Flip to open it for Kiur.
-export const KAARDIMANG_CHILD_ENABLED = false;
+// Open for the children since the family competition (backlog KM-02, 23.10):
+// Kiur and Kirsi play from their own pages. Set to false to close it again:
+// then the child pages show a notice, the entry cards are hidden and every
+// child route answers 'forbidden'; the parent area keeps working.
+export const KAARDIMANG_CHILD_ENABLED = true;
 
 export type KaardimangErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid_request' | 'stale' | 'not_current_question' | 'offline';
 
@@ -51,6 +55,8 @@ export type RoundView = {
   cursor: number;
   questions: ClientQuestion[];
   summary: RoundSummary | null;
+  // Set when the round counts for the open competition.
+  competition: { id: number; title: string; points: number } | null;
 };
 
 export type AnswerFeedback = { questionIndex: number; outcome: AnswerOutcome; messageEt: string };
@@ -61,6 +67,26 @@ export type OverviewResponse = {
   activeRound: { roundId: string; viewId: string; setId: WorldSetId | null; level: LevelId; answered: number; total: number } | null;
   // Countries practised at least once / countries in the view, per view id.
   practiced: Record<string, [number, number]>;
+  // The player's own level (set by the parent); null in the preview, which picks freely.
+  player: KaardimangPlayer | null;
+  level: LevelId | null;
+  competition: CompetitionSummary | null;
+  // The player's medals from finished competitions, newest first.
+  medals: Array<{ competitionId: number; title: string; place: 1 | 2 | 3; stars: number; endDate: string }>;
+};
+
+export type CompetitionSummary = {
+  id: number;
+  title: string;
+  views: string[];
+  startDate: string;
+  endDate: string;
+  rewards: [number, number, number];
+  status: 'active' | 'ended';
+  daysLeftEt: string;
+  standings: StandingRow[];
+  // Counted rounds still left for this player today (null in the preview).
+  countedLeftToday: number | null;
 };
 
 export type StartRoundRequest = { actionId: string; viewId: string; setId: WorldSetId | null; level: LevelId };
@@ -78,27 +104,41 @@ export type ParentKaardimangResponse = {
 };
 
 function base(scope: KaardimangScope) {
-  return scope === 'child' ? '/api/kaardimang' : '/api/parent/kaardimang/preview';
+  if (scope === 'child') return '/api/kaardimang';
+  return scope === 'parent' ? '/api/parent/kaardimang/play' : '/api/parent/kaardimang/preview';
 }
 
-export function kaardimangApi(scope: KaardimangScope) {
+// Child and parent routes name the player (?player=kiur); the preview has one learner.
+export function kaardimangApi(scope: KaardimangScope, player: KaardimangPlayer | null = null) {
   const root = base(scope);
+  const query = scope === 'preview' || !player ? '' : `?player=${player}`;
   return {
-    overview: root,
-    start: `${root}/rounds`,
-    round: (roundId: string) => `${root}/rounds/${encodeURIComponent(roundId)}`,
-    answer: (roundId: string) => `${root}/rounds/${encodeURIComponent(roundId)}/answer`
+    overview: `${root}${query}`,
+    start: `${root}/rounds${query}`,
+    round: (roundId: string) => `${root}/rounds/${encodeURIComponent(roundId)}${query}`,
+    answer: (roundId: string) => `${root}/rounds/${encodeURIComponent(roundId)}/answer${query}`,
+    shown: (roundId: string) => `${root}/rounds/${encodeURIComponent(roundId)}/shown${query}`
   };
 }
 
 export const KAARDIMANG_PARENT_API = {
   overview: '/api/parent/kaardimang',
-  previewReset: '/api/parent/kaardimang/preview/reset'
+  previewReset: '/api/parent/kaardimang/preview/reset',
+  competition: '/api/parent/kaardimang/competition',
+  levels: '/api/parent/kaardimang/levels'
 };
 
 export const KAARDIMANG_PAGES = {
   child: '/kiur/loodusopetus/kaardimang',
+  kirsi: '/kirsi/kaardimang',
+  parent: (player: 'kairi' | 'kaur') => `/vanem/kaardimang/${player}`,
   preview: '/vanem/kaardimang'
+};
+
+export type ParentCompetitionResponse = {
+  active: CompetitionSummary | null;
+  history: CompetitionSummary[];
+  levels: Record<KaardimangPlayer, LevelId>;
 };
 
 export const ROUND_ID_PATTERN = /^km_[0-9a-f-]{36}$/u;

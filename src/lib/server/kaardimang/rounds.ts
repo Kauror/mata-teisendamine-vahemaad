@@ -15,15 +15,20 @@ import {
   type TargetStat,
   type ViewGeometry
 } from '@/lib/kaardimang/engine';
-import type { AnswerResponse, KaardimangErrorCode, KaardimangScope, OverviewResponse, ParentKaardimangResponse, RoundSummary, RoundView } from '@/lib/kaardimang/api';
+import type { AnswerResponse, CompetitionSummary, KaardimangErrorCode, KaardimangScope, OverviewResponse, ParentKaardimangResponse, RoundSummary, RoundView } from '@/lib/kaardimang/api';
+import { daysLeftEt, masteryOf, scoreAnswer, type KaardimangPlayer, type Mastery } from '@/lib/kaardimang/competition';
+import { todayDateString } from '@/lib/appDate';
 import { seededRng } from '@/lib/random';
+import { activeCompetitionRow, COUNTED_ROUNDS_PER_DAY, countedRoundsToday, medalsOf, playerLevel, standingsFor, type CompetitionRow } from '@/lib/server/kaardimang/competition';
 
 // Kaardimäng rounds on the server. A round is frozen when it starts
 // (questions, options, keys, data version) and then only moves forward one
 // answer at a time. Every write is idempotent by actionId and guarded by the
-// revision. Nothing here touches stars, attempts, history or the textbook.
+// revision. A round may count for the family competition (its points go to
+// kaardimang_points); stars come only from a finished competition's prizes
+// (competition.ts). Nothing here touches attempts, history or the textbook.
 
-export type KaardimangLearner = 'kiur' | 'preview';
+export type KaardimangLearner = KaardimangPlayer | 'preview';
 export type KaardimangContext = { scope: KaardimangScope; learner: KaardimangLearner };
 
 export class KaardimangApiError extends Error {
@@ -48,6 +53,9 @@ type RoundRow = {
   correct: number;
   firstTryCorrect: number;
   total: number;
+  startedAt: string;
+  competitionId: number | null;
+  playDate: string | null;
 };
 
 const geometryCache = new Map<string, ViewGeometry | null>();
@@ -113,7 +121,36 @@ function toView(row: RoundRow): RoundView {
     revision: row.revision,
     cursor: state.cursor,
     questions: state.questions.map((question, index) => toClientQuestion(question, state.states[index])),
-    summary: row.status === 'completed' ? summaryOf(row, state) : null
+    summary: row.status === 'completed' ? summaryOf(row, state) : null,
+    competition: row.competitionId === null ? null : roundCompetition(row)
+  };
+}
+
+function roundCompetition(row: RoundRow): RoundView['competition'] {
+  const competition = db.prepare('SELECT title FROM kaardimang_competitions WHERE id = ?').get(row.competitionId) as { title: string } | undefined;
+  const points = (db.prepare('SELECT COALESCE(SUM(points + speedBonus), 0) AS points FROM kaardimang_points WHERE roundId = ?').get(row.id) as { points: number }).points;
+  return competition ? { id: row.competitionId!, title: competition.title, points } : null;
+}
+
+// The parent area's view of any competition (no player's own counters).
+export function competitionSummaryFor(id: number, today = todayDateString()): CompetitionSummary {
+  const row = db.prepare('SELECT * FROM kaardimang_competitions WHERE id = ?').get(id) as CompetitionRow;
+  const summary = competitionSummary(row, 'preview', today);
+  return row.status === 'ended' && row.resultsJson ? { ...summary, standings: JSON.parse(row.resultsJson) } : summary;
+}
+
+function competitionSummary(row: CompetitionRow, learner: KaardimangLearner, today: string): CompetitionSummary {
+  return {
+    id: row.id,
+    title: row.title,
+    views: JSON.parse(row.viewsJson) as string[],
+    startDate: row.startDate,
+    endDate: row.endDate,
+    rewards: JSON.parse(row.rewardsJson) as [number, number, number],
+    status: row.status,
+    daysLeftEt: daysLeftEt(today, row.endDate),
+    standings: standingsFor(row.id),
+    countedLeftToday: learner === 'preview' ? null : Math.max(0, COUNTED_ROUNDS_PER_DAY - countedRoundsToday(learner, row.id, today))
   };
 }
 
@@ -133,7 +170,18 @@ export function getOverview(context: KaardimangContext): OverviewResponse {
     const state = JSON.parse(active.stateJson) as RoundState;
     activeRound = { roundId: active.id, viewId: active.viewId, setId: active.setId as WorldSetId | null, level: active.level, answered: state.cursor, total: active.total };
   }
-  return { scope: context.scope, activeRound, practiced };
+  const today = todayDateString();
+  const competition = activeCompetitionRow(today);
+  const player = context.learner === 'preview' ? null : context.learner;
+  return {
+    scope: context.scope,
+    activeRound,
+    practiced,
+    player,
+    level: player ? playerLevel(player) : null,
+    competition: competition ? competitionSummary(competition, context.learner, today) : null,
+    medals: player ? medalsOf(player) : []
+  };
 }
 
 export function getRound(context: KaardimangContext, roundId: string): RoundView {
@@ -146,7 +194,8 @@ export function getRound(context: KaardimangContext, roundId: string): RoundView
 export function startRound(context: KaardimangContext, input: { actionId: string; viewId: unknown; setId: unknown; level: unknown }): RoundView {
   const view = typeof input.viewId === 'string' ? findView(input.viewId) : undefined;
   if (!view) throw new KaardimangApiError('invalid_request', 'Sellist kaarti ei ole.');
-  const level = LEVELS.find((item) => item.id === input.level)?.id;
+  // A player plays at the level the parent set; the preview picks freely.
+  const level = context.learner === 'preview' ? LEVELS.find((item) => item.id === input.level)?.id : playerLevel(context.learner);
   if (!level) throw new KaardimangApiError('invalid_request', 'Sellist raskusastet ei ole.');
   let setId: WorldSetId | null = null;
   if (view.kind === 'world') {
@@ -164,25 +213,62 @@ export function startRound(context: KaardimangContext, input: { actionId: string
     const seed = Math.floor(Math.random() * 2 ** 31);
     const state = buildRound({ view, setId, level }, viewGeometry(view.id), loadStats(context.learner), seededRng(seed));
     const id = `km_${randomUUID()}`;
+    // The first rounds of the day on a competition map count; every started
+    // one uses a slot, so restarting for easier questions gains nothing.
+    const today = todayDateString();
+    const competition = context.learner === 'preview' ? null : activeCompetitionRow(today);
+    const counts = competition && (JSON.parse(competition.viewsJson) as string[]).includes(view.id)
+      && countedRoundsToday(context.learner as KaardimangPlayer, competition.id, today) < COUNTED_ROUNDS_PER_DAY;
     db.prepare(`
-      INSERT INTO kaardimang_rounds (id, learner, viewId, setId, level, dataVersion, status, stateJson, revision, startActionId, total, startedAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, 'active', ?, 0, ?, ?, ?, ?)
-    `).run(id, context.learner, view.id, setId, level, dataVersionOf(view.id), JSON.stringify(state), input.actionId, state.questions.length, now, now);
+      INSERT INTO kaardimang_rounds (id, learner, viewId, setId, level, dataVersion, status, stateJson, revision, startActionId, total, startedAt, updatedAt, competitionId, playDate)
+      VALUES (?, ?, ?, ?, ?, ?, 'active', ?, 0, ?, ?, ?, ?, ?, ?)
+    `).run(id, context.learner, view.id, setId, level, dataVersionOf(view.id), JSON.stringify(state), input.actionId, state.questions.length, now, now,
+      counts ? competition!.id : null, today);
     return toView(loadRow(context, id));
   }).immediate();
 }
 
-function recordTarget(learner: KaardimangLearner, targetKey: string, firstTry: boolean, misses: number, now: string) {
+type StoredStat = { seen: number; learnedAt: string | null; firstTryDays: number; lastFirstTryDay: string | null };
+
+// Updates a place's statistics and tells what the player knew of it before
+// this answer, and whether this answer made it learned: right on the first try
+// on a second different app day.
+function recordTarget(learner: KaardimangLearner, targetKey: string, firstTry: boolean, misses: number, now: string): { before: Mastery; newlyLearned: boolean } {
+  const stat = db.prepare('SELECT seen, learnedAt, firstTryDays, lastFirstTryDay FROM kaardimang_target_stats WHERE learner = ? AND targetKey = ?').get(learner, targetKey) as StoredStat | undefined;
+  const before = masteryOf(stat);
+  const today = todayDateString();
+  const newDay = firstTry && stat?.lastFirstTryDay !== today;
+  const firstTryDays = (stat?.firstTryDays ?? 0) + (newDay ? 1 : 0);
+  const newlyLearned = !stat?.learnedAt && firstTryDays >= 2;
   db.prepare(`
-    INSERT INTO kaardimang_target_stats (learner, targetKey, seen, firstTryCorrect, missCount, lastSeenAt, lastMissedAt)
-    VALUES (?, ?, 1, ?, ?, ?, ?)
+    INSERT INTO kaardimang_target_stats (learner, targetKey, seen, firstTryCorrect, missCount, lastSeenAt, lastMissedAt, firstTryDays, lastFirstTryDay, learnedAt)
+    VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(learner, targetKey) DO UPDATE SET
       seen = seen + 1,
       firstTryCorrect = firstTryCorrect + excluded.firstTryCorrect,
       missCount = missCount + excluded.missCount,
       lastSeenAt = excluded.lastSeenAt,
-      lastMissedAt = COALESCE(excluded.lastMissedAt, lastMissedAt)
-  `).run(learner, targetKey, firstTry ? 1 : 0, misses, now, misses > 0 ? now : null);
+      lastMissedAt = COALESCE(excluded.lastMissedAt, lastMissedAt),
+      firstTryDays = excluded.firstTryDays,
+      lastFirstTryDay = excluded.lastFirstTryDay,
+      learnedAt = COALESCE(learnedAt, excluded.learnedAt)
+  `).run(learner, targetKey, firstTry ? 1 : 0, misses, now, misses > 0 ? now : null,
+    firstTryDays, newDay ? today : (stat?.lastFirstTryDay ?? null), newlyLearned ? now : null);
+  return { before, newlyLearned };
+}
+
+// The question appeared on screen: start its speed clock (once).
+export function markShown(context: KaardimangContext, roundId: string, questionIndex: unknown): { ok: true } {
+  if (typeof questionIndex !== 'number' || !Number.isInteger(questionIndex)) throw new KaardimangApiError('invalid_request', 'Küsimus puudub.');
+  db.transaction(() => {
+    const row = loadRow(context, roundId);
+    const state = JSON.parse(row.stateJson) as RoundState;
+    if (row.status !== 'active' || questionIndex !== state.cursor || state.states[questionIndex].shownAt) return;
+    const states = [...state.states];
+    states[questionIndex] = { ...states[questionIndex], shownAt: nowIso() };
+    db.prepare('UPDATE kaardimang_rounds SET stateJson = ? WHERE id = ? AND revision = ?').run(JSON.stringify({ ...state, states }), row.id, row.revision);
+  }).immediate();
+  return { ok: true };
 }
 
 export function answer(context: KaardimangContext, roundId: string, input: { actionId: string; revision: number; questionIndex: unknown; answerId: unknown }): AnswerResponse {
@@ -209,13 +295,23 @@ export function answer(context: KaardimangContext, roundId: string, input: { act
     }
     const now = nowIso();
     const states = [...state.states];
-    states[state.cursor] = result.state;
+    states[state.cursor] = result.state.resolved ? { ...result.state, resolvedAt: now } : result.state;
     let { correct, firstTryCorrect } = row;
     let cursor = state.cursor;
     if (result.state.resolved) {
       if (result.state.resolved === 'correct') correct += 1;
       if (result.state.firstTry) firstTryCorrect += 1;
-      recordTarget(context.learner, question.targetKey, Boolean(result.state.firstTry), result.state.attempts, now);
+      const { before, newlyLearned } = recordTarget(context.learner, question.targetKey, Boolean(result.state.firstTry), result.state.attempts, now);
+      if (row.competitionId !== null && context.learner !== 'preview') {
+        // The clock runs from when the question appeared; without that mark,
+        // from the previous answer (or the round's start).
+        const since = state.states[state.cursor].shownAt ?? state.states[state.cursor - 1]?.resolvedAt ?? row.startedAt;
+        const score = scoreAnswer({ resolved: result.state.resolved, firstTry: Boolean(result.state.firstTry), mastery: before, level: row.level, elapsedMs: Date.parse(now) - Date.parse(since) });
+        db.prepare(`
+          INSERT OR IGNORE INTO kaardimang_points (roundId, questionIndex, competitionId, player, targetKey, points, speedBonus, newlyLearned, createdAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(row.id, state.cursor, row.competitionId, context.learner, question.targetKey, score.points, score.speedBonus, newlyLearned ? 1 : 0, now);
+      }
       cursor += 1;
     }
     const completed = cursor >= state.questions.length;

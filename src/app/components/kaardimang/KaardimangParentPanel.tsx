@@ -3,10 +3,13 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { KAARDIMANG_CHILD_ENABLED, KAARDIMANG_PAGES, type ParentKaardimangResponse } from '@/lib/kaardimang/api';
+import KaardimangCompetitionPanel from './KaardimangCompetitionPanel';
 import { parentKaardimangClient } from './kaardimangClient';
 
-// The parent's Kaardimäng section: what the data covers (and deliberately
-// leaves out of scored questions), Kiur's progress, and the isolated preview.
+// The parent's Kaardimäng section: the family competition (levels, playing as
+// Kairi or Kaur, opening and ending competitions), what the data covers (and
+// deliberately leaves out of scored questions), Kiur's progress, and the
+// isolated preview.
 export default function KaardimangParentPanel() {
   const [data, setData] = useState<ParentKaardimangResponse | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -27,12 +30,14 @@ export default function KaardimangParentPanel() {
 
   return (
     <div className='km-parent'>
+      <KaardimangCompetitionPanel />
+      <h3>Andmed ja eelvaade</h3>
       {message ? <p role='status'>{message}</p> : null}
       {data ? (
         <>
           <p>
             <strong>{data.countries} riiki</strong> kõigist maailmajagudest (ÜRO 193 liiget ja Vatikan). Nimed ja pealinnad: EKI „Maailma maade nimed“, seis {data.ekiAsOf}.
-            Tähti kaardimäng ei anna.
+            Tähti annab ainult võistluse lõpp: lastele esikolmikus, vanematele medal.
           </p>
           {KAARDIMANG_CHILD_ENABLED ? null : <p><strong>Lastele veel nähtav ei ole</strong> – mängi seda siin eelvaates.</p>}
           <p>
