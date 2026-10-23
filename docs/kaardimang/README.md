@@ -37,6 +37,18 @@ Kaardimäng on kogu pere jaoks (Kauri otsused 19.10, backlog KM-02).
 - **Andmebaas:** migratsioon 14 (`kaardimang_competition`). See ehitab `kaardimang_rounds` ja `kaardimang_target_stats` uuesti, et lubada Kairit ja Kauri; kõik vanad read kopeeritakse. Lisaks tabelid `kaardimang_player_settings`, `kaardimang_competitions`, `kaardimang_points` ja `kaardimang_awards`.
 - **Reeglid** on failis `src/lib/kaardimang/competition.ts`, server failides `src/lib/server/kaardimang/competition.ts` ja `rounds.ts`.
 
+## Saavutused
+
+Igal mängijal on oma saavutuste riiul (backlog KM-03). See on Kaardimängu avalehel; laste lehe kaardil on teenitud saavutused väikeste ikoonidena.
+- **Terve rühm selgeks:** Eesti maakonnad (15), maakonnakeskused (15), mandrid (6), ookeanid (5), mered (16), Euroopa riigid.
+- **Astmetega:**
+  - pealinnad või maakonnakeskused: 10 → 25 → 50 → 100;
+  - läbitud voorud: 10 → 25 → 50 → 100;
+  - mängitud päevi järjest: 3 → 7 → 14.
+- **Võistlus:** „Esikolmikus“ (mõni medal), „Võitja“ (1. koht).
+- **„Õpitud“** tähendab sama, mis võistluses: õige esimesel katsel kahel eri päeval.
+- **Andmed:** saavutusi ei salvestata. Need arvutatakse iga lugemise ajal mängu enda tabelitest, nagu rakenduse teised saavutused (`lib/achievements.ts`). Kood: `src/lib/server/kaardimang/achievements.ts`.
+
 ## Mered
 
 Maailma kaardi õpperühm „Mered“ (backlog KM-01): 16 merd ja lahte, küsimus „Leia Vahemeri.“, vastatakse kaardil.

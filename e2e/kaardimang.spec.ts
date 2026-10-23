@@ -369,6 +369,12 @@ test('a family competition: the parent opens it, Kaur and Kirsi score, the home 
   const balanceAfter = await (await page.request.get('/api/child-dashboard?learner=kirsi')).json() as { balance: number };
   expect(balanceAfter.balance - balanceBefore.balance).toBe([20, 10, 5][kirsiRank - 1] ?? 0);
   await navigateStable(page, '/kirsi');
+  await dismissRecap(page);
   await expect(page.locator('.km-tile-medals')).toBeVisible();
   await page.locator('.km-tile').screenshot({ path: 'C:/Users/kaur/AppData/Local/Temp/claude/C--CC/9087efb9-063d-4cfc-bf65-b2f2de760393/scratchpad/shots/26-kirsi-tile-medal.png' });
+  // The medal is also an achievement on her Kaardimäng shelf.
+  await page.locator('.km-tile').click();
+  const shelf = page.locator('.km-shelf');
+  await expect(shelf.locator('.km-shelf-item[data-unlocked="true"]', { hasText: 'Esikolmikus' })).toBeVisible();
+  await shelf.screenshot({ path: 'C:/Users/kaur/AppData/Local/Temp/claude/C--CC/9087efb9-063d-4cfc-bf65-b2f2de760393/scratchpad/shots/30-shelf.png' });
 });

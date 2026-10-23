@@ -18,6 +18,7 @@ import type { KaardimangScope, OverviewResponse, RoundView } from '@/lib/kaardim
 import { MEDALS, PLAYER_NAMES, type KaardimangPlayer } from '@/lib/kaardimang/competition';
 import ExploreMode from './ExploreMode';
 import PlayMode from './PlayMode';
+import KaardimangShelf from './KaardimangShelf';
 import { createKaardimangClient, loadMap, newActionId } from './kaardimangClient';
 
 type Place = WorldPartId | 'world' | 'estonia';
@@ -158,6 +159,7 @@ export default function KaardimangApp({ scope, backHref, backLabel, player = nul
           {scope === 'parent' && player ? <p className='km-preview-note'>Mängid kui {PLAYER_NAMES[player]}.</p> : null}
           {problem}
           {competitionBanner}
+          <KaardimangShelf achievements={overview?.achievements ?? []} />
           {active ? (
             <div className='km-card km-resume'>
               <p><strong>Pooleli mäng:</strong> {viewTitle(active.viewId, active.setId)} · {active.answered} / {active.total}</p>

@@ -19,6 +19,7 @@ import type { AnswerResponse, CompetitionSummary, KaardimangErrorCode, Kaardiman
 import { daysLeftEt, masteryOf, scoreAnswer, type KaardimangPlayer, type Mastery } from '@/lib/kaardimang/competition';
 import { todayDateString } from '@/lib/appDate';
 import { seededRng } from '@/lib/random';
+import { kaardimangAchievements } from '@/lib/server/kaardimang/achievements';
 import { activeCompetitionRow, COUNTED_ROUNDS_PER_DAY, countedRoundsToday, medalsOf, playerLevel, standingsFor, type CompetitionRow } from '@/lib/server/kaardimang/competition';
 
 // Kaardimäng rounds on the server. A round is frozen when it starts
@@ -180,7 +181,8 @@ export function getOverview(context: KaardimangContext): OverviewResponse {
     player,
     level: player ? playerLevel(player) : null,
     competition: competition ? competitionSummary(competition, context.learner, today) : null,
-    medals: player ? medalsOf(player) : []
+    medals: player ? medalsOf(player) : [],
+    achievements: player ? kaardimangAchievements(player, today) : []
   };
 }
 
