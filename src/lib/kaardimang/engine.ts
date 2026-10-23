@@ -7,7 +7,7 @@
 // ocean or point), never a name string or a pixel position.
 
 import { CATALOG, countryWithCapital, findCountry, nameOf, quizCapital, viewCountries } from '@/content/kaardimang/catalog';
-import { CONTINENTS, OCEANS, WORLD_PARTS, type LevelId, type MapViewDef, type WorldSetId } from '@/content/kaardimang/regions';
+import { CONTINENTS, COUNTIES, OCEANS, WORLD_PARTS, findCounty, type County, type LevelId, type MapViewDef, type WorldSetId } from '@/content/kaardimang/regions';
 import type { CatalogCountry } from '@/content/kaardimang/types';
 import { shuffleWithRng, type RNG as Rng } from '@/lib/random';
 
@@ -15,8 +15,9 @@ const shuffle = <T,>(items: T[], rng: Rng): T[] => shuffleWithRng(rng, items);
 
 export type QuestionKind =
   | 'find_country' | 'name_highlighted' | 'capital_of_country' | 'country_of_capital'
-  | 'find_continent' | 'find_world_part' | 'find_ocean' | 'find_point';
-export type TargetType = 'country' | 'capital' | 'continent' | 'worldPart' | 'ocean' | 'point';
+  | 'find_continent' | 'find_world_part' | 'find_ocean' | 'find_point'
+  | 'find_county' | 'name_highlighted_county' | 'centre_of_county' | 'county_of_centre';
+export type TargetType = 'country' | 'capital' | 'continent' | 'worldPart' | 'ocean' | 'point' | 'county' | 'countyCentre';
 
 export type FrozenQuestion = {
   id: string;
@@ -119,8 +120,26 @@ function countryKinds(country: CatalogCountry, view: MapViewDef, level: LevelId)
   return kinds;
 }
 
+// Eesti: every county is big enough to tap. Avastaja finds and names the
+// counties; Rändur adds "Mis on X keskus?"; Geograaf also taps the county of a town.
+function countyKinds(level: LevelId): QuestionKind[] {
+  const kinds: QuestionKind[] = ['find_county', 'name_highlighted_county'];
+  if (level !== 'explorer') kinds.push('centre_of_county');
+  if (level === 'geographer') kinds.push('county_of_centre');
+  return kinds;
+}
+
 function candidatesFor(spec: RoundSpec, stats: Map<string, TargetStat>): Candidate[] {
   const { view, setId, level } = spec;
+  if (view.kind === 'estonia') {
+    const pool = level === 'explorer' ? COUNTIES.filter((county) => county.wellKnown) : COUNTIES;
+    return pool.map((county) => ({
+      targetKey: `county:${county.id}`,
+      targetId: county.id,
+      kinds: countyKinds(level),
+      weight: weightFor(`county:${county.id}`, stats)
+    }));
+  }
   const place = (type: TargetType, id: string, kind: QuestionKind): Candidate => {
     const targetKey = `${type}:${id}`;
     return { targetKey, targetId: id, kinds: [kind], weight: weightFor(targetKey, stats) };
@@ -193,10 +212,48 @@ function capitalOptions(answer: CatalogCountry, pool: CatalogCountry[], count: n
   return shuffle([{ id: right.id, label: right.nameEt }, ...others], rng);
 }
 
+function countyOptions(answer: County, count: number, rng: Rng, label: (county: County) => string, id: (county: County) => string) {
+  const others = shuffle(COUNTIES.filter((county) => county.id !== answer.id), rng).slice(0, count - 1);
+  return shuffle([answer, ...others], rng).map((county) => ({ id: id(county), label: label(county) }));
+}
+
+type QuestionBase = Pick<FrozenQuestion, 'id' | 'kind' | 'targetKey' | 'targetId' | 'options' | 'highlightId' | 'hideCapitalId'>;
+
+function buildCountyQuestion(base: QuestionBase, county: County, kind: QuestionKind, optionCount: number, geometry: ViewGeometry | null, rng: Rng): FrozenQuestion {
+  const explain = `${county.nameEt} – keskus ${county.centreEt}`;
+  const buttonHint = 'Vihje: üks vale vastus on nüüd ära võetud.';
+  switch (kind) {
+    case 'find_county':
+      return { ...base, answering: 'map', targetType: 'county', answerId: county.id, prompt: `Leia kaardilt ${county.nameEt}.`, hintEt: directionHint(geometry, county.id, county.nameEt), explainEt: explain };
+    case 'name_highlighted_county':
+      return {
+        ...base, answering: 'buttons', targetType: 'county', answerId: county.id, highlightId: county.id,
+        prompt: 'Mis maakond on kaardil esile tõstetud?', options: countyOptions(county, optionCount, rng, (item) => item.nameEt, (item) => item.id),
+        hintEt: buttonHint, explainEt: explain
+      };
+    case 'centre_of_county':
+      return {
+        ...base, answering: 'buttons', targetType: 'countyCentre', targetKey: `countyCentre:${county.id}`, answerId: county.centreId, highlightId: county.id, hideCapitalId: county.centreId,
+        prompt: `Mis on ${county.nameEt} keskus?`, options: countyOptions(county, optionCount, rng, (item) => item.centreEt, (item) => item.centreId),
+        hintEt: buttonHint, explainEt: `${county.centreEt} on ${county.nameEt} keskus.`
+      };
+    case 'county_of_centre':
+      return {
+        ...base, answering: 'map', targetType: 'countyCentre', targetKey: `countyCentre:${county.id}`, answerId: county.id, hideCapitalId: county.centreId,
+        prompt: `Millise maakonna keskus on ${county.centreEt}? Puuduta seda maakonda kaardil.`,
+        hintEt: directionHint(geometry, county.id, 'See maakond'), explainEt: `${county.centreEt} on ${county.nameEt} keskus.`
+      };
+    default:
+      throw new Error(`Unexpected county kind ${kind}`);
+  }
+}
+
 function buildQuestion(index: number, candidate: Candidate, kind: QuestionKind, spec: RoundSpec, geometry: ViewGeometry | null, rng: Rng): FrozenQuestion {
   const base = { id: `q${index + 1}`, kind, targetKey: candidate.targetKey, targetId: candidate.targetId, options: null, highlightId: null, hideCapitalId: null };
   const name = nameOf(candidate.targetId);
   const optionCount = spec.level === 'explorer' ? 3 : 4;
+  const county = findCounty(candidate.targetId);
+  if (county) return buildCountyQuestion(base, county, kind, optionCount, geometry, rng);
   if (kind === 'find_continent' || kind === 'find_world_part' || kind === 'find_ocean' || kind === 'find_point') {
     const type: TargetType = kind === 'find_continent' ? 'continent' : kind === 'find_world_part' ? 'worldPart' : kind === 'find_ocean' ? 'ocean' : 'point';
     const prompt = kind === 'find_continent' ? `Leia ${CONTINENTS.find((item) => item.id === candidate.targetId)?.genEt ?? name} manner.`

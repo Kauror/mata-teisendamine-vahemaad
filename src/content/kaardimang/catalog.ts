@@ -2,7 +2,7 @@
 // the lookups the engine, the server and the UI share.
 
 import rawCatalog from './catalog.json';
-import { CONTINENTS, OCEANS, WORLD_PARTS, type MapViewDef } from './regions';
+import { CONTINENTS, COUNTIES, OCEANS, WORLD_PARTS, type MapViewDef } from './regions';
 import type { CatalogCapital, CatalogCountry, KaardimangCatalog } from './types';
 
 export const CATALOG = rawCatalog as KaardimangCatalog;
@@ -36,6 +36,8 @@ export function countryWithCapital(country: CatalogCountry): string {
 // The Estonian name of anything a map tap can hit.
 export function nameOf(id: string): string {
   return byId.get(id)?.nameEt
+    ?? COUNTIES.find((county) => county.id === id)?.nameEt
+    ?? COUNTIES.find((county) => county.centreId === id)?.centreEt
     ?? CATALOG.contextNames[id]
     ?? CONTINENTS.find((item) => item.id === id)?.nameEt
     ?? OCEANS.find((item) => item.id === id)?.nameEt

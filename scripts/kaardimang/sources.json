@@ -38,6 +38,100 @@
       "url": "https://www.un.org/en/about-us/member-states",
       "what": "United Nations member states (193)",
       "sha256": "930af37ccad5838d18804eadeb698c383b8fe2514cc8d6136c72fb530919ff38"
+    },
+    "admin1": {
+      "file": "ne_10m_admin_1_states_provinces.geojson",
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_admin_1_states_provinces.geojson",
+      "what": "Natural Earth 5.1.2, Admin 1 states and provinces 1:10m (only Estonia's 15 counties are used; downloaded 2026-10-23)",
+      "license": "Public domain, https://www.naturalearthdata.com/about/terms-of-use/",
+      "sha256": "22d0e3ad85eb3e27f17cabf8ba2d50e554fbc27a87796ff891d958185da62fb5"
+    },
+    "lakes": {
+      "file": "ne_10m_lakes.geojson",
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_lakes.geojson",
+      "what": "Natural Earth 5.1.2, lakes 1:10m (only the lakes on the Eesti map are used; downloaded 2026-10-23)",
+      "license": "Public domain, https://www.naturalearthdata.com/about/terms-of-use/",
+      "sha256": "2d036f53dedec578001c5c30c2959ee7d4eebc1306900fa4367c49929ec8f2d9"
+    }
+  },
+  "estonia": {
+    "note": "County centre coordinates (maakonnakeskused), read 2026-10-23 from Wikipedia/Wikidata.",
+    "centres": {
+      "ee-harju-c": {
+        "lat": 59.43722222,
+        "lon": 24.745,
+        "source": "https://et.wikipedia.org/wiki/Tallinn"
+      },
+      "ee-hiiu-c": {
+        "lat": 58.99805556,
+        "lon": 22.74666667,
+        "source": "https://en.wikipedia.org/wiki/K%C3%A4rdla"
+      },
+      "ee-ida-viru-c": {
+        "lat": 59.3575,
+        "lon": 27.41222222,
+        "source": "https://et.wikipedia.org/wiki/J%C3%B5hvi"
+      },
+      "ee-jogeva-c": {
+        "lat": 58.74611111,
+        "lon": 26.39555556,
+        "source": "https://et.wikipedia.org/wiki/J%C3%B5geva"
+      },
+      "ee-jarva-c": {
+        "lat": 58.88333333,
+        "lon": 25.55722222,
+        "source": "https://en.wikipedia.org/wiki/Paide"
+      },
+      "ee-laane-c": {
+        "lat": 58.94694444,
+        "lon": 23.53694444,
+        "source": "https://et.wikipedia.org/wiki/Haapsalu"
+      },
+      "ee-laane-viru-c": {
+        "lat": 59.35055556,
+        "lon": 26.36111111,
+        "source": "https://et.wikipedia.org/wiki/Rakvere"
+      },
+      "ee-polva-c": {
+        "lat": 58.053611111111,
+        "lon": 27.055555555556,
+        "source": "https://www.wikidata.org/wiki/Q45100"
+      },
+      "ee-parnu-c": {
+        "lat": 58.38444444,
+        "lon": 24.49888889,
+        "source": "https://et.wikipedia.org/wiki/P%C3%A4rnu"
+      },
+      "ee-rapla-c": {
+        "lat": 58.99444444,
+        "lon": 24.80111111,
+        "source": "https://en.wikipedia.org/wiki/Rapla"
+      },
+      "ee-saare-c": {
+        "lat": 58.25333333,
+        "lon": 22.48611111,
+        "source": "https://et.wikipedia.org/wiki/Kuressaare"
+      },
+      "ee-tartu-c": {
+        "lat": 58.38,
+        "lon": 26.7225,
+        "source": "https://et.wikipedia.org/wiki/Tartu"
+      },
+      "ee-valga-c": {
+        "lat": 57.78333333,
+        "lon": 26.03333333,
+        "source": "https://en.wikipedia.org/wiki/Valga,_Estonia"
+      },
+      "ee-viljandi-c": {
+        "lat": 58.36333333,
+        "lon": 25.59555556,
+        "source": "https://et.wikipedia.org/wiki/Viljandi"
+      },
+      "ee-voru-c": {
+        "lat": 57.84861111,
+        "lon": 26.99277778,
+        "source": "https://et.wikipedia.org/wiki/V%C3%B5ru"
+      }
     }
   }
 }

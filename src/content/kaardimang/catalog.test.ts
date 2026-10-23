@@ -2,14 +2,14 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CATALOG, findCountry, quizCapital, viewCountries } from '@/content/kaardimang/catalog';
-import { CONTINENTS, DATA_VERSION, MAP_VIEWS, OCEANS, WORLD_PARTS } from '@/content/kaardimang/regions';
+import { CONTINENTS, COUNTIES, ESTONIA_DATA_VERSION, MAP_VIEWS, OCEANS, WORLD_PARTS, mapPath } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 
 // The package's acceptance tests, part A (VASTUVOTUTESTID.md): the content
 // itself, checked against the built catalog and the real map files.
 
 function loadView(id: string): MapViewData {
-  return JSON.parse(readFileSync(path.join(process.cwd(), 'public', 'kaardimang', 'maps', DATA_VERSION, `${id}.json`), 'utf8')) as MapViewData;
+  return JSON.parse(readFileSync(path.join(process.cwd(), 'public', ...mapPath(id).split('/')), 'utf8')) as MapViewData;
 }
 
 const targets = CATALOG.countries.filter((country) => country.target);
@@ -118,6 +118,18 @@ describe('Kaardimäng map views', () => {
     const usa = loadView('americas-north-large').features.filter((feature) => feature.id === 'USA');
     expect(usa).toHaveLength(1);
     expect(usa[0].d.split('M').length - 1).toBeGreaterThan(5);
+  });
+
+  it('draws the Eesti map: all 15 counties, each keskus pinned and labelled, the neighbours as context', () => {
+    const estonia = loadView('estonia');
+    expect(estonia.version).toBe(ESTONIA_DATA_VERSION);
+    const counties = estonia.features.filter((feature) => feature.role === 't').map((feature) => feature.id).sort();
+    expect(counties).toEqual(COUNTIES.map((county) => county.id).sort());
+    expect(estonia.features.filter((feature) => feature.role === 'c').map((feature) => feature.id)).toEqual(expect.arrayContaining(['LVA', 'RUS']));
+    for (const county of COUNTIES) {
+      expect(estonia.capitals.find((pin) => pin.id === county.centreId)?.countryId, county.id).toBe(county.id);
+      expect(estonia.labels[county.id], county.id).toBeDefined();
+    }
   });
 
   it('has the Antarctica view without any country targets', () => {

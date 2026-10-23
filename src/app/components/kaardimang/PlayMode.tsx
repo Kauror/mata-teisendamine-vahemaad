@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { findCountry, nameOf, quizCapital } from '@/content/kaardimang/catalog';
+import { findCounty } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 import type { AnswerFeedback, RoundView } from '@/lib/kaardimang/api';
 import MapView, { type MapLabel, type MapPick, type MapPin } from './MapView';
@@ -73,6 +74,17 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
     const labels: MapLabel[] = [];
     const pins: MapPin[] = [];
     if (!question) return { labels, pins };
+    // Eesti: the county is named and its keskus pinned once resolved.
+    const county = question.correctId && question.targetId ? findCounty(question.targetId) : undefined;
+    if (county) {
+      const at = map.labels[county.id];
+      if (at) labels.push({ id: county.id, text: county.nameEt, x: at[0], y: at[1], room: at[2], strong: true });
+      const pin = map.capitals.find((item) => item.id === county.centreId);
+      if (pin) {
+        pins.push({ id: pin.id, x: pin.x, y: pin.y, tone: 'answer' });
+        labels.push({ id: `cap-${pin.id}`, text: county.centreEt, x: pin.x, y: pin.y - 14 * (map.width / 1000), room: 999, strong: true });
+      }
+    }
     if (question.correctId && question.targetId && (question.targetType === 'country' || question.targetType === 'capital')) {
       const countryId = question.targetId;
       const at = map.labels[countryId] ?? (() => {
@@ -110,7 +122,7 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
           <p className='km-summary-score'>{scoreLine(summary.correct, summary.total)}</p>
           {summary.firstTryCorrect < summary.correct ? <p className='tb-muted'>Esimese korraga õigesti: {summary.firstTryCorrect}</p> : null}
           {summary.practicedOf > 0 && round.setId !== 'continents' && round.setId !== 'worldParts' && round.setId !== 'oceans' ? (
-            <p>Harjutatud riike {summary.practiced} / {summary.practicedOf}</p>
+            <p>{map.id === 'estonia' ? 'Harjutatud maakondi' : 'Harjutatud riike'} {summary.practiced} / {summary.practicedOf}</p>
           ) : null}
           {summary.reviewNames.length ? <p>Järgmine kord võiksid üle vaadata: {summary.reviewNames.join(', ')}</p> : <p>Kõik läks esimese korraga – tubli!</p>}
           <div className='tb-actions'>

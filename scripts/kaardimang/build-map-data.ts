@@ -688,7 +688,8 @@ function buildView(view: MapViewDef): MapViewData {
   };
 }
 
-for (const view of MAP_VIEWS) {
+// The Eesti map has its own build (build-estonia.ts).
+for (const view of MAP_VIEWS.filter((item) => item.kind !== 'estonia')) {
   const data = buildView(view);
   const json = JSON.stringify(data);
   writeFileSync(path.join(outDir, `${view.id}.json`), json);

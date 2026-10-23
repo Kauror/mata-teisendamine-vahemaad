@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ESTONIA,
   LEVELS,
   WORLD_PARTS,
   WORLD_SETS,
@@ -18,7 +19,7 @@ import ExploreMode from './ExploreMode';
 import PlayMode from './PlayMode';
 import { createKaardimangClient, loadMap, newActionId } from './kaardimangClient';
 
-type Place = WorldPartId | 'world';
+type Place = WorldPartId | 'world' | 'estonia';
 type Screen =
   | { name: 'home' }
   | { name: 'part'; place: Place }
@@ -28,12 +29,14 @@ type Screen =
 const WORLD = { id: 'world' as const, nameEt: 'Maailm', icon: '🌍' };
 
 function placeName(place: Place) {
+  if (place === 'estonia') return ESTONIA.nameEt;
   return place === 'world' ? WORLD.nameEt : WORLD_PARTS.find((part) => part.id === place)!.nameEt;
 }
 
 function viewTitle(id: string, setId: WorldSetId | null = null): string {
   const view = findView(id);
   if (!view) return id;
+  if (view.kind === 'estonia') return ESTONIA.nameEt;
   if (view.kind === 'world') return setId ? `Maailm · ${WORLD_SETS.find((set) => set.id === setId)?.nameEt}` : 'Maailm';
   const part = WORLD_PARTS.find((item) => item.id === view.worldPart)!;
   if (view.kind !== 'subregion') return part.id === 'antarctica' ? part.nameEt : `Kogu ${part.nameEt}`;
@@ -42,6 +45,7 @@ function viewTitle(id: string, setId: WorldSetId | null = null): string {
 
 function placeOfView(id: string): Place {
   const view = findView(id);
+  if (view?.kind === 'estonia') return 'estonia';
   return view?.worldPart ?? 'world';
 }
 
@@ -81,7 +85,7 @@ export default function KaardimangApp({ scope, backHref, backLabel }: { scope: K
   const goHome = () => { setError(null); setScreen({ name: 'home' }); refresh(); };
   const openPart = (place: Place) => { setError(null); setScreen({ name: 'part', place }); };
 
-  const selectedViewId = (place: Place) => (place === 'world' ? 'world' : viewId(place, subregion[place] ?? null));
+  const selectedViewId = (place: Place) => (place === 'world' || place === 'estonia' ? place : viewId(place, subregion[place] ?? null));
 
   const start = async (place: Place) => {
     setBusy(true);
@@ -128,6 +132,10 @@ export default function KaardimangApp({ scope, backHref, backLabel }: { scope: K
               <button type='button' className='tb-button tb-button-primary' disabled={busy} onClick={() => void resume()}>Jätka</button>
             </div>
           ) : null}
+          <button type='button' className='km-place km-place-world' onClick={() => openPart('estonia')}>
+            <span className='km-place-icon' aria-hidden>{ESTONIA.icon}</span>
+            <span><strong>{ESTONIA.nameEt}</strong><small>{overview?.practiced.estonia ? `Harjutatud ${overview.practiced.estonia[0]} / ${overview.practiced.estonia[1]}` : 'Maakonnad ja maakonnakeskused'}</small></span>
+          </button>
           <button type='button' className='km-place km-place-world' onClick={() => openPart('world')}>
             <span className='km-place-icon' aria-hidden>{WORLD.icon}</span>
             <span><strong>Maailm</strong><small>Mandrid, maailmajaod, ookeanid ja suurimad riigid</small></span>
@@ -153,14 +161,14 @@ export default function KaardimangApp({ scope, backHref, backLabel }: { scope: K
 
   if (screen.name === 'part') {
     const { place } = screen;
-    const part = place === 'world' ? null : WORLD_PARTS.find((item) => item.id === place)!;
+    const part = place === 'world' || place === 'estonia' ? null : WORLD_PARTS.find((item) => item.id === place)!;
     const chosen = subregion[place] ?? null;
     return (
       <main className='tb-page km-page' data-scope={scope}>
         <section className='tb-shell'>
           {header({ label: 'Kõik maailmajaod', onClick: goHome })}
           <header className='km-head'>
-            <h1>{place === 'world' ? WORLD.icon : part!.icon} {placeName(place)}</h1>
+            <h1>{place === 'world' ? WORLD.icon : place === 'estonia' ? ESTONIA.icon : part!.icon} {placeName(place)}</h1>
           </header>
           {problem}
           {place === 'world' ? (
