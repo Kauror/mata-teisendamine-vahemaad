@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { CATALOG, findCountry, nameOf } from '@/content/kaardimang/catalog';
-import { CONTINENTS, COUNTIES, WORLD_PARTS, findCounty, type MapViewDef } from '@/content/kaardimang/regions';
+import { CONTINENTS, COUNTIES, WORLD_PARTS, findCounty, findSea, type MapViewDef } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 import { PLACE_HINTS } from '@/lib/kaardimang/engine';
 import MapView, { type MapLabel, type MapPick, type MapPin } from './MapView';
@@ -40,7 +40,7 @@ function InfoCard({ selection, view }: { selection: NonNullable<Selection>; view
     ? [selection.ct && `Manner: ${CONTINENTS.find((item) => item.id === selection.ct)?.nameEt}`, selection.wp && `Maailmajagu: ${WORLD_PARTS.find((item) => item.id === selection.wp)?.nameEt}`].filter(Boolean).join(' · ')
     : '';
   if (selection.kind === 'area' || selection.id === 'south-pole') {
-    const key = selection.id === 'south-pole' ? 'point:south-pole' : `ocean:${selection.id}`;
+    const key = selection.id === 'south-pole' ? 'point:south-pole' : findSea(selection.id) ? `sea:${selection.id}` : `ocean:${selection.id}`;
     return (
       <div className='km-card km-info' role='status'>
         <h2>{nameOf(selection.id).replace(/^./, (ch) => ch.toUpperCase())}</h2>

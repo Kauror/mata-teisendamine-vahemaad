@@ -118,6 +118,11 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
   if (!question) return null;
 
   const summary = round.summary;
+  // Only the areas the question is about can be tapped: the seas for a sea
+  // question, otherwise the oceans (open water elsewhere is just sea).
+  const shownMap = map.areas.some((area) => area.kind === 'sea')
+    ? { ...map, areas: map.areas.filter((area) => area.kind === (question.targetType === 'sea' ? 'sea' : 'ocean')) }
+    : map;
   const options = question.options?.filter((option) => !question.state.removedOptionIds.includes(option.id) || option.id === question.correctId) ?? [];
   const tone = feedback?.questionIndex === shown ? feedback.outcome : null;
   const message = feedback?.questionIndex === shown ? feedback.messageEt : question.state.attempts > 0 && !resolved ? `Proovi veel. ${question.hintEt ?? ''}`.trim() : '';
@@ -130,7 +135,7 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
           <p className='km-summary-score'>{scoreLine(summary.correct, summary.total)}</p>
           {round.competition ? <p className='km-comp-points'>🏆 Võistluspunkte selles voorus: <strong>{round.competition.points}</strong></p> : null}
           {summary.firstTryCorrect < summary.correct ? <p className='tb-muted'>Esimese korraga õigesti: {summary.firstTryCorrect}</p> : null}
-          {summary.practicedOf > 0 && round.setId !== 'continents' && round.setId !== 'worldParts' && round.setId !== 'oceans' ? (
+          {summary.practicedOf > 0 && round.setId !== 'continents' && round.setId !== 'worldParts' && round.setId !== 'oceans' && round.setId !== 'seas' ? (
             <p>{map.id === 'estonia' ? 'Harjutatud maakondi' : 'Harjutatud riike'} {summary.practiced} / {summary.practicedOf}</p>
           ) : null}
           {summary.reviewNames.length ? <p>Järgmine kord võiksid üle vaadata: {summary.reviewNames.join(', ')}</p> : <p>Kõik läks esimese korraga – tubli!</p>}
@@ -181,11 +186,11 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
         </div>
       )}
       <MapView
-        data={map}
+        data={shownMap}
         ariaLabel={`${title} – kaart`}
         paint={paint}
         areaPaint={areaPaint}
-        showAreas={question.targetType === 'ocean'}
+        showAreas={question.targetType === 'ocean' || question.targetType === 'sea'}
         uniform={map.id === 'antarctica' || (map.id === 'world' && round.setId !== 'largest')}
         labels={labels}
         pins={pins}

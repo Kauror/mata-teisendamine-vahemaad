@@ -21,6 +21,9 @@ export function answerIdFor(question: Pick<ClientQuestion, 'targetType'>, pick: 
     case 'ocean':
       if (pick.kind === 'area') return pick.id;
       return pick.kind === 'land' || pick.kind === 'marker' ? pick.id : SEA_ANSWER;
+    case 'sea':
+      // Only a sea's own area answers; land and open ocean are neutral.
+      return pick.kind === 'area' ? pick.id : SEA_ANSWER;
     default:
       return pick.kind === 'land' || pick.kind === 'marker' ? pick.id : SEA_ANSWER;
   }
@@ -43,7 +46,7 @@ export function playPaint(question: ClientQuestion, feature: { id: string; wp?: 
 }
 
 export function playAreaPaint(question: ClientQuestion, id: string): Paint {
-  if (question.targetType !== 'ocean') return null;
+  if (question.targetType !== 'ocean' && question.targetType !== 'sea') return null;
   if (question.correctId === id) return 'correct';
   if (question.state.wrongIds.includes(id)) return 'wrong';
   return null;

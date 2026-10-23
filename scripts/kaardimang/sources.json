@@ -52,6 +52,13 @@
       "what": "Natural Earth 5.1.2, lakes 1:10m (only the lakes on the Eesti map are used; downloaded 2026-10-23)",
       "license": "Public domain, https://www.naturalearthdata.com/about/terms-of-use/",
       "sha256": "2d036f53dedec578001c5c30c2959ee7d4eebc1306900fa4367c49929ec8f2d9"
+    },
+    "marine": {
+      "file": "ne_10m_geography_marine_polys.geojson",
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_geography_marine_polys.geojson",
+      "what": "Natural Earth 5.1.2, marine polygons 1:10m (the 16 seas and gulfs of the Mered set; downloaded 2026-10-23)",
+      "license": "Public domain, https://www.naturalearthdata.com/about/terms-of-use/",
+      "sha256": "53f865e8ffa966cdd402145c82c5cd14ee7ce974cd0eb9a3f59f03a4cfd2d66c"
     }
   },
   "estonia": {

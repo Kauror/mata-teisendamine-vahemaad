@@ -7,7 +7,7 @@
 // ocean or point), never a name string or a pixel position.
 
 import { CATALOG, countryWithCapital, findCountry, nameOf, quizCapital, viewCountries } from '@/content/kaardimang/catalog';
-import { CONTINENTS, COUNTIES, OCEANS, WORLD_PARTS, findCounty, type County, type LevelId, type MapViewDef, type WorldSetId } from '@/content/kaardimang/regions';
+import { CONTINENTS, COUNTIES, OCEANS, SEAS, WORLD_PARTS, findCounty, findSea, type County, type LevelId, type MapViewDef, type WorldSetId } from '@/content/kaardimang/regions';
 import type { CatalogCountry } from '@/content/kaardimang/types';
 import { shuffleWithRng, type RNG as Rng } from '@/lib/random';
 
@@ -16,8 +16,8 @@ const shuffle = <T,>(items: T[], rng: Rng): T[] => shuffleWithRng(rng, items);
 export type QuestionKind =
   | 'find_country' | 'name_highlighted' | 'capital_of_country' | 'country_of_capital'
   | 'find_continent' | 'find_world_part' | 'find_ocean' | 'find_point'
-  | 'find_county' | 'name_highlighted_county' | 'centre_of_county' | 'county_of_centre';
-export type TargetType = 'country' | 'capital' | 'continent' | 'worldPart' | 'ocean' | 'point' | 'county' | 'countyCentre';
+  | 'find_county' | 'name_highlighted_county' | 'centre_of_county' | 'county_of_centre' | 'find_sea';
+export type TargetType = 'country' | 'capital' | 'continent' | 'worldPart' | 'ocean' | 'point' | 'county' | 'countyCentre' | 'sea';
 
 export type FrozenQuestion = {
   id: string;
@@ -87,7 +87,23 @@ export const PLACE_HINTS: Record<string, string> = {
   'ocean:indian': 'India ookean on Aafrikast idas ja Austraaliast läänes.',
   'ocean:arctic': 'Põhja-Jäämeri on põhjapooluse ümber.',
   'ocean:southern': 'Lõuna-Jäämeri ümbritseb Antarktist.',
-  'point:south-pole': 'Lõunapoolus on Antarktise keskel.'
+  'point:south-pole': 'Lõunapoolus on Antarktise keskel.',
+  'sea:baltic': 'Läänemeri on Eesti kõrval, Skandinaavia ja ülejäänud Euroopa vahel.',
+  'sea:north': 'Põhjameri jääb Suurbritannia ja Skandinaavia vahele.',
+  'sea:mediterranean': 'Vahemeri on Euroopa ja Aafrika vahel.',
+  'sea:finland': 'Soome laht on Eesti ja Soome vahel.',
+  'sea:bengal': 'Bengali laht on Indiast idas.',
+  'sea:guinea': 'Guinea laht on Aafrika lääneranniku all, ekvaatori lähedal.',
+  'sea:persian': 'Pärsia laht on Araabia poolsaare ja Iraani vahel.',
+  'sea:black': 'Must meri jääb Ukraina ja Türgi vahele.',
+  'sea:red': 'Punane meri on kitsas meri Aafrika ja Araabia poolsaare vahel.',
+  'sea:caribbean': 'Kariibi meri on Kesk-Ameerikast idas ja Lõuna-Ameerikast põhjas.',
+  'sea:arabian': 'Araabia meri on Araabia poolsaare ja India vahel.',
+  'sea:south-china': 'Lõuna-Hiina meri on Hiinast lõunas, Vietnami ja Filipiinide vahel.',
+  'sea:riga': 'Liivi laht on Eesti ja Läti vahel.',
+  'sea:bothnia': 'Botnia laht on Rootsi ja Soome vahel.',
+  'sea:mexico': 'Mehhiko laht on USA-st lõunas ja Mehhikost idas.',
+  'sea:hudson': 'Hudsoni laht on suur laht Kanada põhjaosas.'
 };
 
 const AREAS = [
@@ -165,6 +181,7 @@ function candidatesFor(spec: RoundSpec, stats: Map<string, TargetStat>): Candida
     if (setId === 'continents') return CONTINENTS.map((item) => place('continent', item.id, 'find_continent'));
     if (setId === 'worldParts') return WORLD_PARTS.map((item) => place('worldPart', item.id, 'find_world_part'));
     if (setId === 'oceans') return OCEANS.map((item) => place('ocean', item.id, 'find_ocean'));
+    if (setId === 'seas') return SEAS.map((item) => place('sea', item.id, 'find_sea'));
   }
   const countries = view.kind === 'world'
     ? CATALOG.countries.filter((country) => country.target && (country.tappableIn ?? []).includes('world'))
@@ -258,8 +275,8 @@ function buildQuestion(index: number, candidate: Candidate, kind: QuestionKind, 
   const optionCount = spec.level === 'explorer' ? 3 : 4;
   const county = findCounty(candidate.targetId);
   if (county) return buildCountyQuestion(base, county, kind, optionCount, geometry, rng);
-  if (kind === 'find_continent' || kind === 'find_world_part' || kind === 'find_ocean' || kind === 'find_point') {
-    const type: TargetType = kind === 'find_continent' ? 'continent' : kind === 'find_world_part' ? 'worldPart' : kind === 'find_ocean' ? 'ocean' : 'point';
+  if (kind === 'find_continent' || kind === 'find_world_part' || kind === 'find_ocean' || kind === 'find_sea' || kind === 'find_point') {
+    const type: TargetType = kind === 'find_continent' ? 'continent' : kind === 'find_world_part' ? 'worldPart' : kind === 'find_ocean' ? 'ocean' : kind === 'find_sea' ? 'sea' : 'point';
     const prompt = kind === 'find_continent' ? `Leia ${CONTINENTS.find((item) => item.id === candidate.targetId)?.genEt ?? name} manner.`
       : kind === 'find_world_part' ? `Leia ${name} maailmajagu.`
         : `Leia ${name}.`;
@@ -371,6 +388,12 @@ export function gradeAnswer(question: FrozenQuestion, state: QuestionState, answ
   }
   if (answerId === NO_AREA_ANSWER) {
     return { outcome: 'neutral', state, messageEt: 'See saar ei kuulu ühegi mandri hulka. Proovi mujal.' };
+  }
+  if (question.kind === 'find_sea') {
+    // Land, open ocean or a sea's edge: not a wrong answer, just not a sea.
+    if (!findSea(answerId)) return { outcome: 'neutral', state, messageEt: 'Puuduta mere keskele.' };
+    // A gulf is part of its sea: Soome laht for "Leia Läänemeri." is right.
+    if (findSea(answerId)?.partOf === question.answerId) answerId = question.answerId;
   }
   if (answerId === SEA_ANSWER || (question.kind === 'find_ocean' && !OCEANS.some((ocean) => ocean.id === answerId))) {
     return { outcome: 'neutral', state, messageEt: question.kind === 'find_ocean' ? 'Puuduta ookeani keskele, kaugemale rannikust.' : 'Seal on meri. Puuduta maad.' };

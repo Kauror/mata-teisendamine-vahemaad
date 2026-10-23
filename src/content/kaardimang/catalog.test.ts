@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CATALOG, findCountry, quizCapital, viewCountries } from '@/content/kaardimang/catalog';
-import { CONTINENTS, COUNTIES, ESTONIA_DATA_VERSION, MAP_VIEWS, OCEANS, WORLD_PARTS, mapPath } from '@/content/kaardimang/regions';
-import type { MapViewData } from '@/content/kaardimang/types';
+import { CONTINENTS, COUNTIES, ESTONIA_DATA_VERSION, MAP_VIEWS, OCEANS, SEAS, SEAS_DATA_VERSION, WORLD_PARTS, mapPath, seasPath } from '@/content/kaardimang/regions';
+import type { MapViewData, SeasOverlay } from '@/content/kaardimang/types';
 
 // The package's acceptance tests, part A (VASTUVOTUTESTID.md): the content
 // itself, checked against the built catalog and the real map files.
@@ -130,6 +130,17 @@ describe('Kaardimäng map views', () => {
       expect(estonia.capitals.find((pin) => pin.id === county.centreId)?.countryId, county.id).toBe(county.id);
       expect(estonia.labels[county.id], county.id).toBeDefined();
     }
+  });
+
+  it('lays every sea of the Mered set over the world map, with the same size', () => {
+    const seas = JSON.parse(readFileSync(path.join(process.cwd(), 'public', ...seasPath().split('/')), 'utf8')) as SeasOverlay;
+    const world = loadView('world');
+    expect(seas.version).toBe(SEAS_DATA_VERSION);
+    expect([seas.width, seas.height]).toEqual([world.width, world.height]);
+    expect(seas.areas.map((area) => area.id).sort()).toEqual(SEAS.map((sea) => sea.id).sort());
+    for (const sea of SEAS) expect(seas.labels[sea.id], sea.id).toBeDefined();
+    // The textbook's seas and gulfs are all there.
+    expect(SEAS.filter((sea) => sea.textbook).map((sea) => sea.nameEt)).toEqual(['Läänemeri', 'Põhjameri', 'Vahemeri', 'Soome laht', 'Bengali laht', 'Guinea laht', 'Pärsia laht']);
   });
 
   it('has the Antarctica view without any country targets', () => {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { findCountry } from '@/content/kaardimang/catalog';
-import { COUNTIES, findView, LEVELS, MAP_VIEWS, WORLD_SETS, type WorldSetId, mapPath } from '@/content/kaardimang/regions';
+import { COUNTIES, SEAS, findView, LEVELS, MAP_VIEWS, WORLD_SETS, type WorldSetId, mapPath } from '@/content/kaardimang/regions';
 import type { MapViewData } from '@/content/kaardimang/types';
 import { seededRng } from '@/lib/random';
 import { buildRound, directionHint, emptyState, gradeAnswer, NO_AREA_ANSWER, orderWithoutRepeats, ROUND_LENGTH, SEA_ANSWER, toClientQuestion, type TargetStat, type ViewGeometry } from '@/lib/kaardimang/engine';
@@ -248,5 +248,28 @@ describe('Eesti', () => {
     expect(missed.outcome).toBe('wrong_retry');
     expect(missed.messageEt).toContain(`See on ${wrong.nameEt}.`);
     expect(gradeAnswer(question, missed.state, question.answerId).outcome).toBe('correct');
+  });
+});
+
+describe('Mered', () => {
+  it('asks to find the seas and gulfs on the world map, by their Estonian names', () => {
+    const questions = Array.from({ length: 20 }, (_, seed) => round('world', 'traveler', 'seas', seed + 1).questions).flat();
+    expect(new Set(questions.map((question) => question.kind))).toEqual(new Set(['find_sea']));
+    expect(questions.every((question) => SEAS.some((sea) => question.prompt === `Leia ${sea.nameEt}.` && question.answerId === sea.id))).toBe(true);
+    expect(new Set(questions.map((question) => question.targetId)).size).toBe(SEAS.length);
+  });
+
+  it('counts a gulf of Läänemeri as Läänemeri, calls land neutral and names a wrong sea', () => {
+    const question = round('world', 'traveler', 'seas', 1).questions[0];
+    const baltic = { ...question, kind: 'find_sea' as const, targetType: 'sea' as const, answerId: 'baltic', targetId: 'baltic', targetKey: 'sea:baltic', prompt: 'Leia Läänemeri.' };
+    expect(gradeAnswer(baltic, emptyState(), 'finland').outcome).toBe('correct');
+    expect(gradeAnswer(baltic, emptyState(), 'EST').outcome).toBe('neutral');
+    expect(gradeAnswer(baltic, emptyState(), 'atlantic').outcome).toBe('neutral');
+    const wrong = gradeAnswer(baltic, emptyState(), 'black');
+    expect(wrong.outcome).toBe('wrong_retry');
+    expect(wrong.messageEt).toContain('See on Must meri.');
+    // But Läänemeri is not Soome laht.
+    const finland = { ...baltic, answerId: 'finland', targetId: 'finland', prompt: 'Leia Soome laht.' };
+    expect(gradeAnswer(finland, emptyState(), 'baltic').outcome).toBe('wrong_retry');
   });
 });

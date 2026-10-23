@@ -9,7 +9,7 @@ Mäng ei ole õpiku osa (see on paralleelne õppetükkidega 10–22) ja vajab in
 - **Kaheksa vaadet:** Eesti, Maailm, Euroopa, Aasia, Aafrika, Ameerika, Austraalia ja Okeaania ning Antarktika. Igas vaates saab valida „Uuri kaarti“ või „Mängi“.
 - **25 õpperühma** pakettidest (`MAAILMAJAOD_JA_TASEMED.json`), mis on täiendatud nii, et iga riik kuulub vähemalt ühte rühma. Kaardivaateid on kokku 32, igal oma eelnevalt projitseeritud kaart.
 - **194 sihtriiki:** kõik 193 ÜRO liiget ja Vatikan. Palestiina, Kosovo ja Taiwan on kaardil ning „Uuri“ selgitab nende staatust neutraalselt, aga hinnatud küsimustes neid ei ole.
-- **Maailmas** on õpiku järgi kuus mandrit, kuus maailmajagu ja viis ookeani. Vaikne ookean on puudutatav kaardi mõlemal serval. Venemaa, Kasahstan ja Türgi on maailmajagude küsimustes jagatud Euroopa ja Aasia vahel.
+- **Maailmas** on õpiku järgi kuus mandrit, kuus maailmajagu ja viis ookeani ning 16 merd ja lahte. Vaikne ookean on puudutatav kaardi mõlemal serval. Venemaa, Kasahstan ja Türgi on maailmajagude küsimustes jagatud Euroopa ja Aasia vahel.
 - **Antarktikas** on Antarktis, lõunapoolus, Lõuna-Jäämeri, ümbritsevad ookeanid ja mandrite tipud. Riike ega pealinnu seal ei ole.
 - **Küsimused:**
   - leia riik kaardilt,
@@ -36,6 +36,20 @@ Kaardimäng on kogu pere jaoks (Kauri otsused 19.10, backlog KM-02).
 - **Kus näha:** avalehel on tabel 1.–4. koht. Laste lehtedel on Kaardimängu kaart, kus näeb võistlust ja medaleid. „Mille eest tähti saab“ nimetab avatud võistluse auhinnad.
 - **Andmebaas:** migratsioon 14 (`kaardimang_competition`). See ehitab `kaardimang_rounds` ja `kaardimang_target_stats` uuesti, et lubada Kairit ja Kauri; kõik vanad read kopeeritakse. Lisaks tabelid `kaardimang_player_settings`, `kaardimang_competitions`, `kaardimang_points` ja `kaardimang_awards`.
 - **Reeglid** on failis `src/lib/kaardimang/competition.ts`, server failides `src/lib/server/kaardimang/competition.ts` ja `rounds.ts`.
+
+## Mered
+
+Maailma kaardi õpperühm „Mered“ (backlog KM-01): 16 merd ja lahte, küsimus „Leia Vahemeri.“, vastatakse kaardil.
+- **Õpikust (5. peatükk, 16. teema):** Läänemeri, Põhjameri, Vahemeri, Soome laht, Bengali laht, Guinea laht, Pärsia laht.
+- **Tuntumad lisaks** (Kauri valik 23.10): Must meri, Punane meri, Kariibi meri, Araabia meri, Lõuna-Hiina meri, Liivi laht, Botnia laht, Mehhiko laht, Hudsoni laht.
+- **Kujud** on Natural Earth 10m merepolügoonidest (`ne_10m_geography_marine_polys`, pinned `sources.json`-is).
+  - Vahemeri on põhibassein koos 11 nimelise osaga (Aadria, Joonia, Egeuse meri jne).
+  - Must meri on koos Aasovi merega.
+- **Laht on oma mere osa:** Soome, Liivi või Botnia lahe puudutamine on „Leia Läänemeri.“ küsimusele õige vastus. Vastupidi ei kehti: kui küsitakse Soome lahte, siis Läänemere puudutamine on vale.
+- **Neutraalsed puudutused:** maa või avaookeani puudutamine ei ole vale vastus, mäng palub puudutada mere keskele.
+- **Andmed:** eraldi skript `scripts/kaardimang/build-seas.ts` ja oma versioon (`SEAS_DATA_VERSION`). Fail `public/kaardimang/seas/` laotakse maailma kaardi peale; maailma kaart ise ei muutu.
+  - Skript kontrollib, et projektsioon klapib olemasoleva `world.json`-iga, ja keeldub muidu kirjutamast.
+  - Mängus on näha ja puudutatavad ainult küsimusega seotud alad.
 
 ## Eesti
 
