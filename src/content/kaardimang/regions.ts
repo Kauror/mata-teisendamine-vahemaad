@@ -61,6 +61,44 @@ export const CONTINENTS: Array<{ id: ContinentId; nameEt: string; genEt: string 
   { id: 'antarctica', nameEt: 'Antarktis', genEt: 'Antarktise' }
 ];
 
+// Mered (backlog KM-01): the seas and gulfs of Kiur's textbook (Unit 16:
+// Läänemeri, Põhjameri, Vahemeri, Soome, Bengali, Guinea and Pärsia laht) and
+// nine well-known ones (Kaur, 23.10). `ne` names the Natural Earth marine
+// polygons drawn as this sea (Vahemeri is the main basin and its eleven named
+// parts); `partOf` makes a tap on a gulf count for its sea.
+export type SeaId =
+  | 'baltic' | 'north' | 'mediterranean' | 'black' | 'red' | 'caribbean' | 'arabian' | 'south-china'
+  | 'finland' | 'riga' | 'bothnia' | 'mexico' | 'bengal' | 'guinea' | 'persian' | 'hudson';
+export type Sea = { id: SeaId; nameEt: string; ne: string | string[]; partOf?: SeaId; textbook: boolean };
+export const SEAS: Sea[] = [
+  { id: 'baltic', nameEt: 'Läänemeri', ne: 'Baltic Sea', textbook: true },
+  { id: 'north', nameEt: 'Põhjameri', ne: 'North Sea', textbook: true },
+  {
+    id: 'mediterranean', nameEt: 'Vahemeri', textbook: true,
+    ne: ['Mediterranean Sea', 'Adriatic Sea', 'Ionian Sea', 'Aegean Sea', 'Tyrrhenian Sea', 'Ligurian Sea', 'Balearic Sea', 'Alboran Sea', 'Sea of Crete', 'Golfe du Lion', 'Gulf of Gabès', 'Gulf of Sidra']
+  },
+  { id: 'finland', nameEt: 'Soome laht', ne: 'Gulf of Finland', partOf: 'baltic', textbook: true },
+  { id: 'bengal', nameEt: 'Bengali laht', ne: 'Bay of Bengal', textbook: true },
+  { id: 'guinea', nameEt: 'Guinea laht', ne: 'Gulf of Guinea', textbook: true },
+  { id: 'persian', nameEt: 'Pärsia laht', ne: 'Persian Gulf', textbook: true },
+  { id: 'black', nameEt: 'Must meri', ne: ['Black Sea', 'Sea of Azov'], textbook: false },
+  { id: 'red', nameEt: 'Punane meri', ne: 'Red Sea', textbook: false },
+  { id: 'caribbean', nameEt: 'Kariibi meri', ne: 'Caribbean Sea', textbook: false },
+  { id: 'arabian', nameEt: 'Araabia meri', ne: 'Arabian Sea', textbook: false },
+  { id: 'south-china', nameEt: 'Lõuna-Hiina meri', ne: 'South China Sea', textbook: false },
+  { id: 'riga', nameEt: 'Liivi laht', ne: 'Gulf of Riga', partOf: 'baltic', textbook: false },
+  { id: 'bothnia', nameEt: 'Botnia laht', ne: 'Gulf of Bothnia', partOf: 'baltic', textbook: false },
+  { id: 'mexico', nameEt: 'Mehhiko laht', ne: 'Gulf of Mexico', textbook: false },
+  { id: 'hudson', nameEt: 'Hudsoni laht', ne: 'Hudson Bay', textbook: false }
+];
+// The sea outlines are built separately (scripts/kaardimang/build-seas.ts) and
+// laid over the world map, which itself is unchanged.
+export const SEAS_DATA_VERSION = '2026-10-23.1';
+
+export function findSea(id: string): Sea | undefined {
+  return SEAS.find((sea) => sea.id === id);
+}
+
 export const OCEANS: Array<{ id: OceanId; nameEt: string }> = [
   { id: 'pacific', nameEt: 'Vaikne ookean' },
   { id: 'atlantic', nameEt: 'Atlandi ookean' },
@@ -125,11 +163,12 @@ export const LEVELS: Array<{ id: LevelId; nameEt: string; descriptionEt: string 
 ];
 
 // The Maailm view's learning sets.
-export type WorldSetId = 'continents' | 'worldParts' | 'oceans' | 'largest';
+export type WorldSetId = 'continents' | 'worldParts' | 'oceans' | 'seas' | 'largest';
 export const WORLD_SETS: Array<{ id: WorldSetId; nameEt: string }> = [
   { id: 'continents', nameEt: 'Mandrid' },
   { id: 'worldParts', nameEt: 'Maailmajaod' },
   { id: 'oceans', nameEt: 'Ookeanid' },
+  { id: 'seas', nameEt: 'Mered' },
   { id: 'largest', nameEt: 'Suurimad riigid' }
 ];
 
@@ -183,6 +222,11 @@ export function mapPath(id: string): string {
 
 export function mapUrl(id: string): string {
   return `/${mapPath(id)}`;
+}
+
+// The sea outlines laid over the world map.
+export function seasPath(): string {
+  return `kaardimang/seas/${SEAS_DATA_VERSION}/world-seas.json`;
 }
 
 export function dataVersionOf(viewId: string): string {

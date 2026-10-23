@@ -80,5 +80,15 @@ export type MapViewData = {
   labels: Record<string, [number, number, number]>;
   capitals: Array<{ id: string; countryId: string; x: number; y: number }>;
   // Ocean touch areas (Maailm and Antarktika views).
-  areas: Array<{ id: string; kind: 'ocean'; d: string }>;
+  areas: Array<{ id: string; kind: 'ocean' | 'sea'; d: string }>;
+};
+
+// The sea outlines over the world map (scripts/kaardimang/build-seas.ts): same
+// projection and size as world.json, so the areas drop straight onto it.
+export type SeasOverlay = {
+  version: string;
+  width: number;
+  height: number;
+  areas: Array<{ id: string; kind: 'sea'; d: string }>;
+  labels: Record<string, [number, number, number]>;
 };

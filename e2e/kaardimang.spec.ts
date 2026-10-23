@@ -2,7 +2,7 @@ import { expect, test, type Page } from './test';
 import { authenticateFamily } from './auth';
 import { navigateStable } from './navigation';
 import { CATALOG, quizCapital } from '../src/content/kaardimang/catalog';
-import { CONTINENTS, COUNTIES, OCEANS, WORLD_PARTS } from '../src/content/kaardimang/regions';
+import { CONTINENTS, COUNTIES, OCEANS, SEAS, WORLD_PARTS } from '../src/content/kaardimang/regions';
 import type { OverviewResponse, ParentKaardimangResponse } from '../src/lib/kaardimang/api';
 
 // Kaardimäng end to end on a 375 px phone. While the game is in parent testing
@@ -69,6 +69,8 @@ async function answerCurrent(page: Page, options: { pacificFromRight?: boolean }
   if (match) return pick(page, `.km-feature[data-wp="${WORLD_PARTS.find((item) => item.nameEt === match![1])!.id}"]`);
   match = /^Leia (.+)\.$/.exec(prompt);
   if (match?.[1] === 'lõunapoolus') return pick(page, '[data-id="south-pole"]');
+  const sea = SEAS.find((item) => item.nameEt === match?.[1]);
+  if (sea) return pick(page, `.km-area[data-id="${sea.id}"]`);
   const ocean = OCEANS.find((item) => item.nameEt === match?.[1]);
   if (ocean) return pick(page, `.km-area[data-id="${ocean.id}"]`, ocean.id === 'pacific' && options.pacificFromRight ? 'last' : 'first');
   throw new Error(`Unknown prompt: ${prompt}`);
@@ -231,6 +233,20 @@ test('Eesti: the counties in Uuri, then a whole Geograaf round of counties and t
   await playRound(page);
   await expect(page.locator('.km-summary')).toContainText('Harjutatud maakondi');
   await noSideScroll(page);
+});
+
+test('the world seas: a whole Mered round, a tap on land is never wrong', async ({ page }) => {
+  test.setTimeout(90_000);
+  await navigateStable(page, PAGE);
+  await openPart(page, 'Maailm');
+  await page.getByRole('button', { name: 'Mered' }).click();
+  await page.getByRole('button', { name: /Mängi/ }).click();
+  await expect(page.locator('.km-prompt')).toContainText(/^Leia /);
+  await expect(page.locator('.km-map .km-area[data-visible="true"]')).toHaveCount(SEAS.length);
+  await page.locator('.km-map .km-feature').first().dispatchEvent('click');
+  await expect(page.locator('.km-feedback')).toContainText('Puuduta mere keskele');
+  await playRound(page);
+  await expect(page.locator('.km-summary-score')).toContainText('küsimusest');
 });
 
 test('the world oceans: the Pacific counts on the right edge too', async ({ page }) => {

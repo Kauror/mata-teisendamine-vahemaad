@@ -5,9 +5,9 @@
 
 import { csrfHeaders } from '@/lib/auth/client';
 import { ACTION_ID_PATTERN } from '@/lib/textbook/api';
-import { mapUrl, type LevelId } from '@/content/kaardimang/regions';
+import { mapUrl, seasPath, type LevelId } from '@/content/kaardimang/regions';
 import type { KaardimangPlayer } from '@/lib/kaardimang/competition';
-import type { MapViewData } from '@/content/kaardimang/types';
+import type { MapViewData, SeasOverlay } from '@/content/kaardimang/types';
 import {
   KAARDIMANG_PARENT_API,
   kaardimangApi,
@@ -99,10 +99,15 @@ const mapCache = new Map<string, Promise<MapViewData>>();
 export function loadMap(viewId: string): Promise<MapViewData> {
   let pending = mapCache.get(viewId);
   if (!pending) {
-    pending = fetch(mapUrl(viewId)).then((response) => {
-      if (!response.ok) throw new Error(`map ${viewId}: ${response.status}`);
-      return response.json() as Promise<MapViewData>;
+    const fetchJson = <T,>(url: string) => fetch(url).then((response) => {
+      if (!response.ok) throw new Error(`map ${url}: ${response.status}`);
+      return response.json() as Promise<T>;
     });
+    // The world map carries the sea outlines (a separate file) after its oceans.
+    pending = viewId === 'world'
+      ? Promise.all([fetchJson<MapViewData>(mapUrl(viewId)), fetchJson<SeasOverlay>(`/${seasPath()}`)])
+        .then(([map, seas]) => ({ ...map, areas: [...map.areas, ...seas.areas], labels: { ...map.labels, ...seas.labels } }))
+      : fetchJson<MapViewData>(mapUrl(viewId));
     pending.catch(() => mapCache.delete(viewId));
     mapCache.set(viewId, pending);
   }

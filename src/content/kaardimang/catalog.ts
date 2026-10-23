@@ -2,7 +2,7 @@
 // the lookups the engine, the server and the UI share.
 
 import rawCatalog from './catalog.json';
-import { CONTINENTS, COUNTIES, OCEANS, WORLD_PARTS, type MapViewDef } from './regions';
+import { CONTINENTS, COUNTIES, OCEANS, SEAS, WORLD_PARTS, type MapViewDef } from './regions';
 import type { CatalogCapital, CatalogCountry, KaardimangCatalog } from './types';
 
 export const CATALOG = rawCatalog as KaardimangCatalog;
@@ -41,6 +41,7 @@ export function nameOf(id: string): string {
     ?? CATALOG.contextNames[id]
     ?? CONTINENTS.find((item) => item.id === id)?.nameEt
     ?? OCEANS.find((item) => item.id === id)?.nameEt
+    ?? SEAS.find((item) => item.id === id)?.nameEt
     ?? WORLD_PARTS.find((item) => item.id === id)?.nameEt
     ?? (id === 'south-pole' ? 'lõunapoolus' : id);
 }
