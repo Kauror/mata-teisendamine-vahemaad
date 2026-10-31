@@ -7,6 +7,7 @@ import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { ParentNoticePanel, ParentPasswordPanel } from '@/app/components/ParentAccountPanels';
 import { ApprovalsPanel } from '@/app/components/parent/ApprovalsPanel';
 import { HistoryAdminPanel } from '@/app/components/parent/HistoryAdminPanel';
+import { KaardimangPlayCard } from '@/app/components/parent/KaardimangPlayCard';
 import { LearningSettingsPanel } from '@/app/components/parent/LearningSettingsPanel';
 import { LibraryPanel } from '@/app/components/parent/LibraryPanel';
 import { ParentAccordionSection } from '@/app/components/parent/ParentAccordionSection';
@@ -121,6 +122,7 @@ function ParentHubView({ view, tab }: { view: ParentView; tab?: ParentHaldaTab }
         {view === 'tana' && (
           <>
             <ApprovalsPanel />
+            <KaardimangPlayCard />
             <TodayChildren />
             <MonthlyRace />
             <div className='pv-card pv-list-card'>
