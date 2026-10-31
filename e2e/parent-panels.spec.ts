@@ -5,12 +5,14 @@ import { navigateStable } from './navigation';
 // PAR-10: the parent area used to send 11 requests on open and all 11 again
 // after every change. Each panel now loads its own data when its section is
 // first shown, so opening Täna asks only for what is on screen: the
-// approvals (dashboard, held rewards, task reviews), the children's day
-// (today) and the month's trophy line (monthly prize).
+// approvals (dashboard, held rewards, task reviews), the Kaardimäng play
+// card (the open competition), the children's day (today) and the month's
+// trophy line (monthly prize).
 
 const ON_OPEN = [
   '/api/parent/dashboard',
   '/api/parent/held-rewards',
+  '/api/parent/kaardimang/competition',
   '/api/parent/monthly-prize',
   '/api/parent/task-reviews',
   '/api/parent/today'
@@ -40,6 +42,11 @@ test('opening the parent area loads only the visible panels', async ({ page }) =
 
   expect([...new Set(reads)].sort()).toEqual(ON_OPEN);
   expect(reads.filter((path) => path === '/api/parent/dashboard')).toHaveLength(1);
+
+  // Kairi and Kaur play the map game straight from the front page.
+  const mapGame = page.getByRole('region', { name: /Kaardimäng/ });
+  await expect(mapGame.getByRole('link', { name: /Mängi Kairina/ })).toHaveAttribute('href', '/vanem/kaardimang/kairi');
+  await expect(mapGame.getByRole('link', { name: /Mängi Kaurina/ })).toHaveAttribute('href', '/vanem/kaardimang/kaur');
 
   // A closed section loads when opened: "Tähed ja karikad" reads the freezes.
   const freezeLoaded = page.waitForResponse((response) => response.url().endsWith('/api/parent/streak-freeze') && response.ok());
