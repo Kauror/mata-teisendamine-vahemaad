@@ -79,8 +79,9 @@ export function createKaardimangClient(scope: KaardimangScope, player: Kaardiman
     answer: (roundId: string, body: AnswerRequest) => post<AnswerResponse>(scope, routes.answer(roundId), body),
     // Starts the question's speed clock; a lost one only costs the speed point.
     shown: (roundId: string, questionIndex: number) => send<{ ok: true }>(scope, routes.shown(roundId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionIndex }) }, 0),
-    // The player closed a one-shot notice (idempotent, so retried).
-    dismissNotice: (body: DismissNoticeRequest) => post<NoticesResponse>(scope, routes.notices, body)
+    // The player closed a one-shot notice (idempotent, so retried). keepalive:
+    // closing it and leaving the page at once must still spend it.
+    dismissNotice: (body: DismissNoticeRequest) => send<NoticesResponse>(scope, routes.notices, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, RETRY_DELAYS_MS.length)
   };
 }
 

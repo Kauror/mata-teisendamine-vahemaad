@@ -426,8 +426,11 @@ test('a family competition: the parent opens it, Kaur and Kirsi score, the home 
   await expect(finale.locator('.km-notice-me')).toContainText(`${kirsiRank}. koht`);
   await expect(finale.getByRole('heading')).toHaveText(kirsiRank === 1 ? 'Sa võitsid, Kirsi!' : 'Võistlus on läbi!');
   await noSideScroll(page);
+  // Closing it tells the server; wait for that before leaving the page.
+  const spent = page.waitForResponse((response) => response.url().includes('/api/kaardimang/notices') && response.ok());
   await finale.getByRole('button').click();
   await expect(finale).toBeHidden();
+  await spent;
   await expect(page.locator('.km-tile-medals')).toBeVisible();
   // Spent: it does not come back.
   await page.reload();
