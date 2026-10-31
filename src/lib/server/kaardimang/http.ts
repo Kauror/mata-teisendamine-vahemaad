@@ -3,7 +3,7 @@ import { hasParentSession } from '@/lib/parentAuth';
 import { ACTION_ID_PATTERN } from '@/lib/textbook/api';
 import { KAARDIMANG_CHILD_ENABLED, KAARDIMANG_ERROR_STATUS, ROUND_ID_PATTERN, type KaardimangErrorResponse, type KaardimangScope } from '@/lib/kaardimang/api';
 import { CHILD_PLAYERS, isPlayer, PARENT_PLAYERS } from '@/lib/kaardimang/competition';
-import { cancelCompetition, CompetitionError, competitionHistory, createCompetition, deleteCompetition, endCompetitionNow, extendCompetition, playerLevels, setPlayerLevel } from '@/lib/server/kaardimang/competition';
+import { cancelCompetition, CompetitionError, competitionHistory, createCompetition, deleteCompetition, endCompetitionNow, extendCompetition, markNoticeSeen, pendingNotices, playerLevels, setPlayerLevel } from '@/lib/server/kaardimang/competition';
 import { answer, competitionSummaryFor, getOverview, getRound, KaardimangApiError, markShown, parentOverview, resetPreview, startRound, type KaardimangContext } from '@/lib/server/kaardimang/rounds';
 
 // HTTP glue for every Kaardimäng route. The ROUTE decides who plays: child
@@ -101,6 +101,21 @@ export function kaardimangHandlers(scope: KaardimangScope) {
         const context = await contextFor(scope, req);
         const body = await readJson(req);
         return markShown(context, roundIdOf(roundId), body.questionIndex);
+      })
+    },
+    // POST { competitionId, kind }: the player closed a one-shot notice. Returns the ones still pending.
+    notices: {
+      POST: (req: NextRequest) => run(async () => {
+        const context = await contextFor(scope, req);
+        if (context.learner === 'preview') throw new KaardimangApiError('invalid_request', 'Eelvaates teateid ei ole.');
+        const body = await readJson(req);
+        try {
+          markNoticeSeen(context.learner, body.competitionId, body.kind);
+        } catch (error) {
+          if (error instanceof CompetitionError) throw new KaardimangApiError('invalid_request', error.message);
+          throw error;
+        }
+        return { notices: pendingNotices(context.learner) };
       })
     }
   };

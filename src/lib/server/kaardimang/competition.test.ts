@@ -10,7 +10,9 @@ import {
   deleteCompetition,
   endCompetitionNow,
   extendCompetition,
+  markNoticeSeen,
   medalsOf,
+  pendingNotices,
   playerLevel,
   setPlayerLevel,
   standingsFor
@@ -57,7 +59,7 @@ beforeEach(() => {
   at('2026-10-23T09:00:00.000Z');
   db.pragma('foreign_keys = OFF');
   db.exec(`
-    DELETE FROM kaardimang_points; DELETE FROM kaardimang_awards; DELETE FROM kaardimang_competitions;
+    DELETE FROM kaardimang_points; DELETE FROM kaardimang_awards; DELETE FROM kaardimang_competitions; DELETE FROM kaardimang_notices;
     DELETE FROM kaardimang_rounds; DELETE FROM kaardimang_target_stats; DELETE FROM kaardimang_player_settings;
     DELETE FROM point_ledger;
   `);
@@ -170,6 +172,94 @@ describe('Kaardimäng family competition', () => {
     expect(medalsOf('kiur')[0]).toMatchObject({ place: 1, stars: 20 });
     expect(() => endCompetitionNow(competition.id)).toThrow('Seda võistlust ei käi.');
     expect((db.prepare("SELECT COUNT(*) AS n FROM point_ledger WHERE source = 'kaardimang_prize'").get() as { n: number }).n).toBe(1);
+  });
+});
+
+describe('Kaardimäng one-shot notices', () => {
+  it('announces the results once per player after the competition ends, each with their own place and stars', () => {
+    const competition = createCompetition({ title: 'Eesti', views: ['estonia'], days: 7, rewards: [20, 10, 5] });
+    play(as('kiur'), start(as('kiur')).roundId, { secondsEach: 2 });
+    play(as('kirsi'), start(as('kirsi')).roundId, { wrongFirst: 3, secondsEach: 40 });
+    // Nothing while it runs with days to spare.
+    expect(pendingNotices('kiur')).toEqual([]);
+    // It ends by itself after 29.10; the next read announces it.
+    at('2026-10-30T06:00:00.000Z');
+    expect(pendingNotices('kiur')).toEqual([expect.objectContaining({ kind: 'results', competitionId: competition.id, title: 'Eesti', endDate: '2026-10-29', me: { rank: 1, points: expect.any(Number), stars: 20 } })]);
+    expect(pendingNotices('kirsi')[0]).toMatchObject({ kind: 'results', me: { rank: 2, stars: 10 } });
+    expect(pendingNotices('kaur')[0]).toMatchObject({ kind: 'results', me: { points: 0, stars: 0 } });
+    expect((pendingNotices('kaur')[0] as { standings: unknown[] }).standings).toHaveLength(4);
+    expect(getOverview(as('kiur')).notices).toHaveLength(1);
+    expect(getOverview({ scope: 'preview', learner: 'preview' }).notices).toEqual([]);
+
+    // Closing it is per player and final; closing again is harmless.
+    markNoticeSeen('kiur', competition.id, 'results');
+    markNoticeSeen('kiur', competition.id, 'results');
+    expect(pendingNotices('kiur')).toEqual([]);
+    expect(pendingNotices('kirsi')).toHaveLength(1);
+    expect(() => markNoticeSeen('kiur', competition.id, 'later')).toThrow('Sellist teadet ei ole.');
+    expect(() => markNoticeSeen('kiur', 999, 'results')).toThrow('Seda võistlust ei ole.');
+
+    // A new competition already in its last days: the results come first, then the reminder.
+    const next = createCompetition({ title: 'Maailm', views: ['world'], days: 2 });
+    expect(pendingNotices('kirsi').map((notice) => notice.kind)).toEqual(['results', 'last_days']);
+    expect(pendingNotices('kirsi')[1]).toMatchObject({ competitionId: next.id, daysLeftEt: 'veel 1 päev' });
+    // An empty competition ending later does not hide the real results...
+    at('2026-11-01T06:00:00.000Z');
+    expect(pendingNotices('kirsi')).toEqual([expect.objectContaining({ kind: 'results', competitionId: competition.id })]);
+    // ...but two weeks after the end they are old news.
+    at('2026-11-14T06:00:00.000Z');
+    expect(pendingNotices('kirsi')).toEqual([]);
+  });
+
+  it('announces nothing for a cancelled competition', () => {
+    const competition = createCompetition({ title: 'Katki', views: ['estonia'], days: 7 });
+    play(as('kiur'), start(as('kiur')).roundId);
+    cancelCompetition(competition.id);
+    expect(pendingNotices('kiur')).toEqual([]);
+    expect(pendingNotices('kirsi')).toEqual([]);
+  });
+
+  it('reminds every player once when two days are left, and again after an extension brings new last days', () => {
+    const competition = createCompetition({ title: 'Eesti', views: ['estonia'], days: 5 });
+    expect(pendingNotices('kiur')).toEqual([]);
+    at('2026-10-24T09:00:00.000Z');
+    expect(pendingNotices('kiur')).toEqual([]);
+    at('2026-10-25T09:00:00.000Z');
+    expect(pendingNotices('kiur')).toEqual([expect.objectContaining({ kind: 'last_days', competitionId: competition.id, title: 'Eesti', endDate: '2026-10-27', daysLeftEt: 'veel 2 päeva', me: { rank: 1, points: 0 } })]);
+    expect(pendingNotices('kairi')).toHaveLength(1);
+    expect(getOverview(as('kaur')).notices).toHaveLength(1);
+    expect(getOverview({ scope: 'preview', learner: 'preview' }).notices).toEqual([]);
+
+    markNoticeSeen('kiur', competition.id, 'last_days');
+    expect(pendingNotices('kiur')).toEqual([]);
+    at('2026-10-27T09:00:00.000Z');
+    expect(pendingNotices('kiur')).toEqual([]);
+    expect(pendingNotices('kairi')[0]).toMatchObject({ kind: 'last_days', daysLeftEt: 'täna viimane päev' });
+
+    // Extended by five days: quiet again, then the reminder returns for its new last days.
+    extendCompetition(competition.id, 5);
+    expect(pendingNotices('kairi')).toEqual([]);
+    at('2026-10-30T09:00:00.000Z');
+    expect(pendingNotices('kiur')).toEqual([expect.objectContaining({ kind: 'last_days', endDate: '2026-11-01', daysLeftEt: 'veel 2 päeva' })]);
+    expect(pendingNotices('kairi')).toHaveLength(1);
+
+    // Deleting the competition takes its notices with it.
+    deleteCompetition(competition.id);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM kaardimang_notices').get()).toEqual({ n: 0 });
+  });
+
+  it('migration 16 adds the notices table, one row per competition, player and kind', () => {
+    const connection = new Database(':memory:');
+    runMigrations(connection, 15);
+    expect(() => connection.prepare('SELECT 1 FROM kaardimang_notices').get()).toThrow();
+    runMigrations(connection);
+    const insert = (kind: string) => connection.prepare("INSERT INTO kaardimang_notices (competitionId, player, kind, seenAt) VALUES (1, 'kiur', ?, 't')").run(kind);
+    insert('results');
+    expect(() => insert('results')).toThrow();
+    expect(() => insert('other')).toThrow();
+    insert('last_days');
+    expect(connection.prepare('SELECT COUNT(*) AS n FROM kaardimang_notices').get()).toEqual({ n: 2 });
+    connection.close();
   });
 });
 

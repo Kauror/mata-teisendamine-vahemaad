@@ -13,8 +13,10 @@ import {
   kaardimangApi,
   type AnswerRequest,
   type AnswerResponse,
+  type DismissNoticeRequest,
   type KaardimangErrorResponse,
   type KaardimangScope,
+  type NoticesResponse,
   type OverviewResponse,
   type ParentCompetitionResponse,
   type ParentKaardimangResponse,
@@ -76,7 +78,10 @@ export function createKaardimangClient(scope: KaardimangScope, player: Kaardiman
     round: (roundId: string) => get<RoundView>(scope, routes.round(roundId)),
     answer: (roundId: string, body: AnswerRequest) => post<AnswerResponse>(scope, routes.answer(roundId), body),
     // Starts the question's speed clock; a lost one only costs the speed point.
-    shown: (roundId: string, questionIndex: number) => send<{ ok: true }>(scope, routes.shown(roundId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionIndex }) }, 0)
+    shown: (roundId: string, questionIndex: number) => send<{ ok: true }>(scope, routes.shown(roundId), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionIndex }) }, 0),
+    // The player closed a one-shot notice (idempotent, so retried). keepalive:
+    // closing it and leaving the page at once must still spend it.
+    dismissNotice: (body: DismissNoticeRequest) => send<NoticesResponse>(scope, routes.notices, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, RETRY_DELAYS_MS.length)
   };
 }
 

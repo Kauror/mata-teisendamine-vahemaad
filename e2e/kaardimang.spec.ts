@@ -111,11 +111,33 @@ async function openParentSection(page: Page) {
   await expect(page.locator('.km-parent strong', { hasText: '194 riiki' })).toBeVisible({ timeout: 30_000 });
 }
 
-// A child's page opens yesterday's recap once its data is in; it covers the page.
-async function dismissRecap(page: Page) {
-  const recap = page.getByRole('dialog');
-  await recap.waitFor({ state: 'visible', timeout: 15_000 }).then(() => recap.getByRole('button').first().click(), () => undefined);
-  await expect(recap).toBeHidden();
+// A child's page opens its one-shot dialogs once its data is in, one at a
+// time (yesterday's recap, then the competition's results splash or last-days
+// reminder), each covering the page: close them all, in order.
+async function dismissDialogs(page: Page, firstWait = 15_000) {
+  for (let guard = 0; guard < 4; guard++) {
+    const dialog = page.getByRole('dialog').first();
+    const appeared = await dialog.waitFor({ state: 'visible', timeout: guard === 0 ? firstWait : 2_000 }).then(() => true, () => false);
+    if (!appeared) return;
+    const label = await dialog.getAttribute('aria-labelledby');
+    await dialog.getByRole('button').first().click();
+    await expect(page.locator(`[role="dialog"][aria-labelledby="${label}"]`)).toBeHidden();
+  }
+}
+
+const PLAYERS = ['kiur', 'kirsi', 'kairi', 'kaur'] as const;
+
+// Every player closes a finished competition's results splash, so it does not
+// cover a child's page in a later test (the database is shared by the run).
+async function spendResultsNotices(page: Page, competitionId: number, players: readonly string[] = PLAYERS) {
+  const headers = await parentCsrf(page);
+  // A signed-in parent is refused child writes while peeking; the opt-out cookie lifts it.
+  await page.context().addCookies([{ name: 'harjutaja_peek_off', value: '1', url: new URL(page.url()).origin }]);
+  for (const player of players) {
+    const url = player === 'kiur' || player === 'kirsi' ? `/api/kaardimang/notices?player=${player}` : `/api/parent/kaardimang/play/notices?player=${player}`;
+    const response = await page.request.post(url, { data: { competitionId, kind: 'results' }, headers });
+    expect(response.status(), `${player} notice`).toBe(200);
+  }
 }
 
 // Parent-route writes need the CSRF token and the page's own origin (any port).
@@ -138,14 +160,15 @@ test.beforeEach(async ({ page }) => {
 // ones (and the other browser's run, which shares the database): end it.
 test.afterEach(async ({ page }) => {
   const response = await page.request.get('/api/parent/kaardimang/competition').catch(() => null);
-  const active = response && response.ok() ? (await response.json() as { active: { id: number } | null }).active : null;
-  if (active) await page.request.post('/api/parent/kaardimang/competition', { data: { action: 'cancel', id: active.id }, headers: await parentCsrf(page) });
+  const data = response && response.ok() ? await response.json() as { active: { id: number } | null; history: Array<{ id: number; status: string }> } : null;
+  if (data?.active) await page.request.post('/api/parent/kaardimang/competition', { data: { action: 'cancel', id: data.active.id }, headers: await parentCsrf(page) });
+  for (const competition of data?.history.filter((item) => item.status === 'ended') ?? []) await spendResultsNotices(page, competition.id);
 });
 
 test('Kiur and Kirsi open Kaardimäng from their own pages, each as themselves', async ({ page }) => {
   test.setTimeout(90_000);
   await navigateStable(page, '/kirsi');
-  await dismissRecap(page);
+  await dismissDialogs(page);
   await page.locator('.km-tile').click();
   await expect(page.getByRole('heading', { name: '🗺️ Kaardimäng' })).toBeVisible();
   await expect(page.locator('.km-place')).toHaveCount(8);
@@ -354,6 +377,7 @@ test('a family competition: the parent opens it, Kaur and Kirsi score, the home 
   await page.waitForURL('**/vanem/kaardimang/kaur', { timeout: 60_000 });
   await expect(page.getByRole('heading', { name: '🗺️ Kaardimäng' })).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('.km-comp-title')).toContainText('Eesti nädal');
+  await dismissDialogs(page, 1_000);
   // Only the competition's map is open while it runs.
   await expect(page.locator('.km-place:disabled')).toHaveCount(7);
   await expect(page.getByRole('button', { name: /^Eesti / })).toBeEnabled();
@@ -367,7 +391,7 @@ test('a family competition: the parent opens it, Kaur and Kirsi score, the home 
   // Kirsi plays from her own page. Signed in as a parent, her page is the
   // read-only peek view; "Vaata nagu laps" lets the test play as her.
   await navigateStable(page, '/kirsi');
-  await dismissRecap(page);
+  await dismissDialogs(page);
   await page.getByRole('button', { name: 'Vaata nagu laps' }).click();
   await expect(page.getByText('Nagu laps', { exact: false }).first()).toBeVisible();
   await page.locator('.km-tile').click();
@@ -388,9 +412,30 @@ test('a family competition: the parent opens it, Kaur and Kirsi score, the home 
   expect(ended.status()).toBe(200);
   const balanceAfter = await (await page.request.get('/api/child-dashboard?learner=kirsi')).json() as { balance: number };
   expect(balanceAfter.balance - balanceBefore.balance).toBe([20, 10, 5][kirsiRank - 1] ?? 0);
+  // The others have seen the results; Kirsi meets them on her page, after
+  // yesterday's recap: the podium with everyone's points, her own place and
+  // stars, shown once.
+  await spendResultsNotices(page, active.id, ['kiur', 'kairi', 'kaur']);
   await navigateStable(page, '/kirsi');
-  await dismissRecap(page);
+  const recap = page.locator('.task-modal-backdrop[aria-labelledby="points-recap-title"]');
+  await recap.waitFor({ state: 'visible', timeout: 15_000 }).then(() => recap.getByRole('button').click(), () => undefined);
+  const finale = page.locator('.km-finale');
+  await expect(finale).toBeVisible({ timeout: 15_000 });
+  await expect(finale).toContainText('Eesti nädal');
+  await expect(finale.locator('.km-podium li')).toHaveCount(3);
+  await expect(finale.locator('.km-notice-me')).toContainText(`${kirsiRank}. koht`);
+  await expect(finale.getByRole('heading')).toHaveText(kirsiRank === 1 ? 'Sa võitsid, Kirsi!' : 'Võistlus on läbi!');
+  await noSideScroll(page);
+  // Closing it tells the server; wait for that before leaving the page.
+  const spent = page.waitForResponse((response) => response.url().includes('/api/kaardimang/notices') && response.ok());
+  await finale.getByRole('button').click();
+  await expect(finale).toBeHidden();
+  await spent;
   await expect(page.locator('.km-tile-medals')).toBeVisible();
+  // Spent: it does not come back.
+  await page.reload();
+  await expect(page.locator('.km-tile-medals')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.km-finale')).toHaveCount(0);
   await page.locator('.km-tile').screenshot({ path: 'C:/Users/kaur/AppData/Local/Temp/claude/C--CC/9087efb9-063d-4cfc-bf65-b2f2de760393/scratchpad/shots/26-kirsi-tile-medal.png' });
   // The medal is also an achievement on her Kaardimäng shelf.
   await page.locator('.km-tile').click();

@@ -31,10 +31,11 @@ describe('versioned SQLite migrations', () => {
         { id: 12, name: 'textbook_framework', length: 64 },
         { id: 13, name: 'kaardimang', length: 64 },
         { id: 14, name: 'kaardimang_competition', length: 64 },
-        { id: 15, name: 'kaardimang_cancelled_competitions', length: 64 }
+        { id: 15, name: 'kaardimang_cancelled_competitions', length: 64 },
+        { id: 16, name: 'kaardimang_notices', length: 64 }
       ]);
       runMigrations(connection);
-      expect((connection.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get() as { count: number }).count).toBe(15);
+      expect((connection.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get() as { count: number }).count).toBe(16);
       expect(connection.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_attempts_created_at'").get()).toBeTruthy();
       expect(connection.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_store_purchases_item'").get()).toBeTruthy();
       expect(verifyDatabase(connection).integrity).toBe('ok');
@@ -104,7 +105,7 @@ describe('versioned SQLite migrations', () => {
     const result = await prepareDatabaseForStartup(file, path.join(directory, 'backups'));
     expect(result.backupFile).toBeTruthy();
     expect(fs.existsSync(result.backupFile!)).toBe(true);
-    expect(result.verification.migrationCount).toBe(15);
+    expect(result.verification.migrationCount).toBe(16);
 
     // RTM2-H01: the backup must be the PRE-migration database, so it can restore
     // the original if a migration corrupts data. Prove it lacks anything the
