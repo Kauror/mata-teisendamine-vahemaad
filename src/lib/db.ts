@@ -1358,6 +1358,20 @@ function addKaardimangCancelledCompetitions(connection: DatabaseConnection) {
   `);
 }
 
+// Kaardimäng one-shot notices (Kaur, 31.10): which player has dismissed the
+// results splash or the last-days reminder of which competition.
+function addKaardimangNotices(connection: DatabaseConnection) {
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS kaardimang_notices (
+      competitionId INTEGER NOT NULL,
+      player TEXT NOT NULL CHECK (player IN ('kiur', 'kirsi', 'kairi', 'kaur')),
+      kind TEXT NOT NULL CHECK (kind IN ('results', 'last_days')),
+      seenAt TEXT NOT NULL,
+      PRIMARY KEY (competitionId, player, kind)
+    );
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -1452,6 +1466,12 @@ const migrations: Migration[] = [
     name: 'kaardimang_cancelled_competitions',
     checksumSource: 'kaardimang_cancelled_competitions:v1:2026-10-23',
     up: addKaardimangCancelledCompetitions
+  },
+  {
+    id: 16,
+    name: 'kaardimang_notices',
+    checksumSource: 'kaardimang_notices:v1:2026-10-31',
+    up: addKaardimangNotices
   }
 ];
 

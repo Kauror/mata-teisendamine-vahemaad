@@ -75,9 +75,28 @@ export function rankStandings(rows: Array<Omit<StandingRow, 'rank'>>): StandingR
   });
 }
 
+// Calendar days from today to the last day: 0 on the last day itself.
+export function daysLeft(today: string, endDate: string): number {
+  return Math.round((Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+}
+
 // "3 päeva" / "1 päev" / "täna viimane päev".
 export function daysLeftEt(today: string, endDate: string): string {
-  const days = Math.round((Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+  const days = daysLeft(today, endDate);
   if (days <= 0) return 'täna viimane päev';
   return days === 1 ? 'veel 1 päev' : `veel ${days} päeva`;
 }
+
+// One-shot notices every player sees once per competition (Kaur, 31.10):
+// the results splash after it ends, and "viimased päevad mängida" when two
+// days or fewer are left. Dismissals are stored on the server
+// (kaardimang_notices), so a notice closed on one device stays closed.
+export const NOTICE_KINDS = ['results', 'last_days'] as const;
+export type KaardimangNoticeKind = typeof NOTICE_KINDS[number];
+export function isNoticeKind(value: unknown): value is KaardimangNoticeKind {
+  return typeof value === 'string' && (NOTICE_KINDS as readonly string[]).includes(value);
+}
+// The reminder opens on the day this many days are left (2 = the last three days).
+export const LAST_DAYS_NOTICE_DAYS = 2;
+// Results of a competition ended longer ago than this are not announced any more.
+export const RESULTS_NOTICE_DAYS = 14;

@@ -80,6 +80,14 @@
   --celebration-ink-soft:#92741a;
   --celebration-prize-ink:#a16207;
 
+  /* Kaardimäng one-shot notices: the results splash (gold podium) and the last-days reminder (sky). */
+  --km-notice-ink:#0b1b45; --km-notice-muted:#6b5a32;
+  --km-finale-bg:linear-gradient(180deg,#fffdf5,#fff4cc); --km-finale-border:#fde68a; --km-finale-stars-ink:#a16207;
+  --km-podium-gold:linear-gradient(180deg,#fcd34d,#f59e0b); --km-podium-gold-shadow:0 8px 18px rgba(245,158,11,.35);
+  --km-podium-silver:linear-gradient(180deg,#e2e8f0,#94a3b8); --km-podium-bronze:linear-gradient(180deg,#e7b98a,#b45309); --km-podium-other:#cbd5e1;
+  --km-podium-h1:76px; --km-podium-h2:54px; --km-podium-h3:40px; --km-podium-h-other:26px;
+  --km-lastdays-bg:linear-gradient(180deg,#f0f9ff,#dbeafe); --km-lastdays-border:#93c5fd;
+
   /* History: earlier months fold into one row each. */
   --history-month-bg:#eef4ff; --history-month-border:#c7d7fe;
   /* History statistics charts: one series colour per child, plus the axis,
@@ -2452,6 +2460,35 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .km-shelf-bar{display:block;height:5px;border-radius:3px;background:var(--tb-line,#e5e7eb);overflow:hidden}
 .km-shelf-bar b{display:block;height:100%;background:#f59e0b}
 .km-tile-badges{font-size:18px;letter-spacing:2px}
+/* Kaardimäng one-shot notices (KaardimangNotices.tsx): the results splash with its podium, and the last-days reminder. */
+.km-notice{gap:10px;animation:km-notice-in .5s cubic-bezier(.2,.9,.3,1.15) both}
+.km-notice-emoji{font-size:54px;line-height:1}
+.km-notice .km-notice-sub{font-size:15px;font-weight:750;color:var(--km-notice-muted)}
+.km-notice .km-notice-me{font-size:17px;font-weight:850;color:var(--km-notice-ink)}
+.km-notice-me .km-finale-stars{font-size:inherit;color:var(--km-finale-stars-ink)}
+.km-finale{background:var(--km-finale-bg);border-color:var(--km-finale-border)}
+.km-finale[data-won='true'] .km-finale-emoji{display:inline-block;animation:km-crown 1.2s ease-in-out .6s infinite}
+.km-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:end;margin:4px 0 0;padding:0;list-style:none}
+.km-podium li{display:grid;gap:2px;justify-items:center;min-width:0;--km-podium-h:var(--km-podium-h-other);--km-podium-bg:var(--km-podium-other);--km-podium-delay:.2s;animation:km-podium-rise .6s cubic-bezier(.2,.8,.3,1.1) var(--km-podium-delay) both}
+.km-podium li[data-place='3']{--km-podium-h:var(--km-podium-h3);--km-podium-bg:var(--km-podium-bronze);--km-podium-delay:.2s}
+.km-podium li[data-place='2']{--km-podium-h:var(--km-podium-h2);--km-podium-bg:var(--km-podium-silver);--km-podium-delay:.6s}
+.km-podium li[data-place='1']{--km-podium-h:var(--km-podium-h1);--km-podium-bg:var(--km-podium-gold);--km-podium-delay:1s}
+.km-podium li[data-place='1'] .km-podium-block{box-shadow:var(--km-podium-gold-shadow)}
+.km-podium li strong{font-size:15px;line-height:1.15;overflow-wrap:anywhere}
+.km-podium li[data-me='true'] strong{text-decoration:underline;text-underline-offset:3px}
+.km-podium-medal{font-size:30px;line-height:1}
+.km-podium-points{font-size:14px;font-weight:800;color:var(--km-notice-muted)}
+.km-podium-block{display:grid;place-items:center;width:100%;height:var(--km-podium-h);border-radius:10px 10px 4px 4px;background:var(--km-podium-bg);color:#fff;font-weight:900;font-size:18px;text-shadow:0 1px 2px rgba(0,0,0,.25);transform-origin:bottom;animation:km-block-grow .6s cubic-bezier(.2,.8,.3,1.1) var(--km-podium-delay) both}
+.km-finale-rest{margin:0;padding:0;list-style:none;font-size:14px;font-weight:750;color:var(--km-notice-muted)}
+.km-finale-rest li[data-me='true']{text-decoration:underline;text-underline-offset:3px}
+.km-lastdays{background:var(--km-lastdays-bg);border-color:var(--km-lastdays-border)}
+.km-lastdays .km-notice-emoji{display:inline-block;animation:km-hourglass 2.4s ease-in-out .8s infinite}
+@keyframes km-notice-in{from{opacity:0;transform:translateY(18px) scale(.94)}to{opacity:1;transform:none}}
+@keyframes km-podium-rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes km-block-grow{from{transform:scaleY(.1)}to{transform:scaleY(1)}}
+@keyframes km-crown{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-10px) rotate(8deg)}}
+@keyframes km-hourglass{0%,40%{transform:rotate(0)}60%,100%{transform:rotate(180deg)}}
+@media (prefers-reduced-motion:reduce){.km-notice,.km-podium li,.km-podium-block,.km-finale[data-won='true'] .km-finale-emoji,.km-lastdays .km-notice-emoji{animation:none}}
 .km-place:disabled{opacity:.55;cursor:not-allowed}
 .km-locked-note{color:var(--tb-muted,#6b7280);font-weight:750}
 .km-confirm{display:grid;gap:6px;padding:10px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca}

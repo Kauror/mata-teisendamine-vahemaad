@@ -43,6 +43,14 @@ Kaardimäng on kogu pere jaoks (Kauri otsused 19.10, backlog KM-02).
 - **Andmebaas:** migratsioon 14 (`kaardimang_competition`). See ehitab `kaardimang_rounds` ja `kaardimang_target_stats` uuesti, et lubada Kairit ja Kauri; kõik vanad read kopeeritakse. Lisaks tabelid `kaardimang_player_settings`, `kaardimang_competitions`, `kaardimang_points` ja `kaardimang_awards`.
 - **Reeglid** on failis `src/lib/kaardimang/competition.ts`, server failides `src/lib/server/kaardimang/competition.ts` ja `rounds.ts`.
 
+### Teated
+
+Kaks ühekordset teadet (Kauri soov 31.10), mida iga mängija näeb üks kord võistluse kohta. Need avanevad laste oma lehel Kaardimängu kaardi kohal ja mängu avalehel, vanematel nende mängulehel; eelvaates mitte. Sulgemine salvestatakse serverisse (migratsioon 16, tabel `kaardimang_notices`), nii et teisel seadmel teade uuesti ei tule. Vaatlusrežiimis vanem sulgeb teate ainult selleks korraks, nagu teisedki laste ühekordsed teated. Kui lahti on ka eilne kokkuvõte, ootab teade selle sulgemist.
+- **Tulemuste ekraan** pärast võistluse lõppu: poodium (1.–3. koht medalite ja punktidega, tõuseb animatsiooniga), ülejäänud kohad, mängija enda koht ja saadud tähed, konfetid või mõni haruldasem pidu. Võitjale „Sa võitsid, Kiur!“ ja krooni, teistele „Võistlus on läbi!“. Näidatakse kaks nädalat pärast lõppu; tühistatud võistlust ega sellist, kus keegi punkte ei saanud, ei kuulutata.
+- **„Viimased päevad mängida!“**, kui jäänud on kaks päeva või vähem: lõpukuupäev, mitu päeva veel, ja mängija oma seis. Pikendamine nullib selle, nii et uute viimaste päevade saabudes tuleb meeldetuletus uuesti.
+- **Pärast lõppu:** avalehe tabel jääb nädalaks märkega „lõppes“ ja kaob siis; laste lehel jääb Kaardimängu kaart medalitega alles ning kõik kaardid on jälle lahti. Uue võistluse avab vanem.
+- Kood: `pendingNotices` ja `markNoticeSeen` failis `src/lib/server/kaardimang/competition.ts`, kasutajaliides `KaardimangNotices.tsx`, marsruut `POST …/notices`.
+
 ## Saavutused
 
 Igal mängijal on oma saavutuste riiul (backlog KM-03). See on Kaardimängu avalehel; laste lehe kaardil on teenitud saavutused väikeste ikoonidena.

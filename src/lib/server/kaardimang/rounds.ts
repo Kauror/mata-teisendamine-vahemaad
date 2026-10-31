@@ -20,7 +20,7 @@ import { daysLeftEt, masteryOf, scoreAnswer, viewOpen, type KaardimangPlayer, ty
 import { todayDateString } from '@/lib/appDate';
 import { seededRng } from '@/lib/random';
 import { kaardimangAchievements } from '@/lib/server/kaardimang/achievements';
-import { activeCompetitionRow, COUNTED_ROUNDS_PER_DAY, countedRoundsToday, medalsOf, playerLevel, standingsFor, type CompetitionRow } from '@/lib/server/kaardimang/competition';
+import { activeCompetitionRow, COUNTED_ROUNDS_PER_DAY, countedRoundsToday, medalsOf, pendingNotices, playerLevel, standingsFor, type CompetitionRow } from '@/lib/server/kaardimang/competition';
 
 // Kaardimäng rounds on the server. A round is frozen when it starts
 // (questions, options, keys, data version) and then only moves forward one
@@ -182,7 +182,8 @@ export function getOverview(context: KaardimangContext): OverviewResponse {
     level: player ? playerLevel(player) : null,
     competition: competition ? competitionSummary(competition, context.learner, today) : null,
     medals: player ? medalsOf(player) : [],
-    achievements: player ? kaardimangAchievements(player, today) : []
+    achievements: player ? kaardimangAchievements(player, today) : [],
+    notices: player ? pendingNotices(player, today) : []
   };
 }
 

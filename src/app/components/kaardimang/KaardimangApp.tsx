@@ -18,6 +18,7 @@ import type { KaardimangScope, OverviewResponse, RoundView } from '@/lib/kaardim
 import { MEDALS, PLAYER_NAMES, placeOpen, viewOpen, type KaardimangPlayer } from '@/lib/kaardimang/competition';
 import ExploreMode from './ExploreMode';
 import PlayMode from './PlayMode';
+import KaardimangNotices from './KaardimangNotices';
 import KaardimangShelf from './KaardimangShelf';
 import { createKaardimangClient, loadMap, newActionId } from './kaardimangClient';
 
@@ -172,6 +173,7 @@ export default function KaardimangApp({ scope, backHref, backLabel, player = nul
           {scope === 'preview' ? <p className='km-preview-note'>Eelvaade: siin mängitud voorud ei muuda Kiuri andmeid.</p> : null}
           {scope === 'parent' && player ? <p className='km-preview-note'>Mängid kui {PLAYER_NAMES[player]}.</p> : null}
           {problem}
+          {overview?.player && scope !== 'preview' ? <KaardimangNotices notices={overview.notices} player={overview.player} scope={scope} client={client} /> : null}
           {competitionBanner}
           <KaardimangShelf achievements={overview?.achievements ?? []} />
           {active ? (

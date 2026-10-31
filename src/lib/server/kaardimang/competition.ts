@@ -1,18 +1,24 @@
 import db from '@/lib/db';
-import { addAppDays, todayDateString } from '@/lib/appDate';
+import { addAppDays, isoToAppDate, todayDateString } from '@/lib/appDate';
 import { nowIso } from '@/lib/tasks';
 import { findView, LEVELS, type LevelId } from '@/content/kaardimang/regions';
 import {
   COUNTED_ROUNDS_PER_DAY,
+  daysLeft,
+  daysLeftEt,
   DEFAULT_LEVELS,
   DEFAULT_REWARDS,
   isChildPlayer,
+  isNoticeKind,
+  LAST_DAYS_NOTICE_DAYS,
   PLAYER_NAMES,
   PLAYERS,
   rankStandings,
+  RESULTS_NOTICE_DAYS,
   type KaardimangPlayer,
   type StandingRow
 } from '@/lib/kaardimang/competition';
+import type { KaardimangNotice } from '@/lib/kaardimang/api';
 
 // The family competition on the server (backlog KM-02): player levels, the
 // one open competition, its standings, and the prizes when it ends. A
@@ -178,6 +184,50 @@ export function medalsOf(player: KaardimangPlayer): PlayerMedal[] {
   `).all(player) as PlayerMedal[];
 }
 
+/* -------------------------------------------------------------- notices */
+
+function noticeSeen(competitionId: number, player: KaardimangPlayer, kind: KaardimangNotice['kind']): boolean {
+  return Boolean(db.prepare('SELECT 1 FROM kaardimang_notices WHERE competitionId = ? AND player = ? AND kind = ?').get(competitionId, player, kind));
+}
+
+function myRow(standings: StandingRow[], player: KaardimangPlayer): StandingRow {
+  return standings.find((row) => row.player === player) ?? { player, points: 0, newlyLearned: 0, learnedTotal: 0, rank: PLAYERS.length };
+}
+
+// The one-shot notices this player still has to see, in the order to show
+// them: first the results of the latest competition that ended in the last
+// two weeks (with prizes; a cancelled one announces nothing, and so does one
+// nobody scored in), then the reminder once the open competition is in its
+// last days. Each is listed until the player dismisses it (markNoticeSeen).
+export function pendingNotices(player: KaardimangPlayer, today = todayDateString()): KaardimangNotice[] {
+  const notices: KaardimangNotice[] = [];
+  const active = activeCompetitionRow(today);
+  const recent = (db.prepare("SELECT * FROM kaardimang_competitions WHERE status = 'ended' AND endedAt IS NOT NULL AND resultsJson IS NOT NULL ORDER BY endedAt DESC, id DESC").all() as CompetitionRow[])
+    .filter((row) => (isoToAppDate(row.endedAt ?? '') ?? '') >= addAppDays(today, -RESULTS_NOTICE_DAYS))
+    .map((row) => ({ row, standings: JSON.parse(row.resultsJson!) as StandingRow[] }))
+    .find(({ standings }) => standings.some((item) => item.points > 0));
+  if (recent && !noticeSeen(recent.row.id, player, 'results')) {
+    const me = myRow(recent.standings, player);
+    const award = db.prepare('SELECT stars FROM kaardimang_awards WHERE competitionId = ? AND player = ?').get(recent.row.id, player) as { stars: number } | undefined;
+    notices.push({ kind: 'results', competitionId: recent.row.id, title: recent.row.title, endDate: recent.row.endDate, standings: recent.standings, me: { rank: me.rank, points: me.points, stars: award?.stars ?? 0 } });
+  }
+  if (active && daysLeft(today, active.endDate) <= LAST_DAYS_NOTICE_DAYS && !noticeSeen(active.id, player, 'last_days')) {
+    const me = myRow(standingsFor(active.id), player);
+    notices.push({ kind: 'last_days', competitionId: active.id, title: active.title, endDate: active.endDate, daysLeftEt: daysLeftEt(today, active.endDate), me: { rank: me.rank, points: me.points } });
+  }
+  return notices;
+}
+
+// The player closed a notice: it is not shown again, on any device.
+export function markNoticeSeen(player: KaardimangPlayer, competitionId: unknown, kind: unknown): void {
+  if (!isNoticeKind(kind)) throw new CompetitionError('Sellist teadet ei ole.');
+  const row = typeof competitionId === 'number' && Number.isInteger(competitionId)
+    ? db.prepare('SELECT id FROM kaardimang_competitions WHERE id = ?').get(competitionId) as { id: number } | undefined
+    : undefined;
+  if (!row) throw new CompetitionError('Seda võistlust ei ole.');
+  db.prepare('INSERT OR IGNORE INTO kaardimang_notices (competitionId, player, kind, seenAt) VALUES (?, ?, ?, ?)').run(row.id, player, kind, nowIso());
+}
+
 /* -------------------------------------------------------- parent writes */
 
 function cleanViews(value: unknown): string[] {
@@ -250,6 +300,7 @@ export function deleteCompetition(id: unknown): void {
     if (!row) throw new CompetitionError('Seda võistlust ei ole.');
     if (row.status === 'ended') throw new CompetitionError('Lõppenud võistlust ei saa kustutada: auhinnad on juba jagatud.');
     db.prepare('DELETE FROM kaardimang_points WHERE competitionId = ?').run(row.id);
+    db.prepare('DELETE FROM kaardimang_notices WHERE competitionId = ?').run(row.id);
     db.prepare('UPDATE kaardimang_rounds SET competitionId = NULL WHERE competitionId = ?').run(row.id);
     db.prepare('DELETE FROM kaardimang_competitions WHERE id = ?').run(row.id);
   }).immediate();
@@ -261,6 +312,8 @@ export function extendCompetition(id: unknown, days: unknown, today = todayDateS
     const row = loadActive(id);
     const endDate = addAppDays(row.endDate < today ? today : row.endDate, extra);
     db.prepare('UPDATE kaardimang_competitions SET endDate = ? WHERE id = ?').run(endDate, row.id);
+    // The last days moved: the reminder comes again when they arrive.
+    db.prepare("DELETE FROM kaardimang_notices WHERE competitionId = ? AND kind = 'last_days'").run(row.id);
     return toView(db.prepare('SELECT * FROM kaardimang_competitions WHERE id = ?').get(row.id) as CompetitionRow);
   }).immediate();
 }
