@@ -42,18 +42,21 @@ RUN apk upgrade --no-cache libcrypto3 libssl3
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v1.22.22 \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg /usr/local/bin/pnpm /usr/local/bin/pnpx \
     && mkdir -p /data \
-    && chown node:node /data
-COPY --from=builder /app/.next ./.next
-COPY --from=prod-deps /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/src ./src
+    && chown node:node /data /app
+COPY --from=builder --chown=node:node /app/.next ./.next
+COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/package.json ./package.json
+COPY --from=builder --chown=node:node /app/tsconfig.json ./tsconfig.json
+COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/src ./src
 # The verified startup workflow (tsx scripts/verified-start.ts) runs at
 # container boot: it asserts auth config, backs up and verifies the
 # SQLite database, then launches Next. Its scripts must exist in the image.
-COPY --from=builder /app/scripts ./scripts
-RUN chown -R node:node /app
+COPY --from=builder --chown=node:node /app/scripts ./scripts
+# Ownership is set on each COPY above rather than with a final `chown -R`: a
+# recursive chown in its own layer stores a second copy of every file it touches
+# (about 0.9 GB here: .next, node_modules, src), doubling the image for no change
+# in the result. The container runs read-only and writes only to /data anyway.
 USER node
 EXPOSE 3000
 CMD ["./node_modules/.bin/tsx", "scripts/verified-start.ts"]

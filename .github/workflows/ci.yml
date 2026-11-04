@@ -273,6 +273,9 @@ jobs:
         run: |
           echo "release_sha=$(git rev-parse HEAD)" > release-evidence.txt
           echo "image_id=$(docker image inspect --format '{{.Id}}' pikkuste-harjutaja:local)" >> release-evidence.txt
+          echo "image_size_bytes=$(docker image inspect --format '{{.Size}}' pikkuste-harjutaja:local)" >> release-evidence.txt
+          echo "image_layers=$(docker image inspect --format '{{len .RootFS.Layers}}' pikkuste-harjutaja:local)" >> release-evidence.txt
+          cat release-evidence.txt
       - uses: actions/upload-artifact@v4
         with:
           name: release-candidate-evidence
