@@ -197,6 +197,21 @@ export function findView(id: string): MapViewDef | undefined {
   return MAP_VIEWS.find((view) => view.id === id);
 }
 
+// The map's name as the game shows it ("Euroopa · Põhja-Euroopa", "Maailm ·
+// Ookeanid"). Shared by the game and the history, so a round reads the same in both.
+export function kaardimangViewTitle(id: string, setId: string | null = null): string {
+  const view = findView(id);
+  if (!view) return id;
+  if (view.kind === 'estonia') return ESTONIA.nameEt;
+  if (view.kind === 'world') {
+    const set = setId ? WORLD_SETS.find((item) => item.id === setId) : undefined;
+    return set ? `Maailm · ${set.nameEt}` : 'Maailm';
+  }
+  const part = WORLD_PARTS.find((item) => item.id === view.worldPart)!;
+  if (view.kind !== 'subregion') return part.id === 'antarctica' ? part.nameEt : `Kogu ${part.nameEt}`;
+  return `${part.nameEt} · ${part.subregions.find((sub) => sub.id === view.subregion)?.nameEt}`;
+}
+
 export function worldPartOf(id: WorldPartId): WorldPart {
   const part = WORLD_PARTS.find((item) => item.id === id);
   if (!part) throw new Error(`Unknown world part ${id}`);

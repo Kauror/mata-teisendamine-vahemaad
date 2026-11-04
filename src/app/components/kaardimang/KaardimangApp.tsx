@@ -8,6 +8,7 @@ import {
   WORLD_PARTS,
   WORLD_SETS,
   findView,
+  kaardimangViewTitle,
   viewId,
   type LevelId,
   type WorldPartId,
@@ -37,13 +38,7 @@ function placeName(place: Place) {
 }
 
 function viewTitle(id: string, setId: WorldSetId | null = null): string {
-  const view = findView(id);
-  if (!view) return id;
-  if (view.kind === 'estonia') return ESTONIA.nameEt;
-  if (view.kind === 'world') return setId ? `Maailm · ${WORLD_SETS.find((set) => set.id === setId)?.nameEt}` : 'Maailm';
-  const part = WORLD_PARTS.find((item) => item.id === view.worldPart)!;
-  if (view.kind !== 'subregion') return part.id === 'antarctica' ? part.nameEt : `Kogu ${part.nameEt}`;
-  return `${part.nameEt} · ${part.subregions.find((sub) => sub.id === view.subregion)?.nameEt}`;
+  return kaardimangViewTitle(id, setId);
 }
 
 function placeOfView(id: string): Place {

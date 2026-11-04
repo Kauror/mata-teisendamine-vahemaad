@@ -1,4 +1,5 @@
 import { getUnit as getTextbookUnit } from '@/content/textbook/registry';
+import { kaardimangViewTitle, LEVELS } from '@/content/kaardimang/regions';
 import db from '@/lib/db';
 import type { TimelineCursor } from '@/lib/server/timelinePage';
 import type { Learner } from '@/lib/tasks';
@@ -10,14 +11,18 @@ import type { Learner } from '@/lib/tasks';
 // and the home card: vocabulary study/practice sessions and failed tests,
 // textbook practice, tests that did not count, and lessons read. Nothing here
 // touches attempts, stars or today's cards.
+//
+// Kaur (04.11): Kaardimäng rounds (the map game) are here too. A round never
+// writes an attempt (its stars come only from a finished competition's prize),
+// so before this a child's map games left no trace in the history at all.
 
-export type LearningActivityKind = 'study' | 'practice' | 'test' | 'reading';
+export type LearningActivityKind = 'study' | 'practice' | 'test' | 'reading' | 'map';
 export type LearningActivity = {
-  // Unique across sources: the source row's rowid × 4 + the source number.
+  // Unique across sources: the source row's rowid × 5 + the source number.
   id: number;
   createdAt: string;
   learner: Learner;
-  subject: 'inglise-keel' | 'loodusopetus';
+  subject: 'inglise-keel' | 'loodusopetus' | 'kaardimang';
   kind: LearningActivityKind;
   title: string;
   detail: string;
@@ -26,7 +31,7 @@ export type LearningActivity = {
 type SourceRow = {
   id: number;
   at: string;
-  source: 'vocab' | 'tbPractice' | 'tbTest' | 'tbRead';
+  source: 'vocab' | 'tbPractice' | 'tbTest' | 'tbRead' | 'map';
   learner: Learner;
   status: string | null;
   mode: string | null;
@@ -38,31 +43,44 @@ type SourceRow = {
   total: number | null;
   passed: number | null;
   stateJson: string | null;
+  points: number | null;
 };
 
 // Every source as one newest-first list. A vocabulary session that produced
 // an attempt (a passed test) and a textbook test with an attempt are left out:
 // those are already in /api/history with their stars.
 const SOURCES_SQL = `
-  SELECT s.rowid * 4 + 0 AS id, COALESCE(s.completedAt, s.updatedAt) AS at, 'vocab' AS source, s.learner, s.status, s.mode,
-         u.title AS unitTitle, NULL AS courseId, s.unitId, NULL AS lessonId, NULL AS correct, NULL AS total, NULL AS passed, s.stateJson
+  SELECT s.rowid * 5 + 0 AS id, COALESCE(s.completedAt, s.updatedAt) AS at, 'vocab' AS source, s.learner, s.status, s.mode,
+         u.title AS unitTitle, NULL AS courseId, s.unitId, NULL AS lessonId, NULL AS correct, NULL AS total, NULL AS passed, s.stateJson,
+         NULL AS points
     FROM english_vocab_sessions s LEFT JOIN english_vocab_units u ON u.id = s.unitId
    WHERE s.attemptId IS NULL
   UNION ALL
-  SELECT p.rowid * 4 + 1, COALESCE(p.completedAt, p.updatedAt), 'tbPractice', p.learner, p.status, p.mode,
-         NULL, p.courseId, p.unitId, NULL, NULL, NULL, NULL, NULL
+  SELECT p.rowid * 5 + 1, COALESCE(p.completedAt, p.updatedAt), 'tbPractice', p.learner, p.status, p.mode,
+         NULL, p.courseId, p.unitId, NULL, NULL, NULL, NULL, NULL, NULL
     FROM textbook_practice_sessions p
    WHERE p.learner IN ('kiur', 'kirsi') AND p.status IN ('active', 'completed')
   UNION ALL
-  SELECT t.rowid * 4 + 2, t.submittedAt, 'tbTest', t.learner, t.status, NULL,
-         NULL, t.courseId, t.unitId, NULL, t.correct, t.total, t.passed, NULL
+  SELECT t.rowid * 5 + 2, t.submittedAt, 'tbTest', t.learner, t.status, NULL,
+         NULL, t.courseId, t.unitId, NULL, t.correct, t.total, t.passed, NULL, NULL
     FROM textbook_test_sessions t
    WHERE t.learner IN ('kiur', 'kirsi') AND t.status = 'submitted' AND t.attemptId IS NULL
   UNION ALL
-  SELECT r.rowid * 4 + 3, r.lastCompletedAt, 'tbRead', r.learner, NULL, NULL,
-         NULL, r.courseId, r.unitId, r.lessonId, NULL, NULL, NULL, NULL
+  SELECT r.rowid * 5 + 3, r.lastCompletedAt, 'tbRead', r.learner, NULL, NULL,
+         NULL, r.courseId, r.unitId, r.lessonId, NULL, NULL, NULL, NULL, NULL
     FROM textbook_lesson_reads r
    WHERE r.learner IN ('kiur', 'kirsi')
+  UNION ALL
+  -- Kaardimäng: finished rounds, and rounds left unfinished after at least one
+  -- right answer (starting a new round abandons the open one). Map view in
+  -- unitTitle, learning set in courseId, level in mode. The parent preview and
+  -- the parents' own competition rounds are not a child's history.
+  SELECT k.rowid * 5 + 4, COALESCE(k.completedAt, k.updatedAt), 'map', k.learner, k.status, k.level,
+         k.viewId, k.setId, NULL, NULL, k.correct, k.total, NULL, NULL,
+         CASE WHEN k.competitionId IS NULL THEN NULL
+              ELSE (SELECT COALESCE(SUM(pt.points + pt.speedBonus), 0) FROM kaardimang_points pt WHERE pt.roundId = k.id) END
+    FROM kaardimang_rounds k
+   WHERE k.learner IN ('kiur', 'kirsi') AND (k.status = 'completed' OR (k.status = 'abandoned' AND k.correct > 0))
 `;
 
 function vocabDetail(row: SourceRow): { kind: LearningActivityKind; detail: string } {
@@ -80,8 +98,27 @@ function vocabDetail(row: SourceRow): { kind: LearningActivityKind; detail: stri
   return { kind, detail: [wordsText, unfinished ? 'pooleli' : ''].filter(Boolean).join(' · ') };
 }
 
+function pointWord(count: number) {
+  return count === 1 ? 'punkt' : 'punkti';
+}
+
+function mapActivity(row: SourceRow, base: Pick<LearningActivity, 'id' | 'createdAt' | 'learner'>): LearningActivity {
+  const level = LEVELS.find((item) => item.id === row.mode)?.nameEt ?? '';
+  const score = row.correct !== null && row.total !== null ? `${row.correct}/${row.total}` : '';
+  const points = row.points !== null ? `${row.points} ${pointWord(row.points)} võistlusel` : '';
+  const unfinished = row.status === 'completed' ? '' : 'pooleli';
+  return {
+    ...base,
+    subject: 'kaardimang',
+    kind: 'map',
+    title: kaardimangViewTitle(row.unitTitle ?? '', row.courseId),
+    detail: [score, level, points, unfinished].filter(Boolean).join(' · ')
+  };
+}
+
 export function describeActivity(row: SourceRow): LearningActivity {
   const base = { id: row.id, createdAt: row.at, learner: row.learner };
+  if (row.source === 'map') return mapActivity(row, base);
   if (row.source === 'vocab') {
     const { kind, detail } = vocabDetail(row);
     const what = kind === 'study' ? 'õppimine' : kind === 'test' ? 'test' : 'harjutamine';

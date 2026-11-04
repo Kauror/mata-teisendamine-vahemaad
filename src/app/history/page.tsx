@@ -54,13 +54,14 @@ type PurchaseHistory = {
 };
 
 // English and Loodusõpetus work that is not a passed test (/api/learning-activity):
-// practice, reading and tests that did not count. Star-free and not a link.
+// practice, reading and tests that did not count, and Kaardimäng rounds.
+// Star-free and not a link.
 type ActivityHistory = {
   kind: 'activity';
   id: number;
   createdAt: string;
   learner: 'kiur' | 'kirsi';
-  subject: 'inglise-keel' | 'loodusopetus';
+  subject: 'inglise-keel' | 'loodusopetus' | 'kaardimang';
   title: string;
   detail: string;
 };
@@ -243,7 +244,7 @@ export default function HistoryPage() {
       const meta = h.kind === 'task' ? taskMeta(h.metadataJson) : {};
       const firstCompleter = h.kind === 'task' && (h.assignmentModeSnapshot === 'first_completer' || meta.assignmentMode === 'first_completer');
       const exercise = isExercise ? compactTopicLabel(h.topic, h.category) || h.category : '';
-      const title = h.kind === 'activity' ? `${h.subject === 'loodusopetus' ? 'Loodusõpetus' : 'Inglise keel'} · ${h.title}` : h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? `🛒 ${h.titleSnapshot}` : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
+      const title = h.kind === 'activity' ? `${subjectLabel(h.subject)} · ${h.title}` : h.kind === 'task' ? (h.source === 'manual_adjustment' ? 'Vanem muutis punkte' : h.description) : h.kind === 'store' ? `🛒 ${h.titleSnapshot}` : subjectKey(h) === 'kordamine' ? 'Kordamine' : `${subjectDisplay(h)} · ${exercise}`;
       const amount = h.kind === 'task'
         ? `${h.amount > 0 ? '+' : ''}${formatStars(h.amount)} ⭐`
         : h.kind === 'store'
