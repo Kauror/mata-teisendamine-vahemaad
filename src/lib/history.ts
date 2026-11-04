@@ -130,6 +130,7 @@ export function relativeDateTimeLabel(createdAt: string) {
 // shown as-is rather than guessed at.
 export function subjectLabel(subject?: string | null) {
   if (subject === 'kordamine') return 'Kordamine';
+  if (subject === 'kaardimang') return 'Kaardimäng';
   if (!subject) return 'Matemaatika';
   return LEARNING_EXERCISE_SUBJECT_LABELS[subject as LearningExerciseSubject] ?? subject;
 }
