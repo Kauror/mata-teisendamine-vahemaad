@@ -14,7 +14,7 @@ concurrency:
 jobs:
   security:
     name: Production dependency, secret and configuration gates
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -39,7 +39,7 @@ jobs:
 
   unit:
     name: Lint, typecheck, unit tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,9 +59,13 @@ jobs:
   # the @real-units smoke over every ready unit of the real course, which
   # grows with each unit -- gets runner 3 of its own; runners 1 and 2 split
   # everything else (the demo walkthrough included) between them.
+  # Every job is pinned to ubuntu-24.04, not ubuntu-latest: when GitHub moved
+  # ubuntu-latest to 26.04 (Nov 2026), Playwright's WebKit build stopped launching
+  # (libicudata.so.74 missing) and every WebKit shard failed on unchanged code.
+  # Move to a newer image deliberately, together with a Playwright upgrade.
   e2e:
     name: Browser E2E (${{ matrix.project }} ${{ matrix.shard }}/3)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -105,7 +109,7 @@ jobs:
 
   e2e-prod:
     name: Production-build service worker E2E
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -141,7 +145,7 @@ jobs:
 
   docker-release-gate:
     name: Build and boot via docker compose (production path)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Confirm the checked-out release candidate SHA
@@ -273,6 +277,9 @@ jobs:
         run: |
           echo "release_sha=$(git rev-parse HEAD)" > release-evidence.txt
           echo "image_id=$(docker image inspect --format '{{.Id}}' pikkuste-harjutaja:local)" >> release-evidence.txt
+          echo "image_size_bytes=$(docker image inspect --format '{{.Size}}' pikkuste-harjutaja:local)" >> release-evidence.txt
+          echo "image_layers=$(docker image inspect --format '{{len .RootFS.Layers}}' pikkuste-harjutaja:local)" >> release-evidence.txt
+          cat release-evidence.txt
       - uses: actions/upload-artifact@v4
         with:
           name: release-candidate-evidence
