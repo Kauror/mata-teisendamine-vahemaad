@@ -5,6 +5,9 @@ import { navigateStable } from './navigation';
 test.beforeEach(async ({ page }) => authenticateFamily(page));
 
 test('dashboard has semantic independent links with keyboard focus and mobile touch targets', async ({ page }) => {
+  // The first visit to /kiur compiles that route on the dev server, which in WebKit
+  // can take longer than the default expect timeout on a cold CI runner.
+  test.setTimeout(60_000);
   await expect(page.locator('.child-dashboard-card [role="button"]')).toHaveCount(0);
   await expect(page.locator('a button, button a, a a, button button')).toHaveCount(0);
 
@@ -14,10 +17,12 @@ test('dashboard has semantic independent links with keyboard focus and mobile to
   await expect(primary).toBeFocused();
   expect(await primary.evaluate((node) => getComputedStyle(node).outlineStyle)).not.toBe('none');
   await primary.press('Enter');
-  await expect(page).toHaveURL(/\/kiur$/);
+  await expect(page).toHaveURL(/\/kiur$/, { timeout: 30_000 });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  // WebKit can still be finishing the Enter navigation to /kiur when the URL already
+  // reads /kiur; a plain goto('/') is then "interrupted by another navigation".
+  await navigateStable(page, '/');
   const primaryBox = await page.locator('.child-dashboard-card').first().boundingBox();
   const historyBox = await page.getByRole('link', { name: 'Ajalugu', exact: true }).boundingBox();
   expect(primaryBox?.height).toBeGreaterThanOrEqual(44);
