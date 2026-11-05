@@ -2537,3 +2537,21 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .km-label{fill:var(--km-label);stroke:var(--km-label-halo);paint-order:stroke;stroke-linejoin:round;text-anchor:middle;dominant-baseline:middle;font-family:var(--font-display);font-weight:800;pointer-events:none}
 .km-label[data-strong='true']{font-weight:900}
 @media (max-width:560px){.km-head h1{font-size:26px}.km-prompt{font-size:19px}.km-option{font-size:15px}.km-big{font-size:16px;padding:0 10px}.km-resume{grid-template-columns:1fr}.km-page-map{padding:10px}.km-map{border-radius:var(--tb-radius-small)}}
+
+/* Eluka demo (parent area, Seaded → Eluka demo): the pet room preview. The
+   room draws itself on canvases; these are only its buttons, cards and the
+   dark page it sits on. */
+.eluka-page{min-height:100vh;background:#1e1e1e;color:#eee}
+.eluka-shell{max-width:520px;margin:0 auto;padding:16px}
+.eluka-shell h1{font-size:22px;margin:8px 0 4px}
+.eluka-shell .eluka-note{font-size:13px;color:#aaa;margin:0 0 12px;line-height:1.45}
+.eluka-shell .eluka-back{display:inline-flex;align-items:center;min-height:44px;color:#9cc9ff;text-decoration:none;font-size:15px}
+.eluka-demo{--text-primary:#eee;--text-secondary:#aaa;--surface-1:#2a2a2a;--border-strong:#555;--bg-accent:#1f3b5c;--text-accent:#9cc9ff;--border-accent:#3a6fa8;--radius:8px;font-family:system-ui,sans-serif}
+.eluka-demo .rbtn{min-height:44px}
+.eluka-demo .rbtn{font:inherit;font-size:13px;padding:6px 12px;border-radius:var(--radius);border:0.5px solid var(--border-strong);background:var(--surface-1);color:var(--text-primary);cursor:pointer}
+.eluka-demo .rbtn[aria-pressed="true"]{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+.eluka-demo .pcard{position:absolute;left:8px;right:8px;display:none;background:rgba(18,22,34,0.95);color:#f5efe6;border:1px solid #4a5266;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.45;z-index:4;box-sizing:border-box}
+.eluka-demo .pcard button{margin-top:8px;font:inherit;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid #6b7aa0;background:#2c3550;color:#f5efe6;cursor:pointer}
+.eluka-demo .phint{color:#9cc9ff;text-decoration:underline;cursor:pointer;display:inline-block;padding:4px 0}
+.eluka-demo .ptoast{position:absolute;left:10px;right:10px;text-align:center;background:#2f7a43;color:#fff;border-radius:10px;padding:6px 10px;font-size:12.5px;line-height:1.35;z-index:5;opacity:0;transition:opacity .35s;pointer-events:none;box-sizing:border-box}
+.eluka-demo .ptip{position:absolute;left:4px;right:4px;background:#11141d;color:#f5efe6;border:1px solid #4a5266;border-radius:8px;padding:6px 8px;font-size:12px;line-height:1.4;z-index:6;display:none;pointer-events:none;box-sizing:border-box}

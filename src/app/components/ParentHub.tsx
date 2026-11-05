@@ -27,7 +27,7 @@ const TextbookPanel = dynamic(() => import('@/app/components/parent/TextbookPane
 const KaardimangPanel = dynamic(() => import('@/app/components/kaardimang/KaardimangParentPanel'), { loading: loadingPanel });
 const OfflineReadiness = dynamic(() => import('@/app/components/offline/OfflineReadiness').then((module) => module.OfflineReadiness), { loading: loadingPanel });
 
-type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'learning' | 'vocabulary' | 'textbook' | 'kaardimang' | 'password' | 'rewards' | 'history';
+type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'learning' | 'vocabulary' | 'textbook' | 'kaardimang' | 'password' | 'rewards' | 'history' | 'eluka';
 type CountedSection = 'library' | 'textbook' | 'tasks' | 'store' | 'rewards' | 'history';
 
 // What a section header says before its panel has loaded its own data; the
@@ -185,6 +185,10 @@ function ParentHubView({ view, tab }: { view: ParentView; tab?: ParentHaldaTab }
               </ParentAccordionSection>
               <ParentAccordionSection title='Ajaloo haldamine' summary={summaries.history} {...section('history')} keepMounted>
                 <HistoryAdminPanel onSummary={reportSummary.history} />
+              </ParentAccordionSection>
+              <ParentAccordionSection title='Eluka demo' summary='Lemmiklooma toa proov, ainult vanemale' {...section('eluka')}>
+                <p className='pv-hint'>Kiuri ja Kirsi lemmiklooma tuba enne avamist lastele. Midagi ei salvestata.</p>
+                <Link className='pv-km-play' href='/vanem/eluka-demo'>Ava Eluka demo</Link>
               </ParentAccordionSection>
               <ParentAccordionSection title='Minu parool' summary='Lapsevanema ala ligipääs' {...section('password')}>
                 <ParentPasswordPanel request={api.request} onError={api.setError} onNotice={api.setNotice} />
