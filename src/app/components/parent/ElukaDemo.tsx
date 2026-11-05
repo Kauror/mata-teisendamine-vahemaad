@@ -33,7 +33,7 @@ export default function ElukaDemo({ child }: { child: ElukaChild }) {
     node.innerHTML = MARKUP;
     window.ELUKA = { child: child.id, name: child.name, width: node.clientWidth, height: window.innerHeight - Math.max(0, node.getBoundingClientRect().top + window.scrollY) };
     const script = document.createElement('script');
-    script.src = '/eluka-demo/pet.js?v=10';
+    script.src = '/eluka-demo/pet.js?v=11';
     node.appendChild(script);
     // Leaving the page detaches the canvases, which stops the script's loops and timers.
     return () => { node.innerHTML = ''; };

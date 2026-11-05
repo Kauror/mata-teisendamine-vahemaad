@@ -54,13 +54,14 @@ test('the Eluka demo opens each child pet page for the parent only', async ({ pa
   // One child: the status bar and the room.
   await expect(page.locator('.eluka-demo canvas')).toHaveCount(2);
   // The status bar and the room fill the screen like the child's own page: as wide as each other,
-  // never larger than the screen, and filling it in width or in height.
+  // filling a phone screen edge to edge.
   const screen = page.viewportSize()!;
   const [hud, room] = await Promise.all([0, 1].map(async (i) => (await page.locator('.eluka-demo canvas').nth(i).boundingBox())!));
   expect(Math.abs(hud.width - room.width)).toBeLessThan(1);
   expect(room.width).toBeLessThanOrEqual(screen.width + 1);
   expect(hud.height + room.height).toBeLessThanOrEqual(screen.height + 1);
-  expect(Math.max(room.width / screen.width, (hud.height + room.height) / screen.height)).toBeGreaterThan(0.97);
+  expect(room.width).toBeGreaterThan(screen.width - 1);
+  expect(hud.height + room.height).toBeGreaterThan(screen.height - 1);
   // Only plain numbers: the pet state also holds canvases and page elements.
   const day = () => page.evaluate(() => {
     const st = (window as unknown as { __pet: { state: Record<string, { hours: number; tarkus: number; seenId: number | null }> } }).__pet.state.kiur;

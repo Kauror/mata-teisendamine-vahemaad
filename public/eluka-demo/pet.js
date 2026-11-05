@@ -13,7 +13,8 @@ var WW=60,VW=36,H=80,C=4,CAM=0,HC=2;
 var S=1.45;
 if(LIVE){var avW=CFG.width||360,avH=CFG.height||760;S=Math.max(1,avH/(H*C+17*HC));
  VW=Math.min(WW,Math.max(36,Math.floor(avW/(C*S))));S=Math.max(1,Math.min(S,avW/(VW*C)));}
-var HUDH=17*HC*S,HUW=VW*C/HC,HX=(HUW-72)/2;
+// SX: whole cells leave a few pixels at the sides; stretch the width by that last 1-3 % so it reaches the edges.
+var HUDH=17*HC*S,HUW=VW*C/HC,HX=(HUW-72)/2,SX=LIVE?Math.max(S,Math.min(S*1.04,avW/(VW*C))):S;
 var EGGS={
  kiur:['................','......kkkk......','.....kggggk.....','....kggggggk....','...kgggbbgggk...','...kgggbbgggk...','..kgggggggggbk..','..kggggggggbbk..','..kgggggggggbk..','..kggggggggggk..','..kgbbgggggggk..','..kgbbggggggk...','...kgggggggk....','...kkgggggkk....','.....kkkkk......','................'],
  kirsi:['................','......kkkk......','.....kcccck.....','....kcccccck....','...kccllcccck...','...kccllcccck...','..kccccccppcck..','..kccccccppcck..','..kcccccccccck..','..kcccccccccck..','..kccccccllcck..','..kccccccllcck..','...kccppcccck...','...kkcppccckk...','.....kkkkkk.....','................']};
@@ -342,7 +343,7 @@ var FONT={'0':['###','#.#','#.#','#.#','###'],'1':['.#.','##.','.#.','.#.','###'
  '8':['###','#.#','###','#.#','###'],'9':['###','#.#','###','..#','###'],'/':['..#','..#','.#.','#..','#..'],',':['.','.','.','#','#'],
  'k':['#..','#.#','##.','#.#','#.#'],'g':['.##','#..','#.#','#.#','.##'],'p':['###','#.#','###','#..','#..'],' ':['.','.','.','.','.']};
 function makeHud(parent){var c=document.createElement('canvas');c.width=HUW*HC;c.height=17*HC;
- c.style.cssText='width:'+(HUW*HC*S)+'px;height:'+(17*HC*S)+'px;image-rendering:pixelated;border-radius:12px 12px 0 0;display:block;cursor:help;touch-action:manipulation';
+ c.style.cssText='width:'+(HUW*HC*SX)+'px;height:'+(17*HC*S)+'px;image-rendering:pixelated;border-radius:12px 12px 0 0;display:block;cursor:help;touch-action:manipulation';
  c.setAttribute('aria-label','Näidikud');parent.appendChild(c);var ctx=c.getContext('2d');ctx.canvas=c;return ctx;}
 function hp(ctx,x,y,c,a){ctx.globalAlpha=a==null?1:a;ctx.fillStyle=c;ctx.fillRect(x*HC,y*HC,HC,HC);ctx.globalAlpha=1;}
 function drawMeter(ctx,m,x0,y0,bw,now,dead){var ic=ICONS[m.ic];
@@ -453,7 +454,7 @@ var roomsEl=document.getElementById('rooms');
 ROOMS.forEach(function(r){
  var st=state[r.id];
  var d=document.createElement('div');d.style.cssText='display:flex;flex-direction:column;align-items:center;gap:6px';
- var c=document.createElement('canvas');c.width=VW*C;c.height=H*C;c.style.cssText='width:'+(VW*C*S)+'px;height:'+(H*C*S)+'px;image-rendering:pixelated;border-radius:0 0 12px 12px;touch-action:none;cursor:grab;display:block';
+ var c=document.createElement('canvas');c.width=VW*C;c.height=H*C;c.style.cssText='width:'+(VW*C*SX)+'px;height:'+(H*C*S)+'px;image-rendering:pixelated;border-radius:0 0 12px 12px;touch-action:none;cursor:grab;display:block';
  c.setAttribute('aria-label',r.name);
  var cap=document.createElement('div');cap.style.cssText='font-size:13px;color:var(--text-secondary)';cap.textContent=r.name;
  var stack=document.createElement('div');stack.style.position='relative';d.appendChild(stack);st.hud=makeHud(stack);stack.appendChild(c);
