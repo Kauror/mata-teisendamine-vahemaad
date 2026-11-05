@@ -31,9 +31,9 @@ export default function ElukaDemo({ child }: { child: ElukaChild }) {
     const node = host.current;
     if (!node) return;
     node.innerHTML = MARKUP;
-    window.ELUKA = { child: child.id, name: child.name, width: node.clientWidth, height: window.innerHeight - Math.max(0, node.getBoundingClientRect().top) };
+    window.ELUKA = { child: child.id, name: child.name, width: node.clientWidth, height: window.innerHeight - Math.max(0, node.getBoundingClientRect().top + window.scrollY) };
     const script = document.createElement('script');
-    script.src = '/eluka-demo/pet.js?v=9';
+    script.src = '/eluka-demo/pet.js?v=10';
     node.appendChild(script);
     // Leaving the page detaches the canvases, which stops the script's loops and timers.
     return () => { node.innerHTML = ''; };

@@ -2548,8 +2548,8 @@ body:has(.pv-tabs) .offline-status{bottom:calc(76px + env(safe-area-inset-bottom
 .eluka-shell .eluka-back{display:inline-flex;align-items:center;min-height:44px;color:#9cc9ff;text-decoration:none;font-size:15px}
 .eluka-demo{--text-primary:#eee;--text-secondary:#aaa;--surface-1:#2a2a2a;--border-strong:#555;--bg-accent:#1f3b5c;--text-accent:#9cc9ff;--border-accent:#3a6fa8;--radius:8px;font-family:system-ui,sans-serif}
 .eluka-demo .rbtn{min-height:44px}
-.eluka-shell-child{padding:8px 12px 24px}
-.eluka-shell-child h1{font-size:20px;margin:0 0 8px}
+.eluka-shell-child{max-width:none;padding:0 0 24px}
+.eluka-shell-child .eluka-tools,.eluka-shell-child .eluka-back{margin-left:12px;margin-right:12px}
 .eluka-pick{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0 16px}
 .eluka-pick-child{display:flex;align-items:center;justify-content:center;min-height:96px;border-radius:16px;font-size:22px;font-weight:700;text-decoration:none;color:#fff;background:#34507a}
 .eluka-pick-child[data-child="kirsi"]{background:#c77aa3}
