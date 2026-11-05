@@ -1,9 +1,14 @@
-// Eluka demo: the locked pet room v8 (art preview, parent area only).
-// Generated from C:/CC/_worklogs/harjutaja-pet/room8.html; keep in step with it.
-// Everything lives in this browser tab: nothing is saved and no API is called.
+// Eluka demo: the pet page as the child will see it (locked room v8 art).
+// Generated from C:/CC/_worklogs/harjutaja-pet/room8.html by mk_pet.py; regenerate when the room changes.
+// LIVE mode (window.ELUKA = {child, name, width, height}): one room, the real Tallinn clock, real hours,
+// state saved only in this browser (localStorage), and Tarkus fed by the child's real exercises
+// (read-only GET /api/parent/history). It writes nothing to the server.
 (function(){
 if(!document.getElementById('rooms')||document.getElementById('rooms').childNodes.length)return;
-var WW=60,VW=36,H=80,C=4,S=1.45,CAM=0,HC=2,HUDH=17*HC*S;
+// LIVE = the child's own pet page (one room, real clock, real hours, saved in this browser).
+var CFG=window.ELUKA||{},LIVE=!!CFG.child;
+var WW=60,VW=36,H=80,C=4,CAM=0,HC=2;
+var S=LIVE?Math.max(1.2,Math.min(2.6,(CFG.width||360)/(VW*C),((CFG.height||760)-60)/(H*C+17*HC))):1.45,HUDH=17*HC*S;
 var EGGS={
  kiur:['................','......kkkk......','.....kggggk.....','....kggggggk....','...kgggbbgggk...','...kgggbbgggk...','..kgggggggggbk..','..kggggggggbbk..','..kgggggggggbk..','..kggggggggggk..','..kgbbgggggggk..','..kgbbggggggk...','...kgggggggk....','...kkgggggkk....','.....kkkkk......','................'],
  kirsi:['................','......kkkk......','.....kcccck.....','....kcccccck....','...kccllcccck...','...kccllcccck...','..kccccccppcck..','..kccccccppcck..','..kcccccccccck..','..kcccccccccck..','..kccccccllcck..','..kccccccllcck..','...kccppcccck...','...kkcppccckk...','.....kkkkkk.....','................']};
@@ -14,6 +19,7 @@ var GREY={};Object.keys(EPAL).forEach(function(k){GREY[k]={};Object.keys(EPAL[k]
 var ROOMS=[
  {id:'kiur',name:'Kiuri tuba',who:'Kiuri',mirror:false,wall:'#c9d9e8',wall2:'#b2c7db',trim:'#7f9bb6',floor:'#8b5a3c',floor2:'#6f4530',curt:'#34507a',curt2:'#28406a',sofa:'#4f8a4b',sofa2:'#3c6b39',sofa3:'#6fae6a',rug:'#5d7f66',rug2:'#3f5a47',rug3:'#86a88d',media:'tv'},
  {id:'kirsi',name:'Kirsi tuba',who:'Kirsi',mirror:true,wall:'#f7d6e0',wall2:'#efc1d1',trim:'#d896ae',floor:'#d9a877',floor2:'#bf8c5c',curt:'#b9a0e0',curt2:'#9f86cc',sofa:'#f4a6c4',sofa2:'#d77fa7',sofa3:'#f9c6da',rug:'#c9a4e3',rug2:'#a07cc4',rug3:'#f6c6dc',media:'radio'}];
+if(LIVE)ROOMS=ROOMS.filter(function(r){return r.id===CFG.child;});
 var TIMES=[
  {id:'hommik',label:'Hommik',sky:['#f6a57f','#ffe0a8'],sun:{y:15,x:24,c:'#ffb14a'},amb:'rgba(255,150,70,0.13)'},
  {id:'paev',label:'Päev',sky:['#73c0f0','#b8e4fb'],sun:{y:9,x:29,c:'#ffe066'},amb:null,beam:'#fff3a0'},
@@ -27,7 +33,8 @@ var BOX={x:1,y:68,w:11,h:9};
 // (Soojus ~2.5 days, Tuju ~3, Tarkus ~3.5, so one free day is fine). 8 h away = one small step down.
 // A need at zero for a whole day (24 h) ends the egg's life; the danger warning comes a day before that.
 var STEP={warm:-14,mood:-12,tark:-10,moodNoLearn:-6,zeroDeathH:24,hatchDays:7,boost:0.2};
-var time=1,state={},MEM=[],LOG=[];
+function clockIdx(){var h=Number(new Intl.DateTimeFormat('en-GB',{hour:'2-digit',hourCycle:'h23',timeZone:'Europe/Tallinn'}).format(new Date()))%24;return h>=6&&h<10?0:h<17?1:h<21?2:3;}
+var time=LIVE?clockIdx():1,timeFixed=!LIVE,state={},MEM=[],LOG=[],AWAY_MIN=8;
 function clamp(v){return Math.max(0,Math.min(100,v));}
 function dayOf(st){return Math.floor(st.hours/24)+1;}
 function danger(st){return !st.dead&&(st.warmth<=0.5||st.mood<=0.5||st.tarkus<=0.5);}
@@ -36,7 +43,20 @@ function initEgg(r,st,first){
  st.hours=first?(r.id==='kiur'?48:24):0;st.zeroH=0;st.dead=false;st.deathT=0;st.away=null;st.warned=false;st.bornT=performance.now();
  st.egg={x:SPOTS.nest.x,y:SPOTS.nest.y,spot:'nest'};st.move=null;st.drag=null;st.wakeT=-1e9;st.wakes=[];st.angry=false;
  st.items={hat:{where:'hook'},blanket:{where:'on'},bottle:{where:'floor',x:24,y:63},teddy:{where:'floor',x:48,y:38}};}
-ROOMS.forEach(function(r){var st=state[r.id]={cam:CAM0,curt:true,lamp:false,night:false,media:0,boxOpen:false,wob:0,hearts:[],ring:null,pan:null,last:0,n:1};initEgg(r,st,true);});
+ROOMS.forEach(function(r){var st=state[r.id]={cam:CAM0,curt:!TIMES[time].moon,lamp:false,night:false,media:0,boxOpen:false,wob:0,hearts:[],ring:null,pan:null,last:0,n:1,tapBank:15,r:r,seenId:null,wall:0};
+ initEgg(r,st,!LIVE);if(LIVE)load(r,st);});
+// ---- Saving (LIVE): the whole pet lives in this browser's storage, nothing goes to the server.
+function key(r){return 'eluka-demo:'+r.id;}
+function save(r,st){if(!LIVE)return;var it={};ITEMS.forEach(function(id){var o=st.items[id],w=o.where==='carried'?'floor':o.where;it[id]={where:w,x:o.x,y:o.y};});
+ var e=st.move?{x:st.move.x1,y:st.move.y1,spot:st.move.spot}:{x:st.egg.x,y:st.egg.y,spot:st.egg.spot};
+ try{localStorage.setItem(key(r),JSON.stringify({v:1,warmth:st.warmth,mood:st.mood,tarkus:st.tarkus,growth:st.growth,hours:st.hours,zeroH:st.zeroH,dead:st.dead,lived:st.lived,warned:st.warned,
+  egg:e,items:it,curt:st.curt,lamp:st.lamp,night:st.night,boxOpen:st.boxOpen,n:st.n,mem:MEM,log:LOG.slice(-6),seenId:st.seenId,tapBank:st.tapBank,wall:Date.now()}));}catch(x){}}
+function load(r,st){var d=null;try{d=JSON.parse(localStorage.getItem(key(r))||'null');}catch(x){}
+ if(!d||d.v!==1){st.wall=Date.now();return;}
+ ['warmth','mood','tarkus','growth','hours','zeroH','warned','curt','lamp','night','boxOpen','n','seenId','tapBank','lived'].forEach(function(k){if(d[k]!=null)st[k]=d[k];});
+ st.egg={x:d.egg.x,y:d.egg.y,spot:d.egg.spot};Object.keys(st.items).forEach(function(id){if(d.items&&d.items[id])st.items[id]=d.items[id];});
+ MEM=d.mem||[];LOG=d.log||[];st.wall=d.wall||Date.now();
+ if(d.dead){st.dead=true;st.deathT=-1e9;st.loadedDead=true;}}
 
 function sx(r,x,w){return (r.mirror?WW-x-(w||1):x)-CAM;}
 function R(ctx,r,x,y,w,h,c,a){ctx.globalAlpha=a==null?1:a;ctx.fillStyle=c;ctx.fillRect(Math.round(sx(r,x,w)*C),y*C,w*C,h*C);ctx.globalAlpha=1;}
@@ -251,6 +271,7 @@ function meters(st){return {top:[{ic:'flame',v:st.warmth,k:'soojus'},{ic:'heart'
  bot:[{ic:'grow',v:st.growth,prog:true,k:'kasv'},{ic:'cal',txt:dayOf(st)+'/7',k:'paev',day:dayOf(st)}]};}
 function frame(ctx,r,now){
  var st=state[r.id];CAM=st.cam;
+ if(LIVE){var wn=Date.now();if(st.wall&&wn-st.wall>3000&&!st.dead)catchUp(r,st,(wn-st.wall)/3.6e6,now);st.wall=wn;}
  var dt=st.last?Math.min(0.1,(now-st.last)/1000):0;st.last=now;tick(st,dt,now);
  if(st.move){var m=st.move,k=Math.min(1,(now-m.t)/m.d),kk=m.fall?k*k:k;st.egg.x=m.x0+(m.x1-m.x0)*k;st.egg.y=m.y0+(m.y1-m.y0)*kk;if(k>=1){st.move=null;st.egg.spot=m.spot;st.wob=now;}}
  ctx.clearRect(0,0,VW*C,H*C);
@@ -273,10 +294,24 @@ function frame(ctx,r,now){
 }
 // Live stats in the preview move fast (seconds); the real app uses the hour pacing in STEP.
 function tick(st,dt,now){if(st.dead)return;var its=st.items,on=function(id){return its[id].where==='on'&&!its[id].drag;};
+ if(LIVE){liveTick(st,dt/3600,now,on);return;}
  var heat=(on('blanket')?0.6:0)+(on('hat')?0.35:0)+(on('bottle')?0.5:0)+(on('teddy')?0.15:0)+(st.lamp?0.25:0)+(TIMES[time].beam&&st.curt?0.2:0);
  st.warmth=clamp(st.warmth+(heat-0.35)*dt*2);
  st.mood=clamp(st.mood+((on('teddy')?0.35:0)-0.12-(st.tarkus<40?0.1:0))*dt*2);
  st.tarkus=clamp(st.tarkus-0.03*dt*2);}
+// Real hours while the page is open: everything the egg wears stays on, so good care makes warmth rise.
+function liveTick(st,h,now,on){if(h<=0)return;
+ var prot=(on('blanket')?12:0)+(on('hat')?6:0)+(on('bottle')?4:0)+(st.lamp?2:0)+(TIMES[time].beam&&st.curt?2:0);
+ st.warmth=clamp(st.warmth+(STEP.warm+prot)/8*h);
+ st.mood=clamp(st.mood+(STEP.mood+(on('teddy')?6:0)+(st.tarkus<40?STEP.moodNoLearn:0))/8*h);
+ st.tarkus=clamp(st.tarkus+STEP.tark/8*h);
+ var care=(st.warmth+st.mood+st.tarkus)/3,speed=1+STEP.boost*Math.max(0,Math.min(1,(care-40)/45));
+ st.growth=Math.min(100,st.growth+100/(STEP.hatchDays*24)*speed*h);st.hours+=h;
+ st.tapBank=Math.min(15,st.tapBank+15*h);
+ if(danger(st))st.zeroH+=h;else{st.zeroH=0;st.warned=false;}
+ if(st.zeroH>=STEP.zeroDeathH)die(st.r,st,now);}
+// Petting: in the real pace taps give at most ~15 mood an hour, so tapping cannot replace care.
+function pet(st,n){if(!LIVE){st.mood=Math.min(100,st.mood+n);return;}var g=Math.min(n,st.tapBank);st.tapBank-=g;st.mood=clamp(st.mood+g);}
 var ZBIG=['####','..#.','.#..','####'],ZSMALL=['###','.#.','###'];
 function drawZzz(ctx,r,st,now){if(!sleeping(st,now)||st.drag||st.move)return;
  var since=now-st.wakeT;if(since<3200)return;var fade=Math.min(1,(since-3200)/2500);
@@ -349,7 +384,7 @@ function toast(st,text){var t=st.ui.toast;t.textContent=text;t.style.opacity=1;c
 function showCard(st,html,btn){var c=st.ui.card;c.innerHTML=html+'<br>';var b=document.createElement('button');b.textContent=btn.t;
  b.onclick=function(){c.style.display='none';btn.fn();};c.appendChild(b);c.style.display='block';}
 function hideCard(st){st.ui.card.style.display='none';}
-function hoursText(h){var d=Math.floor(h/24),t=h%24,p=[];if(d)p.push(d+(d===1?' päev':' päeva'));if(t)p.push(t+' tundi');return p.join(' ja ');}
+function hoursText(h){h=Math.round(h);var d=Math.floor(h/24),t=h%24,p=[];if(d)p.push(d+(d===1?' päev':' päeva'));if(t)p.push(t+' tundi');return p.join(' ja ');}
 function stateLines(st){var L=[];
  if(st.warmth<=0.5)L.push('Muna on täiesti külmaks jäänud.');else if(st.warmth<15)L.push('Muna külmetab väga.');else if(st.warmth<35)L.push('Munal on külm.');
  if(st.mood<=0.5)L.push('Muna on väga õnnetu.');else if(st.mood<15)L.push('Muna on väga kurb.');else if(st.mood<30)L.push('Muna on kurb.');
@@ -365,37 +400,49 @@ function showAway(r,st){var a=st.away,b=a.before,L=stateLines(st),d=dayOf(st);
  // the hint is hidden until the child asks for it
  var h=hintOf(st);if(h)html+='<br><a href="#" class="phint" onclick="this.nextSibling.style.display=\'inline\';this.style.display=\'none\';return false;">Vihje?</a><span style="display:none;color:#c9d3e6">Vihje: '+h+'</span>';
  showCard(st,html,{t:'Selge',fn:function(){st.away=null;}});}
-function awayStep(r,st,now){if(st.dead)return;
+function awayStep(r,st,now,hrs,quiet){if(st.dead)return;hrs=hrs||8;var f=hrs/8;
  if(!st.away)st.away={h:0,before:{day:dayOf(st),growth:st.growth}};
  var its=st.items,on=function(id){return its[id].where==='on';},wasZero=danger(st);
  var prot=(on('blanket')?12:0)+(on('hat')?6:0)+(on('bottle')?4:0)+(st.lamp?2:0);
- st.warmth=clamp(st.warmth+STEP.warm+prot*0.5);
- if(on('blanket')){its.blanket.where='floor';its.blanket.x=13;its.blanket.y=72;}   // it slipped off at some point
- st.lamp=false;
- st.mood=clamp(st.mood+STEP.mood+(on('teddy')?6:0)+(st.tarkus<40?STEP.moodNoLearn:0));
- st.tarkus=clamp(st.tarkus+STEP.tark);
+ st.warmth=clamp(st.warmth+(STEP.warm+prot*0.5)*f);
+ if(hrs>=4&&on('blanket')){its.blanket.where='floor';its.blanket.x=13;its.blanket.y=72;}   // it slipped off at some point
+ if(hrs>=4)st.lamp=false;
+ st.mood=clamp(st.mood+(STEP.mood+(on('teddy')?6:0)+(st.tarkus<40?STEP.moodNoLearn:0))*f);
+ st.tarkus=clamp(st.tarkus+STEP.tark*f);
  var care=(st.warmth+st.mood+st.tarkus)/3,speed=1+STEP.boost*Math.max(0,Math.min(1,(care-40)/45));
- st.growth=Math.min(100,st.growth+100/(STEP.hatchDays*3)*speed);st.hours+=8;st.away.h+=8;
- if(danger(st))st.zeroH+=wasZero?8:4;else st.zeroH=0;
+ st.growth=Math.min(100,st.growth+100/(STEP.hatchDays*3)*speed*f);st.hours+=hrs;st.away.h+=hrs;
+ if(danger(st))st.zeroH+=wasZero?hrs:hrs/2;else st.zeroH=0;
  if(st.zeroH>=STEP.zeroDeathH){die(r,st,now);return;}
  if(st.zeroH>0&&!st.warned){st.warned=true;addLog(r.who+' muna on ohus ('+needWords(st)+'). Ta vajab täna hoolt.');}
  if(!st.zeroH)st.warned=false;
- showAway(r,st);}
-function exercise(r,st,now,good){if(st.dead)return;
+ if(!quiet)showAway(r,st);save(r,st);}
+function catchUp(r,st,el,now){var left=el;while(left>1e-6&&!st.dead){var c=Math.min(8,left);awayStep(r,st,now,c,true);left-=c;}
+ if(!st.dead&&el>=AWAY_MIN)showAway(r,st);else if(!st.dead)st.away=null;save(r,st);}
+function exercise(r,st,now,good,quiet){if(st.dead)return;
  st.tarkus=clamp(st.tarkus+(good?20:6));
  if(good){st.mood=clamp(st.mood+10);heart(st,3,now);}else heart(st,1,now);
  if(!danger(st)){st.zeroH=0;st.warned=false;}
- toast(st,good?'Muna on nüüd rõõmsam, sest sa harjutasid!':'Muna sai natuke targemaks. Proovi veel!');}
+ if(!quiet)toast(st,good?'Muna on nüüd rõõmsam, sest sa harjutasid!':'Muna sai natuke targemaks. Proovi veel!');save(r,st);}
 function die(r,st,now){st.dead=true;st.deathT=now;st.away=null;hideCard(st);st.drag=null;st.move=null;
  var its=st.items,spots={hat:[36,68],blanket:[13,72],bottle:[24,63],teddy:[40,64]};
  ITEMS.forEach(function(id){if(its[id].where==='on'||its[id].where==='carried'){its[id].where='floor';its[id].drag=null;its[id].x=spots[id][0];its[id].y=spots[id][1];}});
  var days=Math.max(1,Math.round(st.hours/24));st.lived=days;
  addLog(r.who+' muna läks tähtede juurde (oli '+days+' päeva). Uus muna ootab.');
- setTimeout(function(){showCard(st,'<b>Muna läks tähtede juurde.</b><br>Ta ei saanud piisavalt soojust, rõõmu ja harjutamist.<br>Ta oli sinuga '+days+(days===1?' päeva':' päeva')+'.<br><span style="color:#aab4c8">Ta jääb sinu mälestusraamatusse.</span>',
-  {t:'Alusta uue munaga',fn:function(){MEM.push({who:r.who,n:st.n,days:days});st.n++;initEgg(r,st,false);st.cam=CAM0;heart(st,3,performance.now());renderLog();}});},5400);}
+ save(r,st);setTimeout(function(){showDeath(r,st);},5400);}
+function showDeath(r,st){var days=st.lived||1;showCard(st,'<b>Muna läks tähtede juurde.</b><br>Ta ei saanud piisavalt soojust, rõõmu ja harjutamist.<br>Ta oli sinuga '+days+(days===1?' päeva':' päeva')+'.<br><span style="color:#aab4c8">Ta jääb sinu mälestusraamatusse.</span>',
+  {t:'Alusta uue munaga',fn:function(){MEM.push({who:r.who,n:st.n,days:days});st.n++;initEgg(r,st,false);st.seenId=null;markSeen(r,st);st.cam=CAM0;heart(st,3,performance.now());renderLog();save(r,st);}});}
+function historyOf(r){return fetch('/api/parent/history?learner='+r.id+'&limit=50',{credentials:'same-origin',cache:'no-store'}).then(function(x){return x.ok?x.json():null;}).catch(function(){return null;});}
+// A new egg counts only exercises made after it appeared.
+function markSeen(r,st){historyOf(r).then(function(j){if(!j||!j.items)return;st.seenId=j.items.reduce(function(m,a){return Math.max(m,a.id);},0);save(r,st);});}
+function syncExercises(r,st){if(!LIVE||st.dead)return;if(st.seenId==null){markSeen(r,st);return;}
+ historyOf(r).then(function(j){if(!j||!j.items||st.dead)return;var fresh=j.items.filter(function(a){return a.id>st.seenId;});if(!fresh.length)return;
+  var good=0,weak=0,now=performance.now();fresh.forEach(function(a){if(a.questionCount>0&&a.score/a.questionCount>=0.8)good++;else weak++;});
+  st.seenId=fresh.reduce(function(m,a){return Math.max(m,a.id);},st.seenId);
+  for(var i=0;i<good;i++)exercise(r,st,now,true,true);for(var k=0;k<weak;k++)exercise(r,st,now,false,true);
+  var n=good+weak;toast(st,good?(CFG.name||r.who)+' tegi '+n+' '+(n===1?'harjutuse':'harjutust')+' – muna on nüüd rõõmsam!':'Muna sai natuke targemaks. Proovi veel!');save(r,st);});}
 function addLog(t){LOG.push(t);renderLog();}
 function renderLog(){var h='<div><b>Mälestusraamat:</b> '+(MEM.length?MEM.map(function(m){return m.who+' '+m.n+'. muna – oli '+m.days+' päeva';}).join('; '):'veel tühi')+'</div>';
- if(LOG.length)h+='<div><b>Vanema teated (näidis):</b> '+LOG.slice(-3).join(' · ')+'</div>';document.getElementById('log').innerHTML=h;}
+ if(LOG.length)h+='<div><b>Vanema teated (näidis):</b> '+LOG.slice(-3).join(' · ')+'</div>';var lg=document.getElementById('log');if(lg)lg.innerHTML=h;}
 
 var roomsEl=document.getElementById('rooms');
 ROOMS.forEach(function(r){
@@ -408,7 +455,7 @@ ROOMS.forEach(function(r){
  var card=document.createElement('div');card.className='pcard';card.style.top=(HUDH+58)+'px';stack.appendChild(card);
  var tst=document.createElement('div');tst.className='ptoast';tst.style.top=(HUDH+8)+'px';stack.appendChild(tst);
  st.ui={card:card,toast:tst};attachTips(st.hud,stack,function(){return meters(st);});
- d.appendChild(cap);roomsEl.appendChild(d);
+ if(!LIVE)d.appendChild(cap);roomsEl.appendChild(d);
  var ctx=c.getContext('2d');
  c.addEventListener('pointerdown',function(ev){var p=cellAt(r,st,ev,c),now=performance.now();c.setPointerCapture(ev.pointerId);
   st.ring={x:p.x,y:p.y,t:now};
@@ -429,32 +476,42 @@ ROOMS.forEach(function(r){
  c.addEventListener('pointerup',function(ev){var p=cellAt(r,st,ev,c),now=performance.now();
   var carried=ITEMS.filter(function(id){return st.items[id].drag;});
   if(carried.length){carried.forEach(function(id){var it=st.items[id],q=itemRect(st,id),dg=it.drag;it.drag=null;
-    if(dg.from==='on'&&Math.abs(p.fx-dg.sx)+Math.abs(p.fy-dg.sy)<1.5){it.where='on';if(sleeping(st,now))wake(st,now);else{st.wob=now;heart(st,1,now);st.mood=Math.min(100,st.mood+5);}return;}
-    if(nearEgg(st,p)){it.where='on';heart(st,2,now);st.mood=Math.min(100,st.mood+4);}
-    else if(overBox(p)){it.where='box';heart(st,1,now,{x:BOX.x+3,y:BOX.y-6});st.mood=Math.min(100,st.mood+3);}
+    if(dg.from==='on'&&Math.abs(p.fx-dg.sx)+Math.abs(p.fy-dg.sy)<1.5){it.where='on';if(sleeping(st,now))wake(st,now);else{st.wob=now;heart(st,1,now);pet(st,5);}return;}
+    if(nearEgg(st,p)){it.where='on';heart(st,2,now);pet(st,4);}
+    else if(overBox(p)){it.where='box';heart(st,1,now,{x:BOX.x+3,y:BOX.y-6});pet(st,3);}
     else if(id==='hat'&&inBox(p,HOOK.x-2,HOOK.y-3,HOOK.x+11,HOOK.y+9)){it.where='hook';}
     else{it.where='floor';it.x=Math.max(0,Math.min(WW-q.w,Math.round(q.x)));it.y=Math.max(44-q.h+3,Math.min(H-q.h,Math.round(q.y)));}});return;}
   if(st.drag){var dr=st.drag;st.drag=null;
-   if(!dr.moved){if(sleeping(st,now)){wake(st,now);return;}st.wob=now;heart(st,1,now);st.mood=Math.min(100,st.mood+5);return;}
+   if(!dr.moved){if(sleeping(st,now)){wake(st,now);return;}st.wob=now;heart(st,1,now);pet(st,5);return;}
    var to=restingPlace(st),dist=Math.abs(to.y-st.egg.y)+Math.abs(to.x-st.egg.x);
    st.move={x0:st.egg.x,y0:st.egg.y,x1:to.x,y1:to.y,t:now,d:dist<0.5?1:Math.min(500,140+dist*22),spot:to.spot,fall:to.spot==='floor'};
    if(sleeping(st,now))wake(st,now+220);else if(to.spot!=='floor')heart(st,2,now+220);return;}
   if(st.pan){var pn=st.pan;st.pan=null;if(pn.moved)return;var q=pn.p;
    if(inBox(q,19,5,34,22)){st.curt=!st.curt;return;}
    if(inBox(q,13,10,21,13)||inBox(q,16,14,18,43)){st.lamp=!st.lamp;if(st.lamp&&!st.dead)heart(st,1,now);return;}
-   if(inBox(q,2,32,13,44)){if(TIMES[time].moon&&!st.dead){wake(st,now+200);st.media=now+3600;return;}st.media=now+3600;if(!st.dead){heart(st,1,now+900);st.mood=Math.min(100,st.mood+3);}return;}
+   if(inBox(q,2,32,13,44)){if(TIMES[time].moon&&!st.dead){wake(st,now+200);st.media=now+3600;return;}st.media=now+3600;if(!st.dead){heart(st,1,now+900);pet(st,3);}return;}
    if(inBox(q,31,72,35,79)){st.night=!st.night;if(st.night&&!st.dead)heart(st,1,now);return;}
    if(overBox(q)){st.boxOpen=!st.boxOpen;return;}}
  });
+ if(LIVE){if(st.loadedDead)showDeath(r,st);syncExercises(r,st);
+  var timer=setInterval(function(){if(!c.isConnected){clearInterval(timer);return;}
+   if(!timeFixed){var ti=clockIdx();if(ti!==time)setTime(ti,false);}syncExercises(r,st);save(r,st);},30000);
+  var saver=setInterval(function(){if(!c.isConnected){clearInterval(saver);return;}save(r,st);},5000);
+  window.addEventListener('pagehide',function(){save(r,st);});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')save(r,st);else syncExercises(r,st);});}
  function loop(now){if(!c.isConnected)return;frame(ctx,r,now);requestAnimationFrame(loop);}
  requestAnimationFrame(loop);
 });
 var tEl=document.getElementById('times');
-TIMES.forEach(function(T,i){var b=document.createElement('button');b.className='rbtn';b.textContent=T.label;b.setAttribute('aria-pressed',i===time);
- b.onclick=function(){time=i;Array.prototype.forEach.call(tEl.children,function(x,j){x.setAttribute('aria-pressed',j===i);});
-  ROOMS.forEach(function(r){var st=state[r.id];if(T.moon)st.curt=false;else if(i===0){st.curt=true;st.night=false;}});};tEl.appendChild(b);});
+function setTime(i,fixed){time=i;timeFixed=fixed;var T=TIMES[i];
+ Array.prototype.forEach.call(tEl.children,function(x){x.setAttribute('aria-pressed',x.dataset.t===(fixed?String(i):'clock'));});
+ ROOMS.forEach(function(r){var st=state[r.id];if(T.moon)st.curt=false;else if(i===0){st.curt=true;st.night=false;}});}
+function timeBtn(label,t,fn){var b=document.createElement('button');b.className='rbtn';b.textContent=label;b.dataset.t=t;b.onclick=fn;tEl.appendChild(b);}
+if(LIVE)timeBtn('Päris kell','clock',function(){setTime(clockIdx(),false);});
+TIMES.forEach(function(T,i){timeBtn(T.label,String(i),function(){setTime(i,true);});});
+setTime(time,timeFixed);
 function rowOf(el,list){list.forEach(function(e){var b=document.createElement('button');b.className='rbtn';b.textContent=e[0];
- b.onclick=function(){var now=performance.now();ROOMS.forEach(function(r){e[1](r,state[r.id],now);});};el.appendChild(b);});}
+ b.onclick=function(){var now=performance.now();ROOMS.forEach(function(r){e[1](r,state[r.id],now);save(r,state[r.id]);});};el.appendChild(b);});}
 rowOf(document.getElementById('events'),[
  ['Tekk kukub maha',function(r,st){if(st.items.blanket.where==='on'){st.items.blanket.where='floor';st.items.blanket.x=13;st.items.blanket.y=72;}}],
  ['Muna veereb pesast välja',function(r,st,now){if(!st.dead&&st.egg.spot==='nest')st.move={x0:st.egg.x,y0:st.egg.y,x1:9,y1:50,t:now,d:700,spot:'floor'};}],
@@ -462,16 +519,17 @@ rowOf(document.getElementById('events'),[
 rowOf(document.getElementById('sim'),[
  ['Harjutus läks hästi',function(r,st,now){exercise(r,st,now,true);}],
  ['Harjutus läks kehvasti',function(r,st,now){exercise(r,st,now,false);}],
- ['Möödub 8 tundi',awayStep],
- ['Kõik korras',function(r,st){if(st.dead)return;st.warmth=85;st.mood=85;st.tarkus=85;st.zeroH=0;st.warned=false;}]]);
+ [LIVE?'Keri 8 tundi edasi':'Möödub 8 tundi',function(r,st,now){awayStep(r,st,now,8);}],
+ ['Kõik korras',function(r,st){if(st.dead)return;st.warmth=85;st.mood=85;st.tarkus=85;st.zeroH=0;st.warned=false;}]].concat(LIVE?[
+ ['Alusta otsast (uus muna)',function(r){try{localStorage.removeItem(key(r));}catch(x){}location.reload();}]]:[]));
 renderLog();
 var bh=document.getElementById('babyhud');
-[['Kiuri beebi',{top:[{ic:'bowl',v:35,k:'kõht'},{ic:'heart',v:80,k:'tujuB'},{ic:'book',v:62,k:'tarkusB'}],bot:[{ic:'cake',txt:'4 p',k:'vanus'},{ic:'bell',txt:'1,6 kg',k:'kaal'}]}],
+if(bh)[['Kiuri beebi',{top:[{ic:'bowl',v:35,k:'kõht'},{ic:'heart',v:80,k:'tujuB'},{ic:'book',v:62,k:'tarkusB'}],bot:[{ic:'cake',txt:'4 p',k:'vanus'},{ic:'bell',txt:'1,6 kg',k:'kaal'}]}],
  ['Kirsi beebi',{top:[{ic:'bowl',v:70,k:'kõht'},{ic:'heart',v:22,k:'tujuB'},{ic:'book',v:12,k:'tarkusB'}],bot:[{ic:'cake',txt:'2 p',k:'vanus'},{ic:'bell',txt:'0,9 kg',k:'kaal'}]}]].forEach(function(b){
  var d=document.createElement('div');d.style.cssText='display:flex;flex-direction:column;align-items:center;gap:6px';
  var wrap=document.createElement('div');wrap.style.position='relative';d.appendChild(wrap);var hx=makeHud(wrap);hx.canvas.style.borderRadius='12px';
  attachTips(hx,wrap,function(){return b[1];});
  var cap=document.createElement('div');cap.style.cssText='font-size:13px;color:var(--text-secondary)';cap.textContent=b[0];d.appendChild(cap);bh.appendChild(d);
- (function loop(now){if(!hx.canvas.isConnected)return;drawHud(hx,b[1],now||0,false);requestAnimationFrame(loop);})(0);});
+ (function loop(now){drawHud(hx,b[1],now||0,false);requestAnimationFrame(loop);})(0);});
 window.__pet={state:state,ROOMS:ROOMS};
 })();

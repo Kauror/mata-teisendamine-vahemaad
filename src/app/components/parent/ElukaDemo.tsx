@@ -1,34 +1,42 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { ElukaChild } from '@/app/components/parent/elukaChildren';
 
-// The pet room v8 art preview ("Eluka demo"). The room is a plain canvas
-// script (public/eluka-demo/room8.js) drawn from the locked art pack; this
-// component only gives it its markup and loads it. The script keeps all state
-// in the tab: nothing is stored and no child data is read or written.
-const MARKUP = `<h2 class="sr-only" style="position:absolute;left:-9999px">Pet rooms v8 for Kiur and Kirsi: the room starts centred on the egg, the egg can be dropped anywhere, a status bar with tooltips and the new Tarkus need, a message after exercises, a while-you-were-away card, the danger state, and the death and new-egg flow.</h2>
-<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0">
-  <div id="times" style="display:flex;flex-wrap:wrap;gap:6px" role="group" aria-label="Kellaaeg"></div>
-  <div id="events" style="display:flex;flex-wrap:wrap;gap:6px" role="group" aria-label="Juhtumid"></div>
-  <div id="sim" style="display:flex;flex-wrap:wrap;gap:6px" role="group" aria-label="Aja simulatsioon"></div>
-  <div id="rooms" style="display:flex;flex-wrap:wrap;gap:16px"></div>
-  <div id="log" style="font-size:12px;color:var(--text-secondary);line-height:1.5"></div>
-  <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">Muna näidikud: üleval kolm vajadust – <b>leek</b> = soojus, <b>süda</b> = tuju, <b>öökull</b> = tarkus; all <b>muna</b> = kasv koorumiseni ja <b>kalender</b> = mitmes päev. Puuduta või hoia hiirt näidiku kohal, siis tuleb selgitus. Tarkus kasvab ainult harjutustest. Kui mõni vajadus on kaua tühi, on muna ohus ja võib lõpuks tähtede juurde minna.</div>
-  <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">Beebi näidikud pärast koorumist (kõht, tuju, tarkus; vanus, kaal):</div>
-  <div id="babyhud" style="display:flex;flex-wrap:wrap;gap:16px"></div>
-</div>`;
+// Eluka demo: the pet page as the child will see it later. The room is a plain
+// canvas script (public/eluka-demo/pet.js) drawn from the locked art pack; this
+// component gives it its markup and its settings, then loads it. The pet is
+// saved only in this browser; the script reads the child's exercise history
+// (GET, parent session) and writes nothing to the server.
+const MARKUP = `
+<div id="rooms" class="eluka-rooms"></div>
+<details class="eluka-tools">
+  <summary>Testimise nupud (ainult demos)</summary>
+  <p class="eluka-tools-label">Kellaaeg</p>
+  <div id="times" class="eluka-row" role="group" aria-label="Kellaaeg"></div>
+  <p class="eluka-tools-label">Juhtumid</p>
+  <div id="events" class="eluka-row" role="group" aria-label="Juhtumid"></div>
+  <p class="eluka-tools-label">Aeg ja harjutused</p>
+  <div id="sim" class="eluka-row" role="group" aria-label="Aeg ja harjutused"></div>
+  <div id="log" class="eluka-log"></div>
+</details>`;
 
-export default function ElukaDemo() {
+declare global {
+  interface Window { ELUKA?: { child: string; name: string; width: number; height: number } }
+}
+
+export default function ElukaDemo({ child }: { child: ElukaChild }) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const node = host.current;
     if (!node) return;
     node.innerHTML = MARKUP;
+    window.ELUKA = { child: child.id, name: child.name, width: node.clientWidth, height: window.innerHeight - Math.max(0, node.getBoundingClientRect().top) };
     const script = document.createElement('script');
-    script.src = '/eluka-demo/room8.js?v=8';
+    script.src = '/eluka-demo/pet.js?v=9';
     node.appendChild(script);
-    // Leaving the page detaches the canvases, which stops the script's loops.
+    // Leaving the page detaches the canvases, which stops the script's loops and timers.
     return () => { node.innerHTML = ''; };
-  }, []);
+  }, [child]);
   return <div ref={host} className='eluka-demo' />;
 }
