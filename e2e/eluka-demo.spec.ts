@@ -66,9 +66,9 @@ test('the Eluka demo opens each child pet page for the parent only', async ({ pa
   expect(hud.height + room.height).toBeGreaterThan(screen.height - 1);
   // The status bar is at the bottom, clear of the phone's top edge.
   expect(hud.y).toBeGreaterThan(room.y + room.height - 1);
-  // The room is drawn at 75 %: a wider view than the old 36 cells and extra floor below the 80 rows.
+  // The whole 60-cell room across the screen (nothing cut at the sides), extra floor below the 80 rows.
   const [cols, rows] = await roomCanvas.evaluate((c) => [(c as HTMLCanvasElement).width / 4, (c as HTMLCanvasElement).height / 4]);
-  expect(cols).toBeGreaterThanOrEqual(48);
+  expect(cols).toBe(60);
   expect(rows).toBeGreaterThan(80);
   // The way out of the game sits just above the status bar.
   const exit = page.locator('.eluka-demo .pexit');
@@ -101,6 +101,8 @@ test('the Eluka demo opens each child pet page for the parent only', async ({ pa
   expect((await day()).seenId).toBe(8);
   expect(historyReads.every((method) => method === 'GET')).toBe(true);
 
+  // A damaged saved pet starts a fresh egg instead of a blank page.
+  await page.evaluate(() => localStorage.setItem('eluka-demo:kirsi', JSON.stringify({ v: 1, mem: 'x' })));
   await navigateStable(page, '/vanem/eluka-demo/kirsi');
   await expect(page.getByRole('heading', { name: 'Kirsi muna' })).toBeVisible();
   await expect(page.locator('.eluka-demo canvas')).toHaveCount(2);

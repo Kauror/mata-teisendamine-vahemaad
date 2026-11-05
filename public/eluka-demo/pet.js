@@ -14,10 +14,15 @@ var WW=60,VW=36,H=80,C=4,CAM=0,HC=2;
 // Kaur 2026-11-05: the room at 75 %; the status bar keeps its full size (HS) so it stays readable.
 var S=1.45,ZOOM=0.75,HS=S;
 if(LIVE){var avW=CFG.width||360,avH=CFG.height||760;ZOOM=CFG.zoom||ZOOM;var S0=avH/(H*C+17*HC);S=Math.max(1,S0*ZOOM);
- VW=Math.min(WW,Math.max(36,Math.floor(avW/(C*S))));S=Math.max(1,Math.min(S,avW/(VW*C)));
- // the whole room already fits across: zoom in just enough to fill the width
- if(VW===WW)S=Math.max(S,avW/(WW*C));
  HS=Math.max(1,Math.min(S0,avW/(72*HC)));
+ // Kaur 2026-11-05: "slightly wider" = the whole 60-cell room across the screen (nothing cut at the
+ // sides), as long as its 80 rows still fit above the status bar; otherwise the zoom rule below.
+ var SW=avW/(WW*C);
+ if(!CFG.zoom&&SW>=1&&SW*C*80+17*HC*HS<=avH){S=SW;VW=WW;}
+ else{VW=Math.min(WW,Math.max(36,Math.floor(avW/(C*S))));S=Math.max(1,Math.min(S,avW/(VW*C)));
+ // the whole room already fits across: zoom in just enough to fill the width
+ // (a tablet: no wider than the 80 rows allow above the status bar; the room is then centred)
+ if(VW===WW)S=Math.max(S,Math.min(avW/(WW*C),(avH-17*HC*HS)/(80*C)));}
  H=Math.max(80,Math.floor((avH-17*HC*HS)/(C*S)));}
 // SX/SY/HSX: whole cells leave a few pixels; stretch by that last 1-3 % so everything meets the screen edges.
 var HUDH=17*HC*HS,HUW=LIVE?Math.max(72,Math.floor(avW/(HC*HS))):VW*C/HC,HX=(HUW-72)/2,
@@ -61,15 +66,15 @@ ROOMS.forEach(function(r){var st=state[r.id]={cam:CAM0,curt:!TIMES[time].moon,la
  initEgg(r,st,!LIVE);if(LIVE)load(r,st);});
 // ---- Saving (LIVE): the whole pet lives in this browser's storage, nothing goes to the server.
 function key(r){return 'eluka-demo:'+r.id;}
-function save(r,st){if(!LIVE)return;var it={};ITEMS.forEach(function(id){var o=st.items[id],w=o.where==='carried'?'floor':o.where;it[id]={where:w,x:o.x,y:o.y};});
- var e=st.move?{x:st.move.x1,y:st.move.y1,spot:st.move.spot}:{x:st.egg.x,y:st.egg.y,spot:st.egg.spot};
+function save(r,st){if(!LIVE)return;var it={};ITEMS.forEach(function(id){var o=st.items[id];if(o.drag){it[id]={where:o.drag.from==='carried'?'floor':o.drag.from,x:o.drag.x0,y:o.drag.y0};return;}var w=o.where==='carried'?'floor':o.where;it[id]={where:w,x:o.x,y:o.y};});
+ var e=st.drag?{x:st.drag.ex0,y:st.drag.ey0,spot:st.egg.spot}:st.move?{x:st.move.x1,y:st.move.y1,spot:st.move.spot}:{x:st.egg.x,y:st.egg.y,spot:st.egg.spot};
  try{localStorage.setItem(key(r),JSON.stringify({v:1,warmth:st.warmth,mood:st.mood,tarkus:st.tarkus,growth:st.growth,hours:st.hours,zeroH:st.zeroH,dead:st.dead,lived:st.lived,warned:st.warned,
-  egg:e,items:it,curt:st.curt,lamp:st.lamp,night:st.night,boxOpen:st.boxOpen,n:st.n,mem:MEM,log:LOG.slice(-6),seenId:st.seenId,tapBank:st.tapBank,wall:Date.now()}));}catch(x){}}
+  egg:e,items:it,curt:st.curt,lamp:st.lamp,night:st.night,boxOpen:st.boxOpen,n:st.n,mem:MEM,log:LOG.slice(-6),seenId:st.seenId,tapBank:st.tapBank,wall:st.wall||Date.now()}));}catch(x){}}
 function load(r,st){var d=null;try{d=JSON.parse(localStorage.getItem(key(r))||'null');}catch(x){}
- if(!d||d.v!==1){st.wall=Date.now();return;}
- ['warmth','mood','tarkus','growth','hours','zeroH','warned','curt','lamp','night','boxOpen','n','seenId','tapBank','lived'].forEach(function(k){if(d[k]!=null)st[k]=d[k];});
- st.egg={x:d.egg.x,y:d.egg.y,spot:d.egg.spot};Object.keys(st.items).forEach(function(id){if(d.items&&d.items[id])st.items[id]=d.items[id];});
- MEM=d.mem||[];LOG=d.log||[];st.wall=d.wall||Date.now();
+ if(!d||d.v!==1||!d.egg||typeof d.egg.x!=='number'||typeof d.egg.y!=='number'||!d.items||typeof d.items!=='object'){st.wall=Date.now();return;}
+ ['warmth','mood','tarkus','growth','hours','zeroH','warned','curt','lamp','night','boxOpen','n','seenId','tapBank','lived'].forEach(function(k){if(d[k]!=null&&(typeof st[k]!=='number'||(typeof d[k]==='number'&&isFinite(d[k]))))st[k]=d[k];});
+ st.egg={x:d.egg.x,y:d.egg.y,spot:d.egg.spot};Object.keys(st.items).forEach(function(id){var o=d.items[id];if(o&&['on','box','hook','floor'].indexOf(o.where)>=0)st.items[id]={where:o.where,x:Number(o.x)||0,y:Number(o.y)||0};});
+ MEM=Array.isArray(d.mem)?d.mem:[];LOG=Array.isArray(d.log)?d.log:[];st.wall=d.wall||Date.now();
  if(d.dead){st.dead=true;st.deathT=-1e9;st.loadedDead=true;}}
 
 function sx(r,x,w){return (r.mirror?WW-x-(w||1):x)-CAM;}
@@ -477,8 +482,8 @@ ROOMS.forEach(function(r){
   st.ring={x:p.x,y:p.y,t:now};
   if(!st.dead){
    var hit=st.move?null:hitItem(st,p);
-   if(hit){var q=itemRect(st,hit),it=st.items[hit];it.drag={ox:p.fx-q.x,oy:p.fy-q.y,from:it.where,sx:p.fx,sy:p.fy};it.x=q.x;it.y=q.y;it.where='carried';return;}
-   if(onEgg(st,p)&&!st.move){st.drag={ox:p.fx-st.egg.x,oy:p.fy-st.egg.y,sx:p.fx,sy:p.fy,moved:false};return;}}
+   if(hit){var q=itemRect(st,hit),it=st.items[hit];it.drag={ox:p.fx-q.x,oy:p.fy-q.y,from:it.where,sx:p.fx,sy:p.fy,x0:it.x,y0:it.y};it.x=q.x;it.y=q.y;it.where='carried';return;}
+   if(onEgg(st,p)&&!st.move){st.drag={ox:p.fx-st.egg.x,oy:p.fy-st.egg.y,sx:p.fx,sy:p.fy,moved:false,ex0:st.egg.x,ey0:st.egg.y};return;}}
   st.pan={cx:ev.clientX,cam:st.cam,moved:false,p:p};
  });
  function edgeScroll(p){if(p.scx<2.5){st.cam-=0.6;clampCam(st);}else if(p.scx>VW-2.5){st.cam+=0.6;clampCam(st);}}
@@ -509,12 +514,15 @@ ROOMS.forEach(function(r){
    if(inBox(q,31,72,35,79)){st.night=!st.night;if(st.night&&!st.dead)heart(st,1,now);return;}
    if(overBox(q)){st.boxOpen=!st.boxOpen;return;}}
  });
+ c.addEventListener('pointercancel',function(){ITEMS.forEach(function(id){var it=st.items[id],dg=it.drag;if(!dg)return;it.drag=null;it.where=dg.from;it.x=dg.x0;it.y=dg.y0;});
+  if(st.drag){st.egg.x=st.drag.ex0;st.egg.y=st.drag.ey0;st.drag=null;}st.pan=null;});
  if(LIVE){if(st.loadedDead)showDeath(r,st);syncExercises(r,st);
   var timer=setInterval(function(){if(!c.isConnected){clearInterval(timer);return;}
    if(!timeFixed){var ti=clockIdx();if(ti!==time)setTime(ti,false);}syncExercises(r,st);save(r,st);},30000);
   var saver=setInterval(function(){if(!c.isConnected){clearInterval(saver);return;}save(r,st);},5000);
-  window.addEventListener('pagehide',function(){save(r,st);});
-  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')save(r,st);else syncExercises(r,st);});}
+  var onHide=function(){if(!c.isConnected){window.removeEventListener('pagehide',onHide);return;}save(r,st);};
+  var onVis=function(){if(!c.isConnected){document.removeEventListener('visibilitychange',onVis);return;}if(document.visibilityState==='hidden')save(r,st);else syncExercises(r,st);};
+  window.addEventListener('pagehide',onHide);document.addEventListener('visibilitychange',onVis);}
  function loop(now){if(!c.isConnected)return;frame(ctx,r,now);requestAnimationFrame(loop);}
  requestAnimationFrame(loop);
 });
@@ -547,5 +555,5 @@ if(bh)[['Kiuri beebi',{top:[{ic:'bowl',v:35,k:'kõht'},{ic:'heart',v:80,k:'tujuB
  attachTips(hx,wrap,function(){return b[1];});
  var cap=document.createElement('div');cap.style.cssText='font-size:13px;color:var(--text-secondary)';cap.textContent=b[0];d.appendChild(cap);bh.appendChild(d);
  (function loop(now){drawHud(hx,b[1],now||0,false);requestAnimationFrame(loop);})(0);});
-window.__pet={state:state,ROOMS:ROOMS};
+window.__pet={state:state,ROOMS:ROOMS,save:function(){if(roomsEl.isConnected)ROOMS.forEach(function(r){save(r,state[r.id]);});}};
 })();

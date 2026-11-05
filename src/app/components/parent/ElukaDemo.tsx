@@ -22,7 +22,10 @@ const MARKUP = `
 </details>`;
 
 declare global {
-  interface Window { ELUKA?: { child: string; name: string; width: number; height: number; exitHref?: string } }
+  interface Window {
+    ELUKA?: { child: string; name: string; width: number; height: number; exitHref?: string };
+    __pet?: { save: () => void };
+  }
 }
 
 export default function ElukaDemo({ child }: { child: ElukaChild }) {
@@ -30,14 +33,38 @@ export default function ElukaDemo({ child }: { child: ElukaChild }) {
   useEffect(() => {
     const node = host.current;
     if (!node) return;
-    node.innerHTML = MARKUP;
-    // exitHref: the in-game way back to the app (the demo returns to the child picker).
-    window.ELUKA = { child: child.id, name: child.name, exitHref: '/vanem/eluka-demo', width: node.clientWidth, height: window.innerHeight - Math.max(0, node.getBoundingClientRect().top + window.scrollY) };
-    const script = document.createElement('script');
-    script.src = '/eluka-demo/pet.js?v=14';
-    node.appendChild(script);
-    // Leaving the page detaches the canvases, which stops the script's loops and timers.
-    return () => { node.innerHTML = ''; document.documentElement.style.removeProperty('--eluka-hud'); };
+    let size = { width: 0, height: 0 };
+    const mount = () => {
+      node.innerHTML = MARKUP;
+      size = { width: node.clientWidth, height: window.innerHeight - Math.max(0, node.getBoundingClientRect().top + window.scrollY) };
+      // exitHref: the in-game way back to the app (the demo returns to the child picker).
+      window.ELUKA = { child: child.id, name: child.name, exitHref: '/vanem/eluka-demo', ...size };
+      const script = document.createElement('script');
+      script.src = '/eluka-demo/pet.js?v=16';
+      node.appendChild(script);
+    };
+    mount();
+    // The game is sized once, so a turned phone draws it again at the new size (saved first). A
+    // small height change (the browser's address bar sliding away) keeps the game as it is.
+    let wait: ReturnType<typeof setTimeout> | undefined;
+    const onResize = () => {
+      clearTimeout(wait);
+      wait = setTimeout(() => {
+        const height = window.innerHeight - Math.max(0, node.getBoundingClientRect().top + window.scrollY);
+        if (Math.abs(node.clientWidth - size.width) < 2 && Math.abs(height - size.height) < size.height * 0.15) return;
+        window.__pet?.save();
+        mount();
+      }, 250);
+    };
+    window.addEventListener('resize', onResize);
+    // Leaving the page detaches the canvases, which stops the script's loops, timers and listeners.
+    return () => {
+      clearTimeout(wait);
+      window.removeEventListener('resize', onResize);
+      window.__pet?.save();
+      node.innerHTML = '';
+      document.documentElement.style.removeProperty('--eluka-hud');
+    };
   }, [child]);
   return <div ref={host} className='eluka-demo' />;
 }
