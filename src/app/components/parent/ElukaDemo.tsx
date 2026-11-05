@@ -22,7 +22,7 @@ const MARKUP = `
 </details>`;
 
 declare global {
-  interface Window { ELUKA?: { child: string; name: string; width: number; height: number } }
+  interface Window { ELUKA?: { child: string; name: string; width: number; height: number; exitHref?: string } }
 }
 
 export default function ElukaDemo({ child }: { child: ElukaChild }) {
@@ -31,12 +31,13 @@ export default function ElukaDemo({ child }: { child: ElukaChild }) {
     const node = host.current;
     if (!node) return;
     node.innerHTML = MARKUP;
-    window.ELUKA = { child: child.id, name: child.name, width: node.clientWidth, height: window.innerHeight - Math.max(0, node.getBoundingClientRect().top + window.scrollY) };
+    // exitHref: the in-game way back to the app (the demo returns to the child picker).
+    window.ELUKA = { child: child.id, name: child.name, exitHref: '/vanem/eluka-demo', width: node.clientWidth, height: window.innerHeight - Math.max(0, node.getBoundingClientRect().top + window.scrollY) };
     const script = document.createElement('script');
-    script.src = '/eluka-demo/pet.js?v=11';
+    script.src = '/eluka-demo/pet.js?v=14';
     node.appendChild(script);
     // Leaving the page detaches the canvases, which stops the script's loops and timers.
-    return () => { node.innerHTML = ''; };
+    return () => { node.innerHTML = ''; document.documentElement.style.removeProperty('--eluka-hud'); };
   }, [child]);
   return <div ref={host} className='eluka-demo' />;
 }

@@ -8,13 +8,21 @@ if(!document.getElementById('rooms')||document.getElementById('rooms').childNode
 // LIVE = the child's own pet page (one room, real clock, real hours, saved in this browser).
 var CFG=window.ELUKA||{},LIVE=!!CFG.child;
 var WW=60,VW=36,H=80,C=4,CAM=0,HC=2;
-// LIVE fills the screen: the room's height fits the screen, and the view widens (up to the whole
-// 60-cell room) until it also fills the width. The status bar stretches to the same width.
-var S=1.45;
-if(LIVE){var avW=CFG.width||360,avH=CFG.height||760;S=Math.max(1,avH/(H*C+17*HC));
- VW=Math.min(WW,Math.max(36,Math.floor(avW/(C*S))));S=Math.max(1,Math.min(S,avW/(VW*C)));}
-// SX: whole cells leave a few pixels at the sides; stretch the width by that last 1-3 % so it reaches the edges.
-var HUDH=17*HC*S,HUW=VW*C/HC,HX=(HUW-72)/2,SX=LIVE?Math.max(S,Math.min(S*1.04,avW/(VW*C))):S;
+// LIVE fills the screen. ZOOM < 1 draws everything smaller: the view shows more of the room's width
+// (up to all 60 cells) and the room gets extra floor rows at the bottom, so the furniture keeps its
+// places and the egg/baby gets more space. The status bar stretches to the same width.
+// Kaur 2026-11-05: the room at 75 %; the status bar keeps its full size (HS) so it stays readable.
+var S=1.45,ZOOM=0.75,HS=S;
+if(LIVE){var avW=CFG.width||360,avH=CFG.height||760;ZOOM=CFG.zoom||ZOOM;var S0=avH/(H*C+17*HC);S=Math.max(1,S0*ZOOM);
+ VW=Math.min(WW,Math.max(36,Math.floor(avW/(C*S))));S=Math.max(1,Math.min(S,avW/(VW*C)));
+ // the whole room already fits across: zoom in just enough to fill the width
+ if(VW===WW)S=Math.max(S,avW/(WW*C));
+ HS=Math.max(1,Math.min(S0,avW/(72*HC)));
+ H=Math.max(80,Math.floor((avH-17*HC*HS)/(C*S)));}
+// SX/SY/HSX: whole cells leave a few pixels; stretch by that last 1-3 % so everything meets the screen edges.
+var HUDH=17*HC*HS,HUW=LIVE?Math.max(72,Math.floor(avW/(HC*HS))):VW*C/HC,HX=(HUW-72)/2,
+ HSX=LIVE?avW/(HUW*HC):S,SX=LIVE?Math.max(S,Math.min(S*1.04,avW/(VW*C))):S,
+ SY=LIVE?Math.max(S,Math.min(S*1.04,(avH-HUDH)/(H*C))):S;
 var EGGS={
  kiur:['................','......kkkk......','.....kggggk.....','....kggggggk....','...kgggbbgggk...','...kgggbbgggk...','..kgggggggggbk..','..kggggggggbbk..','..kgggggggggbk..','..kggggggggggk..','..kgbbgggggggk..','..kgbbggggggk...','...kgggggggk....','...kkgggggkk....','.....kkkkk......','................'],
  kirsi:['................','......kkkk......','.....kcccck.....','....kcccccck....','...kccllcccck...','...kccllcccck...','..kccccccppcck..','..kccccccppcck..','..kcccccccccck..','..kcccccccccck..','..kccccccllcck..','..kccccccllcck..','...kccppcccck...','...kkcppccckk...','.....kkkkkk.....','................']};
@@ -343,7 +351,7 @@ var FONT={'0':['###','#.#','#.#','#.#','###'],'1':['.#.','##.','.#.','.#.','###'
  '8':['###','#.#','###','#.#','###'],'9':['###','#.#','###','..#','###'],'/':['..#','..#','.#.','#..','#..'],',':['.','.','.','#','#'],
  'k':['#..','#.#','##.','#.#','#.#'],'g':['.##','#..','#.#','#.#','.##'],'p':['###','#.#','###','#..','#..'],' ':['.','.','.','.','.']};
 function makeHud(parent){var c=document.createElement('canvas');c.width=HUW*HC;c.height=17*HC;
- c.style.cssText='width:'+(HUW*HC*SX)+'px;height:'+(17*HC*S)+'px;image-rendering:pixelated;border-radius:12px 12px 0 0;display:block;cursor:help;touch-action:manipulation';
+ c.style.cssText='width:'+(HUW*HC*HSX)+'px;height:'+(17*HC*HS)+'px;image-rendering:pixelated;border-radius:0 0 12px 12px;display:block;cursor:help;touch-action:manipulation';
  c.setAttribute('aria-label','Näidikud');parent.appendChild(c);var ctx=c.getContext('2d');ctx.canvas=c;return ctx;}
 function hp(ctx,x,y,c,a){ctx.globalAlpha=a==null?1:a;ctx.fillStyle=c;ctx.fillRect(x*HC,y*HC,HC,HC);ctx.globalAlpha=1;}
 function drawMeter(ctx,m,x0,y0,bw,now,dead){var ic=ICONS[m.ic];
@@ -373,7 +381,7 @@ var TIPS={
  tarkusB:function(m){return '<b>Tarkus '+Math.round(m.v)+'/100.</b> Kasvab ainult harjutustest.'+EMPTY.replace('muna','beebi');},
  vanus:function(m){return '<b>Vanus: '+m.txt.replace(' p',' päeva')+'.</b>';},
  kaal:function(m){return '<b>Kaal '+m.txt.replace(' kg','').replace(',',',')+' kg.</b> Liiga palju maiuseid teeb beebi raskeks.';}};
-function attachTips(hctx,wrap,getM){var c=hctx.canvas,tip=document.createElement('div');tip.className='ptip';tip.style.top=(HUDH+4)+'px';wrap.appendChild(tip);var timer=0;
+function attachTips(hctx,wrap,getM){var c=hctx.canvas,tip=document.createElement('div');tip.className='ptip';tip.style.bottom=(HUDH+4)+'px';wrap.appendChild(tip);var timer=0;
  function pick(ev){var b=c.getBoundingClientRect(),x=(ev.clientX-b.left)/b.width*HUW-HX,y=(ev.clientY-b.top)/b.height*17,m=getM();
   return y<8.5?m.top[Math.min(2,Math.floor(x/24))]:m.bot[Math.min(1,Math.floor(x/36))];}
  function show(ev,stay){var mt=pick(ev);if(!mt)return;tip.innerHTML=TIPS[mt.k](mt);tip.style.display='block';clearTimeout(timer);if(stay)timer=setTimeout(function(){tip.style.display='none';},3000);}
@@ -451,15 +459,17 @@ function renderLog(){var h='<div><b>Mälestusraamat:</b> '+(MEM.length?MEM.map(f
  if(LOG.length)h+='<div><b>Vanema teated (näidis):</b> '+LOG.slice(-3).join(' · ')+'</div>';var lg=document.getElementById('log');if(lg)lg.innerHTML=h;}
 
 var roomsEl=document.getElementById('rooms');
+if(LIVE)try{document.documentElement.style.setProperty('--eluka-hud',HUDH+'px');}catch(x){}
 ROOMS.forEach(function(r){
  var st=state[r.id];
  var d=document.createElement('div');d.style.cssText='display:flex;flex-direction:column;align-items:center;gap:6px';
- var c=document.createElement('canvas');c.width=VW*C;c.height=H*C;c.style.cssText='width:'+(VW*C*SX)+'px;height:'+(H*C*S)+'px;image-rendering:pixelated;border-radius:0 0 12px 12px;touch-action:none;cursor:grab;display:block';
+ var c=document.createElement('canvas');c.width=VW*C;c.height=H*C;c.style.cssText='width:'+(VW*C*SX)+'px;height:'+(H*C*SY)+'px;image-rendering:pixelated;border-radius:12px 12px 0 0;touch-action:none;cursor:grab;display:block';
  c.setAttribute('aria-label',r.name);
  var cap=document.createElement('div');cap.style.cssText='font-size:13px;color:var(--text-secondary)';cap.textContent=r.name;
- var stack=document.createElement('div');stack.style.position='relative';d.appendChild(stack);st.hud=makeHud(stack);stack.appendChild(c);
- var card=document.createElement('div');card.className='pcard';card.style.top=(HUDH+58)+'px';stack.appendChild(card);
- var tst=document.createElement('div');tst.className='ptoast';tst.style.top=(HUDH+8)+'px';stack.appendChild(tst);
+ var stack=document.createElement('div');stack.style.position='relative';d.appendChild(stack);stack.appendChild(c);st.hud=makeHud(stack);
+ var card=document.createElement('div');card.className='pcard';card.style.top='18%';stack.appendChild(card);
+ var tst=document.createElement('div');tst.className='ptoast';tst.style.bottom=(HUDH+112)+'px';stack.appendChild(tst);
+ if(CFG.exitHref){var ex=document.createElement('a');ex.className='pexit';ex.href=CFG.exitHref;ex.textContent='← '+(CFG.exitLabel||'Tagasi');ex.style.bottom=(HUDH+10)+'px';stack.appendChild(ex);}
  st.ui={card:card,toast:tst};attachTips(st.hud,stack,function(){return meters(st);});
  if(!LIVE)d.appendChild(cap);roomsEl.appendChild(d);
  var ctx=c.getContext('2d');

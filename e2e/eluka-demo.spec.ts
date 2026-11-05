@@ -56,12 +56,24 @@ test('the Eluka demo opens each child pet page for the parent only', async ({ pa
   // The status bar and the room fill the screen like the child's own page: as wide as each other,
   // filling a phone screen edge to edge.
   const screen = page.viewportSize()!;
-  const [hud, room] = await Promise.all([0, 1].map(async (i) => (await page.locator('.eluka-demo canvas').nth(i).boundingBox())!));
+  const hudCanvas = page.getByLabel('Näidikud');
+  const roomCanvas = page.getByLabel('Kiuri tuba');
+  const [hud, room] = await Promise.all([hudCanvas.boundingBox(), roomCanvas.boundingBox()]).then((b) => b.map((x) => x!));
   expect(Math.abs(hud.width - room.width)).toBeLessThan(1);
   expect(room.width).toBeLessThanOrEqual(screen.width + 1);
   expect(hud.height + room.height).toBeLessThanOrEqual(screen.height + 1);
   expect(room.width).toBeGreaterThan(screen.width - 1);
   expect(hud.height + room.height).toBeGreaterThan(screen.height - 1);
+  // The status bar is at the bottom, clear of the phone's top edge.
+  expect(hud.y).toBeGreaterThan(room.y + room.height - 1);
+  // The room is drawn at 75 %: a wider view than the old 36 cells and extra floor below the 80 rows.
+  const [cols, rows] = await roomCanvas.evaluate((c) => [(c as HTMLCanvasElement).width / 4, (c as HTMLCanvasElement).height / 4]);
+  expect(cols).toBeGreaterThanOrEqual(48);
+  expect(rows).toBeGreaterThan(80);
+  // The way out of the game sits just above the status bar.
+  const exit = page.locator('.eluka-demo .pexit');
+  await expect(exit).toHaveText('← Tagasi');
+  await expect(exit).toHaveAttribute('href', '/vanem/eluka-demo');
   // Only plain numbers: the pet state also holds canvases and page elements.
   const day = () => page.evaluate(() => {
     const st = (window as unknown as { __pet: { state: Record<string, { hours: number; tarkus: number; seenId: number | null }> } }).__pet.state.kiur;
@@ -92,5 +104,7 @@ test('the Eluka demo opens each child pet page for the parent only', async ({ pa
   await navigateStable(page, '/vanem/eluka-demo/kirsi');
   await expect(page.getByRole('heading', { name: 'Kirsi muna' })).toBeVisible();
   await expect(page.locator('.eluka-demo canvas')).toHaveCount(2);
+  await page.locator('.eluka-demo .pexit').click();
+  await expect(page.getByRole('heading', { name: 'Eluka demo' })).toBeVisible();
   expect(errors).toEqual([]);
 });
