@@ -1,5 +1,5 @@
 // Eluka demo: the pet page as the child will see it (locked room v8 art).
-// Generated from C:/CC/_worklogs/harjutaja-pet/room8.html by mk_pet.py; regenerate when the room changes.
+// Generated from C:/CC/_worklogs/harjutaja-pet/room9.html by mk_pet.py; regenerate when the room changes.
 // LIVE mode (window.ELUKA = {child, name, width, height}): one room, the real Tallinn clock, real hours,
 // state saved only in this browser (localStorage), and Tarkus fed by the child's real exercises
 // (read-only GET /api/parent/history). It writes nothing to the server.
@@ -108,7 +108,7 @@ function drawDecor(ctx,r){
   R(ctx,r,12,11,4,3,'#a0703f');R(ctx,r,12,11,4,1,'#7a5230');P(ctx,r,13,12,'#ffd54a');P(ctx,r,14,12,'#ffd54a');
   R(ctx,r,4,18,9,10,'#2d3a4a');R(ctx,r,5,19,7,1,'#9fb3c6');P(ctx,r,5,20,'#9fb3c6');P(ctx,r,11,20,'#9fb3c6');for(var i=0;i<6;i++)P(ctx,r,8,20+i,'#a0703f');
   R(ctx,r,40,20,16,1,r.trim);[[41,'#5fae4a'],[45,'#8e959c'],[49,'#3b82f6'],[53,'#d9534f']].forEach(function(b){R(ctx,r,b[0],17,3,3,b[1]);P(ctx,r,b[0]+1,18,'#ffffff',0.35);});
-  R(ctx,r,45,7,6,6,'#f5efe6');R(ctx,r,44,8,1,4,'#f5efe6');R(ctx,r,51,8,1,4,'#f5efe6');P(ctx,r,48,9,'#2f343b');P(ctx,r,48,10,'#2f343b');P(ctx,r,49,10,'#2f343b');
+  drawClock(ctx,r);
  }else{
   R(ctx,r,5,9,3,2,'#f2c94c');R(ctx,r,5,10,3,2,'#fde0c8');P(ctx,r,5,10,'#f2c94c');P(ctx,r,7,10,'#f2c94c');R(ctx,r,4,12,5,2,'#e06a9a');
   P(ctx,r,10,11,'#ef5b7b');P(ctx,r,12,11,'#ef5b7b');R(ctx,r,10,12,3,1,'#ef5b7b');P(ctx,r,11,13,'#ef5b7b');
@@ -119,6 +119,16 @@ function drawDecor(ctx,r){
   R(ctx,r,45,15,7,11,'#f2c94c');R(ctx,r,46,16,5,9,'#cfe8f7');R(ctx,r,47,17,1,3,'#ffffff',0.7);
  }
 }
+// v9: the wall clock shows the real time in Tallinn (read once a second)
+var CLK={t:0,h:0,m:0};
+function clockNow(){var n=Date.now();if(n-CLK.t>1000){CLK.t=n;try{new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Europe/Tallinn'}).formatToParts(new Date()).forEach(function(p){if(p.type==='hour')CLK.h=Number(p.value)%24;if(p.type==='minute')CLK.m=Number(p.value);});}catch(x){var d=new Date();CLK.h=d.getHours();CLK.m=d.getMinutes();}}return CLK;}
+function drawClock(ctx,r){var O='#2f343b',F='#f5efe6',cx=47,cy=9;
+ R(ctx,r,45,5,5,1,O);P(ctx,r,44,6,O);P(ctx,r,50,6,O);R(ctx,r,45,6,5,1,F);R(ctx,r,43,7,1,5,O);R(ctx,r,51,7,1,5,O);R(ctx,r,44,7,7,5,F);
+ P(ctx,r,44,12,O);P(ctx,r,50,12,O);R(ctx,r,45,12,5,1,F);R(ctx,r,45,13,5,1,O);
+ [[47,6],[50,9],[47,12],[44,9]].forEach(function(t){P(ctx,r,t[0],t[1],'#b9b2a6');});
+ var k=clockNow(),am=k.m/60*2*Math.PI,ah=((k.h%12)+k.m/60)/12*2*Math.PI;
+ function hand(a,len,c){for(var i=1;i<=len;i++)P(ctx,r,cx+Math.round(i*Math.sin(a)),cy-Math.round(i*Math.cos(a)),c);}
+ hand(ah,2,O);hand(am,3,'#d9534f');P(ctx,r,cx,cy,O);}
 function drawLamp(ctx,r,on){
  R(ctx,r,17,14,1,29,'#3a3a3a');R(ctx,r,15,42,5,2,'#3a3a3a');var c=on?'#ffe58a':'#cfc8bb';
  R(ctx,r,15,10,5,1,c);R(ctx,r,14,11,7,1,c);R(ctx,r,13,12,9,2,c);R(ctx,r,13,13,9,1,on?'#f2c94c':'#b0a99c');
@@ -140,15 +150,18 @@ function drawCouch(ctx,r){
  if(r.id==='kirsi'){R(ctx,r,42,51,5,4,'#c7a6ee');R(ctx,r,43,52,3,2,'#ffffff',0.4);R(ctx,r,50,51,5,4,'#fde8d0');P(ctx,r,52,52,'#ef5b7b');}
  else{R(ctx,r,42,51,5,4,'#3b82f6');R(ctx,r,50,51,5,4,'#8b5a3c');R(ctx,r,50,51,5,1,'#5fae4a');}
 }
-function drawRug(ctx,r){
- R(ctx,r,6,58,28,12,r.rug2);R(ctx,r,7,59,26,10,r.rug);
- for(var y=60;y<68;y++)for(var x=8;x<32;x++)if((x+y)%4===0&&(x-y+64)%4===0)P(ctx,r,x,y,r.rug3);
- R(ctx,r,8,60,24,1,r.rug3,0.5);R(ctx,r,8,67,24,1,r.rug3,0.5);
- for(var x2=7;x2<33;x2+=2){P(ctx,r,x2,70,r.rug3);}
+function rugAt(){return {x:16,y:H>90?Math.round((66+H)/2)-6:58};}
+function drawRug(ctx,r){var g=rugAt(),dx=g.x-6,dy=g.y-58;
+ R(ctx,r,6+dx,58+dy,28,12,r.rug2);R(ctx,r,7+dx,59+dy,26,10,r.rug);
+ for(var y=60;y<68;y++)for(var x=8;x<32;x++)if((x+y)%4===0&&(x-y+64)%4===0)P(ctx,r,x+dx,y+dy,r.rug3);
+ R(ctx,r,8+dx,60+dy,24,1,r.rug3,0.5);R(ctx,r,8+dx,67+dy,24,1,r.rug3,0.5);
+ for(var x2=7;x2<33;x2+=2){P(ctx,r,x2+dx,70+dy,r.rug3);}
 }
-function drawNightLight(ctx,r,on){
- if(r.id==='kiur'){R(ctx,r,32,74,4,5,'#3a3a3a');R(ctx,r,33,75,2,3,on?'#ffb347':'#6b737d');R(ctx,r,32,73,4,1,'#5a5a5a');}
- else{R(ctx,r,32,74,4,4,on?'#ffe58a':'#d8d0b0');P(ctx,r,34,74,r.floor);P(ctx,r,35,75,r.floor);R(ctx,r,32,78,4,1,'#c7a6ee');}
+var NL={x:51,y:25};
+function drawNightLight(ctx,r,on){var x=NL.x,y=NL.y;
+ R(ctx,r,x-2,y+5,9,1,r.trim);P(ctx,r,x-1,y+6,r.trim);P(ctx,r,x+5,y+6,r.trim);
+ if(r.id==='kiur'){R(ctx,r,x,y+1,4,4,'#3a3a3a');R(ctx,r,x+1,y+2,2,2,on?'#ffb347':'#6b737d');R(ctx,r,x,y,4,1,'#5a5a5a');}
+ else{R(ctx,r,x,y+1,4,4,on?'#ffe58a':'#d8d0b0');P(ctx,r,x+3,y+1,r.wall);R(ctx,r,x,y+4,4,1,'#c7a6ee');}
 }
 var BOXPAL={kiur:{k:'#2a2f38',W:'#a0703f',b:'#3b82f6',L:'#8b5a3c',S:'#ffd54a',D:'#3a2a1c'},kirsi:{k:'#3b2a4a',W:'#f4a6c4',b:'#c7a6ee',L:'#e98fb8',S:'#ffffff',D:'#7a4a66'}};
 var BOX_BODY=['kkkkkkkkkkk','kWWWWWWWWWk','kWbbbbbbbWk','kWWWWSWWWWk','kWWWSSSWWWk','kWWWWSWWWWk','kWbbbbbbbWk','kkkkkkkkkkk'];
@@ -158,10 +171,22 @@ function drawBox(ctx,r,st){var pal=BOXPAL[r.id];
  else{sprite(ctx,r,LID,BOX.x,BOX.y-2,pal);sprite(ctx,r,BOX_BODY,BOX.x,BOX.y+1,pal);}
 }
 function drawNest(ctx,r,part){
- var nx=SPOTS.nest.x-3,ny=SPOTS.nest.y;
- if(part==='back'){for(var x=0;x<4;x++){P(ctx,r,nx+1+x,ny+12,x%2?'#8a5a2b':'#b07a3f');P(ctx,r,nx+17+x,ny+12,x%2?'#8a5a2b':'#b07a3f');}
-  for(var x=0;x<6;x++){P(ctx,r,nx+x,ny+13,x%2?'#b07a3f':'#8a5a2b');P(ctx,r,nx+16+x,ny+13,x%2?'#b07a3f':'#8a5a2b');}}
- else{[[0,21],[1,20],[3,18]].forEach(function(rw,i){for(var x=rw[0];x<=rw[1];x++)P(ctx,r,nx+x,ny+14+i,(x+i)%2?'#8a5a2b':'#b07a3f');});P(ctx,r,nx,ny+14,'#6b4220');P(ctx,r,nx+21,ny+14,'#6b4220');}
+ // v9: a woven straw bowl, outlined so it reads on any floor, with a soft cushion inside
+ var nx=SPOTS.nest.x-3,ny=SPOTS.nest.y,O='#3a2414',Lt='#e8b85a',Md='#c48a3a',Dk='#8a5a2b',Hi='#f6d98a',cu=r.id==='kirsi'?['#f4a6c4','#e07fae']:['#7fa9de','#5b86c0'];
+ function weave(x,y){return (x*3+y)%7===0?Dk:(x+y)%2?Lt:Md;}
+ // wider and deeper than the blanket the egg wears, so the bowl still shows around it
+ if(part==='back'){
+  R(ctx,r,nx+1,ny+9,20,1,O);P(ctx,r,nx,ny+10,O);P(ctx,r,nx+21,ny+10,O);
+  for(var x=nx+1;x<nx+21;x++)P(ctx,r,x,ny+10,weave(x,ny+10));
+  P(ctx,r,nx-2,ny+11,O);P(ctx,r,nx-1,ny+11,O);P(ctx,r,nx+22,ny+11,O);P(ctx,r,nx+23,ny+11,O);R(ctx,r,nx,ny+11,22,1,cu[0]);
+  P(ctx,r,nx-3,ny+12,O);P(ctx,r,nx+24,ny+12,O);P(ctx,r,nx-2,ny+12,Md);P(ctx,r,nx+23,ny+12,Md);R(ctx,r,nx-1,ny+12,24,1,cu[1]);
+  P(ctx,r,nx+4,ny+8,Lt);P(ctx,r,nx+16,ny+8,Lt);P(ctx,r,nx+17,ny+7,Lt);}
+ else{
+  R(ctx,r,nx-1,ny+20,24,1,'#000000',0.25);
+  [[-3,24],[-3,24],[-3,24],[-2,23],[-2,23],[-1,22]].forEach(function(rw,i){var y=ny+13+i;P(ctx,r,nx+rw[0],y,O);P(ctx,r,nx+rw[1],y,O);
+   for(var x=nx+rw[0]+1;x<nx+rw[1];x++)P(ctx,r,x,y,i===0?Hi:i===5?Dk:weave(x,y));});
+  R(ctx,r,nx,ny+19,22,1,O);
+  P(ctx,r,nx-4,ny+12,Lt);P(ctx,r,nx-5,ny+13,Md);P(ctx,r,nx+25,ny+12,Lt);P(ctx,r,nx+26,ny+13,Md);P(ctx,r,nx+6,ny+20,Lt);P(ctx,r,nx+15,ny+20,Md);}
 }
 function rimCell(g,x,y){function emp(xx,yy){return yy<0||xx<0||xx>15||g[yy][xx]==='.'||g[yy][xx]==='k';}return emp(x,y-1)||emp(x-1,y)||emp(x+1,y);}
 var CRYSTALS=[[5,3],[10,4],[7,7]];
@@ -266,14 +291,32 @@ function drawLight(ctx,r,st,now){
  var T=TIMES[time];
  if(st.curt&&T.beam){for(var y=22;y<52;y++){var a=Math.round(20-(y-22)*0.55);for(var x=a;x<a+12;x++)if((x+y)%2===0)P(ctx,r,x,y,T.beam,0.3);}}
  var dark=T.amb?parseFloat(T.amb.split(',')[3]):0;
- if(!st.curt&&!T.moon)dark+=0.16;if(T.moon&&st.night)dark-=0.12;if(st.lamp)dark*=0.42;
- if(dark>0){ctx.globalAlpha=Math.min(dark,0.75);ctx.fillStyle=T.moon?'#0a0e28':T.amb.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/,'rgb($1,$2,$3)');ctx.fillRect(0,0,VW*C,H*C);ctx.globalAlpha=1;}
- if(st.lamp){drawLamp(ctx,r,true);for(var y2=14;y2<44;y2++){var w=1+Math.floor((y2-14)/2);for(var x2=17-w;x2<=17+w;x2++)if((x2+y2)%3===0)P(ctx,r,x2,y2,'#fff3a0',T.moon?0.55:0.35);}}
+ if(!st.curt&&!T.moon)dark+=0.16;if(T.moon&&st.night)dark-=0.12;
+ var col=T.moon||!T.amb?'#0a0e28':T.amb.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/,'rgb($1,$2,$3)');
+ // v9: switching the lamp on is like turning the big light off: the room goes dim and the lamp lights a warm pool
+ if(st.lamp){dark=Math.max(dark+0.12,T.moon?0.7:0.58);col='#0d1026';}
+ dark=Math.min(dark,0.78);
+ if(dark>0){if(!st.lamp&&!st.night){ctx.globalAlpha=dark;ctx.fillStyle=col;ctx.fillRect(0,0,VW*C,H*C);ctx.globalAlpha=1;}
+  else lightRuns(st,dark,col).forEach(function(q){R(ctx,r,q[0],q[1],q[2],1,q[4],q[3]);});}
+ if(st.lamp){drawLamp(ctx,r,true);R(ctx,r,14,14,7,1,'#fff6c0',0.9);for(var y2=15;y2<46;y2++){var w=1+Math.floor((y2-14)/2.4);for(var x2=17-w;x2<=17+w;x2++)if((x2+y2)%3===0)P(ctx,r,x2,y2,'#fff3a0',0.3);}}
  if(st.night){var tw=Math.floor(now/500);STARS.forEach(function(s,i){P(ctx,r,s[1],s[0],'#ffe58a',(i+tw)%3===0?0.45:0.95);});
-  for(var y3=70;y3<80;y3++)for(var x3=29;x3<36;x3++)if((x3+y3)%2===0)P(ctx,r,x3,y3,r.id==='kiur'?'#ffb347':'#ffe58a',0.25);drawNightLight(ctx,r,true);}
+  for(var y3=NL.y-3;y3<NL.y+9;y3++)for(var x3=NL.x-3;x3<NL.x+7;x3++)if((x3+y3)%2===0)P(ctx,r,x3,y3,r.id==='kiur'?'#ffb347':'#ffe58a',0.22);drawNightLight(ctx,r,true);}
  if(st.media>now){var k=Math.floor((st.media-now)/350)%4,nx=r.media==='tv'?5:7;
   [[0,'#8b6cf0'],[2,'#ef5b7b']].forEach(function(n){var yy=30-((k+n[0])%4)*2;P(ctx,r,nx+n[0]+1,yy,n[1]);P(ctx,r,nx+n[0]+2,yy,n[1]);P(ctx,r,nx+n[0]+1,yy+1,n[1]);P(ctx,r,nx+n[0],yy+2,n[1]);P(ctx,r,nx+n[0]+1,yy+2,n[1]);});}
 }
+// The dim room as row runs: darkness with holes around the lights, plus a warm tint where the lamp shines.
+// Cached until the lights, the darkness or the room height change.
+function lightRuns(st,dark,col){var key=[st.lamp,st.night,dark.toFixed(3),col,H].join('|');if(st.lightC&&st.lightC.k===key)return st.lightC.runs;
+ var L=[];if(st.lamp)L.push([17,12,26,1,'#ffbf5a']);if(st.night)L.push([NL.x+2,NL.y+2,10,0.8,st.r&&st.r.id==='kiur'?'#ffb347':'#ffe58a']);
+ function sm(v){v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);}
+ function lit(x,y){var li=0,tc=null;L.forEach(function(l){var dx=x+0.5-l[0],dy=(y+0.5-l[1])*0.8,v=sm(1-Math.sqrt(dx*dx+dy*dy)/l[2])*l[3];if(v>li){li=v;tc=l[4];}});
+  if(st.lamp){var cw=1.5+(y-13)*0.42;if(y>13&&y<46&&Math.abs(x+0.5-17)<=cw){var cv=0.85*sm(1.2-Math.abs(x+0.5-17)/cw);if(cv>li){li=cv;tc='#ffbf5a';}}
+   var ex=(x+0.5-17)/14,ey=(y+0.5-46)/5,pv=0.8*sm(1-(ex*ex+ey*ey));if(pv>li){li=pv;tc='#ffbf5a';}}
+  return [Math.round(li*8)/8,tc];}
+ var runs=[];for(var y=0;y<H;y++){var x0=0,a0=null,w0=null,c0=null;for(var x=0;x<=WW;x++){var q=x<WW?lit(x,y):[0,null],li=q[0],a=x<WW?+(dark*(1-li*0.8)).toFixed(3):null,w=x<WW?+(li*0.32).toFixed(3):null,tc=q[1];
+   if(x<WW&&a===a0&&w===w0&&tc===c0)continue;
+   if(a0!=null&&a0>0)runs.push([x0,y,x-x0,a0,col]);if(w0&&c0)runs.push([x0,y,x-x0,w0,c0]);x0=x;a0=a;w0=w;c0=tc;}}
+ st.lightC={k:key,runs:runs};return runs;}
 function drawHearts(ctx,r,st,now){
  var e=st.egg;st.hearts=st.hearts.filter(function(h){return now-h.t<1100;});
  st.hearts.forEach(function(h){if(now<h.t)return;var age=(now-h.t)/1100,hx=(h.x!=null?h.x:Math.round(e.x)+5)+h.dx,hy=(h.y!=null?h.y:Math.round(e.y)-2)-Math.floor(age*5),a=age>0.6?1-(age-0.6)/0.4:1;
@@ -511,7 +554,7 @@ ROOMS.forEach(function(r){
    if(inBox(q,19,5,34,22)){st.curt=!st.curt;return;}
    if(inBox(q,13,10,21,13)||inBox(q,16,14,18,43)){st.lamp=!st.lamp;if(st.lamp&&!st.dead)heart(st,1,now);return;}
    if(inBox(q,2,32,13,44)){if(TIMES[time].moon&&!st.dead){wake(st,now+200);st.media=now+3600;return;}st.media=now+3600;if(!st.dead){heart(st,1,now+900);pet(st,3);}return;}
-   if(inBox(q,31,72,35,79)){st.night=!st.night;if(st.night&&!st.dead)heart(st,1,now);return;}
+   if(inBox(q,NL.x-2,NL.y-1,NL.x+6,NL.y+6)){st.night=!st.night;if(st.night&&!st.dead)heart(st,1,now);return;}
    if(overBox(q)){st.boxOpen=!st.boxOpen;return;}}
  });
  c.addEventListener('pointercancel',function(){ITEMS.forEach(function(id){var it=st.items[id],dg=it.drag;if(!dg)return;it.drag=null;it.where=dg.from;it.x=dg.x0;it.y=dg.y0;});

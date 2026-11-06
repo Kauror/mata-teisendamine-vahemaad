@@ -40,7 +40,7 @@ export default function ElukaDemo({ child }: { child: ElukaChild }) {
       // exitHref: the in-game way back to the app (the demo returns to the child picker).
       window.ELUKA = { child: child.id, name: child.name, exitHref: '/vanem/eluka-demo', ...size };
       const script = document.createElement('script');
-      script.src = '/eluka-demo/pet.js?v=16';
+      script.src = '/eluka-demo/pet.js?v=17';
       node.appendChild(script);
     };
     mount();
