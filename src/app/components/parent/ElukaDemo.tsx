@@ -23,9 +23,19 @@ const MARKUP = `
 
 declare global {
   interface Window {
-    ELUKA?: { child: string; name: string; width: number; height: number; exitHref?: string };
+    ELUKA?: { child: string; name: string; width: number; height: number; safeBottom?: number; exitHref?: string };
     __pet?: { save: () => void };
   }
+}
+
+// The bottom safe-area inset in CSS pixels (0 where the browser reports none).
+function safeBottomInset() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none';
+  document.body.appendChild(probe);
+  const inset = Math.round(probe.getBoundingClientRect().height);
+  probe.remove();
+  return inset;
 }
 
 export default function ElukaDemo({ child }: { child: ElukaChild }) {
@@ -38,9 +48,10 @@ export default function ElukaDemo({ child }: { child: ElukaChild }) {
       node.innerHTML = MARKUP;
       size = { width: node.clientWidth, height: window.innerHeight - Math.max(0, node.getBoundingClientRect().top + window.scrollY) };
       // exitHref: the in-game way back to the app (the demo returns to the child picker).
-      window.ELUKA = { child: child.id, name: child.name, exitHref: '/vanem/eluka-demo', ...size };
+      // safeBottom: the iPhone home-bar strip, kept free under the needs bar.
+      window.ELUKA = { child: child.id, name: child.name, exitHref: '/vanem/eluka-demo', ...size, safeBottom: safeBottomInset() };
       const script = document.createElement('script');
-      script.src = '/eluka-demo/pet.js?v=17';
+      script.src = '/eluka-demo/pet.js?v=18';
       node.appendChild(script);
     };
     mount();
