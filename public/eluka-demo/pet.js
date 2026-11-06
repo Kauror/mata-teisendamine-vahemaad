@@ -1,5 +1,5 @@
 // Eluka demo: the pet page as the child will see it (locked room v8 art).
-// Generated from C:/CC/_worklogs/harjutaja-pet/room9.html by mk_pet.py; regenerate when the room changes.
+// Generated from C:/CC/_worklogs/harjutaja-pet/room10.html by mk_pet.py; regenerate when the room changes.
 // LIVE mode (window.ELUKA = {child, name, width, height}): one room, the real Tallinn clock, real hours,
 // state saved only in this browser (localStorage), and Tarkus fed by the child's real exercises
 // (read-only GET /api/parent/history). It writes nothing to the server.
@@ -7,25 +7,25 @@
 if(!document.getElementById('rooms')||document.getElementById('rooms').childNodes.length)return;
 // LIVE = the child's own pet page (one room, real clock, real hours, saved in this browser).
 var CFG=window.ELUKA||{},LIVE=!!CFG.child;
-var WW=60,VW=36,H=80,C=4,CAM=0,HC=2;
+var WW=60,VW=36,H=80,C=4,CAM=0,HC=2,HR=LIVE?24:17,SB=LIVE?Math.max(0,Math.min(60,Number(CFG.safeBottom)||0)):0; // HR: needs-bar rows (labels), SB: iPhone home-bar inset
 // LIVE fills the screen. ZOOM < 1 draws everything smaller: the view shows more of the room's width
 // (up to all 60 cells) and the room gets extra floor rows at the bottom, so the furniture keeps its
 // places and the egg/baby gets more space. The status bar stretches to the same width.
 // Kaur 2026-11-05: the room at 75 %; the status bar keeps its full size (HS) so it stays readable.
 var S=1.45,ZOOM=0.75,HS=S;
-if(LIVE){var avW=CFG.width||360,avH=CFG.height||760;ZOOM=CFG.zoom||ZOOM;var S0=avH/(H*C+17*HC);S=Math.max(1,S0*ZOOM);
+if(LIVE){var avW=CFG.width||360,avH=(CFG.height||760)-SB;ZOOM=CFG.zoom||ZOOM;var S0=avH/(H*C+HR*HC);S=Math.max(1,S0*ZOOM);
  HS=Math.max(1,Math.min(S0,avW/(72*HC)));
  // Kaur 2026-11-05: "slightly wider" = the whole 60-cell room across the screen (nothing cut at the
  // sides), as long as its 80 rows still fit above the status bar; otherwise the zoom rule below.
  var SW=avW/(WW*C);
- if(!CFG.zoom&&SW>=1&&SW*C*80+17*HC*HS<=avH){S=SW;VW=WW;}
+ if(!CFG.zoom&&SW>=1&&SW*C*80+HR*HC*HS<=avH){S=SW;VW=WW;}
  else{VW=Math.min(WW,Math.max(36,Math.floor(avW/(C*S))));S=Math.max(1,Math.min(S,avW/(VW*C)));
  // the whole room already fits across: zoom in just enough to fill the width
  // (a tablet: no wider than the 80 rows allow above the status bar; the room is then centred)
- if(VW===WW)S=Math.max(S,Math.min(avW/(WW*C),(avH-17*HC*HS)/(80*C)));}
- H=Math.max(80,Math.floor((avH-17*HC*HS)/(C*S)));}
+ if(VW===WW)S=Math.max(S,Math.min(avW/(WW*C),(avH-HR*HC*HS)/(80*C)));}
+ H=Math.max(80,Math.floor((avH-HR*HC*HS)/(C*S)));}
 // SX/SY/HSX: whole cells leave a few pixels; stretch by that last 1-3 % so everything meets the screen edges.
-var HUDH=17*HC*HS,HUW=LIVE?Math.max(72,Math.floor(avW/(HC*HS))):VW*C/HC,HX=(HUW-72)/2,
+var HUDH=HR*HC*HS,HUW=LIVE?Math.max(72,Math.floor(avW/(HC*HS))):VW*C/HC,HX=(HUW-72)/2,
  HSX=LIVE?avW/(HUW*HC):S,SX=LIVE?Math.max(S,Math.min(S*1.04,avW/(VW*C))):S,
  SY=LIVE?Math.max(S,Math.min(S*1.04,(avH-HUDH)/(H*C))):S;
 var EGGS={
@@ -46,13 +46,15 @@ var TIMES=[
  {id:'oo',label:'Öö',sky:['#121a3a','#222b58'],moon:true,amb:'rgba(10,14,40,0.62)'}];
 // v8: the nest sits in the middle of the room and the view starts centred on it
 var SPOTS={nest:{x:22,y:33},couch:{x:41,y:40}},FLOOR_MIN=31,CAM0=(WW-VW)/2;
+// v10: on a tall screen the nest stands in the open, on the rug in the middle of the floor, clear of the armchair
+if(H>90)SPOTS.nest={x:22,y:Math.min(H-30,Math.max(60,Math.round(H*0.58)))};
 var STARS=[];for(var i=0;i<34;i++)STARS.push([(i*7)%15,(i*11+3)%WW]);
 var BOX={x:1,y:68,w:11,h:9};
 // Pacing in the real app: one "step" is 8 hours. A full need lasts 2-3 days without care
 // (Soojus ~2.5 days, Tuju ~3, Tarkus ~3.5, so one free day is fine). 8 h away = one small step down.
 // A need at zero for a whole day (24 h) ends the egg's life; the danger warning comes a day before that.
 var STEP={warm:-14,mood:-12,tark:-10,moodNoLearn:-6,zeroDeathH:24,hatchDays:7,boost:0.2};
-function clockIdx(){var h=Number(new Intl.DateTimeFormat('en-GB',{hour:'2-digit',hourCycle:'h23',timeZone:'Europe/Tallinn'}).format(new Date()))%24;return h>=6&&h<10?0:h<17?1:h<21?2:3;}
+function clockIdx(){var h=Number(new Intl.DateTimeFormat('en-GB',{hour:'2-digit',hourCycle:'h23',timeZone:'Europe/Tallinn'}).format(new Date()))%24;return h>=6&&h<10?0:h>=10&&h<17?1:h>=17&&h<21?2:3;}
 var time=LIVE?clockIdx():1,timeFixed=!LIVE,state={},MEM=[],LOG=[],AWAY_MIN=8;
 function clamp(v){return Math.max(0,Math.min(100,v));}
 function dayOf(st){return Math.floor(st.hours/24)+1;}
@@ -61,7 +63,7 @@ function initEgg(r,st,first){
  st.warmth=first?65:70;st.mood=first?70:75;st.tarkus=first?(r.id==='kiur'?55:45):60;st.growth=first?(r.id==='kiur'?42:30):0;
  st.hours=first?(r.id==='kiur'?48:24):0;st.zeroH=0;st.dead=false;st.deathT=0;st.away=null;st.warned=false;st.bornT=performance.now();
  st.egg={x:SPOTS.nest.x,y:SPOTS.nest.y,spot:'nest'};st.move=null;st.drag=null;st.wakeT=-1e9;st.wakes=[];st.angry=false;
- st.items={hat:{where:'hook'},blanket:{where:'on'},bottle:{where:'floor',x:24,y:63},teddy:{where:'floor',x:48,y:38}};}
+ st.items={hat:{where:'hook'},blanket:{where:'on'},bottle:H>90?{where:'floor',x:50,y:74}:{where:'floor',x:24,y:63},teddy:{where:'floor',x:48,y:38}};}
 ROOMS.forEach(function(r){var st=state[r.id]={cam:CAM0,curt:!TIMES[time].moon,lamp:false,night:false,media:0,boxOpen:false,wob:0,hearts:[],ring:null,pan:null,last:0,n:1,tapBank:15,r:r,seenId:null,wall:0};
  initEgg(r,st,!LIVE);if(LIVE)load(r,st);});
 // ---- Saving (LIVE): the whole pet lives in this browser's storage, nothing goes to the server.
@@ -75,6 +77,9 @@ function load(r,st){var d=null;try{d=JSON.parse(localStorage.getItem(key(r))||'n
  ['warmth','mood','tarkus','growth','hours','zeroH','warned','curt','lamp','night','boxOpen','n','seenId','tapBank','lived'].forEach(function(k){if(d[k]!=null&&(typeof st[k]!=='number'||(typeof d[k]==='number'&&isFinite(d[k]))))st[k]=d[k];});
  st.egg={x:d.egg.x,y:d.egg.y,spot:d.egg.spot};Object.keys(st.items).forEach(function(id){var o=d.items[id];if(o&&['on','box','hook','floor'].indexOf(o.where)>=0)st.items[id]={where:o.where,x:Number(o.x)||0,y:Number(o.y)||0};});
  MEM=Array.isArray(d.mem)?d.mem:[];LOG=Array.isArray(d.log)?d.log:[];st.wall=d.wall||Date.now();
+ st.fresh=false;if(st.egg.spot==='nest'){st.egg.x=SPOTS.nest.x;st.egg.y=SPOTS.nest.y;}
+ if(H>90){var mv=0;Object.keys(st.items).forEach(function(id){var o=st.items[id];if(o.where!=='floor')return;var q={x:o.x,y:o.y,w:10,h:10};
+  if(q.x+q.w>SPOTS.nest.x-8&&q.x<SPOTS.nest.x+24&&q.y+q.h>SPOTS.nest.y-6&&q.y<SPOTS.nest.y+21){o.x=49;o.y=Math.min(H-12,SPOTS.nest.y+4+mv*10);mv++;}});}
  if(d.dead){st.dead=true;st.deathT=-1e9;st.loadedDead=true;}}
 
 function sx(r,x,w){return (r.mirror?WW-x-(w||1):x)-CAM;}
@@ -150,17 +155,17 @@ function drawCouch(ctx,r){
  if(r.id==='kirsi'){R(ctx,r,42,51,5,4,'#c7a6ee');R(ctx,r,43,52,3,2,'#ffffff',0.4);R(ctx,r,50,51,5,4,'#fde8d0');P(ctx,r,52,52,'#ef5b7b');}
  else{R(ctx,r,42,51,5,4,'#3b82f6');R(ctx,r,50,51,5,4,'#8b5a3c');R(ctx,r,50,51,5,1,'#5fae4a');}
 }
-function rugAt(){return {x:16,y:H>90?Math.round((66+H)/2)-6:58};}
-function drawRug(ctx,r){var g=rugAt(),dx=g.x-6,dy=g.y-58;
- R(ctx,r,6+dx,58+dy,28,12,r.rug2);R(ctx,r,7+dx,59+dy,26,10,r.rug);
- for(var y=60;y<68;y++)for(var x=8;x<32;x++)if((x+y)%4===0&&(x-y+64)%4===0)P(ctx,r,x+dx,y+dy,r.rug3);
- R(ctx,r,8+dx,60+dy,24,1,r.rug3,0.5);R(ctx,r,8+dx,67+dy,24,1,r.rug3,0.5);
- for(var x2=7;x2<33;x2+=2){P(ctx,r,x2+dx,70+dy,r.rug3);}
+function rugAt(){return H>90?{x:12,y:SPOTS.nest.y+9,w:36,h:16}:{x:16,y:58,w:28,h:12};}
+function drawRug(ctx,r){var g=rugAt(),x0=g.x,y0=g.y,w=g.w,h=g.h;
+ R(ctx,r,x0,y0,w,h,r.rug2);R(ctx,r,x0+1,y0+1,w-2,h-2,r.rug);
+ for(var y=y0+2;y<y0+h-2;y++)for(var x=x0+2;x<x0+w-2;x++)if((x+y)%4===0&&((x-y)%4+4)%4===0)P(ctx,r,x,y,r.rug3);
+ R(ctx,r,x0+2,y0+2,w-4,1,r.rug3,0.5);R(ctx,r,x0+2,y0+h-3,w-4,1,r.rug3,0.5);
+ for(var x2=x0+1;x2<x0+w-1;x2+=2)P(ctx,r,x2,y0+h,r.rug3);
 }
 var NL={x:51,y:25};
 function drawNightLight(ctx,r,on){var x=NL.x,y=NL.y;
  R(ctx,r,x-2,y+5,9,1,r.trim);P(ctx,r,x-1,y+6,r.trim);P(ctx,r,x+5,y+6,r.trim);
- if(r.id==='kiur'){R(ctx,r,x,y+1,4,4,'#3a3a3a');R(ctx,r,x+1,y+2,2,2,on?'#ffb347':'#6b737d');R(ctx,r,x,y,4,1,'#5a5a5a');}
+ if(r.id==='kiur'){R(ctx,r,x,y+1,4,4,'#3a3a3a');R(ctx,r,x+1,y+2,2,2,on?'#ffb347':'#6b737d');if(!on)P(ctx,r,x+1,y+2,'#b8ad94');R(ctx,r,x,y,4,1,'#5a5a5a');}
  else{R(ctx,r,x,y+1,4,4,on?'#ffe58a':'#d8d0b0');P(ctx,r,x+3,y+1,r.wall);R(ctx,r,x,y+4,4,1,'#c7a6ee');}
 }
 var BOXPAL={kiur:{k:'#2a2f38',W:'#a0703f',b:'#3b82f6',L:'#8b5a3c',S:'#ffd54a',D:'#3a2a1c'},kirsi:{k:'#3b2a4a',W:'#f4a6c4',b:'#c7a6ee',L:'#e98fb8',S:'#ffffff',D:'#7a4a66'}};
@@ -168,7 +173,11 @@ var BOX_BODY=['kkkkkkkkkkk','kWWWWWWWWWk','kWbbbbbbbWk','kWWWWSWWWWk','kWWWSSSWW
 var LID=['.kkkkkkkkk.','kLLLLLLLLLk','kkkkkkkkkkk'];
 function drawBox(ctx,r,st){var pal=BOXPAL[r.id];
  if(st.boxOpen){sprite(ctx,r,LID,BOX.x,BOX.y-4,pal);R(ctx,r,BOX.x+1,BOX.y,9,2,pal.D);sprite(ctx,r,BOX_BODY,BOX.x,BOX.y+1,pal);}
- else{sprite(ctx,r,LID,BOX.x,BOX.y-2,pal);sprite(ctx,r,BOX_BODY,BOX.x,BOX.y+1,pal);}
+ else{sprite(ctx,r,LID,BOX.x,BOX.y-2,pal);sprite(ctx,r,BOX_BODY,BOX.x,BOX.y+1,pal);
+  // v10: a sparkle on the lid when something is inside (and for the first seconds of a new egg)
+  var now=performance.now(),full=ITEMS.some(function(id){return st.items[id].where==='box';});
+  if(full||(st.fresh!==false&&now<12000)){var k=Math.floor(now/450)%4,sp=[[BOX.x+2,BOX.y-1],[BOX.x+8,BOX.y-2],[BOX.x+5,BOX.y],[-1,-1]][k];
+   if(sp[0]>=0){P(ctx,r,sp[0],sp[1],'#fff6c0');P(ctx,r,sp[0]-1,sp[1],'#fff6c0',0.5);P(ctx,r,sp[0]+1,sp[1],'#fff6c0',0.5);P(ctx,r,sp[0],sp[1]-1,'#fff6c0',0.5);}}}
 }
 function drawNest(ctx,r,part){
  // v9: a woven straw bowl, outlined so it reads on any floor, with a soft cushion inside
@@ -272,7 +281,8 @@ function drawItem(ctx,r,st,id,lean){var it=st.items[id],q=itemRect(st,id);if(q.h
  sprite(ctx,r,rowsOf(st,id),q.x,q.y,IPAL[r.id]);
  if(id==='bottle'&&it.where==='on'){var k=Math.floor(performance.now()/420)%2;R(ctx,r,q.x+3+k,q.y-3,1,1,'#ffb347',0.7);R(ctx,r,q.x+4-k,q.y-2,1,1,'#ffb347',0.7);}}
 function hitItem(st,p){var order=['hat','teddy','bottle','blanket'];for(var i=0;i<order.length;i++){var id=order[i],q=itemRect(st,id);if(q.hidden)continue;
- if(p.x>=q.x&&p.x<q.x+q.w&&p.y>=q.y&&p.y<q.y+q.h)return id;}return null;}
+ var on=st.items[id].where==='on',px=on?0:Math.max(0,(7-q.w)/2),py=on?0:Math.max(0,(7-q.h)/2);
+ if(p.x>=q.x-px&&p.x<q.x+q.w+px&&p.y>=q.y-py&&p.y<q.y+q.h+py)return id;}return null;}
 function inBox(p,x0,y0,x1,y1){return p.x>=x0&&p.x<=x1&&p.y>=y0&&p.y<=y1;}
 function nearEgg(st,p){var e=st.egg;return p.x>=e.x-4&&p.x<=e.x+19&&p.y>=e.y-6&&p.y<=e.y+16;}
 function onEgg(st,p){var e=st.egg;return inBox(p,Math.round(e.x)+2,Math.round(e.y)+1,Math.round(e.x)+13,Math.round(e.y)+14);}
@@ -317,6 +327,25 @@ function lightRuns(st,dark,col){var key=[st.lamp,st.night,dark.toFixed(3),col,H]
    if(x<WW&&a===a0&&w===w0&&tc===c0)continue;
    if(a0!=null&&a0>0)runs.push([x0,y,x-x0,a0,col]);if(w0&&c0)runs.push([x0,y,x-x0,w0,c0]);x0=x;a0=a;w0=w;c0=tc;}}
  st.lightC={k:key,runs:runs};return runs;}
+// v10: what would help right now. Warmth: the blanket, then hat or bottle, then the lamp; mood: the teddy, then petting.
+function cueOf(st){if(st.dead||st.drag||st.move)return null;var its=st.items,low=[['warmth',st.warmth],['mood',st.mood]].filter(function(n){return n[1]<60;}).sort(function(a,b){return a[1]-b[1];});
+ for(var i=0;i<low.length;i++){if(low[i][0]==='warmth'){var w=['blanket','hat','bottle'].filter(function(id){return its[id].where!=='on';})[0];if(w)return {id:w};if(!st.lamp)return {lamp:true};}
+  else{if(its.teddy.where!=='on')return {id:'teddy'};return {egg:true};}}return null;}
+function cueRect(st,c){if(c.lamp)return {x:13,y:10,w:9,h:4};if(c.egg)return {x:Math.round(st.egg.x),y:Math.round(st.egg.y),w:16,h:16};
+ if(st.items[c.id].where==='box'&&!st.boxOpen)return {x:BOX.x,y:BOX.y-2,w:BOX.w,h:BOX.h+3};return itemRect(st,c.id);}
+function drawCue(ctx,r,st,now){var c=cueOf(st);if(!c)return;var ph=(now%2400)/2400;if(ph>0.6)return;var a=Math.sin(ph/0.6*Math.PI),q=cueRect(st,c),col='#fff6c0';
+ var x0=q.x-2,y0=q.y-2,x1=q.x+q.w+1,y1=q.y+q.h+1;
+ [[x0,y0,1,1],[x1,y0,-1,1],[x0,y1,1,-1],[x1,y1,-1,-1]].forEach(function(k){P(ctx,r,k[0],k[1],col,a);P(ctx,r,k[0]+k[2],k[1],col,a);P(ctx,r,k[0],k[1]+k[3],col,a);});
+ var cx=Math.round(q.x+q.w/2)-1,ay=q.y-7+Math.round(Math.sin(ph/0.6*Math.PI)*2);R(ctx,r,cx-1,ay,3,1,col,a);P(ctx,r,cx,ay+1,col,a);}
+// After 20 s without a touch the egg sends out a soft ring: "you can touch me".
+function drawIdle(ctx,r,st,now){if(st.dead||st.drag||st.move||now-(st.lastTouch||0)<20000)return;var ph=(now%3000)/3000;if(ph>0.5)return;
+ var cx=st.egg.x+8,cy=st.egg.y+8,rad=9+ph*10,a=(1-ph*2)*0.6;for(var i=0;i<20;i++){var t=i/20*2*Math.PI;P(ctx,r,Math.round(cx+Math.cos(t)*rad),Math.round(cy+Math.sin(t)*rad*0.8),'#ffffff',a);}}
+var HINTS={warmth:function(st){var its=st.items;return its.blanket.where!=='on'?'Munal hakkab külm – pane tekk peale.':(its.hat.where!=='on'||its.bottle.where!=='on')?'Munal hakkab külm – pane müts või soojapudel juurde.':'Munal hakkab külm – pane lamp põlema.';},
+ mood:function(st){return st.items.teddy.where!=='on'?'Muna igatseb sind – paita teda või too kaisukaru.':'Muna igatseb sind – paita teda.';},
+ tarkus:function(){return 'Muna tahab õppida – tee Harjutajas mõni harjutus.';}};
+function needHints(r,st,now){if(st.dead||!st.ui||now-(st.hintT||0)<1000)return;st.hintT=now;var h=st.hinted=st.hinted||{};
+ if(st.ui.card&&st.ui.card.style.display==='block')return;
+ var ks=['warmth','mood','tarkus'];for(var i=0;i<ks.length;i++){var k=ks[i],v=st[k];if(v>=70)h[k]=false;else if(v<50&&!h[k]){h[k]=true;toast(st,HINTS[k](st));return;}}}
 function drawHearts(ctx,r,st,now){
  var e=st.egg;st.hearts=st.hearts.filter(function(h){return now-h.t<1100;});
  st.hearts.forEach(function(h){if(now<h.t)return;var age=(now-h.t)/1100,hx=(h.x!=null?h.x:Math.round(e.x)+5)+h.dx,hy=(h.y!=null?h.y:Math.round(e.y)-2)-Math.floor(age*5),a=age>0.6?1-(age-0.6)/0.4:1;
@@ -349,7 +378,7 @@ function frame(ctx,r,now){
  ['bottle','teddy'].forEach(function(id){if(its[id].where==='on'&&!its[id].drag)drawItem(ctx,r,st,id,ln);});
  drawEgg(ctx,r,st,ln,fx,now);if(inNest)drawNest(ctx,r,'front');
  ['blanket','hat'].forEach(function(id){if(its[id].where==='on'&&!its[id].drag)drawItem(ctx,r,st,id,ln);});
- drawLight(ctx,r,st,now);
+ drawLight(ctx,r,st,now);drawCue(ctx,r,st,now);drawIdle(ctx,r,st,now);needHints(r,st,now);
  ITEMS.forEach(function(id){if(its[id].drag)drawItem(ctx,r,st,id,0);});
  drawMoodFx(ctx,r,st,now,fx);drawZzz(ctx,r,st,now);drawDeath(ctx,r,st,now);drawHearts(ctx,r,st,now);drawEdges(ctx,st);
  drawHud(st.hud,meters(st),now,st.dead);
@@ -398,24 +427,31 @@ var FONT={'0':['###','#.#','#.#','#.#','###'],'1':['.#.','##.','.#.','.#.','###'
  '4':['#.#','#.#','###','..#','..#'],'5':['###','#..','###','..#','###'],'6':['###','#..','###','#.#','###'],'7':['###','..#','.#.','.#.','.#.'],
  '8':['###','#.#','###','#.#','###'],'9':['###','#.#','###','..#','###'],'/':['..#','..#','.#.','#..','#..'],',':['.','.','.','#','#'],
  'k':['#..','#.#','##.','#.#','#.#'],'g':['.##','#..','#.#','#.#','.##'],'p':['###','#.#','###','#..','#..'],' ':['.','.','.','.','.']};
-function makeHud(parent){var c=document.createElement('canvas');c.width=HUW*HC;c.height=17*HC;
- c.style.cssText='width:'+(HUW*HC*HSX)+'px;height:'+(17*HC*HS)+'px;image-rendering:pixelated;border-radius:0 0 12px 12px;display:block;cursor:help;touch-action:manipulation';
+function makeHud(parent){var c=document.createElement('canvas');c.width=HUW*HC;c.height=HR*HC;
+ c.style.cssText='width:'+(HUW*HC*HSX)+'px;height:'+(HR*HC*HS)+'px;image-rendering:pixelated;border-radius:0 0 12px 12px;display:block;cursor:help;touch-action:manipulation';
  c.setAttribute('aria-label','Näidikud');parent.appendChild(c);var ctx=c.getContext('2d');ctx.canvas=c;return ctx;}
 function hp(ctx,x,y,c,a){ctx.globalAlpha=a==null?1:a;ctx.fillStyle=c;ctx.fillRect(x*HC,y*HC,HC,HC);ctx.globalAlpha=1;}
 function drawMeter(ctx,m,x0,y0,bw,now,dead){var ic=ICONS[m.ic];
  for(var y=0;y<7;y++)for(var x=0;x<7;x++){var ch=ic.rows[y][x];if(ch!=='.')hp(ctx,x0+x,y0+y,ic.pal[ch],dead?0.4:1);}
  if(m.txt!=null){var tx=x0+10;m.txt.split('').forEach(function(ch){var f=FONT[ch];for(var y=0;y<5;y++)for(var x=0;x<f[y].length;x++)if(f[y][x]==='#')hp(ctx,tx+x,y0+1+y,'#f5efe6',dead?0.4:1);tx+=f[0].length+1;});return;}
- var bx=x0+9,v=Math.max(0,Math.min(100,m.v)),fill=Math.round(v/100*(bw-2));
+ var bx=x0+9,v=Math.max(0,Math.min(100,m.v)),fill=Math.round(v/100*(bw-2));if(m.prog&&v>0)fill=Math.max(2,fill);
  for(var x=0;x<bw;x++){hp(ctx,bx+x,y0+1,'#4a5266');hp(ctx,bx+x,y0+5,'#4a5266');}for(var y=1;y<6;y++){hp(ctx,bx,y0+y,'#4a5266');hp(ctx,bx+bw-1,y0+y,'#4a5266');}
  var col=dead?'#6b7080':m.prog?'#c7a6ee':v>=60?'#5fbf5a':v>=30?'#f2c94c':'#ef5b5b',a=(!dead&&!m.prog&&v<15&&Math.floor(now/400)%2)?0.35:1;
  for(var x=1;x<=fill;x++)for(var y=2;y<5;y++)hp(ctx,bx+x,y0+y,col,a);
  for(var x=1;x<=fill;x++)hp(ctx,bx+x,y0+2,'#ffffff',0.25*a);
+ if(m.prog)for(var k=1;k<7;k++){var tx=bx+Math.round(k*(bw-1)/7);for(var y=2;y<5;y++)hp(ctx,tx,y0+y,'#2a3142');}
  // empty need: the frame itself blinks red
  if(!dead&&!m.prog&&v<=0.5&&Math.floor(now/400)%2){for(var x=0;x<bw;x++){hp(ctx,bx+x,y0+1,'#ef5b5b');hp(ctx,bx+x,y0+5,'#ef5b5b');}for(var y=1;y<6;y++){hp(ctx,bx,y0+y,'#ef5b5b');hp(ctx,bx+bw-1,y0+y,'#ef5b5b');}}}
-function drawHud(ctx,m,now,dead){ctx.fillStyle='#1d2230';ctx.fillRect(0,0,HUW*HC,17*HC);ctx.save();ctx.translate(HX*HC,0);
- m.top.forEach(function(mt,i){drawMeter(ctx,mt,i*24+1,1,13,now,dead);});
- for(var x=1;x<71;x++)hp(ctx,x,8,'#2a3142');
- m.bot.forEach(function(mt,i){drawMeter(ctx,mt,i*36+2,9,24,now,dead);});ctx.restore();}
+var HR=HR||17;
+var LABELS={soojus:'SOOJUS',tuju:'TUJU',tarkus:'TARKUS'};
+var LFONT={S:['###','#..','###','..#','###'],O:['###','#.#','#.#','#.#','###'],J:['..#','..#','..#','#.#','###'],U:['#.#','#.#','#.#','#.#','###'],
+ T:['###','.#.','.#.','.#.','.#.'],A:['###','#.#','###','#.#','#.#'],R:['##.','#.#','##.','#.#','#.#'],K:['#.#','#.#','##.','#.#','#.#']};
+function needCol(v,def){return v>=60?def:v>=30?'#f2c94c':'#ef5b5b';}
+function drawLabel(ctx,txt,cx,y,col){var x=Math.round(cx-(txt.length*4-1)/2);txt.split('').forEach(function(ch){var f=LFONT[ch];if(f)for(var yy=0;yy<5;yy++)for(var xx=0;xx<3;xx++)if(f[yy][xx]==='#')hp(ctx,x+xx,y+yy,col);x+=4;});}
+function drawHud(ctx,m,now,dead){ctx.fillStyle='#1d2230';ctx.fillRect(0,0,HUW*HC,HR*HC);ctx.save();ctx.translate(HX*HC,0);
+ m.top.forEach(function(mt,i){drawMeter(ctx,mt,i*24+1,1,13,now,dead);if(HR>17&&LABELS[mt.k])drawLabel(ctx,LABELS[mt.k],i*24+12,9,dead?'#6b7080':needCol(mt.v,'#9aa3b8'));});
+ for(var x=1;x<71;x++)hp(ctx,x,HR>17?15:8,'#2a3142');
+ m.bot.forEach(function(mt,i){drawMeter(ctx,mt,i*36+2,HR>17?16:9,24,now,dead);});ctx.restore();}
 // tooltips: hover with a mouse, tap on a phone (stays 3 s)
 var EMPTY=' Kui see on kaua tühi, on muna ohus.';
 var TIPS={
@@ -429,9 +465,9 @@ var TIPS={
  tarkusB:function(m){return '<b>Tarkus '+Math.round(m.v)+'/100.</b> Kasvab ainult harjutustest.'+EMPTY.replace('muna','beebi');},
  vanus:function(m){return '<b>Vanus: '+m.txt.replace(' p',' päeva')+'.</b>';},
  kaal:function(m){return '<b>Kaal '+m.txt.replace(' kg','').replace(',',',')+' kg.</b> Liiga palju maiuseid teeb beebi raskeks.';}};
-function attachTips(hctx,wrap,getM){var c=hctx.canvas,tip=document.createElement('div');tip.className='ptip';tip.style.bottom=(HUDH+4)+'px';wrap.appendChild(tip);var timer=0;
- function pick(ev){var b=c.getBoundingClientRect(),x=(ev.clientX-b.left)/b.width*HUW-HX,y=(ev.clientY-b.top)/b.height*17,m=getM();
-  return y<8.5?m.top[Math.min(2,Math.floor(x/24))]:m.bot[Math.min(1,Math.floor(x/36))];}
+function attachTips(hctx,wrap,getM){var c=hctx.canvas,tip=document.createElement('div');tip.className='ptip';tip.style.bottom=(HUDH+SB+4)+'px';wrap.appendChild(tip);var timer=0;
+ function pick(ev){var b=c.getBoundingClientRect(),x=(ev.clientX-b.left)/b.width*HUW-HX,y=(ev.clientY-b.top)/b.height*HR,m=getM();
+  return y<(HR>17?15:8.5)?m.top[Math.min(2,Math.floor(x/24))]:m.bot[Math.min(1,Math.floor(x/36))];}
  function show(ev,stay){var mt=pick(ev);if(!mt)return;tip.innerHTML=TIPS[mt.k](mt);tip.style.display='block';clearTimeout(timer);if(stay)timer=setTimeout(function(){tip.style.display='none';},3000);}
  c.addEventListener('pointermove',function(ev){if(ev.pointerType==='mouse')show(ev,false);});
  c.addEventListener('pointerdown',function(ev){show(ev,true);});
@@ -507,21 +543,21 @@ function renderLog(){var h='<div><b>Mälestusraamat:</b> '+(MEM.length?MEM.map(f
  if(LOG.length)h+='<div><b>Vanema teated (näidis):</b> '+LOG.slice(-3).join(' · ')+'</div>';var lg=document.getElementById('log');if(lg)lg.innerHTML=h;}
 
 var roomsEl=document.getElementById('rooms');
-if(LIVE)try{document.documentElement.style.setProperty('--eluka-hud',HUDH+'px');}catch(x){}
+if(LIVE)try{document.documentElement.style.setProperty('--eluka-hud',(HUDH+SB)+'px');}catch(x){}
 ROOMS.forEach(function(r){
  var st=state[r.id];
  var d=document.createElement('div');d.style.cssText='display:flex;flex-direction:column;align-items:center;gap:6px';
  var c=document.createElement('canvas');c.width=VW*C;c.height=H*C;c.style.cssText='width:'+(VW*C*SX)+'px;height:'+(H*C*SY)+'px;image-rendering:pixelated;border-radius:12px 12px 0 0;touch-action:none;cursor:grab;display:block';
  c.setAttribute('aria-label',r.name);
  var cap=document.createElement('div');cap.style.cssText='font-size:13px;color:var(--text-secondary)';cap.textContent=r.name;
- var stack=document.createElement('div');stack.style.position='relative';d.appendChild(stack);stack.appendChild(c);st.hud=makeHud(stack);
+ var stack=document.createElement('div');stack.style.position='relative';d.appendChild(stack);stack.appendChild(c);st.hud=makeHud(stack);if(SB){var sbp=document.createElement('div');sbp.style.cssText='height:'+SB+'px;background:#1d2230';stack.appendChild(sbp);}
  var card=document.createElement('div');card.className='pcard';card.style.top='18%';stack.appendChild(card);
- var tst=document.createElement('div');tst.className='ptoast';tst.style.bottom=(HUDH+112)+'px';stack.appendChild(tst);
- if(CFG.exitHref){var ex=document.createElement('a');ex.className='pexit';ex.href=CFG.exitHref;ex.textContent='← '+(CFG.exitLabel||'Tagasi');ex.style.bottom=(HUDH+10)+'px';stack.appendChild(ex);}
+ var tst=document.createElement('div');tst.className='ptoast';tst.style.bottom=(HUDH+SB+64)+'px';stack.appendChild(tst);
+ if(CFG.exitHref){var ex=document.createElement('a');ex.className='pexit';ex.href=CFG.exitHref;ex.textContent='← '+(CFG.exitLabel||'Tagasi');ex.style.bottom=(HUDH+SB+10)+'px';stack.appendChild(ex);}
  st.ui={card:card,toast:tst};attachTips(st.hud,stack,function(){return meters(st);});
  if(!LIVE)d.appendChild(cap);roomsEl.appendChild(d);
  var ctx=c.getContext('2d');
- c.addEventListener('pointerdown',function(ev){var p=cellAt(r,st,ev,c),now=performance.now();c.setPointerCapture(ev.pointerId);
+ c.addEventListener('pointerdown',function(ev){var p=cellAt(r,st,ev,c),now=performance.now();st.lastTouch=now;c.setPointerCapture(ev.pointerId);
   st.ring={x:p.x,y:p.y,t:now};
   if(!st.dead){
    var hit=st.move?null:hitItem(st,p);
@@ -552,7 +588,7 @@ ROOMS.forEach(function(r){
    if(sleeping(st,now))wake(st,now+220);else if(to.spot!=='floor')heart(st,2,now+220);return;}
   if(st.pan){var pn=st.pan;st.pan=null;if(pn.moved)return;var q=pn.p;
    if(inBox(q,19,5,34,22)){st.curt=!st.curt;return;}
-   if(inBox(q,13,10,21,13)||inBox(q,16,14,18,43)){st.lamp=!st.lamp;if(st.lamp&&!st.dead)heart(st,1,now);return;}
+   if(inBox(q,12,9,22,14)||inBox(q,13,14,21,43)){st.lamp=!st.lamp;if(st.lamp&&!st.dead)heart(st,1,now);return;}
    if(inBox(q,2,32,13,44)){if(TIMES[time].moon&&!st.dead){wake(st,now+200);st.media=now+3600;return;}st.media=now+3600;if(!st.dead){heart(st,1,now+900);pet(st,3);}return;}
    if(inBox(q,NL.x-2,NL.y-1,NL.x+6,NL.y+6)){st.night=!st.night;if(st.night&&!st.dead)heart(st,1,now);return;}
    if(overBox(q)){st.boxOpen=!st.boxOpen;return;}}
