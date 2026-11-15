@@ -298,4 +298,42 @@ describe('practice engine', () => {
     expect(state.mastered).toHaveLength(2);
     expect(state.firstTryCorrect).toHaveLength(1);
   });
+
+  it('asks every word once before any missed word comes back, in the order they were missed', () => {
+    let state = createPracticeState(words(8), 21);
+    const firstPass = [...state.queue];
+    const missed = [firstPass[0], firstPass[3]];
+    const asked: string[] = [];
+    let guard = 0;
+    while (!state.completed) {
+      const word = currentPracticeWord(state)!;
+      asked.push(word.id);
+      const fail = missed.includes(word.id) && asked.filter((id) => id === word.id).length === 1;
+      const answered = applyPracticeAction(state, { type: 'answer', answer: fail ? 'zzz' : word.english });
+      state = applyPracticeAction(answered.state, { type: 'continue' }).state;
+      if (guard++ > 50) throw new Error('practice did not end');
+    }
+    expect(asked).toEqual([...firstPass, ...missed]);
+  });
+});
+
+describe('correction round order', () => {
+  it('asks every missed word once before a correction answered wrong comes back', () => {
+    const initial = createTestState(words(10), 5);
+    const ids = initial.words.map((word) => word.id);
+    const round = playFullRound(initial, new Set(ids.slice(0, 5)));
+    let current = applyTestAction(round.state, { type: 'continue' }).state;
+    const firstPass = [...current.queue];
+    const asked: string[] = [];
+    let guard = 0;
+    while (current.phase === 'correction') {
+      const word = currentTestWord(current)!;
+      asked.push(word.id);
+      const fail = word.id === firstPass[0] && asked.length === 1;
+      const answered = applyTestAction(current, { type: 'answer', answer: fail ? 'zzz' : word.english });
+      current = applyTestAction(answered.state, { type: 'continue' }).state;
+      if (guard++ > 50) throw new Error('corrections did not end');
+    }
+    expect(asked).toEqual([...firstPass, firstPass[0]]);
+  });
 });

@@ -16,9 +16,10 @@ import type { VocabEvent, VocabWordSnapshot } from '@/lib/vocabulary/types';
 // the end of the deck when fewer remain), so the child cannot simply keep
 // guessing the same card twice in a row.
 export const STUDY_RETRY_GAP = 3;
-// A word missed in a correction round or in practice comes back after this
-// many other words.
-export const TYPED_RETRY_GAP = 2;
+// A word missed in a correction round or in practice goes to the end of the
+// queue: every word is asked once first, so the child sees which words they
+// really did not know, and only then do the missed ones come back (Kaur,
+// 15.11: getting the same word again two cards later was annoying).
 
 export class VocabRuleError extends Error {}
 
@@ -31,6 +32,10 @@ function reinsert(queue: readonly string[], cursor: number, wordId: string, gap:
   const position = Math.min(cursor + 1 + gap, next.length);
   next.splice(position, 0, wordId);
   return next;
+}
+
+function appendRetry(queue: readonly string[], wordId: string) {
+  return [...queue, wordId];
 }
 
 function wordById(words: readonly VocabWordSnapshot[], id: string) {
@@ -236,7 +241,7 @@ export function applyTestAction(state: TestState, action: TypedAction): TestTran
           feedback,
           correctionAnswers: state.correctionAnswers + 1,
           // A correction answered wrong is asked again until it is right.
-          queue: correct ? state.queue : reinsert(state.queue, state.cursor, word.id, TYPED_RETRY_GAP)
+          queue: correct ? state.queue : appendRetry(state.queue, word.id)
         };
     return {
       state: next,
@@ -389,7 +394,7 @@ export function applyPracticeAction(state: PracticeState, action: TypedAction): 
         attempted: firstTry ? [...state.attempted, word.id] : state.attempted,
         firstTryCorrect: firstTry && correct ? [...state.firstTryCorrect, word.id] : state.firstTryCorrect,
         mastered: correct && !state.mastered.includes(word.id) ? [...state.mastered, word.id] : state.mastered,
-        queue: correct ? state.queue : reinsert(state.queue, state.cursor, word.id, TYPED_RETRY_GAP),
+        queue: correct ? state.queue : appendRetry(state.queue, word.id),
         answers: state.answers + 1
       },
       event: {
