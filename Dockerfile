@@ -35,7 +35,9 @@ ENV NODE_ENV=production
 # `apk upgrade`, so this cannot quietly move anything else out from under the
 # pinned digest, and it lives in the runner stage because that is the image that
 # ships and the one the vulnerability gate scans.
-RUN apk upgrade --no-cache libcrypto3 libssl3
+# 15.11.2026: musl/musl-utils (CVE-2026-107891, fixed 1.2.5-r24) and zlib
+# (CVE-2026-85091, fixed 1.3.2-r1) joined the list the same way.
+RUN apk upgrade --no-cache libcrypto3 libssl3 musl musl-utils zlib
 # npm, Corepack and Yarn are build tools and are not used by the runtime entry
 # point. Removing them keeps their transitive packages out of the production
 # image and reduces both its attack surface and vulnerability noise.
