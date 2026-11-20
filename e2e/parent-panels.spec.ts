@@ -11,7 +11,9 @@ import { navigateStable } from './navigation';
 
 const ON_OPEN = [
   '/api/parent/dashboard',
-  // The approvals card also lists handed-in English unit tests (lisatestid).
+  // Täna asks to bind this device to a child until it is bound.
+  '/api/parent/device-binding',
+  // The approvals card also lists handed-in English unit tests (kontrolltööd).
   '/api/parent/english-unit-tests',
   '/api/parent/held-rewards',
   '/api/parent/kaardimang/competition',
