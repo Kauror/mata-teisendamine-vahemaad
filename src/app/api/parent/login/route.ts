@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isParentPasswordConfigured, setParentSession, verifyParentPassword } from '@/lib/parentAuth';
-import { assertLoginAllowed, clearLoginFailures, loginIdentity, recordLoginFailure } from '@/lib/auth/rateLimit';
+import { assertLoginAllowed, clearLoginFailures, loginIdentity, recordLoginFailure, waitForLoginSlowdown } from '@/lib/auth/rateLimit';
 import { PublicRequestError, readJsonBody } from '@/lib/server/http/requestValidation';
 
 export const dynamic = 'force-dynamic';
@@ -12,12 +12,16 @@ export async function POST(req: NextRequest) {
   }
 
   const identity = loginIdentity(req.headers);
+  let slowdownMs = 0;
   try {
-    assertLoginAllowed('parent_login', identity);
+    ({ slowdownMs } = assertLoginAllowed('parent_login', identity));
   } catch (error) {
     const retryAfter = Number((error as { retryAfterSeconds?: number }).retryAfterSeconds ?? 60);
     return NextResponse.json({ code: 'rate_limited', message: 'Liiga palju katseid.' }, { status: 429, headers: { 'Retry-After': String(retryAfter) } });
   }
+  // A global flood of failures slows every attempt down a little; it never
+  // locks the family out (C3).
+  await waitForLoginSlowdown(slowdownMs);
 
   let body: unknown;
   try {
