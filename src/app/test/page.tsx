@@ -489,17 +489,18 @@ function TestPageContent() {
         {saveError && <p className='test-error'>{saveError}</p>}
 
         <footer className='test-actions-panel'>
-          <button type='button' className='next-button' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : isTextQuestion && !textFeedback ? 'Vasta' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}</button>
+          <button type='button' className='next-button' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : isTextQuestion && !textFeedback ? 'Vasta' : index === count - 1 ? 'Lõpeta' : 'Järgmine'}</button>
           {showStopConfirm ? (
             <div className='stop-confirm-panel' role='alertdialog' aria-labelledby='stop-confirm-title'>
-              <p id='stop-confirm-title'>Kas soovid harjutuse lõpetada?</p>
+              <p id='stop-confirm-title'>Kas katkestad harjutuse? Selle korra tulemust ei salvestata.</p>
               <div className='stop-confirm-actions'>
                 <button type='button' className='stop-cancel-button' onClick={() => setShowStopConfirm(false)}>Jätka harjutust</button>
-                <button type='button' className='stop-confirm-button' onClick={handleStopConfirm}>Jah, lõpeta</button>
+                <button type='button' className='stop-confirm-button' onClick={handleStopConfirm}>Jah, katkesta</button>
               </div>
             </div>
           ) : (
-            <button type='button' className='stop-button' onClick={() => setShowStopConfirm(true)}>Lõpeta harjutus</button>
+            // «Lõpeta» on the last question saves; leaving early is «Katkesta».
+            <button type='button' className='stop-button' disabled={isSaving} onClick={() => setShowStopConfirm(true)}>Katkesta</button>
           )}
         </footer>
       </section>

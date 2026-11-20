@@ -78,7 +78,7 @@ test('immediate final submission uses the visible immutable answer snapshot', as
   await openRunner(page, url);
   const commaAnswer = `${answer},0`;
   await page.getByLabel('Vastus').pressSequentially(commaAnswer);
-  await page.getByRole('button', { name: 'Lõpeta test' }).click();
+  await page.getByRole('button', { name: 'Lõpeta', exact: true }).click();
   await expect(storedAttempt(page)).resolves.toMatchObject({
     score: 1,
     questions: [{ userAnswer: commaAnswer, isCorrect: true }]
@@ -87,7 +87,7 @@ test('immediate final submission uses the visible immutable answer snapshot', as
   await openRunner(page, url);
   const negativeIncorrect = String(-Math.max(1, Math.abs(answer)));
   await page.getByLabel('Vastus').pressSequentially(negativeIncorrect);
-  await page.getByRole('button', { name: 'Lõpeta test' }).click();
+  await page.getByRole('button', { name: 'Lõpeta', exact: true }).click();
   await expect(storedAttempt(page)).resolves.toMatchObject({
     score: 0,
     questions: [{ userAnswer: negativeIncorrect, isCorrect: false }]
