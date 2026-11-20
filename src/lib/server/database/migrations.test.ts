@@ -173,6 +173,46 @@ describe('versioned SQLite migrations', () => {
     expect(fs.readFileSync(oldBackup, 'utf8')).toBe('recovery-anchor');
   });
 
+  it('refuses a corrupt database before copying it (C2)', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maths-corrupt-'));
+    cleanup.push(directory);
+    const file = path.join(directory, 'fixture.sqlite');
+    const backupDirectory = path.join(directory, 'backups');
+    const connection = openDatabase(file);
+    connection.pragma('journal_mode = DELETE');
+    connection.close();
+    // Overwrite a page in the middle of the file: the header stays readable,
+    // the b-tree does not.
+    const bytes = fs.readFileSync(file);
+    const pageSize = bytes.readUInt16BE(16) || 4096;
+    bytes.fill(0xab, pageSize * 2, pageSize * 3);
+    fs.writeFileSync(file, bytes);
+
+    await expect(prepareDatabaseForStartup(file, backupDirectory)).rejects.toThrow(/quick_check|malformed|corrupt/i);
+    expect(fs.existsSync(backupDirectory) ? fs.readdirSync(backupDirectory) : []).toEqual([]);
+  });
+
+  it('stops writing startup backups in a restart loop (C2)', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maths-crashloop-'));
+    cleanup.push(directory);
+    const file = path.join(directory, 'fixture.sqlite');
+    const backupDirectory = path.join(directory, 'backups');
+    const connection = openDatabase(file);
+    // Valid structure, invalid data: verification fails on every start.
+    connection.prepare(`INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions) VALUES ('invalid', 'a', 'a', 1, 1, 1, '[]')`).run();
+    connection.close();
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      for (let restart = 0; restart < 6; restart += 1) {
+        await expect(prepareDatabaseForStartup(file, backupDirectory)).rejects.toThrow(/verification failed/i);
+      }
+    } finally {
+      console.warn = warn;
+    }
+    expect(fs.readdirSync(backupDirectory).filter((name) => name.endsWith('.bak'))).toHaveLength(3);
+  });
+
   it('migration 4 corrects migration 3 mis-withholding of a zero-reward attempt (RTM2-C02)', () => {
     const connection = openDatabase(':memory:');
     try {

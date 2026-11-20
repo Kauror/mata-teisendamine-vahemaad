@@ -38,4 +38,13 @@ describe('Unraid and Cloudflare deployment topology', () => {
     expect(startup).toContain("process.once('SIGTERM'");
     expect(startup).toContain("child.kill(signal)");
   });
+
+  it('stops a crash loop and bounds memory, processes and logs (C2)', () => {
+    const app = read('docker-compose.yml').split(/\r?\n  cloudflared:/)[0];
+    expect(app).toMatch(/restart: on-failure:\d+/);
+    expect(app).not.toContain('restart: unless-stopped');
+    expect(app).toMatch(/mem_limit: \S+/);
+    expect(app).toMatch(/pids_limit: \d+/);
+    expect(app).toMatch(/driver: json-file[\s\S]*?max-size: "\d+m"[\s\S]*?max-file: "\d+"/);
+  });
 });

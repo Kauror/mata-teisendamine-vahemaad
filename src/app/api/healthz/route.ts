@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
+import { databaseHealth } from '@/lib/server/databaseHealth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Public liveness probe for orchestration (docker compose healthcheck, uptime
-// checks). Deliberately reveals nothing private and touches no database — it
-// only proves the server process is accepting requests. Marked public in
-// middleware so it never requires a family session (RTM2-H02).
+// Public liveness probe (see lib/server/databaseHealth.ts). Marked public in
+// middleware, reveals nothing private, and is unhealthy when SQLite is not.
 export async function GET() {
-  return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
+  const health = databaseHealth();
+  return NextResponse.json(
+    { ok: health.ok },
+    { status: health.ok ? 200 : 503, headers: { 'Cache-Control': 'no-store' } }
+  );
 }
