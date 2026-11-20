@@ -1,0 +1,35 @@
+# Weekly dependency updates, grouped so a week brings at most a few PRs.
+# Each PR runs the full CI; nothing merges by itself (the repository has no
+# required checks, so never enable auto-merge for these).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Tallinn
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+      npm-major:
+        update-types: [major]
+    ignore:
+      # The runtime is Node 22 (better-sqlite3 is built for its ABI); a Node
+      # major moves together with the Dockerfile image, by hand.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Tallinn
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]

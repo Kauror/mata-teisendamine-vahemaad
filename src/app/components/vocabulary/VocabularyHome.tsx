@@ -17,6 +17,17 @@ const STATUS_LABEL: Record<ChildUnitCard['status'], string> = {
   passed: '✓ Läbitud'
 };
 
+// While the unit's kontrolltöö is the next thing to do, the card says so
+// instead of "Läbitud" (the words test is passed, the unit is not done yet).
+function unitTestStatus(card: ChildUnitCard) {
+  const state = card.unitTest?.state;
+  if (state === 'available' || state === 'retake') return '📝 Kontrolltöö ootab';
+  if (state === 'in_progress') return '📝 Kontrolltöö pooleli';
+  if (state === 'returned') return '✏️ Paranda kontrolltöö';
+  if (state === 'submitted') return '⏳ Vanem vaatab üle';
+  return null;
+}
+
 function lockExplanation(card: ChildUnitCard) {
   if (card.previousUnitLabel) return `Avaneb, kui eelmise õppetüki (${card.previousUnitLabel}) test on läbitud.`;
   return 'See õppetükk avaneb hiljem.';
@@ -51,7 +62,11 @@ function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boo
     if (unitTest.state === 'available') actions.unshift({ href: lisatest, label: 'Tee kontrolltöö', primary: true });
     if (unitTest.state === 'in_progress') actions.unshift({ href: lisatest, label: 'Jätka kontrolltööd', primary: true });
     if (unitTest.state === 'returned') actions.unshift({ href: lisatest, label: 'Paranda kontrolltöö', primary: true });
-    if (unitTest.state === 'retake') actions.unshift({ href: lisatest, label: 'Tee kontrolltöö uuesti', primary: true });
+    if (unitTest.state === 'retake') {
+      actions.unshift({ href: lisatest, label: 'Tee kontrolltöö uuesti', primary: true });
+      // The failed try stays open to look at: its grade, marks and right answers.
+      if (unitTest.attemptId) actions.push({ href: view, label: `Eelmine kontrolltöö: hinne ${unitTest.grade ?? ''}`.trim() });
+    }
     if (unitTest.state === 'submitted') actions.push({ href: view, label: 'Kontrolltöö ootab vanemat' });
     if (unitTest.state === 'passed') actions.push({ href: view, label: `Kontrolltöö: hinne ${unitTest.grade ?? ''}`.trim() });
   }
@@ -63,7 +78,7 @@ function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boo
     <article className='vocab-unit-card' data-status={card.status} data-compact={(card.status === 'passed' && !actions.some((action) => action.primary)) || card.status === 'locked'} aria-labelledby={`unit-${card.id}`}>
       <div className='vocab-unit-head'>
         <h2 id={`unit-${card.id}`}>{card.label}</h2>
-        <span className='vocab-unit-status'>{STATUS_LABEL[card.status]}</span>
+        <span className='vocab-unit-status'>{unitTestStatus(card) ?? STATUS_LABEL[card.status]}</span>
       </div>
       <p className='vocab-unit-meta'>
         {card.wordCount} sõna

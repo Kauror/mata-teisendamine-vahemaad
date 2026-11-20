@@ -6,7 +6,7 @@ import {
   FAMILY_SESSION_MAX_AGE_SECONDS,
   isValidAppAccessPin
 } from '@/lib/appAccess';
-import { assertLoginAllowed, clearLoginFailures, loginIdentity, recordLoginFailure } from '@/lib/auth/rateLimit';
+import { assertLoginAllowed, clearLoginFailures, loginIdentity, recordLoginFailure, waitForLoginSlowdown } from '@/lib/auth/rateLimit';
 import { hasExactOrigin } from '@/lib/auth/session';
 import { PublicRequestError, readJsonBody } from '@/lib/server/http/requestValidation';
 
@@ -18,12 +18,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ code: 'invalid_origin', message: 'Päringu päritolu ei sobi.' }, { status: 403 });
   }
   const identity = loginIdentity(req.headers);
+  let slowdownMs = 0;
   try {
-    assertLoginAllowed('family_login', identity);
+    ({ slowdownMs } = assertLoginAllowed('family_login', identity));
   } catch (error) {
     const retryAfter = Number((error as { retryAfterSeconds?: number }).retryAfterSeconds ?? 60);
     return NextResponse.json({ code: 'rate_limited', message: 'Liiga palju katseid.' }, { status: 429, headers: { 'Retry-After': String(retryAfter) } });
   }
+  // A global flood of failures slows every attempt down a little; it never
+  // locks the family out (C3).
+  await waitForLoginSlowdown(slowdownMs);
   let body: unknown;
   try {
     body = await readJsonBody(req);

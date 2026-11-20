@@ -86,6 +86,14 @@ function contentOf(row: { contentJson: string }) {
   return JSON.parse(row.contentJson) as UnitTestContent;
 }
 
+function safeContentOf(row: { contentJson: string }) {
+  try {
+    return contentOf(row);
+  } catch {
+    return null;
+  }
+}
+
 function hashContent(content: UnitTestContent) {
   return createHash('sha256').update(JSON.stringify(content)).digest('hex').slice(0, 16);
 }
@@ -249,7 +257,9 @@ export function childUnitTestStatuses(learner: Learner, units: UnitRow[] = listU
   return result;
 }
 
-export type ChildSlotResult = { key: string; mark: Mark | null };
+// `correct` (after approval, for an answer that was not fully right): the
+// expected answer, so the child learns from the graded test.
+export type ChildSlotResult = { key: string; mark: Mark | null; correct?: string };
 
 export type ChildAttemptView = {
   id: string;
@@ -318,7 +328,11 @@ function childView(row: AttemptRow): ChildAttemptView {
     test: toClientUnitTest(content),
     answers: parseJson<Answers>(row.answersJson, {}),
     editable: row.status === 'in_progress' ? 'all' : row.status === 'returned' ? editableKeys(content, slots, marks) : [],
-    results: showMarks ? slots.map((slot) => ({ key: slot.key, mark: marks[slot.key] ?? null })) : null,
+    results: showMarks ? slots.map((slot) => {
+      const mark = marks[slot.key] ?? null;
+      const correct = row.status === 'approved' && mark !== 1 ? slot.accepted[0] : undefined;
+      return correct ? { key: slot.key, mark, correct } : { key: slot.key, mark };
+    }) : null,
     comment: showMarks ? row.parentComment : null,
     score: row.status === 'approved' && row.total !== null ? { earned: row.earned ?? 0, total: row.total, grade: row.grade ?? 1, passed: row.passed === 1 } : null,
     stars
@@ -350,7 +364,12 @@ export function startOrResumeUnitTest(learner: Learner, unitId: string): ChildAt
     if (hasPassed(learner, unitId)) throw new UnitTestConflictError('Selle õppetüki kontrolltöö on juba sooritatud.');
     const variants = activeVariants(unit.unitNumber);
     if (variants.length === 0) throw new UnitTestForbiddenError('Sellel õppetükil ei ole kontrolltööd.');
-    const picked = variants[randomInt(variants.length)];
+    // A retake prefers a variant the child has not taken yet; only when every
+    // variant has been tried is the choice random again.
+    const taken = new Set((db.prepare('SELECT variant FROM english_unit_test_attempts WHERE learner = ? AND unitId = ?').all(learner, unitId) as Array<{ variant: string }>).map((item) => item.variant));
+    const fresh = variants.filter((item) => !taken.has(item.variant));
+    const pool = fresh.length > 0 ? fresh : variants;
+    const picked = pool[randomInt(pool.length)];
     const content = contentOf(picked);
     const now = nowIso();
     const id = `ut_${randomUUID()}`;
@@ -394,11 +413,15 @@ export function saveUnitTestAnswers(learner: Learner, attemptId: string, input: 
       return childView(attemptFor(learner, attemptId));
     }
     const fresh = autoMarks(content, answers, slots);
-    // On a resubmission only the answers that were sent back are marked again;
-    // the parent's marks on everything else stand.
+    // On a resubmission only the answers the child actually changed are
+    // marked again; the parent's marks on everything else stand (a ✗ the
+    // parent gave to an answer the app would accept stays ✗).
     const marks: Marks = row.status === 'in_progress'
       ? fresh
-      : Object.fromEntries(slots.map((slot) => [slot.key, previousMarks[slot.key] === 1 ? 1 : fresh[slot.key]]));
+      : Object.fromEntries(slots.map((slot) => {
+        const changed = slotAnswer(content, previous, slot) !== slotAnswer(content, answers, slot);
+        return [slot.key, changed ? fresh[slot.key] : previousMarks[slot.key] ?? fresh[slot.key]];
+      }));
     db.prepare(`
       UPDATE english_unit_test_attempts
       SET answersJson = ?, marksJson = ?, status = 'submitted', submissions = submissions + 1, submittedAt = ?, revision = revision + 1, updatedAt = ?
@@ -422,9 +445,10 @@ export type ParentReviewSummary = {
 
 export function listPendingReviews(): ParentReviewSummary[] {
   const rows = db.prepare("SELECT * FROM english_unit_test_attempts WHERE status = 'submitted' ORDER BY submittedAt").all() as AttemptRow[];
-  return rows.map((row) => {
-    const content = contentOf(row);
-    return {
+  return rows.flatMap((row) => {
+    const content = safeContentOf(row);
+    if (!content) return [];
+    return [{
       id: row.id,
       learner: row.learner,
       unitLabel: unitLabelFor(row),
@@ -432,8 +456,26 @@ export function listPendingReviews(): ParentReviewSummary[] {
       submittedAt: row.submittedAt ?? row.updatedAt,
       submissions: row.submissions,
       autoScore: scoreMarks(buildSlots(content), parseJson<Marks>(row.marksJson, {}))
-    };
+    }];
   });
+}
+
+// How many decisions wait for the parent: handed-in tests. Shown as a count on
+// the home page's parent link, so it carries nothing but the number.
+export function pendingReviewCount(): number {
+  return (db.prepare("SELECT COUNT(*) AS count FROM english_unit_test_attempts WHERE status = 'submitted'").get() as { count: number }).count;
+}
+
+// The parent cancels a test that is not approved yet (started by mistake, or
+// on content that turned out wrong). Nothing was paid for it, so the row is
+// removed and the unit opens again.
+export function cancelUnitTest(attemptId: string) {
+  return db.transaction(() => {
+    const row = db.prepare('SELECT status FROM english_unit_test_attempts WHERE id = ?').get(attemptId) as { status: AttemptRow['status'] } | undefined;
+    if (!row) throw new UnitTestNotFoundError('Kontrolltööd ei leitud.');
+    if (row.status === 'approved') throw new UnitTestConflictError('Kinnitatud kontrolltööd ei saa tühistada.');
+    db.prepare('DELETE FROM english_unit_test_attempts WHERE id = ?').run(attemptId);
+  })();
 }
 
 export type ParentReviewSlot = AnswerSlot & { answer: string; mark: Mark | null; autoMark: Mark | null };
@@ -502,7 +544,13 @@ function insertApprovedAttempt(row: AttemptRow, slots: ParentReviewSlot[], score
     isCorrect: slot.mark === 1,
     kind: 'text' as const
   }));
-  const completionDate = isoToAppDate(now) ?? now.slice(0, 10);
+  // The test counts on the day the child handed it in (B6), not on the day the
+  // parent approves it: otherwise the approval day's daily cap could zero it
+  // and its streak day would be the parent's. The projection orders attempts
+  // by completion date and time over the whole history, so a back-dated
+  // attempt settles in its own day like a late offline attempt does.
+  const completedAt = row.submittedAt && Number.isFinite(Date.parse(row.submittedAt)) && row.submittedAt <= now ? row.submittedAt : now;
+  const completionDate = isoToAppDate(completedAt) ?? completedAt.slice(0, 10);
   const permitted = hasActiveLearningExercise(row.learner, VOCAB_EXERCISE_ID);
   const policy = ensureCurrentRewardPolicy();
   const elapsed = Math.max(0, Math.round((Date.parse(row.submittedAt ?? now) - Date.parse(row.startedAt)) / 1000));
@@ -518,8 +566,8 @@ function insertApprovedAttempt(row: AttemptRow, slots: ParentReviewSlot[], score
   `).run(
     now, UNIT_TEST_CATEGORY, Math.round(score.total), Math.round(score.earned), Math.min(elapsed, 4 * 3600), JSON.stringify(questions),
     row.learner, VOCAB_SUBJECT, UNIT_TEST_TOPIC, VOCAB_EXERCISE_ID,
-    clientAttemptId, row.startedAt, now, now, now,
-    now, now, completionDate,
+    clientAttemptId, row.startedAt, completedAt, completedAt, now,
+    completedAt, completedAt, completionDate,
     policy.version, REWARD_ENGINE_VERSION, UNIT_TEST_GENERATOR_VERSION, UNIT_TEST_RUNNER_ID, UNIT_TEST_RUNNER_VERSION,
     `${row.unitNumber}${row.variant}`, JSON.stringify(slots.map((slot) => slot.key)),
     permitted ? 'eligible' : 'withheld', permitted ? null : 'not_permitted'

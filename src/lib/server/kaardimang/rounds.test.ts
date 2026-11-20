@@ -5,7 +5,16 @@ import { isChildWritePath } from '@/lib/peekMode';
 import { KAARDIMANG_CHILD_ENABLED } from '@/lib/kaardimang/api';
 import { kaardimangHandlers } from '@/lib/server/kaardimang/http';
 import { type RoundState } from '@/lib/kaardimang/engine';
-import { answer, getOverview, getRound, KaardimangApiError, parentOverview, resetPreview, startRound, type KaardimangContext } from '@/lib/server/kaardimang/rounds';
+import { answer as answerWithToken, getOverview, getRound, KaardimangApiError, optionTokenForTests, parentOverview, resetPreview, startRound, type KaardimangContext } from '@/lib/server/kaardimang/rounds';
+
+// Button answers go in as the round's opaque option tokens (B5); these tests
+// name the place, so translate it the way the client's button would.
+function answer(context: KaardimangContext, roundId: string, input: Parameters<typeof answerWithToken>[2]) {
+  const answerId = typeof input.questionIndex === 'number' && typeof input.answerId === 'string'
+    ? optionTokenForTests(roundId, input.questionIndex, input.answerId)
+    : input.answerId;
+  return answerWithToken(context, roundId, { ...input, answerId });
+}
 
 // DB-backed tests of the Kaardimäng server: frozen rounds, idempotent and
 // revision-guarded answers, resume, preview isolation and no real effects
@@ -92,7 +101,7 @@ describe('Kaardimäng rounds', () => {
     expect(first.feedback.outcome).toBe('wrong_retry');
     expect(first.round.cursor).toBe(0);
     expect(first.round.questions[0].hintEt).toMatch(/Vihje/);
-    const open = first.round.questions[0].options?.find((option) => !first.round.questions[0].state.removedOptionIds.includes(option.id) && option.id !== frozen(round.roundId).questions[0].answerId);
+    const open = first.round.questions[0].options?.find((option) => !first.round.questions[0].state.removedOptionIds.includes(option.id) && option.id !== optionTokenForTests(round.roundId, 0, frozen(round.roundId).questions[0].answerId));
     const second = answer(kiur, round.roundId, { actionId: aid(), revision: first.round.revision, questionIndex: 0, answerId: open?.id ?? wrong });
     expect(second.feedback.outcome).toBe('revealed');
     expect(second.round.cursor).toBe(1);

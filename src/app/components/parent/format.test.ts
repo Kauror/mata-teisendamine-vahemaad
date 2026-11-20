@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adjustMagnitude, adjustmentNotice, approvalMeta, historySummary, learnerLabel, mergeHistoryPage, parseWeekdays, rewardsSummary, shortDayLabel } from './format';
+import { adjustMagnitude, adjustmentNotice, approvalMeta, heldReasonLabel, offlineReviewReason, historySummary, learnerLabel, mergeHistoryPage, parseWeekdays, rewardsSummary, shortDayLabel } from './format';
 import type { ParentHistoryAttempt } from './types';
 
 const row = (id: number): ParentHistoryAttempt => ({ id, createdAt: '2026-10-01T10:00:00.000Z', learner: 'kiur', category: 'Korrutamine', score: 5, questionCount: 5 });
@@ -48,5 +48,15 @@ describe('parent formatting', () => {
     expect(parseWeekdays('[1,3]')).toEqual([1, 3]);
     expect(parseWeekdays('nope')).toEqual([]);
     expect(parseWeekdays(null)).toEqual([]);
+  });
+});
+
+describe('review reasons', () => {
+  it('names a late offline completion and a too-fast exercise in words', () => {
+    expect(offlineReviewReason('late_completion')).toMatch(/varasemal päeval/);
+    expect(offlineReviewReason('template_changed')).toBe('Tehtud võrguühenduseta · tegevus on vahepeal muutunud');
+    expect(heldReasonLabel('too_fast')).toBe('vastatud ebatavaliselt kiiresti');
+    expect(heldReasonLabel('clock_drift')).toBe('seadme kell oli vale');
+    expect(heldReasonLabel('something_new')).toBe('vajab ülevaatust');
   });
 });

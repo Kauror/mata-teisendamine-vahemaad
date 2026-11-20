@@ -36,7 +36,8 @@ beforeEach(() => {
 let seq = 0;
 
 // One ordinary v2 exercise, settled the way insertAttempt settles it.
-function v2Exercise(learner: Learner, completedAt: string, score = 10) {
+// A full 15-question maths session: a shorter one pays in proportion (B8).
+function v2Exercise(learner: Learner, completedAt: string, score = 15) {
   const policy = ensureCurrentRewardPolicy();
   seq += 1;
   const id = Number(db.prepare(`
@@ -44,7 +45,7 @@ function v2Exercise(learner: Learner, completedAt: string, score = 10) {
       createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic,
       exerciseId, runnerId, clientAttemptId, completedAt, effectiveCompletedAt, completionDate,
       rewardPolicyVersion, rewardEngineVersion, protocolVersion, rewardSettlementStatus
-    ) VALUES (?, 'Korrutamine', 'Lihtne', 10, ?, 60, '[]', ?, 'matemaatika', 'korrutamine', ?, 'math', ?, ?, ?, ?, ?, ?, 2, 'eligible')
+    ) VALUES (?, 'Korrutamine', 'Lihtne', 15, ?, 60, '[]', ?, 'matemaatika', 'korrutamine', ?, 'math', ?, ?, ?, ?, ?, ?, 2, 'eligible')
   `).run(completedAt, score, learner, `exercise-${seq}`, `client-${seq}`, completedAt, completedAt, completedAt.slice(0, 10),
     policy.version, REWARD_ENGINE_VERSION).lastInsertRowid);
   db.transaction(() => applyRewardProjectionV2(learner, id))();

@@ -1,13 +1,7 @@
-'use client';
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
-export default function RemovedPackPage() {
-  return <main className='container english-page'><section className='practice-shell english-shell english-result-card'>
-    <h2>See harjutus ei ole enam saadaval</h2>
-    <p>Kasuta inglise keeles Sprinti, kus kõik sõnad on kohe kasutusel.</p>
-    <div className='row'>
-      <Link className='btn' href='/kiur/inglise-keel/sprint'>Ava sprint</Link>
-      <Link className='btn chip' href='/kiur'>Tagasi</Link>
-    </div>
-  </section></main>;
+// The old practice packs were removed long ago; an old bookmark lands on the
+// English page instead of a dead end.
+export default function RemovedPracticePage() {
+  redirect('/kiur/inglise-keel');
 }

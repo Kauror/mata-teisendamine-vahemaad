@@ -22,12 +22,12 @@ export default function AccessPage() {
         body: JSON.stringify({ pin })
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.message || 'PIN ei sobi.');
+      if (!response.ok) throw new Error(body.message || 'Pere parool ei sobi.');
       await clearAuthBlockedSyncState();
       void syncNow('manual:family-login');
       router.replace('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'PIN ei sobi.');
+      setError(err instanceof Error ? err.message : 'Pere parool ei sobi.');
     } finally {
       setBusy(false);
     }

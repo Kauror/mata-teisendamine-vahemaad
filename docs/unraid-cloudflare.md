@@ -9,92 +9,131 @@ trusted-proxy/authentication boundary; never add `0.0.0.0:3000:3000`.
 
 ## Unraid paths and permissions
 
-Clone the checkout at `/mnt/user/appdata/pikkuste-harjutaja` and set this in
-`.env`:
+The checkout lives at `/mnt/user/appdata/mata-teisendamine-vahemaad` (the
+repository name). Its `data/` folder is mounted at `/data` in the container
+(compose default `APP_DATA_DIR=./data`; if `.env` sets `APP_DATA_DIR`, it must
+point at that same folder).
 
-```dotenv
-APP_DATA_DIR=/mnt/user/appdata/pikkuste-harjutaja/data
-MATHS_GAME_DB_FILE=/data/maths-game.sqlite
-MATHS_GAME_BACKUP_DIR=/data/backups
-```
+The compose file sets `MATHS_GAME_DB_FILE=/data/maths-game.sqlite`,
+`MATHS_GAME_BACKUP_DIR=/data/backups` and
+`SCHOOL_TIMETABLE_FILE=/data/school-timetable.json`. The host data folder must
+be writable by container UID/GID 1000. The image runs as the non-root `node`
+user, the root filesystem is read-only, and only `/data` plus the bounded `/tmp`
+tmpfs are writable.
 
-Create the host data directory and make it writable by container UID/GID 1000.
-The image runs as the non-root `node` user, the root filesystem is read-only,
-and only `/data` plus the bounded `/tmp` tmpfs are writable. SQLite is stored at
-`/data/maths-game.sqlite`; pre-migration backups remain under `/data/backups`.
+The checkout also holds two **untracked** things the deploy relies on:
+`docker-compose.override.yml` and `backups/`. Never run `git clean` there.
+
+### The school timetable
+
+The children's timetable is private and is not in the repository. Place it as
+`data/school-timetable.json` in the checkout (format and a fictional example:
+`src/lib/schoolTimetable.example.json`), owned by UID 1000 and readable by the
+container. Without it the app runs and simply shows no timetable; the app log
+says `School timetable unavailable`. To change the timetable later, replace the
+file; the app reads it again when its modification time changes.
 
 ## Credentials and exact origin
 
-Copy `.env.example` to `.env`. Generate separate family and parent hashes with
-`npm run auth:hash -- <secret>` and keep the hashes single-quoted so Compose
-does not interpolate their `$` characters. Set a random 32-byte-or-longer
-session secret and the exact public HTTPS origin, without a path or trailing
-slash:
+Copy `.env.example` to `.env`. Generate separate family and parent hashes on a
+development machine with `npm run auth:hash -- <secret>` (the production image
+has no npm) and keep the hashes single-quoted so Compose does not interpolate
+their `$` characters. Set a random session secret of at least 32 characters and
+the exact public HTTPS origin, without a path or trailing slash:
 
 ```dotenv
 APP_ORIGIN=https://harjutaja.example.com
 CLOUDFLARE_TUNNEL_TOKEN=replace-with-the-tunnel-token
 ```
 
-Create a Cloudflare Access application for that hostname. In the Tunnel public
-hostname configuration, route the hostname to the Docker-network origin
+Changing `APP_ACCESS_PIN_HASH` signs every device out (see
+`docs/authentication-boundary.md`).
+
+Create a Cloudflare Access application for that hostname, and a WAF
+rate-limiting rule for `/api/access` and `/api/parent/login`. In the Tunnel
+public hostname configuration, route the hostname to the Docker-network origin
 `http://pikkuste-harjutaja:3000` — not `127.0.0.1`, `localhost`, or an Unraid
 host port. The bundled tunnel service publishes no ports and binds its metrics
-listener to container loopback (`127.0.0.1:2000`). Start both services with:
+listener to container loopback (`127.0.0.1:2000`).
+
+The tunnel (`cloudflared`, compose profile `tunnel`) is started once and then
+left alone: an app release never recreates it. That is why every release command
+below uses `--no-deps` and names the `app` service.
+
+`init: true` is enabled for both services. Verified startup checks, backs up,
+migrates and validates the database before Next.js starts; SIGTERM/SIGINT are
+forwarded to Next.js for bounded shutdown. The app container stops restarting
+after five failed starts (`restart: on-failure:5`); see "Recovery" below.
+
+The runtime is the digest-pinned `node:22.23.1-alpine3.23` image from the
+`Dockerfile`, and cloudflared is pinned to `2026.7.0` by digest. The production
+image has **no npm**: run scripts with
+`docker compose run --rm --no-deps app ./node_modules/.bin/tsx scripts/<name>.ts`.
+The root filesystem is read-only, so ad-hoc code is fed through
+`docker exec -i pikkuste-harjutaja node -`.
+
+## Release runbook
+
+Run on the Unraid host. `<sha>` is the reviewed commit; the image tag of the
+running release (`docker inspect pikkuste-harjutaja --format '{{.Config.Image}}'`)
+is the rollback.
 
 ```sh
-docker compose --profile tunnel config
-docker compose --profile tunnel up -d --build
+cd /mnt/user/appdata/mata-teisendamine-vahemaad
 ```
 
-`init: true` is enabled for both services. Verified startup migrates, backs up,
-and validates the database before Next.js starts; SIGTERM/SIGINT are forwarded
-to Next.js for bounded shutdown. Check `docker compose logs app` for the database
-verification message and wait for the health check before directing traffic.
+1. **Before:** take a read-only database snapshot (publication rows, star sums
+   per child, attempts, migration count) by feeding a snapshot script through
+   `docker exec -i pikkuste-harjutaja node - < snapshot.js`, and note the numbers.
+2. **Check out and build** (about 5 minutes; the running app is untouched):
+   ```sh
+   git fetch -q origin && git checkout -q <sha>
+   APP_VERSION=$(date +%Y.%m.%d) APP_IMAGE_TAG=<sha> docker compose build app
+   ```
+3. **Release:** stop the app, archive the data folder, verify the archive, start
+   the new image without touching the tunnel:
+   ```sh
+   docker compose stop app
+   tar -C . -czf backups/data-pre-<sha>.tgz data && tar -tzf backups/data-pre-<sha>.tgz >/dev/null
+   APP_VERSION=$(date +%Y.%m.%d) APP_IMAGE_TAG=<sha> docker compose up -d --no-deps --force-recreate app
+   ```
+4. **Wait for `(healthy)`** in `docker compose ps`. The log shows
+   `Database startup verification passed: {...}` with integrity, migration
+   count and balances. The health check reads SQLite, takes the write lock and
+   checks free space on the data volume.
+5. **After:** run the snapshot again. Balances, attempts and publication rows
+   must equal the "before" snapshot.
+6. **Probes** from outside: the public `/access` page answers 200; a child API
+   without a session answers 401; API responses carry `Cache-Control: no-store`.
+7. **Record** the SHA, image tag, backup archive and balances.
 
-The Node runtime is pinned to the explicit `22.22.3-alpine3.23` tag and the
-cloudflared service to `2026.7.0`. Before a release, resolve both tags to the
-approved architecture-specific registry digests and set immutable image
-references in the release change; digest changes require the normal container
-gate. The final app image installs production dependencies only. `tsx` remains a
-production dependency because it runs the verified startup script.
+## Rollback
 
-To replace the app without losing data, keep `APP_DATA_DIR` unchanged and run
-`docker compose up -d --build --force-recreate app`. Do not remove the host data
-directory. Restore only from a reviewed backup and keep the application stopped
-while replacing the live SQLite files.
-
-## Release and rollback runbook
-
-Run these commands on Unraid. Replace `RELEASE_SHA` only with the reviewed
-candidate SHA; keep the old SHA and image until acceptance completes.
+Stop the new app first. Never run old code against a database a newer release
+migrated: restore the matching pre-release archive, then start the old image.
 
 ```sh
-cd /mnt/user/appdata/pikkuste-harjutaja
-OLD_SHA=$(git rev-parse HEAD); OLD_IMAGE=$(docker image inspect pikkuste-harjutaja:local --format '{{.Id}}' 2>/dev/null || true)
-git fetch origin && git checkout RELEASE_SHA
-test -f .env || cp .env.example .env
-mkdir -p /mnt/user/appdata/pikkuste-harjutaja/backups
+cd /mnt/user/appdata/mata-teisendamine-vahemaad
 docker compose stop app
-tar -C /mnt/user/appdata/pikkuste-harjutaja -czf /mnt/user/appdata/pikkuste-harjutaja/backups/data-pre-RELEASE_SHA.tgz data
-tar -tzf /mnt/user/appdata/pikkuste-harjutaja/backups/data-pre-RELEASE_SHA.tgz >/dev/null
-docker compose build --pull app
-docker compose run --rm --no-deps app npm run audit:v2 -- /data/maths-game.sqlite
-docker compose --profile tunnel up -d --force-recreate
-docker compose ps
-docker compose logs --tail=300 app
-curl -fsS http://pikkuste-harjutaja:3000/api/healthz
+mv data data.failed-<sha>
+tar -C . -xzf backups/data-pre-<sha>.tgz
+git checkout -q <old-sha>
+APP_IMAGE_TAG=<old-sha> docker compose up -d --no-deps --force-recreate app
 ```
 
-Rollback only after stopping the new app. Never run old code against a migrated
-database; restore the matching pre-deployment archive first.
+If the release ran no migration, the old image can start on the current data
+without the restore. Keep `data.failed-<sha>` until the cause is understood.
 
-```sh
-cd /mnt/user/appdata/pikkuste-harjutaja
-docker compose down
-mv data data.failed-RELEASE_SHA
-mkdir data
-tar -C /mnt/user/appdata/pikkuste-harjutaja -xzf /mnt/user/appdata/pikkuste-harjutaja/backups/data-pre-RELEASE_SHA.tgz
-git checkout "$OLD_SHA"
-docker compose up -d --force-recreate
-```
+## Recovery
+
+- **The app keeps failing to start:** after five failed starts Docker stops
+  restarting it. Read `docker compose logs --tail=300 app`. A corrupt database
+  fails the startup integrity check before any copy is made, and at most three
+  startup backups are written per hour. Restore the last good copy (nightly
+  backup or `backups/data-pre-<sha>.tgz`) with the app stopped, then start it
+  with the release command above.
+- **After an Unraid reboot**, check that the app container is running
+  (`docker compose ps`); start it with
+  `docker compose up -d --no-deps app` if not.
+- Replace the live SQLite files only with the application stopped, and never
+  delete the host data folder.

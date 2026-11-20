@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import db from '@/lib/db';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
-import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3, MATH_GENERATOR_VERSION_V4 } from '@/lib/exercises/mathGeneratorVersion';
+import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3, MATH_GENERATOR_VERSION_V4, MATH_GENERATOR_VERSION_V5 } from '@/lib/exercises/mathGeneratorVersion';
 import { updateChildLearningExerciseStatus } from '@/lib/learningExercises';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import { runSyncPullV2, runSyncPushV2 } from '@/lib/offline/server/syncService';
@@ -108,12 +108,20 @@ function storedScore(attemptId: string) {
 
 describe('maths generator version across sync', () => {
   it('serves the new version in the grant and keeps verifying an old-version attempt', () => {
-    expect(getOfflineRunnerCapability('math')!.generatorVersion).toBe(MATH_GENERATOR_VERSION_V4);
+    expect(getOfflineRunnerCapability('math')!.generatorVersion).toBe(MATH_GENERATOR_VERSION_V5);
     const seed = 4242;
     const old = generateKiurMathSession(TOPIC, 'Segaharjutus', 'Lihtne', 15, seed, MATH_GENERATOR_VERSION_V1);
     const id = '018f47f6-9f2c-4b9a-8a2e-000000000001';
     expect(push(id, MATH_GENERATOR_VERSION_V1, old, seed)).toMatchObject({ status: 'created' });
     expect(storedScore(id)).toEqual({ score: 15, generatorVersion: MATH_GENERATOR_VERSION_V1 });
+  });
+
+  it('keeps verifying an attempt made on the previous version (v4)', () => {
+    const seed = 4248;
+    const previous = generateKiurMathSession(TOPIC, 'Segaharjutus', 'Lihtne', 15, seed, MATH_GENERATOR_VERSION_V4);
+    const id = '018f47f6-9f2c-4b9a-8a2e-000000000026';
+    expect(push(id, MATH_GENERATOR_VERSION_V4, previous, seed)).toMatchObject({ status: 'created' });
+    expect(storedScore(id)).toEqual({ score: 15, generatorVersion: MATH_GENERATOR_VERSION_V4 });
   });
 
   it('keeps verifying an attempt made on the previous version (v3)', () => {

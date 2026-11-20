@@ -14,6 +14,27 @@ export type AttemptTimingVerdict =
   | { verdict: 'review'; reasonCode: 'completion_before_grant' | 'completion_after_grant' | 'clock_drift' }
   | { verdict: 'reject'; reasonCode: 'completion_too_old' | 'completion_before_start' | 'impossible_future_timestamp' };
 
+// Plausibility of an attempt's active time (B3). Generators ship to the browser,
+// so a script can post a perfect attempt in 0 seconds. An attempt that could
+// earn stars (at least half right) and whose active time is below this floor is
+// kept, but its stars wait for the parent ('too_fast').
+//
+// The floors are deliberately low so a fast child is never caught: reading a
+// question and typing or tapping an answer takes well over a second, so 1.5 s
+// per question on average is already far below a real session (the children's
+// 15-question maths sessions take minutes). The matching sprints are timed
+// games of quick taps, so they get a much lower floor of 0.5 s per matched item.
+export const MIN_SECONDS_PER_QUESTION = 1.5;
+export const MIN_SECONDS_PER_SPRINT_ITEM = 0.5;
+const SPRINT_RUNNERS = new Set(['kiur-english-sprint', 'kirsi-picture-word']);
+
+export function attemptIsImplausiblyFast(input: { runnerId: string; questionCount: number; score: number; elapsedSeconds: number }): boolean {
+  if (input.questionCount <= 0 || input.score * 2 < input.questionCount) return false;
+  const floor = SPRINT_RUNNERS.has(input.runnerId) ? MIN_SECONDS_PER_SPRINT_ITEM : MIN_SECONDS_PER_QUESTION;
+  const elapsed = Number.isFinite(input.elapsedSeconds) ? input.elapsedSeconds : 0;
+  return elapsed < input.questionCount * floor;
+}
+
 export function maxOfflineAttemptAgeDays(value = process.env.MAX_OFFLINE_ATTEMPT_AGE_DAYS): number {
   if (value === undefined || value === '') return DEFAULT_MAX_OFFLINE_ATTEMPT_AGE_DAYS;
   if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 90) throw new Error('MAX_OFFLINE_ATTEMPT_AGE_DAYS must be an integer from 1 to 90.');

@@ -1,3 +1,5 @@
+import { shuffleWithSeed } from '@/lib/random';
+
 export type KirsiReadingPair = {
   id: string;
   word: string;
@@ -90,3 +92,44 @@ export const KIRSI_READING_PAIRS: KirsiReadingPair[] = [
   { id: 'puu', word: 'PUU', image: '🌳' },
   { id: 'lill', word: 'LILL', image: '🌸' }
 ];
+
+// Pictures a first-grader easily takes for each other. Two of them on one
+// board make the match a guess: 🍳 could be the egg, 🧒 the baby, 🍲 the bowl.
+export const KIRSI_PICTURE_LOOKALIKES: ReadonlyArray<readonly [string, string]> = [
+  ['pann', 'muna'],
+  ['laps', 'beebi'],
+  ['pott', 'kauss'],
+  ['sai', 'leib'],
+  ['tass', 'piim'],
+  ['tass', 'kauss']
+];
+
+function lookalike(a: string, b: string) {
+  return KIRSI_PICTURE_LOOKALIKES.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+}
+
+// The run's deck for one pass through the pool, re-ordered so no board of
+// `boardSize` holds two look-alike pictures: the later card of a clashing pair
+// swaps places with the first card elsewhere in the deck for which neither
+// board then clashes. Deterministic for a seed, so a resumed run gets the same
+// boards.
+function separatedDeck(pool: KirsiReadingPair[], seed: number, boardSize: number) {
+  const deck = shuffleWithSeed(pool, seed);
+  const boardOf = (at: number) => Math.floor(at / boardSize);
+  const clashesAt = (card: KirsiReadingPair, at: number, ignore: number) => deck.some((other, position) =>
+    position !== ignore && position !== at && boardOf(position) === boardOf(at) && lookalike(card.id, other.id));
+  for (let index = 0; index < deck.length; index += 1) {
+    if (!clashesAt(deck[index], index, index)) continue;
+    const swap = deck.findIndex((card, candidate) => boardOf(candidate) !== boardOf(index)
+      && !clashesAt(card, index, index)
+      && !clashesAt(deck[index], candidate, candidate));
+    if (swap >= 0) [deck[index], deck[swap]] = [deck[swap], deck[index]];
+  }
+  return deck;
+}
+
+export function buildKirsiPictureWordBoard(pool: KirsiReadingPair[], runSeed: number, boardIndex: number, boardSize: number) {
+  const cycle = Math.floor((boardIndex * boardSize) / pool.length);
+  const start = (boardIndex * boardSize) % pool.length;
+  return separatedDeck(pool, runSeed + cycle * 7919, boardSize).slice(start, start + boardSize);
+}

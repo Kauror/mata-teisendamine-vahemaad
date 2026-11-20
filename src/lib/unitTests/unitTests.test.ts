@@ -75,7 +75,7 @@ describe('grading', () => {
   const slots = buildSlots(content);
 
   it('makes one slot per scored answer and skips worked examples', () => {
-    expect(slots.map((slot) => slot.key)).toEqual(['1.1', '1.2', '2.1.0', '2.1.1', '2.2.0', '3.1', '4.1a', '4.2d']);
+    expect(slots.map((slot) => slot.key)).toEqual(['1.1', '1.2', '2.1.0', '2.1.1', '2.2.0', '3.1', '4.1a', '4.1d']);
   });
 
   it('forgives case, spacing, apostrophe style, commas and a closing full stop only', () => {
@@ -94,7 +94,7 @@ describe('grading', () => {
       '3.1': 'are you Estonian',
       [cell(0, 0)]: 'C', [cell(0, 1)]: 'A', [cell(0, 2)]: 'T', [cell(1, 0)]: 'A', [cell(2, 0)]: 'P'
     }, slots);
-    expect(marks).toEqual({ '1.1': 1, '1.2': 0, '2.1.0': 1, '2.1.1': 1, '2.2.0': null, '3.1': 1, '4.1a': 1, '4.2d': 0 });
+    expect(marks).toEqual({ '1.1': 1, '1.2': 0, '2.1.0': 1, '2.1.1': 1, '2.2.0': null, '3.1': 1, '4.1a': 1, '4.1d': 0 });
   });
 
   it('an empty open answer is simply wrong', () => {
@@ -102,10 +102,10 @@ describe('grading', () => {
   });
 
   it('scores half marks, counts unmarked answers and passes at exactly 75 %', () => {
-    const score = scoreMarks(slots, { '1.1': 1, '1.2': 1, '2.1.0': 1, '2.1.1': 0.5, '2.2.0': null, '3.1': 1, '4.1a': 1, '4.2d': 0 });
+    const score = scoreMarks(slots, { '1.1': 1, '1.2': 1, '2.1.0': 1, '2.1.1': 0.5, '2.2.0': null, '3.1': 1, '4.1a': 1, '4.1d': 0 });
     expect(score).toMatchObject({ earned: 5.5, total: 8, unmarked: 1 });
-    expect(scoreMarks(slots, { '1.1': 1, '1.2': 1, '2.1.0': 1, '2.1.1': 1, '2.2.0': 1, '3.1': 1, '4.1a': 0, '4.2d': 0 }).passed).toBe(true);
-    expect(scoreMarks(slots, { '1.1': 1, '1.2': 1, '2.1.0': 1, '2.1.1': 1, '2.2.0': 1, '3.1': 0.5, '4.1a': 0, '4.2d': 0 }).passed).toBe(false);
+    expect(scoreMarks(slots, { '1.1': 1, '1.2': 1, '2.1.0': 1, '2.1.1': 1, '2.2.0': 1, '3.1': 1, '4.1a': 0, '4.1d': 0 }).passed).toBe(true);
+    expect(scoreMarks(slots, { '1.1': 1, '1.2': 1, '2.1.0': 1, '2.1.1': 1, '2.2.0': 1, '3.1': 0.5, '4.1a': 0, '4.1d': 0 }).passed).toBe(false);
     expect([gradeFor(0.95), gradeFor(0.75), gradeFor(0.5), gradeFor(0.2), gradeFor(0.1)]).toEqual([5, 4, 3, 2, 1]);
   });
 

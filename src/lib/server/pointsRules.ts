@@ -53,9 +53,14 @@ function learningSection(): PointsRuleSection {
   if (!learning.learningPointsEnabled) {
     return { id: 'harjutused', title: '📚 Harjutused', lines: ['Harjutustest praegu tähti ei saa.'] };
   }
-  const lines = [
-    `Iga tehtud harjutus annab ${stars(learning.baseValue)}, kui vähemalt ${Math.round(learning.minimumScorePercent * 100)}% vastustest on õiged.`
-  ];
+  const minimum = Math.round(learning.minimumScorePercent * 100);
+  const tiers = learning.scoreTiers;
+  const lines = tiers
+    ? [
+      `Iga tehtud harjutus annab ${stars(learning.baseValue)}, kui vähemalt ${Math.round(tiers.fullValueScorePercent * 100)}% vastustest on õiged.`,
+      `Kui õigeid on ${minimum}–${Math.round(tiers.fullValueScorePercent * 100) - 1}%, annab harjutus ${tiers.partialValueFactor === 0.5 ? 'poole sellest' : stars(learning.baseValue * tiers.partialValueFactor)}. Alla ${minimum}% tähti ei anna.`
+    ]
+    : [`Iga tehtud harjutus annab ${stars(learning.baseValue)}, kui vähemalt ${minimum}% vastustest on õiged.`];
   if (learning.decayStep > 0) {
     lines.push(`Sama harjutus samal päeval uuesti: iga kord ${stars(learning.decayStep)} vähem${learning.minimumValue > 0 ? `, aga vähemalt ${stars(learning.minimumValue)}` : ''}.`);
   }

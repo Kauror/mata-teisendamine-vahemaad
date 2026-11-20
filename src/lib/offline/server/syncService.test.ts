@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import db from '@/lib/db';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
+import type { MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { updateChildLearningExerciseStatus } from '@/lib/learningExercises';
 import { runSyncPullV2, runSyncPushV2 } from '@/lib/offline/server/syncService';
@@ -240,7 +241,8 @@ describe('protocol-v2 attempt writes', () => {
     const catalogue = pull.pull.catalogues!.kiur!;
     const grant = pull.pull.catalogueGrants!.kiur!;
     const entry = catalogue.entries.find((candidate) => candidate.id === 'kiur.math.mootuhikud-pikkused')!;
-    const generated = generateKiurMathSession(entry.topic, entry.category, 'Lihtne', 1, 7);
+    // Generated with the version the attempt is stamped with, as a device does.
+    const generated = generateKiurMathSession(entry.topic, entry.category, 'Lihtne', 1, 7, grant.generatorVersion as MathGeneratorVersion);
     const completedAt = new Date(Date.now() - 60_000).toISOString();
 
     const response = runSyncPushV2({

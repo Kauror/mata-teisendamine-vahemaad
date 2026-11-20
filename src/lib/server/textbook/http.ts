@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { deviceDecision } from '@/lib/server/deviceAccess';
+import { DEFAULT_JSON_BODY_BYTES } from '@/lib/server/http/jsonRequest';
+import { readJsonBody } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { ACTION_ID_PATTERN, TEXTBOOK_ERROR_STATUS, type TextbookErrorResponse } from '@/lib/textbook/api';
 import { childContext, previewContext, TextbookApiError, type TextbookContext } from '@/lib/server/textbook/context';
@@ -31,7 +34,12 @@ export function textbookErrorResponse(error: unknown) {
 }
 
 export async function readJson(req: NextRequest): Promise<Record<string, unknown>> {
-  const body = await req.json().catch(() => null) as unknown;
+  let body: unknown;
+  try {
+    body = await readJsonBody(req, DEFAULT_JSON_BODY_BYTES);
+  } catch {
+    throw new TextbookApiError('invalid_request', 'Päring on vigane.');
+  }
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new TextbookApiError('invalid_request', 'Päring on vigane.');
   return body as Record<string, unknown>;
 }
@@ -80,6 +88,17 @@ async function contextFor(scope: Scope): Promise<TextbookContext> {
   return childContext(TEXTBOOK_CHILD_LEARNER);
 }
 
+// Child writes act for TEXTBOOK_CHILD_LEARNER; a device bound to the other
+// child may read but not write (src/lib/auth/deviceBinding.ts).
+async function writeContextFor(scope: Scope, req: NextRequest): Promise<TextbookContext> {
+  const context = await contextFor(scope);
+  if (scope === 'child') {
+    const decision = await deviceDecision(req, TEXTBOOK_CHILD_LEARNER);
+    if (!decision.ok) throw new TextbookApiError('forbidden', decision.message);
+  }
+  return context;
+}
+
 type Params<T> = { params: Promise<T> };
 type CourseParams = { courseId: string };
 type UnitParams = CourseParams & { unitId: string };
@@ -118,7 +137,7 @@ export function learnerHandlers(scope: Scope) {
     lessonComplete: {
       POST: (req: NextRequest, { params }: Params<LessonParams>) => run(async () => {
         const { courseId, unitId, lessonId } = await params;
-        const context = await contextFor(scope);
+        const context = await writeContextFor(scope, req);
         actionIdOf(await readJson(req));
         return completeLesson(context, segment(courseId), segment(unitId), segment(lessonId));
       })
@@ -126,7 +145,7 @@ export function learnerHandlers(scope: Scope) {
     practiceStart: {
       POST: (req: NextRequest, { params }: Params<UnitParams>) => run(async () => {
         const { courseId, unitId } = await params;
-        const context = await contextFor(scope);
+        const context = await writeContextFor(scope, req);
         actionIdOf(await readJson(req));
         return startPractice(context, segment(courseId), segment(unitId));
       })
@@ -134,7 +153,7 @@ export function learnerHandlers(scope: Scope) {
     testStart: {
       POST: (req: NextRequest, { params }: Params<UnitParams>) => run(async () => {
         const { courseId, unitId } = await params;
-        const context = await contextFor(scope);
+        const context = await writeContextFor(scope, req);
         actionIdOf(await readJson(req));
         return startTest(context, segment(courseId), segment(unitId));
       })
@@ -148,7 +167,7 @@ export function learnerHandlers(scope: Scope) {
     practiceAnswer: {
       POST: (req: NextRequest, { params }: Params<SessionParams>) => run(async () => {
         const { sessionId } = await params;
-        const context = await contextFor(scope);
+        const context = await writeContextFor(scope, req);
         const body = await readJson(req);
         return answerPractice(context, sessionSegment(sessionId), { actionId: actionIdOf(body), revision: revisionOf(body), questionId: questionIdOf(body), response: body.response });
       })
@@ -162,7 +181,7 @@ export function learnerHandlers(scope: Scope) {
     testAnswer: {
       POST: (req: NextRequest, { params }: Params<SessionParams>) => run(async () => {
         const { sessionId } = await params;
-        const context = await contextFor(scope);
+        const context = await writeContextFor(scope, req);
         const body = await readJson(req);
         return saveAnswer(context, sessionSegment(sessionId), { actionId: actionIdOf(body), revision: revisionOf(body), questionId: questionIdOf(body), response: body.response });
       })
@@ -170,7 +189,7 @@ export function learnerHandlers(scope: Scope) {
     testSubmit: {
       POST: (req: NextRequest, { params }: Params<SessionParams>) => run(async () => {
         const { sessionId } = await params;
-        const context = await contextFor(scope);
+        const context = await writeContextFor(scope, req);
         const body = await readJson(req);
         return submit(context, sessionSegment(sessionId), { actionId: actionIdOf(body), revision: revisionOf(body) });
       })

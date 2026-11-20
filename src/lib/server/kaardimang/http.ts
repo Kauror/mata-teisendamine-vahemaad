@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { deviceDecision } from '@/lib/server/deviceAccess';
+import { DEFAULT_JSON_BODY_BYTES } from '@/lib/server/http/jsonRequest';
+import { readJsonBody } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { ACTION_ID_PATTERN } from '@/lib/textbook/api';
 import { KAARDIMANG_CHILD_ENABLED, KAARDIMANG_ERROR_STATUS, ROUND_ID_PATTERN, type KaardimangErrorResponse, type KaardimangScope } from '@/lib/kaardimang/api';
@@ -33,6 +36,16 @@ async function contextFor(scope: KaardimangScope, req: NextRequest): Promise<Kaa
   return { scope, learner: child };
 }
 
+// Child writes: a device bound to the other child may not play as this one.
+async function writeContextFor(scope: KaardimangScope, req: NextRequest): Promise<KaardimangContext> {
+  const context = await contextFor(scope, req);
+  if (scope === 'child' && (context.learner === 'kiur' || context.learner === 'kirsi')) {
+    const decision = await deviceDecision(req, context.learner);
+    if (!decision.ok) throw new KaardimangApiError('forbidden', decision.message);
+  }
+  return context;
+}
+
 async function run(work: () => Promise<unknown> | unknown) {
   try {
     return NextResponse.json(await work());
@@ -47,7 +60,12 @@ async function run(work: () => Promise<unknown> | unknown) {
 }
 
 async function readJson(req: NextRequest): Promise<Record<string, unknown>> {
-  const body = await req.json().catch(() => null) as unknown;
+  let body: unknown;
+  try {
+    body = await readJsonBody(req, DEFAULT_JSON_BODY_BYTES);
+  } catch {
+    throw new KaardimangApiError('invalid_request', 'Päring on vigane.');
+  }
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new KaardimangApiError('invalid_request', 'Päring on vigane.');
   return body as Record<string, unknown>;
 }
@@ -76,7 +94,7 @@ export function kaardimangHandlers(scope: KaardimangScope) {
     },
     start: {
       POST: (req: NextRequest) => run(async () => {
-        const context = await contextFor(scope, req);
+        const context = await writeContextFor(scope, req);
         const body = await readJson(req);
         return startRound(context, { actionId: actionIdOf(body), viewId: body.viewId, setId: body.setId, level: body.level });
       })
@@ -90,7 +108,7 @@ export function kaardimangHandlers(scope: KaardimangScope) {
     answer: {
       POST: (req: NextRequest, { params }: RoundParams) => run(async () => {
         const { roundId } = await params;
-        const context = await contextFor(scope, req);
+        const context = await writeContextFor(scope, req);
         const body = await readJson(req);
         return answer(context, roundIdOf(roundId), { actionId: actionIdOf(body), revision: revisionOf(body), questionIndex: body.questionIndex, answerId: body.answerId });
       })
@@ -98,7 +116,7 @@ export function kaardimangHandlers(scope: KaardimangScope) {
     shown: {
       POST: (req: NextRequest, { params }: RoundParams) => run(async () => {
         const { roundId } = await params;
-        const context = await contextFor(scope, req);
+        const context = await writeContextFor(scope, req);
         const body = await readJson(req);
         return markShown(context, roundIdOf(roundId), body.questionIndex);
       })
@@ -106,7 +124,7 @@ export function kaardimangHandlers(scope: KaardimangScope) {
     // POST { competitionId, kind }: the player closed a one-shot notice. Returns the ones still pending.
     notices: {
       POST: (req: NextRequest) => run(async () => {
-        const context = await contextFor(scope, req);
+        const context = await writeContextFor(scope, req);
         if (context.learner === 'preview') throw new KaardimangApiError('invalid_request', 'Eelvaates teateid ei ole.');
         const body = await readJson(req);
         try {

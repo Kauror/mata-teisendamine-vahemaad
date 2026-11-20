@@ -2,6 +2,9 @@
   "name": "mata-teisendamine-vahemaad",
   "version": "0.9.3",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/build-app.mjs",

@@ -80,7 +80,9 @@ function isDateString(value: unknown): value is string {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
-function persist(action: OfflineTaskActionPayload, status: TaskActionStatus, reasonCode: string | undefined, serverState: unknown) {
+// `snapshot` overrides the device's own snapshot when the server knows the true
+// title and stars (a late completion routed to review shows the server's values).
+function persist(action: OfflineTaskActionPayload, status: TaskActionStatus, reasonCode: string | undefined, serverState: unknown, snapshot?: { title: string; points: number }) {
   db.prepare(`
     INSERT OR REPLACE INTO offline_task_actions
       (clientActionId, deviceId, learner, actionType, templateId, templateVersion, taskDate, snapshotJson, completedAt, status, reasonCode, serverResultJson, createdAt, processedAt)
@@ -93,7 +95,7 @@ function persist(action: OfflineTaskActionPayload, status: TaskActionStatus, rea
     action.templateId ?? null,
     action.templateVersion ?? null,
     action.taskDate,
-    action.snapshot ? JSON.stringify(action.snapshot) : null,
+    snapshot ? JSON.stringify({ ...(action.snapshot ?? {}), ...snapshot }) : action.snapshot ? JSON.stringify(action.snapshot) : null,
     action.completedAt ?? null,
     status,
     reasonCode ?? null,
@@ -103,17 +105,20 @@ function persist(action: OfflineTaskActionPayload, status: TaskActionStatus, rea
   );
 }
 
-// Whether a completion for a past task day may still settle: it must have been
-// made on that very day (Europe/Tallinn) and arrive within the same offline age
-// limit that exercise attempts have.
-function lateCompletionOnTaskDay(taskDate: string, completedAt: string) {
-  const today = todayDateString();
-  if (taskDate >= today) return false;
-  if (taskDate < addAppDays(today, -maxOfflineAttemptAgeDays())) return false;
-  return isoToAppDate(completedAt) === taskDate;
+// The task day must be a real, current-enough day of the app calendar
+// (Europe/Tallinn). A future day is refused outright: preparing a future day's
+// instances would close every open task of today as 'missed' for both children,
+// and a no-approval task would pay for a day that has not happened. A day older
+// than the offline age limit (the same one exercise attempts have) is refused
+// too. Both checks run before anything is written.
+export function taskDateVerdict(taskDate: string, today = todayDateString()): 'today' | 'past' | 'future_task_date' | 'task_date_too_old' {
+  if (taskDate > today) return 'future_task_date';
+  if (taskDate === today) return 'today';
+  if (taskDate < addAppDays(today, -maxOfflineAttemptAgeDays())) return 'task_date_too_old';
+  return 'past';
 }
 
-function reopenMissedAssignment(assignmentId: number) {
+export function reopenMissedAssignment(assignmentId: number) {
   db.prepare("UPDATE task_instance_assignments SET status = 'active' WHERE id = ? AND status = 'missed'").run(assignmentId);
   // The instance is reopened too. For a shared (non first-completer) task a
   // 'completed' instance only means no assignment was still open once the
@@ -127,7 +132,45 @@ function reopenMissedAssignment(assignmentId: number) {
   `).run(assignmentId);
 }
 
-function process(action: OfflineTaskActionPayload, learner: Learner): { status: TaskActionStatus; reasonCode?: string; serverState?: unknown; message?: string } {
+type ProcessOutcome = { status: TaskActionStatus; reasonCode?: string; serverState?: unknown; message?: string; snapshot?: { title: string; points: number } };
+
+// A completion for an earlier task day. Its completion time comes from the
+// device, so it is never settled on its own: a no-approval task goes to the
+// parent's review (reason 'late_completion') with the server's own title and
+// stars, and an approval-required task joins the normal approval queue. The
+// day's instances are only read here, never prepared - a day that was never
+// prepared has no assignment to settle.
+function processPastDay(action: OfflineTaskActionPayload, learner: Learner): ProcessOutcome {
+  const assignmentId = findAssignmentId(action.templateId!, action.taskDate, learner);
+  if (!assignmentId) return { status: 'needs_review', reasonCode: 'no_assignment' };
+  const status = getAssignmentStatusById(assignmentId);
+  if (status === 'completed') return { status: 'duplicate' };
+  if (status === 'locked') return { status: 'conflict', reasonCode: 'first_completer_taken' };
+  if (status === 'pending_approval') return { status: 'pending_approval' };
+  if (status !== 'missed' && status !== 'active') return { status: 'conflict', reasonCode: 'not_active' };
+  const completedAt = action.completedAt && Date.parse(action.completedAt) <= Date.now() ? action.completedAt : null;
+  // A tick that the device itself dates to another day was not done on the task day.
+  if (!completedAt || isoToAppDate(completedAt) !== action.taskDate) return { status: 'conflict', reasonCode: 'not_active' };
+
+  const instance = db.prepare(`
+    SELECT i.titleSnapshot AS title, i.pointsSnapshot AS points, i.requiresApprovalSnapshot AS requiresApproval
+    FROM task_instance_assignments a JOIN task_instances i ON i.id = a.taskInstanceId WHERE a.id = ?
+  `).get(assignmentId) as { title: string; points: number; requiresApproval: number };
+  if (instance.requiresApproval) {
+    try {
+      const result = db.transaction(() => {
+        reopenMissedAssignment(assignmentId);
+        return completeTaskAssignmentAt(assignmentId, learner, completedAt, action.taskDate);
+      })();
+      return { status: result.pending ? 'pending_approval' : 'applied', serverState: result };
+    } catch (error) {
+      return { status: 'conflict', reasonCode: 'first_completer_taken', message: error instanceof Error ? error.message : undefined };
+    }
+  }
+  return { status: 'needs_review', reasonCode: 'late_completion', snapshot: { title: instance.title, points: instance.points } };
+}
+
+function process(action: OfflineTaskActionPayload, learner: Learner): ProcessOutcome {
   const template = action.templateId != null ? getTaskTemplateById(action.templateId) : undefined;
   if (!template) return { status: 'needs_review', reasonCode: 'template_removed' };
   if (template.deletedAt) return { status: 'needs_review', reasonCode: 'template_deleted' };
@@ -135,6 +178,10 @@ function process(action: OfflineTaskActionPayload, learner: Learner): { status: 
   // the promised reward may have changed → route to parent review, never silently
   // apply the new reward.
   if (taskTemplateVersion(template) !== action.templateVersion) return { status: 'needs_review', reasonCode: 'template_changed' };
+
+  // Only today's instances are ever prepared from sync (taskDateVerdict has
+  // already refused future and too-old days).
+  if (action.taskDate !== todayDateString()) return processPastDay(action, learner);
 
   ensureTaskInstancesForDate(action.taskDate);
   const assignmentId = findAssignmentId(action.templateId!, action.taskDate, learner);
@@ -147,19 +194,10 @@ function process(action: OfflineTaskActionPayload, learner: Learner): { status: 
   if (status === 'completed') return { status: 'duplicate' };
   if (status === 'locked') return { status: 'conflict', reasonCode: 'first_completer_taken' };
   if (status === 'pending_approval') return { status: 'pending_approval' };
-  // A task ticked offline late in the evening usually reaches the server the
-  // next morning, after the first read of the new day has closed the old day's
-  // open assignments as 'missed'. The child did the task on its own day, so a
-  // completion stamped on that task date is settled against it (the same way a
-  // late approval is, RTM2-M01) instead of being refused as no longer active.
-  const lateArrival = status === 'missed' && lateCompletionOnTaskDay(action.taskDate, completedAt);
-  if (status !== 'active' && !lateArrival) return { status: 'conflict', reasonCode: 'not_active' };
+  if (status !== 'active') return { status: 'conflict', reasonCode: 'not_active' };
 
   try {
-    const result = db.transaction(() => {
-      if (lateArrival) reopenMissedAssignment(assignmentId);
-      return completeTaskAssignmentAt(assignmentId, learner, completedAt, action.taskDate);
-    })();
+    const result = completeTaskAssignmentAt(assignmentId, learner, completedAt, action.taskDate);
     return { status: result.pending ? 'pending_approval' : 'applied', serverState: result };
   } catch (error) {
     // The only expected throw is the first-completer race.
@@ -182,8 +220,13 @@ export function applyOfflineTaskAction(action: OfflineTaskActionPayload): TaskAc
     persist(action, 'rejected', 'bad_payload', undefined);
     return { clientActionId: action.clientActionId, status: 'rejected', reasonCode: 'bad_payload' };
   }
+  const dateVerdict = taskDateVerdict(action.taskDate);
+  if (dateVerdict === 'future_task_date' || dateVerdict === 'task_date_too_old') {
+    persist(action, 'rejected', dateVerdict, undefined);
+    return { clientActionId: action.clientActionId, status: 'rejected', reasonCode: dateVerdict };
+  }
 
   const outcome = process(action, action.learner);
-  persist(action, outcome.status, outcome.reasonCode, outcome.serverState);
+  persist(action, outcome.status, outcome.reasonCode, outcome.serverState, outcome.snapshot);
   return { clientActionId: action.clientActionId, status: outcome.status, reasonCode: outcome.reasonCode, message: outcome.message, serverState: outcome.serverState };
 }

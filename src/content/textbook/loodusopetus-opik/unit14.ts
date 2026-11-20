@@ -14,7 +14,7 @@ export const unit14: Unit = {
     "to": 59
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.1",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u14-o1",
@@ -1144,7 +1144,7 @@ export const unit14: Unit = {
           },
           {
             "id": "d",
-            "text": "Kaardil ei saa olla teksti."
+            "text": "Kaardil on kõik andmed kirjutatud pika tekstina lahti."
           }
         ],
         "correctOptionId": "a"
@@ -1576,7 +1576,7 @@ export const unit14: Unit = {
           },
           {
             "id": "d",
-            "text": "Kõik on sõidukite liigid."
+            "text": "Kõik on inimese ehitatud rajatised kaardil."
           }
         ],
         "correctOptionId": "a"
@@ -1925,15 +1925,15 @@ export const unit14: Unit = {
           },
           {
             "id": "b",
-            "text": "ainult mahajäetud kaevandused"
+            "text": "mahajäetud kaevandused"
           },
           {
             "id": "c",
-            "text": "ainult mägikülad"
+            "text": "kõik talud ja majad"
           },
           {
             "id": "d",
-            "text": "ainult merel asuvad laevad"
+            "text": "merel sõitvad laevad"
           }
         ],
         "correctOptionId": "a"
@@ -2643,7 +2643,7 @@ export const unit14: Unit = {
           },
           {
             "id": "d",
-            "text": "Riike pole olemas."
+            "text": "Füüsilisel kaardil on keelatud kasutada igasuguseid nimesid."
           }
         ],
         "correctOptionId": "a"
@@ -3097,15 +3097,15 @@ export const unit14: Unit = {
           },
           {
             "id": "b",
-            "text": "ainult kaardi lehe värvist"
+            "text": "kaardi lehe värvist"
           },
           {
             "id": "c",
-            "text": "ainult atlase kaane paksusest"
+            "text": "atlase kaane paksusest"
           },
           {
             "id": "d",
-            "text": "ainult sellest, kas kaardil on palju teksti"
+            "text": "sellest, kui palju kaardil on teksti"
           }
         ],
         "correctOptionId": "a"
@@ -3842,7 +3842,7 @@ export const unit14: Unit = {
           },
           {
             "id": "b",
-            "text": "Ei, ainult mäed on lubatud."
+            "text": "Jah, kuid ainult siis, kui see on ajalooatlas."
           },
           {
             "id": "c",
@@ -3850,7 +3850,7 @@ export const unit14: Unit = {
           },
           {
             "id": "d",
-            "text": "Ei, atlas on üksainus maakaart."
+            "text": "Ei, ühes atlases on kõik kaardid sama teemaga."
           }
         ],
         "correctOptionId": "a"
@@ -3926,15 +3926,15 @@ export const unit14: Unit = {
           },
           {
             "id": "b",
-            "text": "ainult riigipiiride nimesid"
+            "text": "riigipiiride nimesid"
           },
           {
             "id": "c",
-            "text": "ainult ajaloolisi lahinguid"
+            "text": "rahvastiku andmeid"
           },
           {
             "id": "d",
-            "text": "ainult lennuliine"
+            "text": "lennuliinide andmeid"
           }
         ],
         "correctOptionId": "a"
@@ -4280,15 +4280,15 @@ export const unit14: Unit = {
           },
           {
             "id": "b",
-            "text": "ainult tänast ilmakaarti"
+            "text": "tänapäevast liikluskaarti ja ilmakaarti"
           },
           {
             "id": "c",
-            "text": "ainult järvede sügavuste kaarti"
+            "text": "järvede ja jõgede sügavuskaarti"
           },
           {
             "id": "d",
-            "text": "ainult mullastikukaarti"
+            "text": "mullastikukaarti"
           }
         ],
         "correctOptionId": "a"
@@ -4532,15 +4532,15 @@ export const unit14: Unit = {
           },
           {
             "id": "b",
-            "text": "ainult mäeahelike kaart"
+            "text": "mäeahelike kaart"
           },
           {
             "id": "c",
-            "text": "ainult järvede kaart"
+            "text": "järvede sügavuse kaart"
           },
           {
             "id": "d",
-            "text": "ainult ajalooliste piiride kaart"
+            "text": "ajalooliste piiride kaart"
           }
         ],
         "correctOptionId": "a"
@@ -4861,7 +4861,7 @@ export const unit14: Unit = {
           },
           {
             "id": "b",
-            "text": "Tume värv tähistab alati pealinna."
+            "text": "Värvi tähendus on kõigil kaartidel ühesugune."
           },
           {
             "id": "c",
@@ -4869,7 +4869,7 @@ export const unit14: Unit = {
           },
           {
             "id": "d",
-            "text": "Tume värv pole kaartidel kunagi lubatud."
+            "text": "Legendi ei ole vaja lugeda, kui värv on tume."
           }
         ],
         "correctOptionId": "a"

@@ -12,8 +12,9 @@ import { recomputeSprintQualifications } from '@/lib/sprintQualification';
 import { metadataMatchesContract, validateAttemptRecordV2 } from '@/lib/server/http/requestValidation';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import { isOfflineProtocolV2Enabled } from '@/lib/offline/protocol';
-import { validateAttemptTiming } from '@/lib/offline/server/attemptTiming';
-import { MATH_GENERATOR_VERSIONS } from '@/lib/exercises/mathGeneratorVersion';
+import { attemptIsImplausiblyFast, validateAttemptTiming } from '@/lib/offline/server/attemptTiming';
+import { MATH_GENERATOR_VERSIONS, MATH_GENERATOR_VERSION_V5, isMathGeneratorAtLeast, isSupportedMathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { mathDifficultyAllowed } from '@/lib/server/mathLevels';
 import { createHash } from 'node:crypto';
 
 // The one insertion path for exercise attempts: protocol-v2 sync, with strict
@@ -247,6 +248,16 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
       review = true;
       reasonCode = reasonCode ?? 'reward_policy_changed';
     }
+    // Adaptive difficulty (maths generator v5 on): a Kiur maths run made easier
+    // than his results allow is kept but held for the parent, so an easier
+    // level cannot be picked to earn stars. Older versions were always Lihtne.
+    const generatorVersion = input.generatorVersion;
+    if (runnerContract.runnerId === 'math' && isSupportedMathGeneratorVersion(generatorVersion) &&
+      isMathGeneratorAtLeast(generatorVersion, MATH_GENERATOR_VERSION_V5) &&
+      !mathDifficultyAllowed(learner, topic, difficulty, typeof input.startedAt === 'string' && input.startedAt ? input.startedAt : v2.clientCorrectedCompletedAt)) {
+      review = true;
+      reasonCode = reasonCode ?? 'difficulty_below_level';
+    }
   }
 
   const validation = validateAgainstCatalogue({ learner, version: input.catalogueVersion, exerciseId, subject: rawSubject ?? '', topic, category });
@@ -256,6 +267,11 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
     permitted = false;
     review = true;
     reasonCode = reasonCode ?? validation.reasonCode;
+  }
+  // An implausibly fast attempt is kept, but its stars wait for the parent (B3).
+  if (permitted && !review && attemptIsImplausiblyFast({ runnerId: String(input.runnerId), questionCount, score, elapsedSeconds })) {
+    review = true;
+    reasonCode = 'too_fast';
   }
 
   // Authoritative reward eligibility, persisted on the row. Only 'eligible'

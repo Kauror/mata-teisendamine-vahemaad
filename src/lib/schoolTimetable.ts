@@ -1,10 +1,13 @@
 import { addAppDays, APP_TIME_ZONE } from '@/lib/appDate';
 import type { Learner } from '@/lib/shared/types';
 
-// The children's school week. It changes a couple of times a year, so it lives
-// here as data rather than in the database; that also keeps the timetable
-// readable offline. Everything below is pure, so the client computes "now"
-// itself in the family's timezone.
+// The children's school week: bells, classes, lessons, clubs and what to
+// bring. It is private, so it is not in the (public) repository: the server
+// reads it from SCHOOL_TIMETABLE_FILE (lib/server/schoolTimetableFile.ts), the
+// page fetches it from /api/school-timetable and keeps a copy in localStorage
+// so the timetable still works offline. A fictional example for tests and
+// development lives in schoolTimetable.example.json. Everything below is pure;
+// the client computes "now" itself in the family's timezone.
 
 export type SubjectKey = 'mat' | 'est' | 'eng' | 'keh' | 'kun' | 'loo' | 'muu' | 'dig' | 'teh';
 
@@ -31,20 +34,10 @@ export function subjectOf(name: string): Subject {
   return SUBJECTS[name] ?? { key: 'mat', short: name };
 }
 
-// The school bells: six 45-minute lessons. Minutes after local midnight.
-export const SCHOOL_BELLS: ReadonlyArray<readonly [number, number]> = [
-  [8 * 60 + 15, 9 * 60],
-  [9 * 60 + 5, 9 * 60 + 50],
-  [10 * 60, 10 * 60 + 45],
-  [11 * 60, 11 * 60 + 45],
-  [12 * 60, 12 * 60 + 45],
-  [13 * 60, 13 * 60 + 45]
-];
-
-export type Club = { name: string; start: number; end: number };
+export type Club = { name: string; start: number; end: number; icon?: string };
 
 export type SchoolDay = {
-  // Indexed by bell; null is a free period (Kirsi never has the first one).
+  // Indexed by bell; null is a free period.
   lessons: ReadonlyArray<string | null>;
   clubs: ReadonlyArray<Club>;
   // What goes in the bag for this day.
@@ -53,31 +46,150 @@ export type SchoolDay = {
 
 export type ChildTimetable = { className: string; days: ReadonlyArray<SchoolDay> };
 
-const at = (hours: number, minutes = 0) => hours * 60 + minutes;
-
-// Monday to Friday, from the school's timetable sheet (Kirsi 1C, Kiur 4B).
-export const SCHOOL_TIMETABLE: Record<Learner, ChildTimetable> = {
-  kiur: {
-    className: '4B',
-    days: [
-      { lessons: [null, 'Eesti keel', 'Inglise keel', 'Matemaatika', 'Kunst / tööõpetus'], clubs: [], bring: ['Kunstitarbed'] },
-      { lessons: ['Matemaatika', 'Inglise keel', 'Kehaline kasvatus', 'Loodusõpetus', 'Eesti keel', 'Muusika'], clubs: [{ name: 'Judo', start: at(18, 30), end: at(20) }], bring: ['Spordiriided', 'Judoriided'] },
-      { lessons: ['Eesti keel', 'Kehaline kasvatus', 'Matemaatika', 'Inglise keel', 'Kunst / tööõpetus'], clubs: [{ name: 'Robootika', start: at(13), end: at(14, 30) }], bring: ['Spordiriided', 'Kunstitarbed'] },
-      { lessons: ['Matemaatika', 'Eesti keel', 'Loodusõpetus', 'Inglise keel'], clubs: [{ name: 'Ukulele', start: at(16), end: at(16, 45) }], bring: [] },
-      { lessons: ['Eesti keel', 'Matemaatika', 'Kunst / tööõpetus', 'Kehaline kasvatus', 'Digioskused', 'Muusika'], clubs: [{ name: 'Judo', start: at(18, 30), end: at(20) }], bring: ['Spordiriided', 'Kunstitarbed', 'Judoriided'] }
-    ]
-  },
-  kirsi: {
-    className: '1C',
-    days: [
-      { lessons: [null, 'Kehaline kasvatus', 'Eesti keel', 'Matemaatika', 'Tehnoloogiline avastusõpe'], clubs: [{ name: 'Robootika', start: at(13), end: at(13, 45) }], bring: ['Spordiriided'] },
-      { lessons: [null, 'Eesti keel', 'Matemaatika', 'Loodusõpetus', 'Kunst / tööõpetus'], clubs: [{ name: 'Tantsutund', start: at(13), end: at(13, 45) }], bring: ['Kunstitarbed'] },
-      { lessons: [null, 'Eesti keel', 'Eesti keel', 'Matemaatika', 'Muusika'], clubs: [{ name: 'Õpiabi', start: at(13), end: at(13, 45) }], bring: [] },
-      { lessons: [null, 'Kehaline kasvatus', 'Eesti keel', 'Matemaatika', 'Kunst / tööõpetus'], clubs: [], bring: ['Spordiriided', 'Kunstitarbed'] },
-      { lessons: [null, 'Eesti keel', 'Muusika', 'Eesti keel', 'Kunst / tööõpetus'], clubs: [], bring: ['Kunstitarbed'] }
-    ]
-  }
+export type SchoolTimetableData = {
+  // The school bells, minutes after local midnight: [start, end] per lesson.
+  bells: ReadonlyArray<readonly [number, number]>;
+  children: Record<Learner, ChildTimetable>;
 };
+
+export const EMPTY_SCHOOL_TIMETABLE: SchoolTimetableData = {
+  bells: [],
+  children: { kiur: { className: '', days: [] }, kirsi: { className: '', days: [] } }
+};
+
+// --- The file format (school-timetable.json) -------------------------------
+// { "version": 1,
+//   "bells": [["08:00", "08:45"], ...],
+//   "children": { "kiur": { "className": "…", "days": [ /* Monday..Friday */
+//     { "lessons": [null, "Eesti keel", ...],
+//       "clubs": [{ "name": "…", "start": "17:30", "end": "19:00", "icon": "…" }],
+//       "bring": ["…"] } ] }, "kirsi": { … } } }
+
+const TIME = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function minutesOf(value: unknown, where: string): number {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < 24 * 60) return value;
+  const match = typeof value === 'string' ? TIME.exec(value) : null;
+  if (!match) throw new Error(`${where}: expected a time like "08:15".`);
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function shortText(value: unknown, where: string, max = 80): string {
+  if (typeof value !== 'string' || value.trim().length === 0 || value.length > max) throw new Error(`${where}: expected text.`);
+  return value;
+}
+
+function list(value: unknown, where: string): unknown[] {
+  if (!Array.isArray(value)) throw new Error(`${where}: expected a list.`);
+  return value;
+}
+
+function record(value: unknown, where: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error(`${where}: expected an object.`);
+  return value as Record<string, unknown>;
+}
+
+// Validates a parsed school-timetable.json (or the API answer, which uses the
+// same format) and turns its times into minutes. Throws with the place of the
+// first problem.
+export function parseSchoolTimetable(value: unknown): SchoolTimetableData {
+  const root = record(value, 'timetable');
+  if (root.version !== 1) throw new Error('timetable.version: expected 1.');
+  const bells = list(root.bells, 'bells').map((bell, index) => {
+    const pair = list(bell, `bells[${index}]`);
+    if (pair.length !== 2) throw new Error(`bells[${index}]: expected [start, end].`);
+    const start = minutesOf(pair[0], `bells[${index}][0]`);
+    const end = minutesOf(pair[1], `bells[${index}][1]`);
+    if (end <= start) throw new Error(`bells[${index}]: ends before it starts.`);
+    return [start, end] as const;
+  });
+  if (bells.length > 12) throw new Error('bells: at most 12.');
+  const childrenRecord = record(root.children, 'children');
+  const child = (learner: Learner): ChildTimetable => {
+    const where = `children.${learner}`;
+    const raw = record(childrenRecord[learner], where);
+    const className = typeof raw.className === 'string' && raw.className.length <= 20 ? raw.className : '';
+    const days = list(raw.days, `${where}.days`).map((rawDay, dayIndex) => {
+      const dayWhere = `${where}.days[${dayIndex}]`;
+      const day = record(rawDay, dayWhere);
+      const lessons = list(day.lessons, `${dayWhere}.lessons`).map((lesson, index) => {
+        if (lesson === null) return null;
+        const name = shortText(lesson, `${dayWhere}.lessons[${index}]`);
+        if (!isKnownSubject(name)) throw new Error(`${dayWhere}.lessons[${index}]: unknown subject "${name}".`);
+        return name;
+      });
+      if (lessons.length > bells.length) throw new Error(`${dayWhere}.lessons: more lessons than bells.`);
+      const clubs = list(day.clubs ?? [], `${dayWhere}.clubs`).map((rawClub, index) => {
+        const clubWhere = `${dayWhere}.clubs[${index}]`;
+        const club = record(rawClub, clubWhere);
+        const start = minutesOf(club.start, `${clubWhere}.start`);
+        const end = minutesOf(club.end, `${clubWhere}.end`);
+        if (end <= start) throw new Error(`${clubWhere}: ends before it starts.`);
+        const icon = club.icon === undefined ? undefined : shortText(club.icon, `${clubWhere}.icon`, 8);
+        return { name: shortText(club.name, `${clubWhere}.name`), start, end, ...(icon ? { icon } : {}) };
+      });
+      const bring = list(day.bring ?? [], `${dayWhere}.bring`).map((item, index) => shortText(item, `${dayWhere}.bring[${index}]`));
+      return { lessons, clubs, bring };
+    });
+    if (days.length > 5) throw new Error(`${where}.days: Monday to Friday only.`);
+    return { className, days };
+  };
+  return { bells, children: { kiur: child('kiur'), kirsi: child('kirsi') } };
+}
+
+// The inverse of parseSchoolTimetable, for the API answer and the offline copy.
+export function serializeSchoolTimetable(data: SchoolTimetableData) {
+  const time = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  const child = (timetable: ChildTimetable) => ({
+    className: timetable.className,
+    days: timetable.days.map((day) => ({
+      lessons: [...day.lessons],
+      clubs: day.clubs.map((club) => ({ name: club.name, start: time(club.start), end: time(club.end), ...(club.icon ? { icon: club.icon } : {}) })),
+      bring: [...day.bring]
+    }))
+  });
+  return {
+    version: 1 as const,
+    bells: data.bells.map(([start, end]) => [time(start), time(end)]),
+    children: { kiur: child(data.children.kiur), kirsi: child(data.children.kirsi) }
+  };
+}
+
+// --- The data in use ---------------------------------------------------------
+// One timetable for the whole family. The server sets it from the file; the
+// client from the API (and its offline copy). Components re-render through
+// subscribeSchoolTimetable (see app/components/useAppClock.ts).
+
+let current: SchoolTimetableData = EMPTY_SCHOOL_TIMETABLE;
+let revision = 0;
+const listeners = new Set<() => void>();
+
+export function setSchoolTimetableData(data: SchoolTimetableData) {
+  current = data;
+  revision += 1;
+  for (const listener of listeners) listener();
+}
+
+export function schoolTimetableData(): SchoolTimetableData {
+  return current;
+}
+
+export function schoolTimetableRevision() {
+  return revision;
+}
+
+export function subscribeSchoolTimetable(listener: () => void) {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+
+export function schoolBells(): ReadonlyArray<readonly [number, number]> {
+  return current.bells;
+}
+
+export function childTimetable(learner: Learner): ChildTimetable {
+  return current.children[learner];
+}
 
 // School holidays, inclusive (2026/27 school year).
 export const SCHOOL_HOLIDAYS: ReadonlyArray<readonly [string, string]> = [
@@ -145,7 +257,7 @@ export type ScheduleItem =
   | { kind: 'club'; name: string; start: number; end: number };
 
 export function schoolDay(learner: Learner, weekday: number): SchoolDay | null {
-  return SCHOOL_TIMETABLE[learner].days[weekday] ?? null;
+  return current.children[learner].days[weekday] ?? null;
 }
 
 export function scheduleFor(learner: Learner, weekday: number): ScheduleItem[] {
@@ -153,9 +265,10 @@ export function scheduleFor(learner: Learner, weekday: number): ScheduleItem[] {
   if (!day) return [];
   const items: ScheduleItem[] = [];
   day.lessons.forEach((name, index) => {
-    if (name) items.push({ kind: 'lesson', name, start: SCHOOL_BELLS[index][0], end: SCHOOL_BELLS[index][1], number: index + 1 });
+    const bell = current.bells[index];
+    if (name && bell) items.push({ kind: 'lesson', name, start: bell[0], end: bell[1], number: index + 1 });
   });
-  day.clubs.forEach((club) => items.push({ kind: 'club', ...club }));
+  day.clubs.forEach((club) => items.push({ kind: 'club', name: club.name, start: club.start, end: club.end }));
   return items;
 }
 
@@ -275,8 +388,6 @@ export function formatDayMonth(date: string): string {
 // A club's chip appears this long before it starts: a gentle reminder, not a timetable.
 export const CLUB_REMINDER_LEAD = 60;
 
-const CLUB_ICONS: Record<string, string> = { Judo: '🥋', Robootika: '🤖', Ukulele: '🎸', Tantsutund: '💃', 'Õpiabi': '📚' };
-
 export type HomeStatus = { kind: 'school' | 'club' | 'start'; icon: string; text: string };
 
 // The one short line after a child's name on the home page. At school until the
@@ -291,7 +402,7 @@ export function homeStatus(learner: Learner, clock: AppClock): HomeStatus | null
       return { kind: 'school', icon: '🏫', text: `koolis kuni ${formatClock(end)}` };
     }
     const club = (schoolDay(learner, clock.weekday)?.clubs ?? []).find((item) => clock.minutes < item.end && item.start - clock.minutes <= CLUB_REMINDER_LEAD);
-    if (club) return { kind: 'club', icon: CLUB_ICONS[club.name] ?? '⏰', text: `${club.name} ${formatClock(club.start)}` };
+    if (club) return { kind: 'club', icon: club.icon ?? '⏰', text: `${club.name} ${formatClock(club.start)}` };
   }
   const hint = schoolStartHint(learner, clock);
   if (!hint || (hint.when === 'tomorrow' && clock.minutes < EVENING_BEFORE_SCHOOL)) return null;

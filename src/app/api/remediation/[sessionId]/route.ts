@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { isLearner } from '@/lib/learningExercises';
 import { getRemediationSession, submitRemediationSession } from '@/lib/remediation';
@@ -19,12 +21,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ sess
 export async function POST(req: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params;
   const id = Number(sessionId);
-  const body = await req.json().catch(() => ({}));
+  const jsonBody = await readJsonObjectRequest(req);
+  if (jsonBody instanceof NextResponse) return jsonBody;
+  const body = jsonBody;
   const learner = body.learner;
   const answers = Array.isArray(body.answers) ? body.answers : [];
   const elapsedSeconds = Number(body.elapsedSeconds) || 0;
 
   if (!isLearner(learner) || !Number.isInteger(id)) return NextResponse.json({ message: 'Vale kordamine.' }, { status: 400 });
+  const deviceDenied = await assertDeviceMayActAs(req, learner);
+  if (deviceDenied) return deviceDenied;
 
   try {
     // The daily leaderboard is refreshed inside the submission transaction, for

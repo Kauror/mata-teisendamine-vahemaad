@@ -53,12 +53,15 @@ async function answerAll(page: Page, data: Content) {
   for (const exercise of data.exercises) {
     const section = page.locator(`section[aria-labelledby="ut-ex-${exercise.id}"]`);
     if (exercise.type === 'crossword') {
-      for (const entry of exercise.entries as Array<{ answer: string; row: number; col: number; dir: string }>) {
-        for (let i = 0; i < entry.answer.length; i += 1) {
-          const row = entry.row + (entry.dir === 'down' ? i : 0);
-          const col = entry.col + (entry.dir === 'across' ? i : 0);
-          await section.locator(`[data-cell="${row},${col}"] input`).fill(entry.answer[i]);
-        }
+      // Choose each word by its clue and type it with real key presses, in
+      // lower case: the word field turns it into capitals in the grid.
+      for (const entry of exercise.entries as Array<{ number: number; clue: string; answer: string; dir: string }>) {
+        const arrow = entry.dir === 'across' ? '→' : '↓';
+        await section.locator('.ut-clue-button', { hasText: `${entry.number} ${arrow} ${entry.clue}` }).first().click();
+        const field = section.locator('.ut-word-input');
+        await field.fill('');
+        await field.pressSequentially(entry.answer.toLowerCase());
+        await expect(field).toHaveValue(entry.answer);
       }
       continue;
     }
@@ -129,7 +132,8 @@ test('parent imports a unit test, Kiur answers and hands it in, parent approves'
 
   // A reload keeps the saved answers.
   await page.reload();
-  await expect(page.locator('.ut-option[aria-pressed="true"]').first()).toBeVisible();
+  // A reload keeps every answer: the progress still says all are answered.
+  await expect(page.locator('.ut-progress strong')).toHaveText(/^(\d+) \/ \1$/);
 
   await page.getByRole('button', { name: 'Anna kontrolltöö ära' }).click();
   await page.getByRole('button', { name: 'Jah, annan ära' }).click();
@@ -150,6 +154,8 @@ test('parent imports a unit test, Kiur answers and hands it in, parent approves'
   }
   await shot(page, `${browserName}-3-parent-review`);
   await page.getByRole('button', { name: /^Kinnita/ }).click();
+  // Approving is final, so it asks first.
+  await page.getByRole('button', { name: 'Jah, kinnita' }).click();
   await expect(page.getByText('Kontrolltöö on kinnitatud.')).toBeVisible();
 
   // Kiur sees the grade.

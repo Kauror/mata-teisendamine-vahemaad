@@ -18,7 +18,7 @@ export const unit22: Unit = {
     "note": "Õpiku peatükk jätkub pärast lk 83; kaasa antud materjal hõlmab ainult lk 82–83. Ametlikud ohutusjuhised on märgistatud lisaallikatena."
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.2",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u22-o1",
@@ -1187,7 +1187,7 @@ export const unit22: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Kahju sõltub ka sellest, mis tuule teele jääb ja kui kaitstud on inimesed."
+            "text": "Sest kahju sõltub ka sellest, mis tuule teele jääb ja kui kaitstud on inimesed."
           },
           {
             "id": "i2",
@@ -1274,7 +1274,7 @@ export const unit22: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Puudub teave selle kohta, kas sadu tekitas ohtu või suurt kahju."
+            "text": "Sest puudub teave selle kohta, kas sadu tekitas ohtu või suurt kahju."
           },
           {
             "id": "i2",
@@ -1619,15 +1619,15 @@ export const unit22: Unit = {
           },
           {
             "id": "i2",
-            "text": "Et muuta maavärina kolle sügavamaks."
+            "text": "Muuta maavärina kolle sügavamaks."
           },
           {
             "id": "i3",
-            "text": "Et vältida maavärinast sõltumata kõiki võimalikke kahjustusi."
+            "text": "Vältida maavärinast sõltumata kõiki võimalikke kahjustusi."
           },
           {
             "id": "i4",
-            "text": "Et tagada, et majas pole pärast tugevamat maavärinat vaja kunagi kontrollida."
+            "text": "Tagada, et majas pole pärast tugevamat maavärinat vaja kunagi kontrollida."
           }
         ],
         "correctOptionId": "i1"
@@ -1661,15 +1661,15 @@ export const unit22: Unit = {
           },
           {
             "id": "i2",
-            "text": "Et Jaapanis ei ehitata maavärina tõttu kõrgeid maju."
+            "text": "Kõrgete majade ehitamise keelamist maavärina tõttu."
           },
           {
             "id": "i3",
-            "text": "Et maavärinapiirkondades pole harjutamist vaja."
+            "text": "Loobumist harjutustest, sest need pole vajalikud."
           },
           {
             "id": "i4",
-            "text": "Et üksainus kaitsevall suudab igasuguse tsunami alati peatada."
+            "text": "Ühe kaitsevalli ehitamist, mis peatab iga tsunami."
           }
         ],
         "correctOptionId": "i1"
@@ -1789,7 +1789,7 @@ export const unit22: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Suur oht võib kaitserajatisest üle jõuda, seetõttu on vaja ka hoiatusi ja põgenemisplaani."
+            "text": "Sest suur oht võib kaitserajatisest üle jõuda, seetõttu on vaja ka hoiatusi ja põgenemisplaani."
           },
           {
             "id": "i2",
@@ -2381,7 +2381,7 @@ export const unit22: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Tuisuga võib nähtavus tugevasti halveneda ja liiklemine muutuda raskeks."
+            "text": "Sest tuisuga võib nähtavus tugevasti halveneda ja liiklemine muutuda raskeks."
           },
           {
             "id": "i2",
@@ -2807,15 +2807,15 @@ export const unit22: Unit = {
           },
           {
             "id": "i2",
-            "text": "Kui vihma sajab, kuid kogu vesi voolab ära."
+            "text": "Vihm, mis voolab kohe ära ega jää maapinnale."
           },
           {
             "id": "i3",
-            "text": "Kui jõgi voolab tavapäraselt oma sängis."
+            "text": "Jõgi, mis voolab tavapäraselt oma sängis."
           },
           {
             "id": "i4",
-            "text": "Kui tee on märg, aga kuiv maa ei jää veekihi alla."
+            "text": "Märg tee, kus vesi ei kata kuiva maad."
           }
         ],
         "correctOptionId": "i1"
@@ -2849,15 +2849,15 @@ export const unit22: Unit = {
           },
           {
             "id": "i2",
-            "text": "Kui vihma sajab vähem, kui jõgi ära juhtida suudab."
+            "text": "Vihma sajab vähem, kui jõgi ära juhtida suudab."
           },
           {
             "id": "i3",
-            "text": "Kui pinnas imeb kogu vihma kiiresti sisse."
+            "text": "Pinnas imeb kogu vihma kiiresti endasse."
           },
           {
             "id": "i4",
-            "text": "Kui madalal kohal on äravool küllaldane ja vesi ei kogune."
+            "text": "Madalal kohal on äravool küllaldane ja vesi ei kogune."
           }
         ],
         "correctOptionId": "i1"
@@ -2933,15 +2933,15 @@ export const unit22: Unit = {
           },
           {
             "id": "i2",
-            "text": "Nad saavad iga üleujutuse kindlasti ära hoida."
+            "text": "Jõed saavad iga üleujutuse kindlasti ära hoida."
           },
           {
             "id": "i3",
-            "text": "Nad juhivad vihmavee alati ühtlaselt mägede tippu."
+            "text": "Jõed juhivad vihmavee alati kohe merre, nii et üleujutust ei teki."
           },
           {
             "id": "i4",
-            "text": "Nad hakkavad suure saju korral alati kiiremini voolama ega saa üle kallaste tõusta."
+            "text": "Jõed hakkavad suure saju korral alati kiiremini voolama ega saa üle kallaste tõusta."
           }
         ],
         "correctOptionId": "i1"
@@ -2977,7 +2977,7 @@ export const unit22: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Sademevett koguneb kiiremini, kui see imbub või ära voolab."
+            "text": "Sest sademevett koguneb kiiremini, kui see imbub või ära voolab."
           },
           {
             "id": "i2",
@@ -3708,7 +3708,7 @@ export const unit22: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Vee ulatus sõltub muu hulgas maapinna kõrgusest."
+            "text": "Sest vee ulatus sõltub muu hulgas maapinna kõrgusest."
           },
           {
             "id": "i2",
@@ -4189,7 +4189,7 @@ export const unit22: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Vee all võivad olla augud, vool ja muud nähtamatud ohud."
+            "text": "Sest vee all võivad olla augud, vool ja muud nähtamatud ohud."
           },
           {
             "id": "i2",
@@ -4237,7 +4237,7 @@ export const unit22: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Inimestel võib jääda vähe aega veest eemale liikuda."
+            "text": "Sest inimestel võib jääda vähe aega veest eemale liikuda."
           },
           {
             "id": "i2",
@@ -4841,7 +4841,7 @@ export const unit22: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Vesi võib liikuda ja varjata ohtlikke kohti."
+            "text": "Sest vesi võib liikuda ja varjata ohtlikke kohti."
           },
           {
             "id": "i2",
@@ -4992,7 +4992,7 @@ export const unit22: Unit = {
           },
           {
             "id": "i2",
-            "text": "Lapsel tuleb tingimata ise elektrisüsteemi kontrollida."
+            "text": "Lapsel tuleb tingimata ise elektrisüsteemi kontrollida, sest täiskasvanuid ei pruugi kodus olla."
           },
           {
             "id": "i3",
@@ -5634,15 +5634,15 @@ export const unit22: Unit = {
           },
           {
             "id": "i2",
-            "text": "Kõik ohuteated nõuavad täpselt sama tegevust."
+            "text": "Sest kõik ohuteated nõuavad täpselt sama tegevust."
           },
           {
             "id": "i3",
-            "text": "Teate värv annab kõik vajalikud juhised edasi ilma tekstita."
+            "text": "Sest teate värv annab kõik vajalikud juhised edasi ilma tekstita."
           },
           {
             "id": "i4",
-            "text": "Ohu korral ei ole kunagi vaja teada, kus oht asub."
+            "text": "Sest ohu korral ei ole kunagi vaja teada, kus oht asub."
           }
         ],
         "correctOptionId": "i1"

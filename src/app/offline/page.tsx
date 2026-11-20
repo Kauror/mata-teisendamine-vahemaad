@@ -8,7 +8,7 @@ export default function OfflinePage() {
     <main className="container" style={{ display: 'grid', gap: 16, placeItems: 'center', minHeight: '60vh', textAlign: 'center' }}>
       <div style={{ fontSize: 48 }} aria-hidden>📴</div>
       <h1>Võrguühendus puudub</h1>
-      <p>Seda lehte ei ole veel võrguühenduseta salvestatud. Ava äpp korra internetiühendusega, siis töötab see ka hiljem ilma internetita.</p>
+      <p>See leht vajab internetti. Sõnavara, kontrolltöö, loodusõpetuse õpik ja kordamine töötavad ainult internetiga. Matemaatikat, lugemist ja sprinti saab teha ka ilma.</p>
       <Link href="/" className="dashboard-history-link">Tagasi avalehele</Link>
     </main>
   );

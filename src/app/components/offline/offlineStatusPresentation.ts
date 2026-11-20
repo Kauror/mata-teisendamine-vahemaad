@@ -17,7 +17,7 @@ export function offlineStatusPresentation({
   syncState: OfflineSyncState;
 }): OfflineStatusPresentation | null {
   if (syncState === 'auth_blocked') {
-    return { label: 'Palun sisesta PIN uuesti, et tulemused saaks sünkroonida', tone: 'warn' };
+    return { label: 'Sisesta pere parool uuesti, et tulemused saaks saata', tone: 'warn' };
   }
   if (syncState === 'upgrade_required') {
     return { label: 'Rakendus vajab uuendamist enne sünkroonimist', tone: 'warn' };
@@ -38,7 +38,7 @@ export function offlineStatusPresentation({
     return { label: 'Sünkroonin…', tone: 'muted' };
   }
   if (pendingCount > 0) {
-    return { label: `${pendingCount} tulemust ootab sünkroonimist`, tone: 'ok' };
+    return { label: `${pendingCount} ${pendingCount === 1 ? 'tulemus ootab' : 'tulemust ootavad'} saatmist`, tone: 'ok' };
   }
 
   // Both a healthy idle state and the harmless initial unknown state should be

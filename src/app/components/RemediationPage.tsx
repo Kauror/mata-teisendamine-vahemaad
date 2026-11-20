@@ -165,6 +165,7 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [saveError, setSaveError] = useState('');
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
   const startedAtRef = useRef(Date.now());
   // The finished run, frozen at the first save. A retry re-sends exactly this:
   // the server returns the stored result for a session it already completed,
@@ -412,7 +413,19 @@ export default function RemediationPage({ learner }: { learner: Learner }) {
               {isSubmitting ? 'Salvestan...' : index === questions.length - 1 ? 'Lõpeta' : 'Järgmine'}
             </button>
           )}
-          <Link className='stop-button' href={backHref}>Lõpeta</Link>
+          {/* One way to finish (the button above saves the round); leaving
+              early is a different action with its own name and a confirm. */}
+          {showStopConfirm ? (
+            <div className='stop-confirm-panel' role='alertdialog' aria-labelledby='remediation-stop-title'>
+              <p id='remediation-stop-title'>Kas katkestad kordamise? Selle korra vastuseid ei salvestata.</p>
+              <div className='stop-confirm-actions'>
+                <button type='button' className='stop-cancel-button' onClick={() => setShowStopConfirm(false)}>Jätka kordamist</button>
+                <Link className='stop-confirm-button' href={backHref}>Jah, katkesta</Link>
+              </div>
+            </div>
+          ) : (
+            <button type='button' className='stop-button' disabled={isSubmitting} onClick={() => setShowStopConfirm(true)}>Katkesta</button>
+          )}
         </footer>
       </section>
     </main>

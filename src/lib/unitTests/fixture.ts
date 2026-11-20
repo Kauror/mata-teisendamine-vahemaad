@@ -42,7 +42,7 @@ export function sampleUnitTest(unit = 3, variant: 'A' | 'B' = 'A') {
         instruction: 'Lahenda ristsõna.',
         entries: [
           { number: 1, clue: 'kass', answer: 'CAT', row: 0, col: 0, dir: 'across' },
-          { number: 2, clue: 'auto', answer: 'CAR', row: 0, col: 0, dir: 'down' }
+          { number: 1, clue: 'auto', answer: 'CAR', row: 0, col: 0, dir: 'down' }
         ]
       }
     ]

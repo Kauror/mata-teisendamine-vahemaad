@@ -33,10 +33,13 @@ describe('versioned SQLite migrations', () => {
         { id: 14, name: 'kaardimang_competition', length: 64 },
         { id: 15, name: 'kaardimang_cancelled_competitions', length: 64 },
         { id: 16, name: 'kaardimang_notices', length: 64 },
-        { id: 17, name: 'english_unit_tests', length: 64 }
+        { id: 17, name: 'english_unit_tests', length: 64 },
+        { id: 18, name: 'store_purchase_client_id', length: 64 },
+        { id: 19, name: 'parent_session_revocations', length: 64 },
+        { id: 20, name: 'remediation_spaced_review', length: 64 }
       ]);
       runMigrations(connection);
-      expect((connection.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get() as { count: number }).count).toBe(17);
+      expect((connection.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get() as { count: number }).count).toBe(20);
       expect(connection.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_attempts_created_at'").get()).toBeTruthy();
       expect(connection.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_store_purchases_item'").get()).toBeTruthy();
       expect(verifyDatabase(connection).integrity).toBe('ok');
@@ -106,7 +109,7 @@ describe('versioned SQLite migrations', () => {
     const result = await prepareDatabaseForStartup(file, path.join(directory, 'backups'));
     expect(result.backupFile).toBeTruthy();
     expect(fs.existsSync(result.backupFile!)).toBe(true);
-    expect(result.verification.migrationCount).toBe(17);
+    expect(result.verification.migrationCount).toBe(20);
 
     // RTM2-H01: the backup must be the PRE-migration database, so it can restore
     // the original if a migration corrupts data. Prove it lacks anything the
@@ -170,6 +173,46 @@ describe('versioned SQLite migrations', () => {
 
     await expect(prepareDatabaseForStartup(file, backupDirectory, { maxAgeDays: 1, maxCount: 1 })).rejects.toThrow(/verification failed/i);
     expect(fs.readFileSync(oldBackup, 'utf8')).toBe('recovery-anchor');
+  });
+
+  it('refuses a corrupt database before copying it (C2)', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maths-corrupt-'));
+    cleanup.push(directory);
+    const file = path.join(directory, 'fixture.sqlite');
+    const backupDirectory = path.join(directory, 'backups');
+    const connection = openDatabase(file);
+    connection.pragma('journal_mode = DELETE');
+    connection.close();
+    // Overwrite a page in the middle of the file: the header stays readable,
+    // the b-tree does not.
+    const bytes = fs.readFileSync(file);
+    const pageSize = bytes.readUInt16BE(16) || 4096;
+    bytes.fill(0xab, pageSize * 2, pageSize * 3);
+    fs.writeFileSync(file, bytes);
+
+    await expect(prepareDatabaseForStartup(file, backupDirectory)).rejects.toThrow(/quick_check|malformed|corrupt/i);
+    expect(fs.existsSync(backupDirectory) ? fs.readdirSync(backupDirectory) : []).toEqual([]);
+  });
+
+  it('stops writing startup backups in a restart loop (C2)', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maths-crashloop-'));
+    cleanup.push(directory);
+    const file = path.join(directory, 'fixture.sqlite');
+    const backupDirectory = path.join(directory, 'backups');
+    const connection = openDatabase(file);
+    // Valid structure, invalid data: verification fails on every start.
+    connection.prepare(`INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions) VALUES ('invalid', 'a', 'a', 1, 1, 1, '[]')`).run();
+    connection.close();
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      for (let restart = 0; restart < 6; restart += 1) {
+        await expect(prepareDatabaseForStartup(file, backupDirectory)).rejects.toThrow(/verification failed/i);
+      }
+    } finally {
+      console.warn = warn;
+    }
+    expect(fs.readdirSync(backupDirectory).filter((name) => name.endsWith('.bak'))).toHaveLength(3);
   });
 
   it('migration 4 corrects migration 3 mis-withholding of a zero-reward attempt (RTM2-C02)', () => {

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { shuffleWithSeed as shuffle } from '@/lib/random';
 import { formatStars } from '@/lib/formatStars';
-import { KIRSI_FIRST_SOUND_TASKS, KirsiFirstSoundTask } from '@/lib/kirsiFirstSoundTasks';
+import { buildFirstSoundSession, KirsiFirstSoundTask } from '@/lib/kirsiFirstSoundTasks';
 import {
   createRunnerSession,
   ensureRunIdInCurrentUrl,
@@ -56,8 +56,9 @@ type FirstSoundRunnerState = {
 
 type FirstSoundSession = RunnerSessionV3<KirsiFirstSoundTask, ReviewItem, FirstSoundRunnerState, null>;
 
+// No letter more than twice a session (see buildFirstSoundSession).
 function buildSession(seed: number) {
-  return shuffle(KIRSI_FIRST_SOUND_TASKS, seed).slice(0, QUESTION_COUNT);
+  return buildFirstSoundSession(seed, QUESTION_COUNT);
 }
 
 function getChoiceOptions(task: KirsiFirstSoundTask, seed: number) {

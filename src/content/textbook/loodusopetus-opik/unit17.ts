@@ -12,7 +12,7 @@ export const unit17: Unit = {
     "to": 67
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.1",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u17-o1",
@@ -718,7 +718,7 @@ export const unit17: Unit = {
           },
           {
             "id": "c4",
-            "text": "Ainult riigi tänavaaadressi."
+            "text": "Riigi pealinna ja suuremate linnade nimesid."
           }
         ],
         "correctOptionId": "c1"
@@ -978,7 +978,7 @@ export const unit17: Unit = {
     {
       "id": "lo-opik-u17-q007",
       "unitId": "lo-opik-u17",
-      "stem": "Jäärjesta Eesti asukoha nimetused suuremast maa-alast väiksemani.",
+      "stem": "Järjesta Eesti asukoha nimetused suuremast maa-alast väiksemani.",
       "primaryObjectiveId": "lo-opik-u17-o1",
       "variantGroupId": "lo-opik-u17-g-scale-of-location",
       "cognitiveLevel": "understanding",
@@ -1637,7 +1637,7 @@ export const unit17: Unit = {
     {
       "id": "lo-opik-u17-q022",
       "unitId": "lo-opik-u17",
-      "stem": "Kui reisija liigub gloobusel ekvaatorist põhja poole, millisesse poolkerasse ta jõüab?",
+      "stem": "Kui reisija liigub gloobusel ekvaatorist põhja poole, millisesse poolkerasse ta jõuab?",
       "primaryObjectiveId": "lo-opik-u17-o2",
       "variantGroupId": "lo-opik-u17-g-hemi-application",
       "cognitiveLevel": "application",
@@ -2031,7 +2031,7 @@ export const unit17: Unit = {
           },
           {
             "id": "c3",
-            "text": "Eesti-Läti piiri mööõda"
+            "text": "Eesti-Läti piiri mööda"
           },
           {
             "id": "c4",
@@ -2579,7 +2579,7 @@ export const unit17: Unit = {
     {
       "id": "lo-opik-u17-q044",
       "unitId": "lo-opik-u17",
-      "stem": "Miks saab Eesti kohta ölda nii \"Euraasias\" kui ka \"Euroopas\"?",
+      "stem": "Miks saab Eesti kohta öelda nii \"Euraasias\" kui ka \"Euroopas\"?",
       "primaryObjectiveId": "lo-opik-u17-o4",
       "variantGroupId": "lo-opik-u17-g-eurasia-europe",
       "cognitiveLevel": "understanding",
@@ -2666,7 +2666,7 @@ export const unit17: Unit = {
     {
       "id": "lo-opik-u17-q046",
       "unitId": "lo-opik-u17",
-      "stem": "Jäärjesta mõisted alates mandrist kuni riigini.",
+      "stem": "Järjesta mõisted alates mandrist kuni riigini.",
       "primaryObjectiveId": "lo-opik-u17-o4",
       "variantGroupId": "lo-opik-u17-g-scale-of-location",
       "cognitiveLevel": "understanding",
@@ -3600,7 +3600,7 @@ export const unit17: Unit = {
           },
           {
             "id": "c4",
-            "text": "Lause riigilipul."
+            "text": "Kahe linna vahel kulgev suur maantee."
           }
         ],
         "correctOptionId": "c1"
@@ -3791,19 +3791,19 @@ export const unit17: Unit = {
         "options": [
           {
             "id": "c1",
-            "text": "Nii näitab kaart kahe riigi territooriume eristada."
+            "text": "Sest joon näitab, kus lõpeb ühe riigi ala ja algab teise oma."
           },
           {
             "id": "c2",
-            "text": "Sest looduses on iga riigi ümber paks must sein."
+            "text": "Sest looduses on iga riigi ümber kõrge must sein."
           },
           {
             "id": "c3",
-            "text": "Sest kaardil ei tohi olla veekogusid."
+            "text": "Sest piir kulgeb looduses alati mööda sirget teed."
           },
           {
             "id": "c4",
-            "text": "Sest iga riigi piir on põhjas."
+            "text": "Sest joonega näidatakse riigi pealinna asukohta."
           }
         ],
         "correctOptionId": "c1"
@@ -3894,7 +3894,7 @@ export const unit17: Unit = {
         "items": [
           {
             "id": "i1",
-            "text": "piir võib kulgeda mööõda jõge"
+            "text": "piir võib kulgeda mööda jõge"
           },
           {
             "id": "i2",
@@ -4099,7 +4099,7 @@ export const unit17: Unit = {
         "rows": [
           [
             "A",
-            "Kulgeb mööõda järve."
+            "Kulgeb mööda järve."
           ],
           [
             "B",
@@ -4510,7 +4510,7 @@ export const unit17: Unit = {
       "context": {
         "kind": "text",
         "paragraphs": [
-          "Reisid Eestist maismaad mööõda lõuna poole."
+          "Reisid Eestist maismaad mööda lõuna poole."
         ]
       }
     },

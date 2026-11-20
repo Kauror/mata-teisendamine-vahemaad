@@ -168,6 +168,37 @@ export function applyBackupRetention(
   return { retained, deleted };
 }
 
+// Crash-loop guard (C2): a container that keeps failing startup would write a
+// full copy of the database on every restart, with retention never reached
+// (old backups are deliberately kept while verification fails). At most this
+// many startup backups are written per hour; recent copies already exist.
+export const MAX_STARTUP_BACKUPS_PER_HOUR = 3;
+
+function recentBackupCount(databaseFile: string, backupDirectory: string, nowMs: number) {
+  if (!fs.existsSync(backupDirectory)) return 0;
+  const prefix = `${path.basename(databaseFile)}.`;
+  return fs.readdirSync(backupDirectory)
+    .filter((name) => name.startsWith(prefix) && name.endsWith('.bak'))
+    .filter((name) => {
+      const stat = fs.statSync(path.join(backupDirectory, name));
+      return stat.isFile() && nowMs - stat.mtimeMs < 60 * 60 * 1000;
+    }).length;
+}
+
+// A cheap structural check of the file before any copy is made. Copying a
+// corrupt database only fills the disk; failing fast keeps the last good
+// backups as the recovery point.
+function assertFileIntegrity(databaseFile: string) {
+  const connection = openRawConnection(databaseFile);
+  try {
+    const rows = connection.pragma('quick_check') as Array<Record<string, unknown>>;
+    const result = rows.map((row) => String(Object.values(row)[0])).join('; ');
+    if (result !== 'ok') throw new Error(`Database quick_check failed before backup: ${result.slice(0, 500)}`);
+  } finally {
+    connection.close();
+  }
+}
+
 export async function prepareDatabaseForStartup(databaseFile: string, backupDirectory?: string, retention: BackupRetentionOptions = {}): Promise<StartupPreparation> {
   if (!databaseFile) throw new Error('Database file is required.');
   if (databaseFile === ':memory:') {
@@ -189,8 +220,14 @@ export async function prepareDatabaseForStartup(databaseFile: string, backupDire
   // would capture the already-migrated state — useless for recovering from a
   // bad migration (RTM2-H01). The online backup API is still WAL-safe.
   let backupFile: string | null = null;
-  if (preexisting) {
-    const targetDirectory = path.resolve(backupDirectory ?? path.join(path.dirname(absoluteDatabase), 'backups'));
+  if (preexisting) assertFileIntegrity(absoluteDatabase);
+  const recentTarget = path.resolve(backupDirectory ?? path.join(path.dirname(absoluteDatabase), 'backups'));
+  const crashLooping = preexisting && recentBackupCount(absoluteDatabase, recentTarget, Date.now()) >= MAX_STARTUP_BACKUPS_PER_HOUR;
+  if (crashLooping) {
+    console.warn(`Skipping the startup backup: ${MAX_STARTUP_BACKUPS_PER_HOUR} or more were written in the last hour (restart loop?).`);
+  }
+  if (preexisting && !crashLooping) {
+    const targetDirectory = recentTarget;
     fs.mkdirSync(targetDirectory, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     backupFile = path.join(targetDirectory, `${path.basename(absoluteDatabase)}.${stamp}.bak`);

@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { ParentNoticePanel, ParentPasswordPanel } from '@/app/components/ParentAccountPanels';
 import { ApprovalsPanel } from '@/app/components/parent/ApprovalsPanel';
+import { DeviceBindingNotice, DeviceBindingPanel } from '@/app/components/parent/DeviceBindingPanel';
 import { HistoryAdminPanel } from '@/app/components/parent/HistoryAdminPanel';
 import { KaardimangPlayCard } from '@/app/components/parent/KaardimangPlayCard';
 import { LearningSettingsPanel } from '@/app/components/parent/LearningSettingsPanel';
@@ -28,7 +29,7 @@ const UnitTestsPanel = dynamic(() => import('@/app/components/parent/UnitTestsPa
 const KaardimangPanel = dynamic(() => import('@/app/components/kaardimang/KaardimangParentPanel'), { loading: loadingPanel });
 const OfflineReadiness = dynamic(() => import('@/app/components/offline/OfflineReadiness').then((module) => module.OfflineReadiness), { loading: loadingPanel });
 
-type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'learning' | 'vocabulary' | 'unitTests' | 'textbook' | 'kaardimang' | 'password' | 'rewards' | 'history' | 'eluka';
+type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'learning' | 'vocabulary' | 'unitTests' | 'textbook' | 'kaardimang' | 'password' | 'device' | 'rewards' | 'history' | 'eluka';
 type CountedSection = 'library' | 'textbook' | 'tasks' | 'store' | 'rewards' | 'history';
 
 // What a section header says before its panel has loaded its own data; the
@@ -122,6 +123,7 @@ function ParentHubView({ view, tab }: { view: ParentView; tab?: ParentHaldaTab }
       <fieldset className='parent-hub-fieldset' disabled={!online} aria-disabled={!online}>
         {view === 'tana' && (
           <>
+            <DeviceBindingNotice />
             <ApprovalsPanel />
             <KaardimangPlayCard />
             <TodayChildren />
@@ -193,6 +195,9 @@ function ParentHubView({ view, tab }: { view: ParentView; tab?: ParentHaldaTab }
               <ParentAccordionSection title='Eluka demo' summary='Lemmiklooma toa proov, ainult vanemale' {...section('eluka')}>
                 <p className='pv-hint'>Kiuri ja Kirsi lemmiklooma tuba enne avamist lastele. Midagi ei salvestata.</p>
                 <Link className='pv-km-play' href='/vanem/eluka-demo'>Ava Eluka demo</Link>
+              </ParentAccordionSection>
+              <ParentAccordionSection title='See seade' summary='Kelle telefon see on' {...section('device')}>
+                <DeviceBindingPanel />
               </ParentAccordionSection>
               <ParentAccordionSection title='Minu parool' summary='Lapsevanema ala ligipääs' {...section('password')}>
                 <ParentPasswordPanel request={api.request} onError={api.setError} onNotice={api.setNotice} />

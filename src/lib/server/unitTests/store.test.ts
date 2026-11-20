@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import db from '@/lib/db';
 import { updateChildLearningExerciseStatus } from '@/lib/learningExercises';
 import { updateLearningPointSettings } from '@/lib/learningPoints';
 import { getBalance } from '@/lib/tasks';
+import { ensureCurrentRewardPolicy } from '@/lib/server/rewards/policy';
+import { applyRewardProjectionV2 } from '@/lib/server/rewards/projection';
 import { VOCAB_EXERCISE_ID } from '@/lib/vocabulary/constants';
 import { addWord, createUnit, updateUnit } from '@/lib/server/vocabulary/units';
 import { getChildVocabularyHome } from '@/lib/server/vocabulary/overview';
@@ -20,7 +22,10 @@ import {
   UnitTestConflictError,
   UnitTestForbiddenError,
   UnitTestStaleError,
-  UnitTestValidationError
+  UnitTestValidationError,
+  cancelUnitTest,
+  getChildAttempt,
+  pendingReviewCount
 } from '@/lib/server/unitTests/store';
 
 const LEARNER = 'kiur' as const;
@@ -178,5 +183,108 @@ describe('unit test flow', () => {
     importUnitTests([{ name: 'a.json', data: changed }]);
     expect(startOrResumeUnitTest(LEARNER, u.id).test.title).toBe('Sample');
     expect(view.test.title).toBe('Sample');
+  });
+});
+
+describe('unit test review rules', () => {
+  function handIn(unitId: string, answers: Record<string, string>) {
+    let view = startOrResumeUnitTest(LEARNER, unitId);
+    view = saveUnitTestAnswers(LEARNER, view.id, { revision: view.revision, answers, submit: true });
+    return view;
+  }
+  const marksOf = (id: string) => Object.fromEntries(getParentReview(id).slots.map((slot) => [slot.key, slot.mark]));
+
+  it('keeps the parent marks on answers the child did not change, and re-marks only changed ones', () => {
+    const u = unit(3);
+    importUnitTests([{ name: 'a.json', data: sampleUnitTest(3, 'A') }]);
+    passWordsTest(u.id);
+    const view = handIn(u.id, { ...RIGHT, '1.2': "No, they aren't." });
+    const review = getParentReview(view.id);
+    // The parent gives ✗ to an answer the app accepted, ½ to the open answer, and sends it back.
+    reviewUnitTest(view.id, { revision: review.revision, marks: { ...marksOf(view.id), '2.1.0': 0, '2.2.0': 0.5 }, comment: '', decision: 'return' });
+    let back = startOrResumeUnitTest(LEARNER, u.id);
+    back = saveUnitTestAnswers(LEARNER, back.id, { revision: back.revision, answers: { '1.2': 'Yes, they are.' }, submit: true });
+    const after = marksOf(back.id);
+    expect(after['2.1.0']).toBe(0);
+    expect(after['2.2.0']).toBe(0.5);
+    expect(after['1.2']).toBe(1);
+  });
+
+  it('shows the right answers after approval, only for answers that were not right', () => {
+    const u = unit(3);
+    importUnitTests([{ name: 'a.json', data: sampleUnitTest(3, 'A') }]);
+    passWordsTest(u.id);
+    const view = handIn(u.id, { ...RIGHT, '1.2': "No, they aren't." });
+    const review = getParentReview(view.id);
+    reviewUnitTest(view.id, { revision: review.revision, marks: { ...marksOf(view.id), '2.2.0': 1 }, comment: '', decision: 'approve' });
+    const graded = getParentReview(view.id);
+    expect(graded.status).toBe('approved');
+    const child = getChildAttempt(LEARNER, view.id);
+    expect(child.results?.find((item) => item.key === '1.2')).toEqual({ key: '1.2', mark: 0, correct: 'Yes, they are.' });
+    expect(child.results?.find((item) => item.key === '1.1')).toEqual({ key: '1.1', mark: 1 });
+  });
+
+  it('a retake gets the variant the child has not taken yet', () => {
+    const u = unit(3);
+    importUnitTests([{ name: 'a.json', data: sampleUnitTest(3, 'A') }, { name: 'b.json', data: sampleUnitTest(3, 'B') }]);
+    passWordsTest(u.id);
+    const first = handIn(u.id, {});
+    const review = getParentReview(first.id);
+    reviewUnitTest(first.id, { revision: review.revision, marks: Object.fromEntries(review.slots.map((slot) => [slot.key, 0])), comment: '', decision: 'approve' });
+    const retake = startOrResumeUnitTest(LEARNER, u.id);
+    expect(retake.test.variant).not.toBe(first.test.variant);
+  });
+
+  it('the parent can cancel a test that is not approved, and the unit opens again', () => {
+    const u = unit(3);
+    importUnitTests([{ name: 'a.json', data: sampleUnitTest(3, 'A') }]);
+    passWordsTest(u.id);
+    const view = handIn(u.id, RIGHT);
+    expect(pendingReviewCount()).toBe(1);
+    cancelUnitTest(view.id);
+    expect(pendingReviewCount()).toBe(0);
+    expect(getChildVocabularyHome(LEARNER).units[0].unitTest?.state).toBe('available');
+    const again = handIn(u.id, RIGHT);
+    const review = getParentReview(again.id);
+    reviewUnitTest(again.id, { revision: review.revision, marks: { ...marksOf(again.id), '2.2.0': 1 }, comment: '', decision: 'approve' });
+    expect(() => cancelUnitTest(again.id)).toThrow(UnitTestConflictError);
+  });
+});
+
+// B6: the kontrolltöö counts on the day the child handed it in, not on the day
+// the parent happens to approve it, so the approval day's daily cap cannot
+// zero it and its streak day is the child's.
+describe('unit test star day', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('dates the approved attempt by the child\'s hand-in day', () => {
+    updateLearningPointSettings({ baseValue: 1, decayStep: 0.1, minimumValue: 0, dailyCap: 1, streakIntervalDays: 7, streakBonusAmount: 0, learningPointsEnabled: true, streakBonusEnabled: false });
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-18T15:00:00.000Z'));
+    const u = unit(3);
+    importUnitTests([{ name: 'a.json', data: sampleUnitTest(3, 'A') }]);
+    passWordsTest(u.id);
+    let view = startOrResumeUnitTest(LEARNER, u.id);
+    view = saveUnitTestAnswers(LEARNER, view.id, { revision: view.revision, answers: { ...RIGHT, '2.2.0': 'I go to school.' }, submit: true });
+
+    // Next day the child fills that day's cap with another exercise...
+    vi.setSystemTime(new Date('2026-11-19T09:00:00.000Z'));
+    const policy = ensureCurrentRewardPolicy();
+    const other = Number(db.prepare(`
+      INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic,
+        exerciseId, runnerId, clientAttemptId, completedAt, effectiveCompletedAt, completionDate, rewardPolicyVersion, protocolVersion, rewardSettlementStatus)
+      VALUES (?, 'Lugemine', 'Lihtne', 5, 5, 60, '[]', ?, 'lugemine', 'loe-ja-vasta', 'kiur.reading.loe-ja-vasta', 'kiur-reading', 'b6-other', ?, ?, '2026-11-19', ?, 2, 'eligible')
+    `).run('2026-11-19T09:00:00.000Z', LEARNER, '2026-11-19T09:00:00.000Z', '2026-11-19T09:00:00.000Z', policy.version).lastInsertRowid);
+    applyRewardProjectionV2(LEARNER, other);
+    expect(getBalance(LEARNER)).toBe(1);
+
+    // ...and the parent approves the test only in the evening.
+    vi.setSystemTime(new Date('2026-11-19T18:00:00.000Z'));
+    let review = getParentReview(view.id);
+    review = reviewUnitTest(view.id, { revision: review.revision, marks: Object.fromEntries(review.slots.map((slot) => [slot.key, slot.mark ?? 1])), comment: '', decision: 'approve' });
+    expect(review.stars).toBe(1);
+    expect(getBalance(LEARNER)).toBe(2);
+    const attempt = db.prepare('SELECT completionDate, effectiveCompletedAt FROM attempts WHERE clientAttemptId = ?').get(`unit-test:${view.id}`);
+    expect(attempt).toEqual({ completionDate: '2026-11-18', effectiveCompletedAt: '2026-11-18T15:00:00.000Z' });
   });
 });

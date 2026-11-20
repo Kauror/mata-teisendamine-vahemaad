@@ -18,18 +18,18 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: Fail on fixable high/critical production dependency vulnerabilities
         run: npm audit --omit=dev --audit-level=high
       - name: Fail on detected secrets or high/critical deployment misconfiguration
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -41,10 +41,10 @@ jobs:
     name: Lint, typecheck, unit tests
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm run lint
@@ -72,10 +72,10 @@ jobs:
         project: [chromium, webkit]
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: Read the Playwright version
@@ -83,7 +83,7 @@ jobs:
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
       - name: Restore the browser
         id: browser-cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ matrix.project }}
@@ -100,7 +100,7 @@ jobs:
           else
             npm run test:e2e -- --project=${{ matrix.project }} --grep-invert @real-units --shard=${{ matrix.shard }}/2
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ !cancelled() }}
         with:
           name: playwright-report-${{ matrix.project }}-${{ matrix.shard }}
@@ -111,10 +111,10 @@ jobs:
     name: Production-build service worker E2E
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: Read the Playwright version
@@ -123,7 +123,7 @@ jobs:
       # Shares the cache entry with the chromium E2E shards.
       - name: Restore the browser
         id: browser-cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
@@ -136,7 +136,7 @@ jobs:
         run: |
           git diff --exit-code
           test -z "$(git status --porcelain --untracked-files=all)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ !cancelled() }}
         with:
           name: playwright-report-prod
@@ -147,12 +147,12 @@ jobs:
     name: Build and boot via docker compose (production path)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Confirm the checked-out release candidate SHA
         run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       # RTM3-H03: the compose service declares `.env` as a required env_file, so
@@ -183,7 +183,7 @@ jobs:
         # computed on the runner and handed to the image as a build arg.
         run: APP_VERSION=$(npm run --silent version:print) docker compose build
       - name: Fail on fixable high/critical production image vulnerabilities
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: pikkuste-harjutaja:local
           severity: HIGH,CRITICAL
@@ -260,7 +260,7 @@ jobs:
           echo "published host ports: $COUNT"
           test "$COUNT" = "0" || { echo "the app must not publish a host port; traffic belongs on the edge network only"; exit 1; }
       - name: Tunnel-style probe reaches the app only over the named network
-        run: docker run --rm --network pikkuste-harjutaja-edge node:22.22.3-alpine3.23@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 node -e "fetch('http://pikkuste-harjutaja:3000/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        run: docker run --rm --network pikkuste-harjutaja-edge node:22.23.1-alpine3.23@sha256:8516dce0483394d5708d4b2ee6cacb79fb1d617ea4e2787c2120bcca92ce372e node -e "fetch('http://pikkuste-harjutaja:3000/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       - name: Mounted data survives container replacement
         run: |
           docker compose exec -T app node -e "require('fs').writeFileSync('/data/container-replacement-probe','persisted')"
@@ -280,7 +280,7 @@ jobs:
           echo "image_size_bytes=$(docker image inspect --format '{{.Size}}' pikkuste-harjutaja:local)" >> release-evidence.txt
           echo "image_layers=$(docker image inspect --format '{{len .RootFS.Layers}}' pikkuste-harjutaja:local)" >> release-evidence.txt
           cat release-evidence.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-candidate-evidence
           path: |

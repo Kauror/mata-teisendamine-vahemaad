@@ -32,11 +32,18 @@ export const MATH_GENERATOR_VERSION_V3 = 'math-2026-10b';
 // zero part in a division split, «kolmveerand ringi» without its answer printed
 // on the figure, and corrected Tekstülesanded (spelling, accepted answer forms).
 export const MATH_GENERATOR_VERSION_V4 = 'math-2026-10c';
+// Exercise review 2026-11-20: Estonian case endings in division («pannakse
+// kottidesse»), randomised lengths instead of fixed numbers, worked
+// explanations, splits and «abitehe» only beyond the multiplication table and
+// at most once a session, varied patterns, real Keskmine/Raske ranges, fewer
+// trivial Kirsi sums and equal pairs, close counting options, and text problems
+// that accept any valid tekst-026 expression and natural answer forms.
+export const MATH_GENERATOR_VERSION_V5 = 'math-2026-11';
 
-export const MATH_GENERATOR_VERSIONS = [MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3, MATH_GENERATOR_VERSION_V4] as const;
+export const MATH_GENERATOR_VERSIONS = [MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3, MATH_GENERATOR_VERSION_V4, MATH_GENERATOR_VERSION_V5] as const;
 export type MathGeneratorVersion = (typeof MATH_GENERATOR_VERSIONS)[number];
 
-export const MATH_GENERATOR_VERSION: MathGeneratorVersion = MATH_GENERATOR_VERSION_V4;
+export const MATH_GENERATOR_VERSION: MathGeneratorVersion = MATH_GENERATOR_VERSION_V5;
 
 // True when `version` is `minimum` or a later version. New branches use this
 // rather than listing every older version.

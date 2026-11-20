@@ -1378,6 +1378,14 @@ function addKaardimangNotices(connection: DatabaseConnection) {
 // content it was taken on, so a later re-import never changes what the child
 // answered or how it is marked. Open answers wait for the parent; stars are
 // paid only when the parent approves (docs/english-unit-tests.md).
+// Kordamine clears a mistake only after right answers on two different app
+// days: how many such days so far, and the last one (an app date, YYYY-MM-DD).
+function addRemediationSpacedReview(connection: DatabaseConnection) {
+  const columns = new Set((connection.prepare('PRAGMA table_info(mistake_pool)').all() as Array<{ name: string }>).map((column) => column.name));
+  if (!columns.has('reviewCorrectCount')) connection.exec('ALTER TABLE mistake_pool ADD COLUMN reviewCorrectCount INTEGER NOT NULL DEFAULT 0');
+  if (!columns.has('lastCorrectReviewDate')) connection.exec('ALTER TABLE mistake_pool ADD COLUMN lastCorrectReviewDate TEXT');
+}
+
 function addEnglishUnitTests(connection: DatabaseConnection) {
   connection.exec(`
     CREATE TABLE IF NOT EXISTS english_unit_test_variants (
@@ -1424,6 +1432,20 @@ function addEnglishUnitTests(connection: DatabaseConnection) {
       ON english_unit_test_attempts(learner, unitId) WHERE status <> 'approved';
     CREATE INDEX IF NOT EXISTS idx_english_unit_test_status
       ON english_unit_test_attempts(status, submittedAt);
+  `);
+}
+
+// Parent logout revokes the signed parent token (C4): its CSRF value is unique
+// per session, so its hash names the token without storing it. Rows are kept
+// only until the token would have expired anyway.
+function addParentSessionRevocations(connection: DatabaseConnection) {
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS parent_session_revocations (
+      tokenHash TEXT PRIMARY KEY,
+      expiresAt TEXT NOT NULL,
+      revokedAt TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_parent_session_revocations_expires ON parent_session_revocations(expiresAt);
   `);
 }
 
@@ -1533,6 +1555,33 @@ const migrations: Migration[] = [
     name: 'english_unit_tests',
     checksumSource: 'english_unit_tests:v1:2026-11-20',
     up: addEnglishUnitTests
+  },
+  {
+    id: 18,
+    name: 'store_purchase_client_id',
+    checksumSource: 'store_purchase_client_id:v1:2026-11-20',
+    // A purchase carries the id the child's device generated for it, so a
+    // retry after a lost response returns the original purchase instead of
+    // buying twice (review C8). Older rows have none.
+    up: (connection) => {
+      connection.exec(`
+        ALTER TABLE store_purchases ADD COLUMN clientPurchaseId TEXT;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_store_purchases_client_id
+          ON store_purchases(clientPurchaseId) WHERE clientPurchaseId IS NOT NULL;
+      `);
+    }
+  },
+  {
+    id: 19,
+    name: 'parent_session_revocations',
+    checksumSource: 'parent_session_revocations:v1:2026-11-20',
+    up: addParentSessionRevocations
+  },
+  {
+    id: 20,
+    name: 'remediation_spaced_review',
+    checksumSource: 'remediation_spaced_review:v1:2026-11-20',
+    up: addRemediationSpacedReview
   }
 ];
 

@@ -35,6 +35,8 @@ export default defineConfig({
       NODE_ENV: 'production',
       PORT: String(TEST_PORT),
       MATHS_GAME_DB_FILE: ':memory:',
+      // The real timetable is private; the build is tested with the fictional one.
+      SCHOOL_TIMETABLE_FILE: 'src/lib/schoolTimetable.example.json',
       OFFLINE_PROTOCOL_V2_ENABLED: '1',
       APP_ORIGIN: TEST_ORIGIN,
       APP_SESSION_SECRET_CURRENT: TEST_SESSION_SECRET

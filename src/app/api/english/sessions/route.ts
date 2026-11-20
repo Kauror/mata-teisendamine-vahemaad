@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { VOCAB_LEARNER } from '@/lib/vocabulary/constants';
 import { vocabErrorResponse } from '@/lib/server/vocabulary/http';
 import { startOrResumeSession } from '@/lib/server/vocabulary/sessions';
@@ -9,7 +11,11 @@ export const runtime = 'nodejs';
 // Starts a study, test or practice session, or returns the one in progress.
 // Every lock is checked on the server; the request only names the unit.
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({})) as { unitId?: unknown; mode?: unknown };
+  const jsonBody = await readJsonObjectRequest(req);
+  if (jsonBody instanceof NextResponse) return jsonBody;
+  const body = jsonBody as { unitId?: unknown; mode?: unknown };
+  const deviceDenied = await assertDeviceMayActAs(req, VOCAB_LEARNER);
+  if (deviceDenied) return deviceDenied;
   const mode = body.mode;
   if (mode !== 'study' && mode !== 'test' && mode !== 'practice') {
     return NextResponse.json({ code: 'invalid', message: 'Vale harjutusviis.' }, { status: 400 });

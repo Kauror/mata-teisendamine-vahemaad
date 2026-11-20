@@ -66,9 +66,12 @@ export function hasPeekOptOutCookie(cookieHeader: string | null | undefined) {
   return hasCookieFlag(cookieHeader, PARENT_PEEK_OFF_COOKIE);
 }
 
-// The child-side API writes a peeking parent must not reach. Reads stay open,
-// and so does /api/offline/sync: its pull keeps the parent's own device ready
-// offline, and attempts are kept out of its outbox on the client instead.
+// The child-side API writes a peeking parent must not reach. Reads stay open.
+// /api/offline/sync is not listed because one POST path carries both the pull
+// (which keeps the parent's own device ready offline) and the push: the sync
+// route itself refuses a push while peeking (lib/server/peekRequest.ts), and
+// the client keeps attempts out of its outbox as well. GET /api/child-dashboard
+// skips its settlement side effects while peeking for the same reason.
 export function isChildWritePath(pathname: string) {
   return pathname === '/api/english/sessions'
     || pathname.startsWith('/api/english/sessions/')

@@ -113,7 +113,7 @@ export default function SprintPage() {
       const existing = await loadRunnerSession<EnglishVocabularyWord, SprintReviewItem, EnglishSprintRunnerState, null>(id);
       if (cancelled) return;
       if (existing) {
-        if (existing.runnerId !== 'kiur-english-sprint') throw new Error('See salvestatud jooks kuulub teisele harjutusele.');
+        if (existing.runnerId !== 'kiur-english-sprint') throw new Error('See salvestatud tulemus kuulub teisele harjutusele.');
         const state = existing.runnerState;
         startedAtRef.current = existing.startedAt;
         contractRef.current = contractFromSession(existing);
@@ -299,7 +299,7 @@ export default function SprintPage() {
           <div className='sprint-result-emoji' aria-hidden>🔤</div>
           <h1 className='sprint-result-title'>Sprint lõppes</h1>
           {beatRecord ? <p className='sprint-record-badge' role='status'><span aria-hidden>🏆</span> Uus rekord!</p> : null}
-          <p className='sprint-result-subtitle'>Siin on selle sprinti kokkuvõte.</p>
+          <p className='sprint-result-subtitle'>Siin on selle sprindi kokkuvõte.</p>
         </header>
         <div className='sprint-result-stats-grid'>
           <article className='sprint-result-stat-card'>

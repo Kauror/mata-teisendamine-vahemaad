@@ -168,7 +168,7 @@ export default function DailyTasksPanel({ learner, identity, afterIdentity }: { 
       return;
     }
     if (!online && !confirmTask.offline) {
-      setError('See tegevus ei ole veel võrguühenduseta lõpetamiseks ette valmistatud. Taasta internetiühendus või ava töölaud uuesti, et kasutada salvestatud päevategevusi.');
+      setError('Seda tegevust ei saa praegu ilma internetita lõpetada. Proovi uuesti, kui internet on tagasi.');
       setConfirmTask(null);
       return;
     }
@@ -329,7 +329,7 @@ export default function DailyTasksPanel({ learner, identity, afterIdentity }: { 
         <span className='daily-title'>{task.title}</span>
         <span className='daily-reward'>+{task.points} ⭐</span>
         {pending && <small>Ootab vanema kinnitust</small>}
-        {locked && <small>Tehtud {task.completedBy ? learnerName(task.completedBy) : 'teise lapse'} poolt</small>}
+        {locked && <small>Juba tegi {task.completedBy ? learnerName(task.completedBy) : 'teine laps'}</small>}
       </button>
     );
   };

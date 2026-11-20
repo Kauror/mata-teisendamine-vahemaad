@@ -8,18 +8,22 @@ export type SignedSession = {
   csrf: string;
   keyId: string;
   authVersion?: number;
+  // Family sessions only: a fingerprint of the family PIN hash (and the
+  // optional APP_FAMILY_SESSION_EPOCH). Changing the PIN changes it, so every
+  // device signed in with the old PIN is signed out (C4).
+  familyEpoch?: string;
 };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-function encodeBase64Url(bytes: Uint8Array) {
+export function encodeBase64Url(bytes: Uint8Array) {
   let value = '';
   for (const byte of bytes) value += String.fromCharCode(byte);
   return btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
-function decodeBase64Url(value: string) {
+export function decodeBase64Url(value: string) {
   const padded = value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (value.length % 4 || 4)) % 4);
   const decoded = atob(padded);
   return Uint8Array.from(decoded, (char) => char.charCodeAt(0));
@@ -29,23 +33,23 @@ async function digest(value: string) {
   return new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value)));
 }
 
-async function keyId(secret: string) {
+export async function keyId(secret: string) {
   return encodeBase64Url((await digest(secret)).slice(0, 12));
 }
 
-async function hmac(secret: string, value: string) {
+export async function hmac(secret: string, value: string) {
   const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(value)));
 }
 
-function currentSecret() {
+export function currentSecret() {
   const value = process.env.APP_SESSION_SECRET_CURRENT?.trim();
   if (!value && process.env.NODE_ENV === 'production') throw new Error('APP_SESSION_SECRET_CURRENT is required in production.');
   if (value && value.length < 32) throw new Error('APP_SESSION_SECRET_CURRENT must contain at least 32 characters.');
   return value || null;
 }
 
-function sessionSecrets() {
+export function sessionSecrets() {
   const current = currentSecret();
   const previous = process.env.APP_SESSION_SECRET_PREVIOUS?.trim() || null;
   if (previous && previous.length < 32) throw new Error('APP_SESSION_SECRET_PREVIOUS must contain at least 32 characters.');
@@ -57,6 +61,16 @@ export function assertSessionEnvironment() {
   if (!configuredAppOrigin()) throw new Error('APP_ORIGIN is required.');
 }
 
+// The family scope's auth version. It is derived from configuration rather
+// than the database because the middleware (edge runtime) verifies family
+// sessions and cannot open SQLite. Set APP_FAMILY_SESSION_EPOCH to any new
+// value to sign every device out without changing the PIN.
+export async function familySessionEpoch() {
+  const pinHash = process.env.APP_ACCESS_PIN_HASH?.trim() ?? '';
+  const epoch = process.env.APP_FAMILY_SESSION_EPOCH?.trim() ?? '';
+  return encodeBase64Url((await digest(`family-epoch:v1:${pinHash}:${epoch}`)).slice(0, 12));
+}
+
 function randomToken(bytes = 24) {
   const value = new Uint8Array(bytes);
   crypto.getRandomValues(value);
@@ -65,7 +79,7 @@ function randomToken(bytes = 24) {
 
 export async function issueSession(
   scope: SessionScope,
-  options: { maxAgeSeconds: number; authVersion?: number; nowMs?: number }
+  options: { maxAgeSeconds: number; authVersion?: number; nowMs?: number; csrf?: string; expiresAt?: number }
 ) {
   const secret = currentSecret();
   if (!secret) throw new Error('APP_SESSION_SECRET_CURRENT is not configured.');
@@ -74,10 +88,11 @@ export async function issueSession(
     version: 2,
     scope,
     issuedAt: now,
-    expiresAt: now + options.maxAgeSeconds,
-    csrf: randomToken(),
+    expiresAt: options.expiresAt ?? now + options.maxAgeSeconds,
+    csrf: options.csrf ?? randomToken(),
     keyId: await keyId(secret),
-    ...(options.authVersion === undefined ? {} : { authVersion: options.authVersion })
+    ...(options.authVersion === undefined ? {} : { authVersion: options.authVersion }),
+    ...(scope === 'family' ? { familyEpoch: await familySessionEpoch() } : {})
   };
   const encoded = encodeBase64Url(encoder.encode(JSON.stringify(payload)));
   const signature = encodeBase64Url(await hmac(secret, encoded));
@@ -119,9 +134,18 @@ export async function verifySession(
     const actual = decodeBase64Url(signature);
     if (actual.length !== expected.length) return null;
     const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
-    if (await crypto.subtle.verify('HMAC', key, actual, encoder.encode(encoded))) return payload;
+    if (!await crypto.subtle.verify('HMAC', key, actual, encoder.encode(encoded))) return null;
+    // A family session issued under another PIN (or epoch) is no longer valid.
+    // Sessions from before the epoch existed carry none; they stay valid until
+    // the middleware re-signs them with the current epoch (isLegacyFamilySession).
+    if (expectedScope === 'family' && payload.familyEpoch !== undefined && payload.familyEpoch !== await familySessionEpoch()) return null;
+    return payload;
   }
   return null;
+}
+
+export function isLegacyFamilySession(payload: SignedSession) {
+  return payload.scope === 'family' && payload.familyEpoch === undefined;
 }
 
 export function configuredAppOrigin() {

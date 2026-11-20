@@ -12,8 +12,18 @@ const RUNNER_PATHS = new Set([
   '/kirsi/lugemine/pilt-ja-sona'
 ]);
 
+// Server-backed runs (words test, kontrolltöö, textbook test and practice,
+// Kordamine) also hold back the "new version" reload: reloading in the middle
+// of one loses what the child has not saved yet.
+const RUNNER_PATTERNS = [
+  /^\/kiur\/inglise-keel\/[^/]+\/(test|opi|lisatest)$/,
+  /^\/kiur\/inglise-keel\/korda$/,
+  /^\/kiur\/loodusopetus\/opik\/[^/]+\/(test|harjuta)$/,
+  /^\/(kiur|kirsi)\/kordamine$/
+];
+
 export function isRunnerPath(pathname: string): boolean {
-  return RUNNER_PATHS.has(pathname);
+  return RUNNER_PATHS.has(pathname) || RUNNER_PATTERNS.some((pattern) => pattern.test(pathname));
 }
 
 export function writeRunnerHeartbeat(storage: Storage, tabId: string, now = Date.now()): void {

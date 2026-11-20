@@ -1,10 +1,14 @@
+import { kiurReadingStoryTasks } from '@/lib/kiurReadingStories';
+
 export type KiurReadingQuestionType =
   | 'detail'
   | 'tegevus'
   | 'koht'
   | 'tegelane'
   | 'omadus'
-  | 'jareldus';
+  | 'jareldus'
+  // A word read in context («Mida tähendab tekstis …?»).
+  | 'sona';
 
 export type KiurReadingTask = {
   id: string;
@@ -23,7 +27,10 @@ export type KiurReadingTask = {
   questionType: KiurReadingQuestionType;
 };
 
-export const KIUR_READING_TASKS = [
+// The first bank: 100 bird columns («Linnunädalad»), one detail question each.
+// Their questions and keys are frozen (uploaded runs are verified against
+// them); only the distractors were rebalanced on 2026-11-20.
+const LINNUNADALAD_TASKS = [
   {
     "id": "01-suitsupaasuke",
     "learner": "kiur",
@@ -36,9 +43,9 @@ export const KIUR_READING_TASKS = [
     "question": "Milline lind kaunistab Eesti Ornitoloogiaühingu logo?",
     "options": [
       "suitsupääsuke",
-      "kuldnokk",
-      "kägu",
-      "ööbik"
+      "räästapääsuke",
+      "valge-toonekurg",
+      "rasvatihane"
     ],
     "correctAnswer": "suitsupääsuke",
     "evidenceText": "logo kaunistab suitsupääsuke",
@@ -57,8 +64,8 @@ export const KIUR_READING_TASKS = [
     "options": [
       "Lääne-Euroopas",
       "Lõuna-Aafrikas",
-      "Eestis",
-      "Gröönimaal"
+      "Põhja-Ameerikas",
+      "Lõuna-Euroopas"
     ],
     "correctAnswer": "Lääne-Euroopas",
     "evidenceText": "Neli-viis kuud veetsid nad Lääne-Euroopas.",
@@ -97,8 +104,8 @@ export const KIUR_READING_TASKS = [
     "options": [
       "roostikuga",
       "männikuga",
-      "kiviklibuga",
-      "linnatänavaga"
+      "kuusemetsaga",
+      "põldudega"
     ],
     "correctAnswer": "roostikuga",
     "evidenceText": "Hüüp on roostike lind.",
@@ -116,9 +123,9 @@ export const KIUR_READING_TASKS = [
     "question": "Millal asus väikekoovitaja Aafrikast koduteele?",
     "options": [
       "täiskuu ajal",
-      "jaanuaris",
-      "sügisel",
-      "keskpäeval"
+      "noorkuu ajal",
+      "esimese lumega",
+      "pärast jaanipäeva"
     ],
     "correctAnswer": "täiskuu ajal",
     "evidenceText": "Täiskuu ajal asus väikekoovitaja Aafrikast koduteele.",
@@ -136,9 +143,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mille järgi on naerukajakas oma nime saanud?",
     "options": [
       "naeru meenutava häälitsuse järgi",
-      "punase noka järgi",
-      "pesa kuju järgi",
-      "pika saba järgi"
+      "pruuni pea ja punaste jalgade järgi",
+      "rõõmsa ja mängulise lennu järgi",
+      "ladinakeelse teadusliku nime järgi"
     ],
     "correctAnswer": "naeru meenutava häälitsuse järgi",
     "evidenceText": "naerukõkutamist meenutav häälitsus",
@@ -176,9 +183,9 @@ export const KIUR_READING_TASKS = [
     "question": "Millise koha juurest tasub jõgivästrikku otsida?",
     "options": [
       "jõgede äärest",
-      "rabast",
-      "kuusemetsast",
-      "linnatornist"
+      "mägede tippudest",
+      "rabajärvede kaldalt",
+      "kuusemetsa servast"
     ],
     "correctAnswer": "jõgede äärest",
     "evidenceText": "Jõgivästrikku tasub otsima minna jõgede äärest.",
@@ -197,8 +204,8 @@ export const KIUR_READING_TASKS = [
     "options": [
       "hääle poolest",
       "pesa ehitamise poolest",
-      "ujumise poolest",
-      "punase kõhu poolest"
+      "kiire lennu poolest",
+      "erksa sulestiku poolest"
     ],
     "correctAnswer": "hääle poolest",
     "evidenceText": "tegemist tuntuima linnuhäälega",
@@ -217,8 +224,8 @@ export const KIUR_READING_TASKS = [
     "options": [
       "pesakasti",
       "roostiku",
-      "kivikoopa",
-      "liivaranna"
+      "liivaranna",
+      "räästaaluse"
     ],
     "correctAnswer": "pesakasti",
     "evidenceText": "asustab pesakasti suurima heameelega",
@@ -236,9 +243,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mis juhtus, kui laulurästas aprillis kohale jõudis?",
     "options": [
       "metsad ja pargid hakkasid rõkkama",
-      "järved jäätusid",
-      "linnud vaikisid",
-      "sadas lund"
+      "tihased ja rohevindid lahkusid lõunasse",
+      "kuuselatvades vaikis igasugune linnulaul",
+      "talvised linnud hakkasid pesa ehitama"
     ],
     "correctAnswer": "metsad ja pargid hakkasid rõkkama",
     "evidenceText": "hakkasid metsad ja pargid rõkkama",
@@ -256,9 +263,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mida toovat väänkael poegadele väga palju?",
     "options": [
       "sipelganukke",
-      "kirsikive",
-      "kalu",
-      "tammetõrusid"
+      "seemneid",
+      "vihmausse",
+      "kärbseid"
     ],
     "correctAnswer": "sipelganukke",
     "evidenceText": "üle kümne tuhande sipelganuku",
@@ -316,9 +323,9 @@ export const KIUR_READING_TASKS = [
     "question": "Milline tulija on ööbik tekstis?",
     "options": [
       "üks viimaseid tulijaid",
-      "kõige esimene tulija",
-      "talvelind",
-      "paigalind"
+      "üks esimesi kevadisi tulijaid",
+      "kõige viimane öölaulik",
+      "lõokesega samal ajal tulija"
     ],
     "correctAnswer": "üks viimaseid tulijaid",
     "evidenceText": "Ööbik on üks viimaseid tulijaid.",
@@ -356,9 +363,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kus kohtame kivitäkse kõige sagedamini?",
     "options": [
       "mererannikul ja kivihunnikutes",
-      "roostikus ja rabas",
-      "ainult linnatornis",
-      "sügaval kuusikus"
+      "rabajärvede ja jõgede kallastel",
+      "kuusemetsades ja puude latvades",
+      "linnaparkides ja aedade hekkides"
     ],
     "correctAnswer": "mererannikul ja kivihunnikutes",
     "evidenceText": "Kõige sagedamini kohtame kivitäkse mererannikul ja põldudevahelistes kivihunnikutes",
@@ -396,9 +403,9 @@ export const KIUR_READING_TASKS = [
     "question": "Millal tiirutavad metskurvitsad üle metsaäärse taluõue?",
     "options": [
       "pärast päikeseloojangut",
-      "keskpäeval",
-      "enne koitu",
-      "talveööl"
+      "varahommikul enne päikesetõusu",
+      "keskpäeval, kui päike on kõrgel",
+      "talveöödel paksu lume ajal"
     ],
     "correctAnswer": "pärast päikeseloojangut",
     "evidenceText": "pärast päikeseloojangut üle metsaäärse taluõue tiirutavad",
@@ -436,7 +443,7 @@ export const KIUR_READING_TASKS = [
     "question": "Mida on paljud rukkiräägu puhul kuulnud?",
     "options": [
       "rääksumist",
-      "ujumist",
+      "vilistamist",
       "nokaga toksimist",
       "tiivaplaginat"
     ],
@@ -456,9 +463,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kus pruunselg-põõsalind üldjuhul elab?",
     "options": [
       "avaruse ja põõsastega kohtades",
-      "sügavas metsas",
-      "avamerel",
-      "kõrgel mäel"
+      "sügavas ja pimedas vanas kuusemetsas",
+      "roostikes ja järvede kaldaservadel",
+      "mererannas kivide ja liiva vahel"
     ],
     "correctAnswer": "avaruse ja põõsastega kohtades",
     "evidenceText": "seal, kus on avarust ja põõsaid",
@@ -496,9 +503,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kus on öösorri kohtamiseks parimad võimalused?",
     "options": [
       "rabamännikutes ja nõmmemetsades",
-      "linnatänavatel",
-      "merel",
-      "viljapõllul"
+      "linnaparkides ja tänavalaternate all",
+      "jõgede ja järvede roostikes",
+      "põldudel ja niidetud heinamaadel"
     ],
     "correctAnswer": "rabamännikutes ja nõmmemetsades",
     "evidenceText": "Öösorri kohtamiseks on parimad võimalused rabamännikutes ja nõmmemetsades",
@@ -516,9 +523,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mis reedab, et lind on suurkoovitaja?",
     "options": [
       "pikk ja kaardus nokk",
-      "sinine saba",
-      "punased jalad",
-      "valge kõht"
+      "pikad punased jalad",
+      "hane moodi suur keha",
+      "hall-pruun kirju sulestik"
     ],
     "correctAnswer": "pikk ja kaardus nokk",
     "evidenceText": "Sellist pikka ja kaardus nokka teistel pole.",
@@ -576,9 +583,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mida oskab punaselg-õgija väga hästi matkida?",
     "options": [
       "teiste linnulaulusid",
-      "inimeste samme",
-      "koerte haukumist",
-      "vihma häält"
+      "inimese vilistamist ja laulu",
+      "konnade krooksumist kevadel",
+      "puulehtede sahinat tuules"
     ],
     "correctAnswer": "teiste linnulaulusid",
     "evidenceText": "väga osav teiste linnulaulude matkija",
@@ -596,9 +603,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mis paistab kõrkja-roolinnul kaugele?",
     "options": [
       "lai hele kulmutriip",
-      "punane nokk",
-      "pikk tutt",
-      "kollane silm"
+      "kollane kõht ja rinnaesine",
+      "pikk ja kaardus nokk",
+      "valge laik tiiva peal"
     ],
     "correctAnswer": "lai hele kulmutriip",
     "evidenceText": "lai hele kulmutriip",
@@ -676,9 +683,9 @@ export const KIUR_READING_TASKS = [
     "question": "Millega kuulub alk kokku?",
     "options": [
       "merega",
-      "põlluga",
-      "linnatänavaga",
-      "kuusemetsaga"
+      "jõgedega",
+      "rabajärvedega",
+      "metsaga"
     ],
     "correctAnswer": "merega",
     "evidenceText": "alk kuulub kokku merega",
@@ -716,9 +723,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mis reedab vihitaja lemmikelupaiga?",
     "options": [
       "teine nimetus jõgitilder",
-      "sinine sulestik",
-      "punane saba",
-      "pesa kuju"
+      "tema lend madalal vee kohal",
+      "pruun sulestik ja valge kõht",
+      "pesa kuju ja asukoht"
     ],
     "correctAnswer": "teine nimetus jõgitilder",
     "evidenceText": "teine nimetuski – jõgitilder reedab vihitaja lemmikelupaiga",
@@ -736,9 +743,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mida kannab vaenukägu uhkelt edasi?",
     "options": [
       "punkarisoengut",
-      "valget mütsi",
-      "pikka saba",
-      "kuldset tuti"
+      "pikka kirjut saba",
+      "kuldset kaelakeed",
+      "valget sulemütsi"
     ],
     "correctAnswer": "punkarisoengut",
     "evidenceText": "kannab vaenukägu punkarisoengut uhkelt edasi",
@@ -757,8 +764,8 @@ export const KIUR_READING_TASKS = [
     "options": [
       "lendama",
       "ujuma",
-      "kaevama",
-      "laulma"
+      "pesa ehitama",
+      "kalu püüdma"
     ],
     "correctAnswer": "lendama",
     "evidenceText": "Peagi õpivad lendama.",
@@ -776,9 +783,9 @@ export const KIUR_READING_TASKS = [
     "question": "Milleks kasutatakse haha udusulgi?",
     "options": [
       "jopede ja magamiskottide vooderdamiseks",
-      "pesakastide tegemiseks",
-      "munade värvimiseks",
-      "nokkade teritamiseks"
+      "pesakastide ja linnumajade soojustamiseks",
+      "kalastajate ja meremeeste lõngadeks",
+      "noolte ja sulepeade valmistamiseks"
     ],
     "correctAnswer": "jopede ja magamiskottide vooderdamiseks",
     "evidenceText": "vooderdatakse nii jopesid kui ka magamiskotte",
@@ -856,9 +863,9 @@ export const KIUR_READING_TASKS = [
     "question": "Millal saabus salu-lehelind?",
     "options": [
       "aprilli lõpupäevadel",
-      "jaanuari alguses",
-      "septembri keskel",
-      "detsembris"
+      "mai keskel pärast lehtimist",
+      "märtsi alguses koos kuldnokkadega",
+      "juuni algul pärast pesitsust"
     ],
     "correctAnswer": "aprilli lõpupäevadel",
     "evidenceText": "Salu-lehelind saabus juba aprilli lõpupäevadel.",
@@ -896,9 +903,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mis on räästapääsukese olulisim ehitusmaterjal?",
     "options": [
       "savi",
-      "kivid",
-      "käbid",
-      "tammetõrud"
+      "kõrred",
+      "oksad",
+      "sammal"
     ],
     "correctAnswer": "savi",
     "evidenceText": "olulisim ehitusmaterjal siiski savi",
@@ -916,9 +923,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mis rekord on randtiiri käes?",
     "options": [
       "rändeteekonna pikkuse rekord",
-      "munade suuruse rekord",
-      "laulu pikkuse rekord",
-      "pesa kõrguse rekord"
+      "kõige kiirema lennu rekord",
+      "kõige kiirema sukeldumise rekord",
+      "kõige pikema eluea rekord"
     ],
     "correctAnswer": "rändeteekonna pikkuse rekord",
     "evidenceText": "rändeteekonna pikkuse rekord",
@@ -936,9 +943,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mida vajavad kanepilinnud pesitsemiseks?",
     "options": [
       "tihedaid põõsaid",
-      "pesakaste",
-      "rannakive",
-      "puuõõnsusi"
+      "pesakaste aias",
+      "vanu õõnsaid puid",
+      "liivaseid rannakive"
     ],
     "correctAnswer": "tihedaid põõsaid",
     "evidenceText": "ei vaja pesitsemiseks pesakaste, vaid tihedaid põõsaid",
@@ -958,7 +965,7 @@ export const KIUR_READING_TASKS = [
       "maapinnalt",
       "vee alt",
       "puukoore alt",
-      "õunapuult"
+      "puulatvadest"
     ],
     "correctAnswer": "maapinnalt",
     "evidenceText": "leiab oma saagi peamiselt maapinnalt",
@@ -1016,9 +1023,9 @@ export const KIUR_READING_TASKS = [
     "question": "Miks näeme must-toonekurge harva?",
     "options": [
       "ta hoidub inimestest eemale",
-      "ta elab ainult linnas",
-      "ta ei oska lennata",
-      "ta on väga lärmakas"
+      "ta lendab alati väga kõrgel",
+      "ta lahkub meilt juba juuli alguses",
+      "ta tuleb välja ainult öösiti"
     ],
     "correctAnswer": "ta hoidub inimestest eemale",
     "evidenceText": "hoiduvad inimestest eemale",
@@ -1036,9 +1043,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kus on tulipart tavapärane pesitseja?",
     "options": [
       "Põhja-Aafrikas ja Aasias",
-      "Eestis igas maakonnas",
-      "Gröönimaal",
-      "Antarktikas"
+      "Põhja-Euroopas ja Skandinaavias",
+      "Arktikas ja Gröönimaa rannikul",
+      "Lõuna-Ameerika troopikas"
     ],
     "correctAnswer": "Põhja-Aafrikas ja Aasias",
     "evidenceText": "tavapärane pesitseja hoopiski Põhja-Aafrikas, Kesk- ja Sise-Aasias",
@@ -1056,9 +1063,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kes kuuluvad tekstis kirjeldatud nurmkanaseltskonda?",
     "options": [
       "isa, ema ja lapsed",
-      "ainult isaslinnud",
-      "ainult pojad",
-      "kaks vanaema"
+      "ainult noored isaslinnud",
+      "mitme pere emaslinnud",
+      "vanemad linnud ilma poegadeta"
     ],
     "correctAnswer": "isa, ema ja lapsed",
     "evidenceText": "suvine perekond – isa, ema ja lapsed",
@@ -1076,9 +1083,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mis on herilaseviu lemmikroog?",
     "options": [
       "herilaste ja kimalaste vastsed",
-      "pihlakamarjad",
-      "kirsikivid",
-      "vesiroosiseemned"
+      "konnad ja rohutirtsud",
+      "pihlakamarjad ja metsaõunad",
+      "põldhiired ja väiksemad linnupojad"
     ],
     "correctAnswer": "herilaste ja kimalaste vastsed",
     "evidenceText": "tema lemmikroog herilaste ja kimalaste vastsed",
@@ -1136,9 +1143,9 @@ export const KIUR_READING_TASKS = [
     "question": "Millise värvusega on hõbehaigru sulestik?",
     "options": [
       "valge",
-      "must",
-      "roheline",
-      "sinine"
+      "hall",
+      "must-valge",
+      "pruunikas"
     ],
     "correctAnswer": "valge",
     "evidenceText": "Hõbehaigur on nii valge sulestikuga",
@@ -1176,8 +1183,8 @@ export const KIUR_READING_TASKS = [
     "question": "Millal on sookurgede rännuaeg?",
     "options": [
       "septembris",
-      "jaanuaris",
-      "juunis",
+      "augusti alguses",
+      "oktoobri lõpus",
       "märtsis"
     ],
     "correctAnswer": "septembris",
@@ -1196,9 +1203,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kus tuleb mänsakuga kohtumiseks käia?",
     "options": [
       "metsas",
-      "linnatänaval",
+      "linnapargis",
       "mererannas",
-      "koolimajas"
+      "rabas"
     ],
     "correctAnswer": "metsas",
     "evidenceText": "temaga kohtumiseks tuleb ette võtta metsas käik",
@@ -1236,9 +1243,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kuhu võib hõbekajakaid tekstis jagada?",
     "options": [
       "rabakajakateks, linnakajakateks ja merekajakateks",
-      "ainult metsalindudeks",
-      "ainult kodulindudeks",
-      "laululindudeks ja rähnideks"
+      "suurteks, keskmisteks ja väikesteks hõbekajakateks",
+      "pesitsevateks, rändavateks ja talvituvateks lindudeks",
+      "kala-, naeru- ja tõmmukajakateks"
     ],
     "correctAnswer": "rabakajakateks, linnakajakateks ja merekajakateks",
     "evidenceText": "jagada rabakajakateks, linnakajakateks ja merekajakateks",
@@ -1256,9 +1263,9 @@ export const KIUR_READING_TASKS = [
     "question": "Milline nokk on hallhanel?",
     "options": [
       "suur üleni oranž nokk",
-      "väike must nokk",
-      "sinine nokk",
-      "roheline nokk"
+      "väike must nokk oranži tipuga",
+      "pikk roosa nokk musta otsaga",
+      "lühike kollane nokk"
     ],
     "correctAnswer": "suur üleni oranž nokk",
     "evidenceText": "hallhanel suur üleni oranž nokk",
@@ -1276,9 +1283,9 @@ export const KIUR_READING_TASKS = [
     "question": "Milline on väike-lehelinnu tuttav laul?",
     "options": [
       "tsilp-tsalp",
-      "kuk-ku",
-      "kraa-kraa",
-      "piip-piip"
+      "tsiri-tsiri-tää",
+      "tsi-tsi-tsuu",
+      "kuk-ku"
     ],
     "correctAnswer": "tsilp-tsalp",
     "evidenceText": "tuttavat hitti „tsilp-tsalp-tsilp-tsalp…“",
@@ -1296,9 +1303,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kuhu võib kõrvukräts sobivatel tingimustel elama asuda?",
     "options": [
       "koduaeda",
-      "ainult avamerele",
-      "kõrbe",
-      "koolimajja"
+      "sügavasse laande",
+      "rabasaarele",
+      "kõrgesse kaljuseina"
     ],
     "correctAnswer": "koduaeda",
     "evidenceText": "Ta võib suisa meie koduaeda elama asuda",
@@ -1316,9 +1323,9 @@ export const KIUR_READING_TASKS = [
     "question": "Milline kajakaliik on kalakajakas Eestis?",
     "options": [
       "üks tavalisemaid kajakaliike",
-      "kõige haruldasem lind",
-      "ainult talvelind",
-      "ainult puurilind"
+      "kõige arvukam kajakaliik Eestis",
+      "Eestis haruldane eksikülaline",
+      "ainult talvel siin peatuv kajakas"
     ],
     "correctAnswer": "üks tavalisemaid kajakaliike",
     "evidenceText": "Kalakajakas on meil üks tavalisemaid kajakaliike.",
@@ -1336,9 +1343,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mille järgi on lauk teiste veelindude seas lihtne ära tunda?",
     "options": [
       "valge laubakilbi järgi",
-      "kollase saba järgi",
-      "sinise noka järgi",
-      "pika kaela järgi"
+      "punaste silmade järgi",
+      "pika valge kaela järgi",
+      "kollaste jalgade ja noka järgi"
     ],
     "correctAnswer": "valge laubakilbi järgi",
     "evidenceText": "helgib kaugele valge laubakilp",
@@ -1416,9 +1423,9 @@ export const KIUR_READING_TASKS = [
     "question": "Millist lindu kohtas autor kodulepikus?",
     "options": [
       "valgeselg-kirjurähni",
-      "kanada laglet",
-      "auli",
-      "kodukakku"
+      "suur-kirjurähni",
+      "väike-kirjurähni",
+      "hallpea-rähni ja musträhni"
     ],
     "correctAnswer": "valgeselg-kirjurähni",
     "evidenceText": "kohtasin esmakordselt kodulepikus valgeselg-kirjurähni",
@@ -1456,9 +1463,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kellega veedame teksti järgi talve siinmail?",
     "options": [
       "hallvaresega",
+      "kuldnokaga",
       "suitsupääsukesega",
-      "väikekoovitajaga",
-      "ööbikuga"
+      "metskurvitsaga"
     ],
     "correctAnswer": "hallvaresega",
     "evidenceText": "Üks selline on vares, tuttav tegelane igaühele. Hallvares mõistagi",
@@ -1476,9 +1483,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kummast linnust on kanada lagle tekstis suurem?",
     "options": [
       "valgepõsk-laglest",
-      "pöialpoisist",
-      "musträstast",
-      "kodukakust"
+      "kühmnokk-luigest",
+      "sookurest ja haigrust",
+      "merikotkast"
     ],
     "correctAnswer": "valgepõsk-laglest",
     "evidenceText": "valgepõsk-laglest umbes 30 sentimeetri jagu pikem",
@@ -1516,9 +1523,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kus tegutseb siisike enamasti?",
     "options": [
       "kõrgetes puuvõrades",
-      "mererannas",
-      "kooliõues",
-      "põllumasinas"
+      "jõeäärsetes roostikes",
+      "põldudel ja heinamaadel",
+      "maas lehtede all"
     ],
     "correctAnswer": "kõrgetes puuvõrades",
     "evidenceText": "enamasti tegutseb kõrgetes puuvõrades",
@@ -1536,9 +1543,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mida annab kodukakuisa oma huikega märku?",
     "options": [
       "et park on tema territoorium",
-      "et vihma hakkab sadama",
-      "et ta otsib kalu",
-      "et tal on külm"
+      "et ta otsib endale paarilist",
+      "et ta on leidnud hiire",
+      "et talv on tulemas ja ilm külmeneb"
     ],
     "correctAnswer": "et park on tema territoorium",
     "evidenceText": "see park on tema territoorium",
@@ -1576,9 +1583,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mis aitab musträstal talvel toitu leida?",
     "options": [
       "kompostihunnikud ja toidumajad",
-      "sügav meri",
-      "kõrged mäed",
-      "liivaluited"
+      "metsaservad ja kuuseladvad",
+      "külmunud jõed ja järved",
+      "lumised põllud ja heinamaad talvel"
     ],
     "correctAnswer": "kompostihunnikud ja toidumajad",
     "evidenceText": "Kompostihunnikud, solgiaugud ja lindude toidumajad",
@@ -1656,9 +1663,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kus veedab karmiinleevike praegu aega?",
     "options": [
       "Indias või Kagu-Aasias",
-      "Eestis lume all",
-      "Põhjanabal",
-      "Läänemerel"
+      "Lõuna-Euroopas Hispaanias",
+      "Aafrikas Niiluse kaldal",
+      "Eesti toidumajades"
     ],
     "correctAnswer": "Indias või Kagu-Aasias",
     "evidenceText": "veedabki praegu aega Indias või Kagu-Aasia maades",
@@ -1676,9 +1683,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kus on puukoristaja talviti sage külaline?",
     "options": [
       "toidumajades",
-      "merel",
-      "viljapõllul",
-      "koolisaalis"
+      "jõeäärsetes roostikes",
+      "põldude kivihunnikutes",
+      "rannakarjamaadel"
     ],
     "correctAnswer": "toidumajades",
     "evidenceText": "puukoristaja on talviti neis sage külaline",
@@ -1696,9 +1703,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mida vajab rohevint talvel aias?",
     "options": [
       "toidumaja seemnetega",
-      "kalatiiki",
-      "liivakasti",
-      "kõrget torni"
+      "tihedat kuusehekki pesaks",
+      "õunapuud marjadega",
+      "lindude vanni"
     ],
     "correctAnswer": "toidumaja seemnetega",
     "evidenceText": "toidumaja olemas ja selles rikkalikult seemneid",
@@ -1716,9 +1723,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kelle lähedusse varblased tekstis hoiduvad?",
     "options": [
       "meie lähedusse",
-      "ainult merele",
-      "karude juurde",
-      "sügavasse rabasse"
+      "metsloomade lähedusse",
+      "kajakate lähedusse",
+      "karude juurde"
     ],
     "correctAnswer": "meie lähedusse",
     "evidenceText": "Varblased hoiduvad alati meie lähedusse.",
@@ -1797,8 +1804,8 @@ export const KIUR_READING_TASKS = [
     "options": [
       "tuviks",
       "kajakaks",
-      "rebaseks",
-      "kalaks"
+      "käoks",
+      "pääsukeseks"
     ],
     "correctAnswer": "tuviks",
     "evidenceText": "moondunud ise tuviks",
@@ -1836,9 +1843,9 @@ export const KIUR_READING_TASKS = [
     "question": "Milline part on piilpart?",
     "options": [
       "kõige pisem ujupart",
-      "kõige suurem hani",
-      "rähn",
-      "kajakas"
+      "kõige suurem ujupart",
+      "sinikael-pardi poeg",
+      "kõige tuntum sukelpart"
     ],
     "correctAnswer": "kõige pisem ujupart",
     "evidenceText": "meie kõige pisema ujupardiga",
@@ -1856,9 +1863,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mis värvi on luiged tekstis?",
     "options": [
       "valged",
+      "hallid",
       "mustad",
-      "rohelised",
-      "sinised"
+      "pruunikad"
     ],
     "correctAnswer": "valged",
     "evidenceText": "Valged nagu lumi.",
@@ -1897,8 +1904,8 @@ export const KIUR_READING_TASKS = [
     "options": [
       "peitliga",
       "lusikaga",
-      "pilliga",
-      "aeruga"
+      "haamriga",
+      "nõelaga"
     ],
     "correctAnswer": "peitliga",
     "evidenceText": "Nokk on neil ju peitel",
@@ -1936,9 +1943,9 @@ export const KIUR_READING_TASKS = [
     "question": "Miks sobib leevike jõulukaardile?",
     "options": [
       "isaslinnu alapool on jõuluvana kuuega ühte karva",
-      "ta elab korstnas",
-      "ta veab saani",
-      "ta teeb kingitusi"
+      "ta laulab kõige ilusamini just jõulude ajal",
+      "ta on ainuke lind, kes talvel siia jääb ja laulab",
+      "emaslinnu selg on lumivalge nagu jõuluööl lumi"
     ],
     "correctAnswer": "isaslinnu alapool on jõuluvana kuuega ühte karva",
     "evidenceText": "Leevikese isaslinnu alapool on just jõuluvana kuuega ühte karva.",
@@ -1956,9 +1963,9 @@ export const KIUR_READING_TASKS = [
     "question": "Kus elab koldvint looduses?",
     "options": [
       "Kanaari saartel, Madeiral ja Assooridel",
-      "Eestis igas aias",
-      "Antarktikas",
-      "Siberi tundras"
+      "Eesti metsades ja linnaparkides puudel",
+      "Aafrika kõrbetes ja Lõuna-Euroopa mägedes",
+      "ainult inimeste kodudes puurides"
     ],
     "correctAnswer": "Kanaari saartel, Madeiral ja Assooridel",
     "evidenceText": "elab looduses Kanaari saartel, Madeiral ja Assooridel",
@@ -1996,9 +2003,9 @@ export const KIUR_READING_TASKS = [
     "question": "Mis annab isasele roohabekale vahva väljanägemise?",
     "options": [
       "mustad sorakil vuntsid",
-      "sinine nokk",
-      "valge laubakilp",
-      "pikk kael"
+      "punane nokk ja valge kõht",
+      "pikk kõver nokk",
+      "kuldne tutt pea peal"
     ],
     "correctAnswer": "mustad sorakil vuntsid",
     "evidenceText": "Isaslinnu mustad sorakil „vuntsid“",
@@ -2016,15 +2023,18 @@ export const KIUR_READING_TASKS = [
     "question": "Milleks valis Eesti Ornitoloogiaühing auli aastaks 2023?",
     "options": [
       "aasta linnuks",
-      "aasta putukaks",
-      "rahvuslinnuks",
-      "koduloomaks"
+      "aasta loomaks",
+      "Eesti rahvuslinnuks",
+      "aasta puuks"
     ],
     "correctAnswer": "aasta linnuks",
     "evidenceText": "valinud aasta linnuks auli",
     "questionType": "detail"
   }
 ] satisfies KiurReadingTask[];
+
+// Bird columns plus the original stories of ./kiurReadingStories.
+export const KIUR_READING_TASKS: KiurReadingTask[] = [...LINNUNADALAD_TASKS, ...kiurReadingStoryTasks()];
 
 function isValidKiurReadingTask(task: KiurReadingTask) {
   return task.learner === 'kiur'

@@ -44,6 +44,19 @@ export function isQuestionVisual(value: unknown): value is QuestionVisual {
   return typeof value === 'string' && (QUESTION_VISUALS as readonly string[]).includes(value);
 }
 
+export type TextAnswerRules = {
+  // «kell 19» also as «19», «5,4» also as the list «5 ja 4», and a whole
+  // sentence that contains an accepted answer and no other number.
+  natural?: boolean;
+  // A name answer («Eve») inside a sentence counts when no rival name from the
+  // task appears with it.
+  keyword?: string;
+  rivals?: string[];
+  // «Aseta tehtemärgid»: any expression with exactly these numbers in this
+  // order whose value is below `lessThan` is right.
+  expression?: { numbers: number[]; lessThan: number };
+};
+
 export type GeneratedQuestion = {
   id: string;
   type?: string;
@@ -64,6 +77,11 @@ export type GeneratedQuestion = {
   correctAnswer: number;
   correctAnswerText?: string;
   acceptedAnswers?: string[];
+  // How far the text-answer checker may read the child's answer beyond the
+  // listed forms (see verifyMathTextAnswer). Only maths generator v5 text
+  // problems carry it, so every older question is still judged exactly as it
+  // was when its attempt was made.
+  textAnswerRules?: TextAnswerRules;
   correctAnswers?: number[];
   choiceOptions?: string[];
   explanation?: string;

@@ -33,9 +33,27 @@ describe('Unraid and Cloudflare deployment topology', () => {
     expect(read('docker-compose.yml')).toContain('--metrics 127.0.0.1:2000');
   });
 
+  it('documents the real release: no npm in the image, the tunnel never recreated (C6)', () => {
+    const deployment = read('docs/unraid-cloudflare.md');
+    expect(deployment).toContain('/mnt/user/appdata/mata-teisendamine-vahemaad');
+    expect(deployment).toContain('docker compose up -d --no-deps --force-recreate app');
+    expect(deployment).not.toMatch(/docker compose run[^\n]*npm /);
+    expect(deployment).not.toMatch(/--profile tunnel up -d --force-recreate/);
+    expect(deployment).toContain(read('Dockerfile').match(/node:(22\.[0-9.]+-alpine[0-9.]+)/)![1]);
+  });
+
   it('forwards graceful-stop signals to Next.js', () => {
     const startup = read('scripts/verified-start.ts');
     expect(startup).toContain("process.once('SIGTERM'");
     expect(startup).toContain("child.kill(signal)");
+  });
+
+  it('stops a crash loop and bounds memory, processes and logs (C2)', () => {
+    const app = read('docker-compose.yml').split(/\r?\n  cloudflared:/)[0];
+    expect(app).toMatch(/restart: on-failure:\d+/);
+    expect(app).not.toContain('restart: unless-stopped');
+    expect(app).toMatch(/mem_limit: \S+/);
+    expect(app).toMatch(/pids_limit: \d+/);
+    expect(app).toMatch(/driver: json-file[\s\S]*?max-size: "\d+m"[\s\S]*?max-file: "\d+"/);
   });
 });

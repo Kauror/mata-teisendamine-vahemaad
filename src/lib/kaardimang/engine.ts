@@ -49,7 +49,10 @@ export type QuestionState = {
   resolvedAt?: string;
 };
 
-export type RoundState = { questions: FrozenQuestion[]; states: QuestionState[]; cursor: number };
+// `optionSalt` (server-only, rounds from 20.11 on) makes button option ids
+// opaque per round: the client sees a token for each option, never the place id
+// (review B5). Older rounds have none and show the place ids as before.
+export type RoundState = { questions: FrozenQuestion[]; states: QuestionState[]; cursor: number; optionSalt?: string };
 
 export type TargetStat = { seen: number; firstTryCorrect: number; missCount: number };
 
@@ -431,6 +434,11 @@ export type ClientQuestion = Omit<FrozenQuestion, 'answerId' | 'explainEt' | 'hi
   targetId: string | null;
   hideCapitalId: string | null;
   correctId: string | null;
+  // The option (button) ids in the client's own option-id space: the correct
+  // one once resolved, and the ones tapped wrong. With opaque option ids these
+  // differ from correctId / state.wrongIds, which stay place ids for the map.
+  correctOptionId: string | null;
+  wrongOptionIds: string[];
   explainEt: string | null;
   hintEt: string | null;
 };
@@ -449,6 +457,8 @@ export function toClientQuestion(question: FrozenQuestion, state: QuestionState)
     targetId: resolved ? question.targetId : null,
     hideCapitalId: resolved ? question.hideCapitalId : null,
     correctId: resolved ? question.answerId : null,
+    correctOptionId: resolved && question.options ? question.answerId : null,
+    wrongOptionIds: question.options ? state.wrongIds : [],
     explainEt: resolved ? question.explainEt : null,
     hintEt: state.attempts > 0 ? question.hintEt : null
   };

@@ -12,7 +12,7 @@ export const unit15: Unit = {
     "to": 63
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.1",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u15-o1",
@@ -1727,7 +1727,7 @@ export const unit15: Unit = {
         "options": [
           {
             "id": "o1",
-            "text": "Õpiku jaotuses loetakse need kaheks mandriks, kuigi maismaa ühendab neid."
+            "text": "Sest õpiku jaotuses loetakse need kaheks mandriks, kuigi maismaa neid ühendab."
           },
           {
             "id": "o2",
@@ -1735,11 +1735,11 @@ export const unit15: Unit = {
           },
           {
             "id": "o3",
-            "text": "Sest Ameerika on ainult ookeani nimi."
+            "text": "Sest Ameerika on tegelikult ühe suure ookeani nimi."
           },
           {
             "id": "o4",
-            "text": "Sest mõlemad asuvad Euroopa sees."
+            "text": "Sest mõlemad asuvad tegelikult Euroopa maailmajao sees."
           }
         ],
         "correctOptionId": "o1"
@@ -2803,15 +2803,15 @@ export const unit15: Unit = {
           },
           {
             "id": "o2",
-            "text": "ainult üks riik"
+            "text": "üks suur riik koos pealinnaga"
           },
           {
             "id": "o3",
-            "text": "ainult ookean"
+            "text": "ookeanidega ümbritsetud maismaaosa"
           },
           {
             "id": "o4",
-            "text": "ainult kauge saar"
+            "text": "kaugete saarte rühm ookeanis"
           }
         ],
         "correctOptionId": "o1"
@@ -2930,7 +2930,7 @@ export const unit15: Unit = {
           },
           {
             "id": "o4",
-            "text": "Manner tähendab ainult mäestikku."
+            "text": "Maailmajagu on ainult maismaa, manner hõlmab ka ümbritsevaid meresid."
           }
         ],
         "correctOptionId": "o1"
@@ -2972,7 +2972,7 @@ export const unit15: Unit = {
           },
           {
             "id": "o4",
-            "text": "Manner kaotab siis maismaa."
+            "text": "Mandri keskel voolab alati jõgi, mis jagab selle kaheks osaks."
           }
         ],
         "correctOptionId": "o1"
@@ -3756,7 +3756,7 @@ export const unit15: Unit = {
           },
           {
             "id": "o4",
-            "text": "Teine tähendab ainult Antarktist."
+            "text": "Esimene on maailmajagu, teine on ainult Okeaania saarte nimi."
           }
         ],
         "correctOptionId": "o1"
@@ -4182,7 +4182,7 @@ export const unit15: Unit = {
           },
           {
             "id": "o4",
-            "text": "Sest kõik kaardid on ühesugused."
+            "text": "Et teada, mitu riiki kaardil on ja kui suured on nende linnad."
           }
         ],
         "correctOptionId": "o1"
@@ -5538,7 +5538,7 @@ export const unit15: Unit = {
           },
           {
             "id": "o4",
-            "text": "Aasia lääneosa"
+            "text": "Lõunapooluse ümber asuv suur ookean"
           }
         ],
         "correctOptionId": "o1"
@@ -5694,7 +5694,7 @@ export const unit15: Unit = {
         "options": [
           {
             "id": "o1",
-            "text": "Seal on väga külm ja elutingimused on karmid."
+            "text": "Sest seal on väga külm ja elutingimused on karmid."
           },
           {
             "id": "o2",

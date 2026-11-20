@@ -11,7 +11,7 @@ export const unit16: Unit = {
     "to": 65
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.2",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u16-o1",
@@ -2771,7 +2771,7 @@ export const unit16: Unit = {
           },
           {
             "id": "4",
-            "text": "Vaikne ookean on hoopis järv."
+            "text": "Kaardi mõlemal serval on kaks eri ookeani, millel on sama nimi."
           }
         ],
         "correctOptionId": "1"
@@ -2959,7 +2959,7 @@ export const unit16: Unit = {
           },
           {
             "id": "4",
-            "text": "ainult kõrbetes"
+            "text": "Põhja-Euroopas, kus Läänemeri ookeaniga ühineb"
           }
         ],
         "correctOptionId": "1"
@@ -3120,7 +3120,7 @@ export const unit16: Unit = {
           },
           {
             "id": "4",
-            "text": "jõe suuet"
+            "text": "kohta, kus muutub vee soolsus ja värv"
           }
         ],
         "correctOptionId": "1"
@@ -3290,7 +3290,7 @@ export const unit16: Unit = {
           },
           {
             "id": "4",
-            "text": "Ookeanid paiknevad ainult ühel poolkeral."
+            "text": "Piiri saab alati näha vee värvi ja lainete muutumise järgi."
           }
         ],
         "correctOptionId": "1"
@@ -3377,7 +3377,7 @@ export const unit16: Unit = {
           },
           {
             "id": "4",
-            "text": "iga mageveejärve"
+            "text": "iga suurt mageveejärve mandri keskel"
           }
         ],
         "correctOptionId": "1"

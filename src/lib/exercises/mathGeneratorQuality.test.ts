@@ -57,7 +57,7 @@ describe('Lahuta arv järkudeks (EX-05)', () => {
   it(`has exactly one option that adds up to the number in ${SEEDS} seeds`, () => {
     for (const seed of seeds()) {
       const [question] = kiur('arvud-10000-piires', 'Lahuta arv järkudeks', 1, seed);
-      const n = Number(/^Milline on arvu (\d{4}) õige lahutus\?$/.exec(question.question)?.[1]);
+      const n = Number(/^Kuidas saab arvu (\d{4}) kirjutada järkude summana\?$/.exec(question.question)?.[1]);
       expect(n).toBeGreaterThanOrEqual(1000);
       const options = question.choiceOptions ?? [];
       expect(options).toHaveLength(3);

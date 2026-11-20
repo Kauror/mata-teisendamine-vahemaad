@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import {
@@ -18,7 +19,9 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   if (!await hasParentSession()) return NextResponse.json({ message: 'Ligipääs puudub.' }, { status: 401 });
-  const body = await req.json().catch(() => ({}));
+  const jsonBody = await readJsonObjectRequest(req);
+  if (jsonBody instanceof NextResponse) return jsonBody;
+  const body = jsonBody;
   const exerciseId = typeof body.exerciseId === 'string' ? body.exerciseId : '';
   const learner = body.learner;
   const status = body.status;

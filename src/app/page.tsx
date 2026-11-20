@@ -34,7 +34,7 @@ type H = {
 type Activity = { createdAt: string; subject: string; title: string };
 type HomeChild = { streak?: number; balance?: number; trophies?: number; recent?: H[]; latestActivity?: Activity | null };
 type KaardimangHome = { title: string; status: 'active' | 'ended'; endDate: string; daysLeftEt: string | null; standings: StandingRow[] };
-type HomeSummary = { today?: { kiur?: number; kirsi?: number }; children?: { kiur?: HomeChild; kirsi?: HomeChild }; kaardimang?: KaardimangHome | null };
+type HomeSummary = { today?: { kiur?: number; kirsi?: number }; children?: { kiur?: HomeChild; kirsi?: HomeChild }; kaardimang?: KaardimangHome | null; parentPending?: number };
 
 // The family's map-game competition: places 1–4 and points, nothing more.
 function KaardimangStandings({ competition }: { competition: KaardimangHome }) {
@@ -57,7 +57,7 @@ function KaardimangStandings({ competition }: { competition: KaardimangHome }) {
 // "Choose your character": the whole card opens the child's page. The name is
 // the link and its ::after stretches over the card; the metric tooltips sit
 // above that layer so a tap on a number still explains it.
-function ChildDashboardCard({ name, href, avatar, accent, attempts, activity, streak, balance, trophies, clock }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; activity: Activity | null; streak: number; balance: number; trophies: number; clock: AppClock | null }) {
+function ChildDashboardCard({ name, href, avatar, accent, attempts, activity, streak, balance, trophies, clock, loaded }: { name: 'Kiur' | 'Kirsi'; href: '/kiur' | '/kirsi'; avatar: string; accent: 'blue' | 'pink'; attempts: H[]; activity: Activity | null; streak: number; balance: number; trophies: number; clock: AppClock | null; loaded: boolean }) {
   const learner = name === 'Kiur' ? 'kiur' : 'kirsi';
   const exercise = attempts[0];
   const status = clock ? homeStatus(learner, clock) : null;
@@ -78,12 +78,12 @@ function ChildDashboardCard({ name, href, avatar, accent, attempts, activity, st
         </div>
         <div className='child-overview'>
           <MetricTooltip className='streak-badge' label={streakTooltip(streak)}><span aria-hidden>🔥</span><strong>{streak}</strong></MetricTooltip>
-          <MetricTooltip className='stars-badge' label={starsTooltip(balance)}><span aria-hidden>⭐</span><strong>{formatStars(balance)}</strong></MetricTooltip>
+          <MetricTooltip className='stars-badge' label={starsTooltip(balance)}><span aria-hidden>⭐</span><strong>{loaded ? formatStars(balance) : '–'}</strong></MetricTooltip>
           <MetricTooltip className='trophy-badge' label={trophiesTooltip(trophies)}><span aria-hidden>🏆</span><strong>{trophies}</strong></MetricTooltip>
         </div>
         <p className='child-last'>
           <span className='child-last-label'>Viimati</span>
-          <span className='child-last-what'>{latest ? `${latestWhat} · ${relativeDateTimeLabel(latest.createdAt)}` : 'pole veel harjutanud'}</span>
+          <span className='child-last-what'>{latest ? `${latestWhat} · ${relativeDateTimeLabel(latest.createdAt)}` : loaded ? 'pole veel harjutanud' : 'laadin…'}</span>
         </p>
       </div>
       <span className='child-card-arrow' aria-hidden>→</span>
@@ -149,6 +149,8 @@ export default function Home() {
   const [trophies, setTrophies] = useState({ kiur: 0, kirsi: 0 });
   const [today, setToday] = useState({ kiur: 0, kirsi: 0 });
   const [kaardimang, setKaardimang] = useState<KaardimangHome | null>(null);
+  const [summaryState, setSummaryState] = useState<'loading' | 'ok' | 'failed'>('loading');
+  const [parentPending, setParentPending] = useState(0);
 
   const clock = useAppClock();
 
@@ -164,6 +166,8 @@ export default function Home() {
       .then((response) => response.ok ? response.json() as Promise<HomeSummary> : null)
       .catch(() => null)
       .then((summary) => {
+        setSummaryState(summary ? 'ok' : 'failed');
+        setParentPending(typeof summary?.parentPending === 'number' ? summary.parentPending : 0);
         const child = (learner: 'kiur' | 'kirsi') => summary?.children?.[learner];
         setHistory({ kiur: child('kiur')?.recent ?? [], kirsi: child('kirsi')?.recent ?? [] });
         setActivity({ kiur: child('kiur')?.latestActivity ?? null, kirsi: child('kirsi')?.latestActivity ?? null });
@@ -181,14 +185,15 @@ export default function Home() {
     <main className='container dashboard'>
       <TodayLeaderboard kiurCount={today.kiur} kirsiCount={today.kirsi} />
       <div className='children-list'>
-        <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} activity={activity.kiur} streak={streaks.kiur} balance={balances.kiur} trophies={trophies.kiur} clock={clock} />
-        <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} activity={activity.kirsi} streak={streaks.kirsi} balance={balances.kirsi} trophies={trophies.kirsi} clock={clock} />
+        <ChildDashboardCard name='Kiur' href='/kiur' avatar='👦' accent='blue' attempts={kiur} activity={activity.kiur} streak={streaks.kiur} balance={balances.kiur} trophies={trophies.kiur} clock={clock} loaded={summaryState === 'ok'} />
+        <ChildDashboardCard name='Kirsi' href='/kirsi' avatar='👧' accent='pink' attempts={kirsi} activity={activity.kirsi} streak={streaks.kirsi} balance={balances.kirsi} trophies={trophies.kirsi} clock={clock} loaded={summaryState === 'ok'} />
       </div>
+      {summaryState === 'failed' ? <p className='offline-warning' role='status'>Tähti ja viimaseid harjutusi ei saanud laadida. Kontrolli internetiühendust.</p> : null}
       {kaardimang ? <KaardimangStandings competition={kaardimang} /> : null}
       <NoticeBoard />
       <div className='dashboard-footer-links'>
         <Link href='/history' className='dashboard-history-link'>Ajalugu</Link>
-        <Link href='/vanem' className='dashboard-history-link'>Lapsevanema ala</Link>
+        <Link href='/vanem' className='dashboard-history-link'>Lapsevanema ala{parentPending > 0 ? <span className='dashboard-pending' aria-label={`${parentPending} ootab otsust`}>{parentPending}</span> : null}</Link>
       </div>
       <p className='dashboard-version'>v{APP_VERSION}</p>
     </main>

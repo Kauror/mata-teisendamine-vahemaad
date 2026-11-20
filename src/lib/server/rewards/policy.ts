@@ -24,9 +24,48 @@ export type RewardPolicyV2 = {
     streakIntervalDays: number;
     streakBonusAmount: number;
     streakBonusEnabled: boolean;
+    // Added 2026-11-20 (parent's decision, review B8). Absent in every older
+    // policy version, whose attempts keep the old rule: the full value from
+    // minimumScorePercent up. Policy versions are immutable, so re-projecting
+    // old attempts never changes their stars.
+    scoreTiers?: RewardScoreTiers;
+    // Normal question count per runner (key `runnerId` or `runnerId:topic`).
+    // A shorter session of such a runner pays in proportion, so a hand-made
+    // 1-question maths link cannot earn a whole star. Same immutability rule.
+    expectedQuestionCounts?: Record<string, number>;
   };
   rules: RewardPolicyRule[];
 };
+
+export type RewardScoreTiers = {
+  // From minimumScorePercent up to (not including) this, the study value is
+  // multiplied by partialValueFactor; from this up it is paid in full.
+  fullValueScorePercent: number;
+  partialValueFactor: number;
+};
+
+// The current rule: 0 below 50%, half at 50-74%, full from 75%.
+export const CURRENT_SCORE_TIERS: RewardScoreTiers = { fullValueScorePercent: 0.75, partialValueFactor: 0.5 };
+// Maths sessions are 15 questions; Kiur's word problems (tekstülesanded) are 5.
+// Other runners have their own fixed sizes or are timed, and are not scaled.
+export const CURRENT_EXPECTED_QUESTION_COUNTS: Record<string, number> = { math: 15, 'math:tekstulesanded': 5 };
+
+// The share of an attempt's study value that its score and length earn under
+// the given policy: 0 when it does not qualify, otherwise the score tier factor
+// times the length factor. An old policy without tiers gives 1 or 0 as before.
+export function studyValueFactor(
+  policy: RewardPolicyV2,
+  attempt: { score: number; questionCount: number; runnerId: string; topic?: string | null }
+): number {
+  const scorePercent = attempt.questionCount > 0 ? attempt.score / attempt.questionCount : 0;
+  if (scorePercent < policy.learning.minimumScorePercent) return 0;
+  const tiers = policy.learning.scoreTiers;
+  const scoreFactor = tiers && scorePercent < tiers.fullValueScorePercent ? tiers.partialValueFactor : 1;
+  const counts = policy.learning.expectedQuestionCounts;
+  const expected = counts ? counts[`${attempt.runnerId}:${attempt.topic ?? ''}`] ?? counts[attempt.runnerId] : undefined;
+  const lengthFactor = expected && expected > 0 ? Math.min(1, attempt.questionCount / expected) : 1;
+  return scoreFactor * lengthFactor;
+}
 
 const DEFAULT_LEARNING: RewardPolicyV2['learning'] = {
   baseValue: 1,
@@ -37,7 +76,9 @@ const DEFAULT_LEARNING: RewardPolicyV2['learning'] = {
   learningPointsEnabled: true,
   streakIntervalDays: 7,
   streakBonusAmount: 1,
-  streakBonusEnabled: true
+  streakBonusEnabled: true,
+  scoreTiers: CURRENT_SCORE_TIERS,
+  expectedQuestionCounts: CURRENT_EXPECTED_QUESTION_COUNTS
 };
 
 function canonical(value: unknown): string {
@@ -66,7 +107,9 @@ export function snapshotCurrentRewardPolicy(): RewardPolicyV2 {
     learningPointsEnabled: Boolean(settings.learningPointsEnabled),
     streakIntervalDays: Number(settings.streakIntervalDays),
     streakBonusAmount: Number(settings.streakBonusAmount),
-    streakBonusEnabled: Boolean(settings.streakBonusEnabled)
+    streakBonusEnabled: Boolean(settings.streakBonusEnabled),
+    scoreTiers: CURRENT_SCORE_TIERS,
+    expectedQuestionCounts: CURRENT_EXPECTED_QUESTION_COUNTS
   } : DEFAULT_LEARNING;
   const rules = db.prepare(`
     SELECT id, thresholdDays, rewardStars, learnerScope

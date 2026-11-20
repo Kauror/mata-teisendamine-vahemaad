@@ -8,6 +8,7 @@ import { queryHistoryRows } from '@/lib/server/historyRows';
 import { queryLearningActivity } from '@/lib/server/learningActivity';
 import { homeCompetition } from '@/lib/server/kaardimang/competition';
 import { daysLeftEt } from '@/lib/kaardimang/competition';
+import { parentDecisionCount } from '@/lib/server/parentPending';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -56,5 +57,7 @@ export async function GET() {
     standings: competition.standings
   } : null;
 
-  return NextResponse.json({ today: standings, children, kaardimang });
+  // Only the number of decisions waiting for the parent (the link to the
+  // parent area shows it); nothing about what they are.
+  return NextResponse.json({ today: standings, children, kaardimang, parentPending: parentDecisionCount() });
 }
