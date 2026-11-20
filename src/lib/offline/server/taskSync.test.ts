@@ -214,41 +214,64 @@ describe('late offline task completions', () => {
     ensureTaskInstancesForDate(todayDateString());
   }
 
-  it('settles yesterday\'s completion against yesterday instead of refusing it', () => {
+  it('sends yesterday\'s no-approval completion to the parent instead of paying it', () => {
     const template = dailyTemplate('kiur');
     ensureTaskInstancesForDate('2026-10-16');
     rollOverToNextMorning();
 
-    const result = applyOfflineTaskAction(lateAction(template, 'kiur', 'late-1'));
-    expect(result.status).toBe('applied');
+    // The device claims 99 stars; the review shows the server's own 5.
+    const forged = { ...lateAction(template, 'kiur', 'late-1'), snapshot: { title: 'Koru tuba', points: 99, assignmentMode: 'kiur', requiresApproval: false } };
+    const result = applyOfflineTaskAction(forged);
+    expect(result).toMatchObject({ status: 'needs_review', reasonCode: 'late_completion' });
+    expect(getBalance('kiur')).toBe(0);
+    expect(listOfflineTaskReviews()).toEqual([expect.objectContaining({ clientActionId: 'late-1', points: 5, reasonCode: 'late_completion', taskDate: '2026-10-16' })]);
+    // A retry is still idempotent.
+    expect(applyOfflineTaskAction(forged).status).toBe('needs_review');
+
+    resolveOfflineTaskReview('late-1', 'approve');
     expect(getBalance('kiur')).toBe(5);
     expect(getAssignmentStatusById(findAssignmentId(template.id, '2026-10-16', 'kiur')!)).toBe('completed');
-    // A retry is still idempotent.
-    expect(applyOfflineTaskAction(lateAction(template, 'kiur', 'late-1')).status).toBe('applied');
-    expect(getBalance('kiur')).toBe(5);
+    expect(listOfflineTaskReviews()).toEqual([]);
   });
 
-  it('settles both children of a shared task when both arrive late', () => {
+  it('pays nothing when the parent rejects a late completion', () => {
+    const template = dailyTemplate('kiur');
+    ensureTaskInstancesForDate('2026-10-16');
+    rollOverToNextMorning();
+
+    applyOfflineTaskAction(lateAction(template, 'kiur', 'late-no'));
+    resolveOfflineTaskReview('late-no', 'reject');
+    expect(getBalance('kiur')).toBe(0);
+    expect(getAssignmentStatusById(findAssignmentId(template.id, '2026-10-16', 'kiur')!)).toBe('missed');
+  });
+
+  it('settles both children of a shared task once the parent approves both', () => {
     const template = dailyTemplate('both_independent');
     ensureTaskInstancesForDate('2026-10-16');
     rollOverToNextMorning();
 
-    expect(applyOfflineTaskAction(lateAction(template, 'kiur', 'late-kiur')).status).toBe('applied');
-    expect(applyOfflineTaskAction(lateAction(template, 'kirsi', 'late-kirsi')).status).toBe('applied');
+    expect(applyOfflineTaskAction(lateAction(template, 'kiur', 'late-kiur')).status).toBe('needs_review');
+    expect(applyOfflineTaskAction(lateAction(template, 'kirsi', 'late-kirsi')).status).toBe('needs_review');
+    resolveOfflineTaskReview('late-kiur', 'approve');
+    resolveOfflineTaskReview('late-kirsi', 'approve');
     // 5 each, plus that day's joint bonus now that both finished everything.
     expect(getBalance('kiur')).toBe(6);
     expect(getBalance('kirsi')).toBe(6);
     expect(db.prepare('SELECT date FROM daily_task_bonuses').all()).toEqual([{ date: '2026-10-16' }]);
   });
 
-  it('keeps a first-completer task for the child who settled it first', () => {
+  it('keeps a first-completer task for the child the parent approves first', () => {
     const template = dailyTemplate('first_completer');
     ensureTaskInstancesForDate('2026-10-16');
     rollOverToNextMorning();
 
-    expect(applyOfflineTaskAction(lateAction(template, 'kiur', 'fc-kiur')).status).toBe('applied');
-    const second = applyOfflineTaskAction(lateAction(template, 'kirsi', 'fc-kirsi'));
-    expect(second.status).toBe('conflict');
+    applyOfflineTaskAction(lateAction(template, 'kiur', 'fc-kiur'));
+    applyOfflineTaskAction(lateAction(template, 'kirsi', 'fc-kirsi'));
+    resolveOfflineTaskReview('fc-kiur', 'approve');
+    expect(getBalance('kiur')).toBe(5);
+    // Kirsi lost the task: her review leaves the queue and pays nothing.
+    expect(listOfflineTaskReviews()).toEqual([]);
+    expect(() => resolveOfflineTaskReview('fc-kirsi', 'approve')).toThrow();
     expect(getBalance('kirsi')).toBe(0);
     expect(getAssignmentStatusById(findAssignmentId(template.id, '2026-10-16', 'kirsi')!)).toBe('locked');
   });
@@ -272,5 +295,25 @@ describe('late offline task completions', () => {
     expect(getBalance('kiur')).toBe(0);
     approveTaskAssignment(findAssignmentId(template.id, '2026-10-16', 'kiur')!);
     expect(getBalance('kiur')).toBe(5);
+  });
+
+  it('refuses a future task day before touching today\'s tasks', () => {
+    const template = dailyTemplate('both_independent');
+    ensureTaskInstancesForDate('2026-10-16');
+
+    const result = applyOfflineTaskAction(action({ templateId: template.id, templateVersion: template.version, learner: 'kiur', clientActionId: 'future-1', taskDate: '2026-10-17', completedAt: EVENING }));
+    expect(result).toMatchObject({ status: 'rejected', reasonCode: 'future_task_date' });
+    expect(getBalance('kiur')).toBe(0);
+    // Today's tasks are still open for both children, and no future day was prepared.
+    expect(getAssignmentStatusById(findAssignmentId(template.id, '2026-10-16', 'kiur')!)).toBe('active');
+    expect(getAssignmentStatusById(findAssignmentId(template.id, '2026-10-16', 'kirsi')!)).toBe('active');
+    expect(findAssignmentId(template.id, '2026-10-17', 'kiur')).toBeNull();
+  });
+
+  it('refuses a task day older than the offline age limit', () => {
+    const template = dailyTemplate('kiur');
+    const result = applyOfflineTaskAction(action({ templateId: template.id, templateVersion: template.version, learner: 'kiur', clientActionId: 'old-1', taskDate: '2026-10-01', completedAt: '2026-10-01T10:00:00.000Z' }));
+    expect(result).toMatchObject({ status: 'rejected', reasonCode: 'task_date_too_old' });
+    expect(findAssignmentId(template.id, '2026-10-01', 'kiur')).toBeNull();
   });
 });

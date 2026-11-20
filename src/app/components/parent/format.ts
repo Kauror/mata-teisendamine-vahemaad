@@ -92,6 +92,20 @@ export function approvalMeta(item: Pick<PendingApproval, 'points' | 'date' | 'co
   return `+${item.points} ⭐${day}${clock}`;
 }
 
+// Why an offline task completion waits for the parent. The common case is a
+// completion for an earlier day (the device's clock dates it, so it is never
+// settled without the parent); the rest are a since-changed or removed task.
+export function offlineReviewReason(reasonCode: string | null | undefined) {
+  if (reasonCode === 'late_completion') return 'Märgitud tehtuks varasemal päeval, jõudis kohale hiljem';
+  return `Tehtud võrguühenduseta, tegevus on vahepeal muutunud${reasonCode ? ` · ${reasonCode}` : ''}`;
+}
+
+// Why an exercise's stars were held back, in words where the code is ours.
+export function heldReasonLabel(reasonCode: string | null | undefined) {
+  if (reasonCode === 'too_fast') return 'vastatud ebatavaliselt kiiresti';
+  return reasonCode ?? '';
+}
+
 export function parseWeekdays(raw: string | null) {
   if (!raw) return [];
   try {
