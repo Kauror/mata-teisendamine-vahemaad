@@ -4,6 +4,7 @@ import { MATH_GENERATOR_VERSION } from '@/lib/exercises/mathGeneratorVersion';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
 import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
+import { FORMER_SCIENCE_MATCHES, LOODUSOPETUS_TASKS } from '@/lib/loodusopetus/tasks';
 import { AttemptContractError, recomputeScore } from '@/lib/server/attempts/scoreVerifier';
 import type { GeneratedQuestion } from '@/lib/types';
 import { buildMathQuestionResults, type MathAnswerSnapshot } from '@/lib/mathResults';
@@ -90,6 +91,19 @@ describe('server-owned score recomputation', () => {
     expect(verify(leib, '🥖 — LEIB', 'LEIB')).toBe(1);
     expect(verify(leib, '🍞 — LEIB', 'SAI')).toBe(0);
     expect(() => verify(sai, '🍎 — SAI', 'SAI')).toThrow(AttemptContractError);
+  });
+
+  it('scores the rewritten food-chain match by its new key and by the key an older build showed', () => {
+    const task = LOODUSOPETUS_TASKS.find((candidate) => candidate.id === 'SCI-MATCH-011');
+    if (task?.type !== 'match') throw new Error('SCI-MATCH-011 is not a match task');
+    const id = 'SCI-MATCH-011';
+    const score = (selectedMatches: Record<string, string>) => recomputeScore({ runnerId: 'kiur-science', learner: 'kiur', subject: 'loodusopetus', topic: 'segatud', category: 'Loodusõpetus', difficulty: 'normal', generatorVersion: 'fixed-dataset', seed: 1, questionIds: [id], questions: [{ id, type: 'match', selectedMatches }] }).score;
+    expect(new Set(Object.values(task.correctMatches)).size).toBe(task.terms.length);
+    expect(task.terms).not.toContain('taim');
+    expect(score(task.correctMatches)).toBe(1);
+    const [former] = FORMER_SCIENCE_MATCHES[id];
+    expect(score({ ...former })).toBe(1);
+    expect(score({ ...former, taim: former.tootja, tootja: former.taim })).toBe(0);
   });
 
   it('accepts a corrected English label and the label it replaced, nothing else', () => {

@@ -222,7 +222,7 @@
     "topic": "maailmaruum",
     "difficulty": "easy",
     "title": "Noorkuu",
-    "prompt": "Milline kujutis näitab noorkuud?",
+    "prompt": "Kuu faasid on noorkuu, esimene veerand, täiskuu ja viimane veerand. Milline kujutis näitab noorkuud?",
     "choices": [
       {
         "id": "A",
@@ -243,13 +243,13 @@
     ],
     "correctAnswer": "B",
     "correctAnswerText": "🌑",
-    "explanation": "Noorkuu ajal on Maalt nähtav Kuu külg peaaegu tume. Kuu ise ei kao ära, aga valgustatud osa ei paista meile.",
+    "explanation": "Noorkuu ajal on Kuu Maa ja Päikese vahel ning Maa poole jääb tema valgustamata külg, seega paistab Kuu tumedana. Mõne päeva pärast näeme õhtutaevas kitsast kasvavat sirpi 🌒.",
     "tags": [
       "maailmaruum",
       "diagramm"
     ],
     "diagram": "🌑   🌒   🌓   🌕",
-    "diagramExplanation": "Noorkuu on tume ketas. See on lihtsustatud sümbol Kuu faasi õppimiseks."
+    "diagramExplanation": "Rida algab noorkuuga (tume ketas), siis tuleb kasvav sirp, esimene veerand ja täiskuu. See on lihtsustatud sümbol Kuu faasi õppimiseks."
   },
   {
     "id": "SCI-VIS-008",
@@ -3735,27 +3735,27 @@
     "type": "match",
     "topic": "elusloodus",
     "difficulty": "easy",
-    "title": "Taim, loom ja lagundaja",
+    "title": "Toiduahela osad",
     "prompt": "Ühenda mõiste õige seletusega.",
     "terms": [
-      "taim",
-      "loom",
-      "lagundaja",
-      "tootja"
+      "tootja",
+      "taimetoiduline loom",
+      "kiskja",
+      "lagundaja"
     ],
     "definitions": [
-      "Organism, mis saab valguse abil endale toitu valmistada.",
-      "Organism, kes saab energiat teisi organisme või nende osi süües.",
-      "Organism, kes valmistab ise toitu; toiduahelas sageli taim.",
+      "Organism, mis valmistab ise valguse abil toitu; toiduahela algus.",
+      "Loom, kes sööb taimi või nende osi.",
+      "Loom, kes püüab ja sööb teisi loomi.",
       "Organism, mis lagundab surnud jäänuseid."
     ],
     "correctMatches": {
-      "taim": "Organism, mis saab valguse abil endale toitu valmistada.",
-      "loom": "Organism, kes saab energiat teisi organisme või nende osi süües.",
-      "lagundaja": "Organism, mis lagundab surnud jäänuseid.",
-      "tootja": "Organism, kes valmistab ise toitu; toiduahelas sageli taim."
+      "tootja": "Organism, mis valmistab ise valguse abil toitu; toiduahela algus.",
+      "taimetoiduline loom": "Loom, kes sööb taimi või nende osi.",
+      "kiskja": "Loom, kes püüab ja sööb teisi loomi.",
+      "lagundaja": "Organism, mis lagundab surnud jäänuseid."
     },
-    "explanation": "Toiduahelates on tootjad, tarbijad ja lagundajad.",
+    "explanation": "Toiduahel algab tootjast (taimest). Taimetoiduline loom sööb taimi, kiskja sööb teisi loomi ja lagundaja lagundab surnud jäänuseid.",
     "tags": [
       "elusloodus",
       "mõisted"

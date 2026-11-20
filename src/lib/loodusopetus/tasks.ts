@@ -11,6 +11,19 @@ export const LOODUSOPETUS_TASKS: ScienceTask[] = dataset.tasks;
 
 const TASKS_BY_ID = new Map(LOODUSOPETUS_TASKS.map((task) => [task.id, task]));
 
+// The answer key a match task carried before its terms were rewritten
+// (2026-11-20: «taim» and «tootja» had interchangeable definitions). A phone
+// can still upload a run made with the old wording; the score verifier accepts
+// the key that run was shown, so a right answer then never turns wrong now.
+export const FORMER_SCIENCE_MATCHES: Readonly<Record<string, ReadonlyArray<Readonly<Record<string, string>>>>> = {
+  'SCI-MATCH-011': [{
+    taim: 'Organism, mis saab valguse abil endale toitu valmistada.',
+    loom: 'Organism, kes saab energiat teisi organisme või nende osi süües.',
+    lagundaja: 'Organism, mis lagundab surnud jäänuseid.',
+    tootja: 'Organism, kes valmistab ise toitu; toiduahelas sageli taim.'
+  }]
+};
+
 // The dataset is the contract for a science task: anything replaying a saved
 // answer (score verification, Kordamine) looks the task up by id here rather
 // than trusting a copy of the question that travelled with the answer.
