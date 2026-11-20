@@ -1,6 +1,7 @@
 import db from '@/lib/db';
 import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
 import { isFairFirstSoundDistractor, KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
+import { generateSiblingQuestion, hasSiblingGenerator, questionContentKey } from '@/lib/exercises/siblingQuestion';
 import { KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { isoToAppDate } from '@/lib/appDate';
 import { exerciseKeyForAttempt, getStudyReward } from '@/lib/learningPoints';
@@ -24,8 +25,13 @@ import { isFigureLabelling } from '@/lib/visualLabels';
 export { REMEDIATION_RENDERER_TYPES } from '@/lib/shared/remediationQuestion';
 export type { RemediationQuestion, RemediationRendererType } from '@/lib/shared/remediationQuestion';
 
+// At most this many questions a round; fewer when the open mistakes cannot
+// fill it without asking the same question twice.
 export const REMEDIATION_QUESTION_COUNT = 15;
-export const REMEDIATION_MIN_OPEN_MISTAKES = 10;
+export const REMEDIATION_MIN_OPEN_MISTAKES = 5;
+// A mistake clears after this many right answers on different app days; one
+// lucky answer the same afternoon used to clear it for good.
+export const REMEDIATION_CORRECT_DAYS_TO_CLEAR = 2;
 
 type SavedQuestion = {
   id?: string;
@@ -67,6 +73,9 @@ type PromptSnapshot = RemediationQuestion & {
   exerciseKey: string;
   wrongAnswerLabel: string;
   originalQuestionData: SavedQuestion;
+  // Where the question came from, so Kordamine can ask a sibling with new
+  // numbers from the same generator. Absent in mistakes captured before.
+  source?: { learner: Learner; subject: string; topic: string; category: string };
 };
 
 type MistakeRow = {
@@ -81,6 +90,8 @@ type MistakeRow = {
   lastWrongAnswerSnapshot: string | null;
   wrongCount: number;
   reviewWrongCount: number;
+  reviewCorrectCount: number;
+  lastCorrectReviewDate: string | null;
   firstWrongAt: string;
   lastWrongAt: string;
   lastReviewedAt: string | null;
@@ -347,7 +358,8 @@ function buildSnapshot(input: SnapshotInput): PromptSnapshot | null {
     promptVisualKnownDegrees: input.question.visualKnownDegrees,
     promptVisualLabels: isFigureLabelling(input.question.visualLabels) ? input.question.visualLabels : undefined,
     choices,
-    originalQuestionData: input.question
+    originalQuestionData: input.question,
+    source: { learner: input.learner, subject: input.subject, topic: input.topic, category: input.category }
   };
 }
 
@@ -391,6 +403,8 @@ export function captureMistakesForAttempt(input: {
           promptSnapshotJson = excluded.promptSnapshotJson,
           lastWrongAnswerSnapshot = excluded.lastWrongAnswerSnapshot,
           wrongCount = wrongCount + 1,
+          reviewCorrectCount = 0,
+          lastCorrectReviewDate = NULL,
           lastWrongAt = excluded.lastWrongAt,
           resolvedAt = NULL,
           resolvedByAttemptId = NULL,
@@ -477,8 +491,12 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
   const snapshot = parseSnapshot(row.promptSnapshotJson);
   if (!snapshot) return null;
   repairLegacyComparison(snapshot);
-  const seed = row.id * 997 + position * 37;
-  if (snapshot.rendererType === 'science_choice') return scienceQuestionForSnapshot(snapshot, row.id, sessionItemId, seed);
+  return questionForSnapshot(snapshot, row.id, position, sessionItemId);
+}
+
+function questionForSnapshot(snapshot: PromptSnapshot, mistakeId: number, position: number, sessionItemId = 0): RemediationQuestion | null {
+  const seed = mistakeId * 997 + position * 37;
+  if (snapshot.rendererType === 'science_choice') return scienceQuestionForSnapshot(snapshot, mistakeId, sessionItemId, seed);
   const choices = !hasChoiceList(snapshot.rendererType) ? undefined : choicesWithDistractors(snapshot, seed, snapshot.rendererType === 'initial_sound' ? 3 : 5);
   const original = snapshot.originalQuestionData ?? {};
   const promptText = snapshot.rendererType === 'initial_sound'
@@ -498,7 +516,7 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
   if (rawVisual !== undefined && !isQuestionVisual(rawVisual)) return null;
   return {
     sessionItemId,
-    mistakeId: row.id,
+    mistakeId,
     rendererType: snapshot.rendererType,
     promptText,
     promptImage,
@@ -525,32 +543,86 @@ function questionForMistake(row: MistakeRow, position: number, sessionItemId = 0
 // Explicit return type: `db` is untyped (better-sqlite3 ships no types here),
 // so db.transaction() would otherwise widen the whole session to `any` at every
 // call site, including the API route.
+// A sibling of a generated question: same template, new numbers (see
+// siblingQuestion.ts), rendered like a freshly captured mistake. Null when the
+// mistake has no generator, predates stored sources, or no new question comes.
+function siblingQuestionFor(row: MistakeRow, position: number, avoid: ReadonlySet<string>): { question: RemediationQuestion; key: string } | null {
+  const snapshot = parseSnapshot(row.promptSnapshotJson);
+  const source = snapshot?.source;
+  if (!snapshot || !source || source.subject !== 'matemaatika' || snapshot.rendererType === 'math_text_answer') return null;
+  if (!hasSiblingGenerator(source)) return null;
+  const original = snapshot.originalQuestionData;
+  if (!original?.question) return null;
+  const generated = generateSiblingQuestion({
+    learner: source.learner, topic: source.topic, category: source.category,
+    question: original as Parameters<typeof generateSiblingQuestion>[0]['question']
+  }, row.id * 131 + position * 17 + Date.parse(nowIso()) % 100_000, avoid);
+  if (!generated) return null;
+  const correct = correctLabel(generated as SavedQuestion);
+  const siblingSnapshot = buildSnapshot({
+    learner: source.learner, subject: source.subject, topic: source.topic, category: source.category,
+    // Captured as if answered wrong with the right answer, so no stale wrong
+    // option of the original is carried into the new question.
+    question: { ...(generated as SavedQuestion), isCorrect: false, userAnswer: correct },
+    questionIndex: 0
+  });
+  if (!siblingSnapshot || siblingSnapshot.rendererType !== snapshot.rendererType) return null;
+  const question = questionForSnapshot(siblingSnapshot, row.id, position);
+  return question ? { question, key: questionContentKey(generated) } : null;
+}
+
+// Each open mistake once: a generated one as a sibling with new numbers, a
+// fixed one as it was. Rounds are topped up to REMEDIATION_QUESTION_COUNT with
+// further siblings, never with a question already in the round.
+function planRemediationRound(openRows: MistakeRow[]) {
+  const planned: Array<{ row: MistakeRow; question: RemediationQuestion }> = [];
+  const used = new Set<string>();
+  const usedReplay = new Set<number>();
+  for (const row of openRows) {
+    if (planned.length >= REMEDIATION_QUESTION_COUNT) break;
+    const sibling = siblingQuestionFor(row, planned.length, used);
+    if (sibling) {
+      used.add(sibling.key);
+      planned.push({ row, question: sibling.question });
+      continue;
+    }
+    const replay = questionForMistake(row, planned.length);
+    if (!replay) continue;
+    usedReplay.add(row.id);
+    planned.push({ row, question: replay });
+  }
+  for (let pass = 0; pass < 3 && planned.length < REMEDIATION_QUESTION_COUNT; pass += 1) {
+    for (const row of openRows) {
+      if (planned.length >= REMEDIATION_QUESTION_COUNT) break;
+      if (usedReplay.has(row.id)) continue;
+      const sibling = siblingQuestionFor(row, planned.length, used);
+      if (!sibling) continue;
+      used.add(sibling.key);
+      planned.push({ row, question: sibling.question });
+    }
+  }
+  return planned;
+}
+
 export function startRemediationSession(learner: Learner): { sessionId: number; questions: RemediationQuestion[] } {
   const openRows = openRenderableMistakes(learner);
   if (openRows.length < REMEDIATION_MIN_OPEN_MISTAKES) {
-    throw new Error('Kordamine avaneb siis, kui kogunenud on 10 asja.');
+    throw new Error(`Kordamine avaneb siis, kui kogunenud on ${REMEDIATION_MIN_OPEN_MISTAKES} asja.`);
   }
 
-  const selected = openRows.slice(0, REMEDIATION_QUESTION_COUNT);
-  let repeatIndex = 0;
-  while (selected.length < REMEDIATION_QUESTION_COUNT) {
-    selected.push(openRows[repeatIndex % openRows.length]);
-    repeatIndex += 1;
-  }
+  const planned = planRemediationRound(openRows);
+  if (!planned.length) throw new Error('Harjutust ei saanud alustada.');
 
   const createdAt = nowIso();
   const tx = db.transaction(() => {
     const session = db.prepare(`
       INSERT INTO remediation_sessions (learner, startedAt, questionCount, metadataJson)
       VALUES (?, ?, ?, ?)
-    `).run(learner, createdAt, REMEDIATION_QUESTION_COUNT, JSON.stringify({ openMistakeCount: openRows.length }));
+    `).run(learner, createdAt, planned.length, JSON.stringify({ openMistakeCount: openRows.length }));
     const sessionId = Number(session.lastInsertRowid);
     const questions: RemediationQuestion[] = [];
 
-    selected.forEach((row, index) => {
-      // Unreachable: openRenderableMistakes() already proved every row renders.
-      const question = questionForMistake(row, index);
-      if (!question) throw new Error('Harjutust ei saanud alustada.');
+    planned.forEach(({ row, question }, index) => {
       const item = db.prepare(`
         INSERT INTO remediation_session_items (sessionId, mistakeId, position, renderedQuestionJson)
         VALUES (?, ?, ?, ?)
@@ -596,11 +668,14 @@ export function submitRemediationSession(input: {
     if (session.completedAt && session.historyAttemptId) {
       // A retry never settles anything again: it reports the reward the first
       // submission recorded, from whichever engine settled it.
-      return { historyAttemptId: session.historyAttemptId, score: session.score ?? 0, questionCount: REMEDIATION_QUESTION_COUNT, reward: savedRemediationReward(session.historyAttemptId), resolvedCount: 0 };
+      const stored = db.prepare('SELECT questionCount FROM attempts WHERE id = ?').get(session.historyAttemptId) as { questionCount: number } | undefined;
+      return { historyAttemptId: session.historyAttemptId, score: session.score ?? 0, questionCount: stored?.questionCount ?? REMEDIATION_QUESTION_COUNT, reward: savedRemediationReward(session.historyAttemptId), resolvedCount: 0 };
     }
 
     const items = db.prepare('SELECT * FROM remediation_session_items WHERE sessionId = ? ORDER BY position ASC').all(input.sessionId) as SessionItemRow[];
-    if (items.length !== REMEDIATION_QUESTION_COUNT) throw new Error('Kordamine ei ole valmis.');
+    // Rounds made before variable length always had REMEDIATION_QUESTION_COUNT.
+    const roundLength = (db.prepare('SELECT questionCount FROM remediation_sessions WHERE id = ?').get(input.sessionId) as { questionCount: number | null } | undefined)?.questionCount ?? REMEDIATION_QUESTION_COUNT;
+    if (!items.length || items.length !== roundLength) throw new Error('Kordamine ei ole valmis.');
     const answerMap = new Map(input.answers.map((answer) => [answer.sessionItemId, String(answer.answer ?? '')]));
     const answeredAt = nowIso();
     const latestByMistake = new Map<number, { allCorrect: boolean; anyWrong: boolean }>();
@@ -646,25 +721,40 @@ export function submitRemediationSession(input: {
     const attemptId = insertRemediationAttemptV2({
       learner: input.learner,
       sessionId: input.sessionId,
+      questionCount: items.length,
       createdAt,
       score,
       elapsedSeconds: Math.max(0, Math.floor(input.elapsedSeconds || 0)),
       questionsJson: JSON.stringify(historyQuestions)
     });
 
+    // Spaced: a right answer counts once per app day; the second day with a
+    // right answer clears the mistake. A wrong answer starts the count again.
+    const reviewDay = remediationCompletionDate(createdAt);
     let resolvedCount = 0;
     for (const [mistakeId, state] of latestByMistake.entries()) {
       if (state.allCorrect) {
-        const result = db.prepare(`
-          UPDATE mistake_pool
-          SET status = 'resolved', resolvedAt = ?, resolvedByAttemptId = ?, lastReviewedAt = ?, updatedAt = ?
-          WHERE id = ?
-        `).run(createdAt, attemptId, createdAt, createdAt, mistakeId);
-        if (result.changes > 0) resolvedCount += 1;
+        const row = db.prepare('SELECT reviewCorrectCount, lastCorrectReviewDate FROM mistake_pool WHERE id = ?').get(mistakeId) as { reviewCorrectCount: number; lastCorrectReviewDate: string | null } | undefined;
+        if (!row) continue;
+        const days = row.lastCorrectReviewDate === reviewDay ? row.reviewCorrectCount : row.reviewCorrectCount + 1;
+        if (days >= REMEDIATION_CORRECT_DAYS_TO_CLEAR) {
+          const result = db.prepare(`
+            UPDATE mistake_pool
+            SET status = 'resolved', reviewCorrectCount = ?, lastCorrectReviewDate = ?, resolvedAt = ?, resolvedByAttemptId = ?, lastReviewedAt = ?, updatedAt = ?
+            WHERE id = ?
+          `).run(days, reviewDay, createdAt, attemptId, createdAt, createdAt, mistakeId);
+          if (result.changes > 0) resolvedCount += 1;
+        } else {
+          db.prepare(`
+            UPDATE mistake_pool
+            SET reviewCorrectCount = ?, lastCorrectReviewDate = ?, lastReviewedAt = ?, updatedAt = ?
+            WHERE id = ?
+          `).run(days, reviewDay, createdAt, createdAt, mistakeId);
+        }
       } else if (state.anyWrong) {
         db.prepare(`
           UPDATE mistake_pool
-          SET status = 'open', reviewWrongCount = reviewWrongCount + 1, lastReviewedAt = ?, lastWrongAt = ?, updatedAt = ?
+          SET status = 'open', reviewWrongCount = reviewWrongCount + 1, reviewCorrectCount = 0, lastCorrectReviewDate = NULL, lastReviewedAt = ?, lastWrongAt = ?, updatedAt = ?
           WHERE id = ?
         `).run(createdAt, createdAt, createdAt, mistakeId);
       }
@@ -685,7 +775,7 @@ export function submitRemediationSession(input: {
     recordDailyLeaderboard(remediationCompletionDate(createdAt));
     const reward = remediationRewardV2(attemptId);
     db.prepare('UPDATE remediation_sessions SET earnedStars = ? WHERE id = ?').run(reward?.awardedAmount ?? 0, input.sessionId);
-    return { historyAttemptId: attemptId, score, questionCount: REMEDIATION_QUESTION_COUNT, reward, resolvedCount };
+    return { historyAttemptId: attemptId, score, questionCount: items.length, reward, resolvedCount };
   });
 
   return tx();
@@ -720,6 +810,7 @@ function remediationCompletionDate(createdAt: string) {
 function insertRemediationAttemptV2(input: {
   learner: Learner;
   sessionId: number;
+  questionCount: number;
   createdAt: string;
   score: number;
   elapsedSeconds: number;
@@ -738,7 +829,7 @@ function insertRemediationAttemptV2(input: {
       rewardPolicyVersion, rewardEngineVersion, runnerId, protocolVersion, rewardSettlementStatus
     ) VALUES (?, 'Kordamine', 'Tavaline', ?, ?, ?, ?, ?, 'kordamine', 'kordamine', ?, ?, ?, ?, ?, ?, ?, ?, 'ok', 0, ?, ?, ?, 2, 'eligible')
   `).run(
-    at, REMEDIATION_QUESTION_COUNT, input.score, input.elapsedSeconds, input.questionsJson,
+    at, input.questionCount, input.score, input.elapsedSeconds, input.questionsJson,
     input.learner, remediationExerciseId(input.learner),
     `remediation:${input.sessionId}`, at, at, at,
     at, at, remediationCompletionDate(at),
