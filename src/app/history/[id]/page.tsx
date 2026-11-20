@@ -147,7 +147,7 @@ export default async function HistoryDetail({ params }: { params: Promise<{ id: 
 
   const retryHref = isRemediation
     ? (row.learner === 'kirsi' ? '/kirsi' : '/kiur')
-    : isEnglish && row.topic === 'sonavara'
+    : isEnglish && (row.topic === 'sonavara' || row.topic === 'lisatest')
     ? '/kiur/inglise-keel'
     : isEnglish
     ? '/kiur/inglise-keel/sprint'

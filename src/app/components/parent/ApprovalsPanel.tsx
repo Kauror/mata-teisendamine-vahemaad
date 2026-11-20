@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { approvalMeta, learnerLabel } from './format';
 import { failureMessage, jsonInit } from './parentApi';
 import type { Dashboard, HeldReward, OfflineTaskReview } from './types';
@@ -8,6 +9,11 @@ import { useParentApi, useParentResource } from './useParentApi';
 const heldFrom = (body: unknown) => {
   const held = (body as { held?: unknown } | null)?.held;
   return Array.isArray(held) ? held as HeldReward[] : [];
+};
+type PendingUnitTest = { id: string; learner: 'kiur' | 'kirsi'; unitLabel: string; variant: string; submittedAt: string; submissions: number; autoScore: { unmarked: number } };
+const unitTestsFrom = (body: unknown) => {
+  const pending = (body as { pending?: unknown } | null)?.pending;
+  return Array.isArray(pending) ? pending as PendingUnitTest[] : [];
 };
 const reviewsFrom = (body: unknown) => {
   const reviews = (body as { reviews?: unknown } | null)?.reviews;
@@ -22,6 +28,8 @@ export function ApprovalsPanel() {
   const { data: dashboard } = useParentResource<Dashboard>('dashboard');
   const { data: heldRewards } = useParentResource('heldRewards', heldFrom);
   const { data: offlineTaskReviews } = useParentResource('taskReviews', reviewsFrom);
+  const { data: unitTestData } = useParentResource('unitTests', unitTestsFrom);
+  const unitTests = unitTestData ?? [];
   const pendingApprovals = dashboard?.pendingApprovals ?? [];
   const held = heldRewards ?? [];
   const reviews = offlineTaskReviews ?? [];
@@ -62,7 +70,7 @@ export function ApprovalsPanel() {
     api.bus.after('taskReview');
   });
 
-  const total = pendingApprovals.length + reviews.length + held.length;
+  const total = pendingApprovals.length + reviews.length + held.length + unitTests.length;
 
   return (
     <section className='pv-card pv-asks' aria-label='Vajab sinu otsust'>
@@ -78,6 +86,25 @@ export function ApprovalsPanel() {
           <div className='pv-btns'>
             <button type='button' className='pv-btn' data-k='ok' onClick={() => resolveApproval(item.assignmentId, 'approve')}>Kinnita</button>
             <button type='button' className='pv-btn' data-k='no' onClick={() => resolveApproval(item.assignmentId, 'reject')}>Lükka tagasi</button>
+          </div>
+        </div>
+      ))}
+
+      {/* An English unit test (lisatest) handed in: the parent marks the open
+          answers, checks the automatic marks and approves or sends it back. */}
+      {unitTests.map((item) => (
+        <div key={`u-${item.id}`} className='pv-ask'>
+          <div className='pv-ask-line'>
+            <span>
+              {learnerLabel(item.learner)} · Lisatest: {item.unitLabel} ({item.variant})
+              <small>
+                {item.submissions > 1 ? 'Parandatud test' : 'Ära antud'} · {item.submittedAt.slice(0, 10)}
+                {item.autoScore.unmarked > 0 ? ` · ${item.autoScore.unmarked} vastust vajab sinu hinnangut` : ''}
+              </small>
+            </span>
+          </div>
+          <div className='pv-btns'>
+            <Link className='pv-btn' data-k='ok' href={`/vanem/lisatest/${item.id}`}>Vaata üle</Link>
           </div>
         </div>
       ))}

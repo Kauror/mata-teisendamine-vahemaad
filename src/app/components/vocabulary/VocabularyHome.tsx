@@ -43,12 +43,24 @@ function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boo
       { href: `${base}/test`, label: card.activeTestSessionId ? 'Jätka testi' : 'Tee test uuesti' }
     );
   }
+  // The workbook test (lisatest) opens once the words test is passed.
+  const unitTest = card.unitTest;
+  if (unitTest) {
+    const lisatest = `${base}/lisatest`;
+    const view = unitTest.attemptId ? `${lisatest}?katse=${encodeURIComponent(unitTest.attemptId)}` : lisatest;
+    if (unitTest.state === 'available') actions.unshift({ href: lisatest, label: 'Tee lisatest', primary: true });
+    if (unitTest.state === 'in_progress') actions.unshift({ href: lisatest, label: 'Jätka lisatesti', primary: true });
+    if (unitTest.state === 'returned') actions.unshift({ href: lisatest, label: 'Paranda lisatest', primary: true });
+    if (unitTest.state === 'retake') actions.unshift({ href: lisatest, label: 'Tee lisatest uuesti', primary: true });
+    if (unitTest.state === 'submitted') actions.push({ href: view, label: 'Lisatest ootab vanemat' });
+    if (unitTest.state === 'passed') actions.push({ href: view, label: `Lisatest: hinne ${unitTest.grade ?? ''}`.trim() });
+  }
   if (card.weakCount > 0 && card.status !== 'locked') {
     actions.push({ href: `${VOCAB_HOME_ROUTE}/korda?unit=${encodeURIComponent(card.id)}`, label: 'Korda eksitud sõnu' });
   }
 
   return (
-    <article className='vocab-unit-card' data-status={card.status} data-compact={card.status === 'passed' || card.status === 'locked'} aria-labelledby={`unit-${card.id}`}>
+    <article className='vocab-unit-card' data-status={card.status} data-compact={(card.status === 'passed' && !actions.some((action) => action.primary)) || card.status === 'locked'} aria-labelledby={`unit-${card.id}`}>
       <div className='vocab-unit-head'>
         <h2 id={`unit-${card.id}`}>{card.label}</h2>
         <span className='vocab-unit-status'>{STATUS_LABEL[card.status]}</span>

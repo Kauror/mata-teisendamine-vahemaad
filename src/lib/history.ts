@@ -140,6 +140,7 @@ export function compactTopicLabel(topic?: string | null, category?: string | nul
   if (topic === 'harjutamine') return 'Harjutamine';
   if (topic === 'sprint') return 'Sprint';
   if (topic === 'sonavara') return 'Sõnavara';
+  if (topic === 'lisatest') return 'Lisatest';
   if (topic === 'loe-ja-vasta') return 'Loe ja vasta';
   if (topic === 'pilt-ja-sona') return 'Pilt ja sõna';
   if (topic === 'esimene-haalik') return 'Esimene häälik';
