@@ -11,6 +11,8 @@ import { navigateStable } from './navigation';
 
 const ON_OPEN = [
   '/api/parent/dashboard',
+  // The approvals card also lists handed-in English unit tests (lisatestid).
+  '/api/parent/english-unit-tests',
   '/api/parent/held-rewards',
   '/api/parent/kaardimang/competition',
   '/api/parent/monthly-prize',
