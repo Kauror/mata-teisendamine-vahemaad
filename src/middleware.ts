@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { APP_ACCESS_COOKIE, PARENT_SESSION_COOKIE } from '@/lib/auth/constants';
-import { hasExactOrigin, verifySession } from '@/lib/auth/session';
+import { APP_ACCESS_COOKIE, APP_CSRF_COOKIE, FAMILY_SESSION_MAX_AGE_SECONDS, PARENT_SESSION_COOKIE } from '@/lib/auth/constants';
+import {
+  DEVICE_BINDING_COOKIE,
+  DEVICE_BINDING_REFRESH_SECONDS,
+  deviceBindingCookieOptions,
+  redirectForBoundDevice,
+  signDeviceBinding,
+  verifyDeviceBindingToken
+} from '@/lib/auth/deviceBinding';
+import { hasExactOrigin, isLegacyFamilySession, issueSession, verifySession, type SignedSession } from '@/lib/auth/session';
 import { isChildWritePath, isPeekReadOnlyRequest, PARENT_PEEK_COOKIE, PARENT_PEEK_COOKIE_VALUE, PARENT_PEEK_MAX_AGE_SECONDS, PEEK_READ_ONLY_ACTION_MESSAGE, PEEK_READ_ONLY_CODE } from '@/lib/peekMode';
 
 function isPublicPath(pathname: string) {
@@ -40,6 +48,42 @@ async function applyParentPeekCookie(request: NextRequest, response: NextRespons
     maxAge: parent ? PARENT_PEEK_MAX_AGE_SECONDS : 0
   });
   return response;
+}
+
+// Family sessions issued before the family epoch existed are re-signed with
+// the current epoch (same CSRF token, same expiry), so they become revocable by
+// a PIN change without asking any child for the PIN again.
+async function upgradeLegacyFamilySession(session: SignedSession, response: NextResponse) {
+  if (!isLegacyFamilySession(session)) return response;
+  const remaining = session.expiresAt - Math.floor(Date.now() / 1000);
+  if (remaining <= 0) return response;
+  const upgraded = await issueSession('family', {
+    maxAgeSeconds: Math.min(remaining, FAMILY_SESSION_MAX_AGE_SECONDS),
+    expiresAt: session.expiresAt,
+    csrf: session.csrf
+  });
+  const options = { sameSite: 'strict' as const, secure: process.env.NODE_ENV === 'production', path: '/', maxAge: remaining };
+  response.cookies.set(APP_ACCESS_COOKIE, upgraded.token, { ...options, httpOnly: true });
+  response.cookies.set(APP_CSRF_COOKIE, session.csrf, { ...options, httpOnly: false });
+  return response;
+}
+
+// Each phone remembers its child (src/lib/auth/deviceBinding.ts): a page of
+// the other child redirects to this device's own child, and the binding cookie
+// is re-signed now and then so it never reaches the browsers' 400-day cap.
+async function applyDeviceBinding(request: NextRequest): Promise<{ redirect: string | null; refresh: string | null }> {
+  if (request.method !== 'GET' || request.nextUrl.pathname.startsWith('/api/')) return { redirect: null, refresh: null };
+  const bound = await verifyDeviceBindingToken(request.cookies.get(DEVICE_BINDING_COOKIE)?.value);
+  if (!bound) return { redirect: null, refresh: null };
+  const stale = Math.floor(Date.now() / 1000) - bound.issuedAt > DEVICE_BINDING_REFRESH_SECONDS;
+  // Only a real navigation is redirected. The service worker precaches both
+  // children's pages with fetch() (Sec-Fetch-Dest: empty), and a redirect there
+  // would fail its install and take offline use away from the bound phone.
+  const navigation = request.headers.get('sec-fetch-dest') === 'document';
+  return {
+    redirect: navigation ? redirectForBoundDevice(request.nextUrl.pathname, bound.binding) : null,
+    refresh: stale ? await signDeviceBinding(bound.binding) : null
+  };
 }
 
 function requiresFamilyCsrf(pathname: string) {
@@ -86,7 +130,16 @@ export async function middleware(req: NextRequest) {
       return NextResponse.json({ code: PEEK_READ_ONLY_CODE, message: PEEK_READ_ONLY_ACTION_MESSAGE }, { status: 403 });
     }
   }
-  return withBuildId(req, await applyParentPeekCookie(req, NextResponse.next()));
+  const device = await applyDeviceBinding(req);
+  if (device.redirect) {
+    const url = req.nextUrl.clone();
+    url.pathname = device.redirect;
+    url.search = '';
+    return upgradeLegacyFamilySession(session, NextResponse.redirect(url));
+  }
+  const response = withBuildId(req, await applyParentPeekCookie(req, NextResponse.next()));
+  if (device.refresh) response.cookies.set(DEVICE_BINDING_COOKIE, device.refresh, deviceBindingCookieOptions());
+  return upgradeLegacyFamilySession(session, response);
 }
 
 // Inlined at build time (scripts/build-app.mjs sets it to the same id as

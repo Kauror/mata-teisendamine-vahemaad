@@ -10,6 +10,7 @@ import {
   parentAuthVersion,
   parentSessionMatchesCurrentVersion,
   replaceParentPasswordHash,
+  revokeParentSession,
   storedParentPasswordHash
 } from '@/lib/auth/parentState';
 
@@ -103,6 +104,10 @@ export async function setParentSession() {
 
 export async function clearParentSession() {
   const jar = await cookies();
+  // Logout must end the session, not only delete this browser's copy: a
+  // copied cookie would otherwise stay valid for up to 12 hours.
+  const payload = await verifySession(jar.get(PARENT_SESSION_COOKIE)?.value, 'parent');
+  if (payload) revokeParentSession(db, payload);
   for (const name of [PARENT_SESSION_COOKIE, PARENT_CSRF_COOKIE]) {
     jar.set(name, '', {
       httpOnly: name === PARENT_SESSION_COOKIE,
