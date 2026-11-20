@@ -10,7 +10,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
-  if (!validAttemptId(id)) return NextResponse.json({ code: 'not_found', message: 'Lisatesti ei leitud.' }, { status: 404 });
+  if (!validAttemptId(id)) return NextResponse.json({ code: 'not_found', message: 'Kontrolltööd ei leitud.' }, { status: 404 });
   try {
     return NextResponse.json(getChildAttempt(VOCAB_LEARNER, id));
   } catch (error) {
@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 // Saves the answers; with `submit: true` hands the test in for the parent.
 export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
-  if (!validAttemptId(id)) return NextResponse.json({ code: 'not_found', message: 'Lisatesti ei leitud.' }, { status: 404 });
+  if (!validAttemptId(id)) return NextResponse.json({ code: 'not_found', message: 'Kontrolltööd ei leitud.' }, { status: 404 });
   const body = await req.json().catch(() => ({})) as { revision?: unknown; answers?: unknown; submit?: unknown };
   try {
     return NextResponse.json(saveUnitTestAnswers(VOCAB_LEARNER, id, { revision: body.revision, answers: body.answers, submit: body.submit === true }));

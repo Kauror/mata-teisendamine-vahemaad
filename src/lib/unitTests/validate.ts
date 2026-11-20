@@ -175,9 +175,9 @@ function exercise(ctx: Ctx, raw: unknown, index: number, seen: Set<string>): Uni
 
 export function parseUnitTestContent(raw: unknown): UnitTestContent {
   const ctx: Ctx = { problems: [] };
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new UnitTestContentError(['Fail ei ole lisatesti fail.']);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new UnitTestContentError(['Fail ei ole kontrolltöö fail.']);
   const record = raw as Record<string, unknown>;
-  if (record.format !== UNIT_TEST_FORMAT) throw new UnitTestContentError([`Fail ei ole lisatesti fail (format peab olema ${UNIT_TEST_FORMAT}).`]);
+  if (record.format !== UNIT_TEST_FORMAT) throw new UnitTestContentError([`Fail ei ole kontrolltöö fail (format peab olema ${UNIT_TEST_FORMAT}).`]);
   const unit = record.unit;
   if (typeof unit !== 'number' || !Number.isInteger(unit) || unit < 1 || unit > 999) ctx.problems.push('Õppetüki number peab olema 1–999.');
   const variant = record.variant;

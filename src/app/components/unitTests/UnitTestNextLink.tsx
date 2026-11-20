@@ -23,8 +23,8 @@ export function UnitTestNextLink({ unitId }: { unitId: string }) {
   if (state !== 'available' && state !== 'in_progress' && state !== 'returned' && state !== 'retake') return null;
   return (
     <div className='ut-next' role='status'>
-      <p><strong>Nüüd on avatud lisatest.</strong> See on õpiku test selle õppetüki kohta. Osa vastuseid vaatab üle vanem.</p>
-      <Link className='start-button vocab-start-link' href={`${VOCAB_HOME_ROUTE}/${unitId}/lisatest`}>{state === 'in_progress' ? 'Jätka lisatesti' : state === 'returned' ? 'Paranda lisatest' : 'Tee lisatest'}</Link>
+      <p><strong>Nüüd on avatud kontrolltöö.</strong> See on õpiku kontrolltöö selle õppetüki kohta. Osa vastuseid vaatab üle vanem.</p>
+      <Link className='start-button vocab-start-link' href={`${VOCAB_HOME_ROUTE}/${unitId}/lisatest`}>{state === 'in_progress' ? 'Jätka kontrolltööd' : state === 'returned' ? 'Paranda kontrolltöö' : 'Tee kontrolltöö'}</Link>
     </div>
   );
 }

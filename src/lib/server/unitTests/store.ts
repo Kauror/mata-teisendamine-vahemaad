@@ -20,7 +20,7 @@ import { parseUnitTestContent, UnitTestContentError } from '@/lib/unitTests/vali
 // never changes an answered test. See docs/english-unit-tests.md.
 
 export const UNIT_TEST_TOPIC = 'lisatest';
-export const UNIT_TEST_CATEGORY = 'Inglise keel - lisatest';
+export const UNIT_TEST_CATEGORY = 'Inglise keel - kontrolltöö';
 export const UNIT_TEST_RUNNER_ID = 'kiur-english-unit-test';
 export const UNIT_TEST_RUNNER_VERSION = 'english-unit-test-v1';
 export const UNIT_TEST_GENERATOR_VERSION = 'english-unit-test-2026-11';
@@ -176,7 +176,7 @@ export function listVariants(): ParentVariantSummary[] {
 
 function variantRow(unitNumber: number, variant: string) {
   const row = db.prepare('SELECT * FROM english_unit_test_variants WHERE unitNumber = ? AND variant = ?').get(unitNumber, variant) as VariantRow | undefined;
-  if (!row) throw new UnitTestNotFoundError('Lisatesti ei leitud.');
+  if (!row) throw new UnitTestNotFoundError('Kontrolltööd ei leitud.');
   return row;
 }
 
@@ -327,7 +327,7 @@ function childView(row: AttemptRow): ChildAttemptView {
 
 function attemptFor(learner: Learner, attemptId: string) {
   const row = db.prepare('SELECT * FROM english_unit_test_attempts WHERE id = ? AND learner = ?').get(attemptId, learner) as AttemptRow | undefined;
-  if (!row) throw new UnitTestNotFoundError('Lisatesti ei leitud.');
+  if (!row) throw new UnitTestNotFoundError('Kontrolltööd ei leitud.');
   return row;
 }
 
@@ -346,10 +346,10 @@ export function startOrResumeUnitTest(learner: Learner, unitId: string): ChildAt
     if (!hasActiveLearningExercise(learner, VOCAB_EXERCISE_ID)) throw new UnitTestForbiddenError('Sõnavara ei ole praegu avatud.');
     const access = unitAccessFor(learner).get(unitId);
     if (!access?.accessible) throw new UnitTestForbiddenError('See õppetükk ei ole veel avatud.');
-    if (!progressRows(learner).get(unitId)?.testPassedAt) throw new UnitTestForbiddenError('Lisatest avaneb, kui sõnade test on läbitud.');
-    if (hasPassed(learner, unitId)) throw new UnitTestConflictError('Selle õppetüki lisatest on juba sooritatud.');
+    if (!progressRows(learner).get(unitId)?.testPassedAt) throw new UnitTestForbiddenError('Kontrolltöö avaneb, kui sõnade test on läbitud.');
+    if (hasPassed(learner, unitId)) throw new UnitTestConflictError('Selle õppetüki kontrolltöö on juba sooritatud.');
     const variants = activeVariants(unit.unitNumber);
-    if (variants.length === 0) throw new UnitTestForbiddenError('Sellel õppetükil ei ole lisatesti.');
+    if (variants.length === 0) throw new UnitTestForbiddenError('Sellel õppetükil ei ole kontrolltööd.');
     const picked = variants[randomInt(variants.length)];
     const content = contentOf(picked);
     const now = nowIso();
@@ -380,8 +380,8 @@ function cleanAnswers(input: unknown, allowed: Set<string>): Answers {
 export function saveUnitTestAnswers(learner: Learner, attemptId: string, input: { revision: unknown; answers: unknown; submit: boolean }): ChildAttemptView {
   return db.transaction(() => {
     const row = attemptFor(learner, attemptId);
-    if (row.status !== 'in_progress' && row.status !== 'returned') throw new UnitTestStaleError('Test on juba ära antud.', childView(row));
-    if (input.revision !== row.revision) throw new UnitTestStaleError('Test on vahepeal muutunud.', childView(row));
+    if (row.status !== 'in_progress' && row.status !== 'returned') throw new UnitTestStaleError('Kontrolltöö on juba ära antud.', childView(row));
+    if (input.revision !== row.revision) throw new UnitTestStaleError('Kontrolltöö on vahepeal muutunud.', childView(row));
     const content = contentOf(row);
     const slots = buildSlots(content);
     const previous = parseJson<Answers>(row.answersJson, {});
@@ -458,7 +458,7 @@ export type ParentReview = {
 
 export function getParentReview(attemptId: string): ParentReview {
   const row = db.prepare('SELECT * FROM english_unit_test_attempts WHERE id = ?').get(attemptId) as AttemptRow | undefined;
-  if (!row) throw new UnitTestNotFoundError('Lisatesti ei leitud.');
+  if (!row) throw new UnitTestNotFoundError('Kontrolltööd ei leitud.');
   const content = contentOf(row);
   const slots = buildSlots(content);
   const answers = parseJson<Answers>(row.answersJson, {});
@@ -551,9 +551,9 @@ function cleanMarks(input: unknown, slots: AnswerSlot[]): Marks {
 export function reviewUnitTest(attemptId: string, input: { revision?: unknown; marks?: unknown; comment?: unknown; decision?: unknown }): ParentReview {
   return db.transaction(() => {
     const row = db.prepare('SELECT * FROM english_unit_test_attempts WHERE id = ?').get(attemptId) as AttemptRow | undefined;
-    if (!row) throw new UnitTestNotFoundError('Lisatesti ei leitud.');
-    if (row.status !== 'submitted') throw new UnitTestStaleError('Seda testi ei saa praegu hinnata.', getParentReview(attemptId));
-    if (input.revision !== row.revision) throw new UnitTestStaleError('Test on vahepeal muutunud.', getParentReview(attemptId));
+    if (!row) throw new UnitTestNotFoundError('Kontrolltööd ei leitud.');
+    if (row.status !== 'submitted') throw new UnitTestStaleError('Seda kontrolltööd ei saa praegu hinnata.', getParentReview(attemptId));
+    if (input.revision !== row.revision) throw new UnitTestStaleError('Kontrolltöö on vahepeal muutunud.', getParentReview(attemptId));
     const decision = input.decision;
     if (decision !== 'save' && decision !== 'approve' && decision !== 'return') throw new UnitTestValidationError('Vale otsus.');
     const content = contentOf(row);

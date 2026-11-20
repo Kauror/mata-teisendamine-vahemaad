@@ -58,9 +58,9 @@ export function ParentUnitTestReview({ attemptId }: { attemptId: string }) {
     void parentFetch(`/api/parent/english-unit-tests/${encodeURIComponent(attemptId)}`, { cache: 'no-store' })
       .then(async (response) => {
         if (response.ok) accept(await response.json() as ParentReview);
-        else setError(await failureMessage(response, 'Testi ei saanud avada.'));
+        else setError(await failureMessage(response, 'Kontrolltööd ei saanud avada.'));
       })
-      .catch(() => setError('Testi ei saanud avada. Kontrolli internetiühendust.'));
+      .catch(() => setError('Kontrolltööd ei saanud avada. Kontrolli internetiühendust.'));
   }, [accept, attemptId]);
 
   const slotsByKey = useMemo(() => new Map((review?.slots ?? []).map((slot) => [slot.key, slot])), [review]);
@@ -87,7 +87,7 @@ export function ParentUnitTestReview({ attemptId }: { attemptId: string }) {
       .then(async (response) => {
         if (response.ok) {
           accept(await response.json() as ParentReview);
-          setNotice(decision === 'approve' ? 'Test on kinnitatud.' : decision === 'return' ? 'Test saadeti parandamiseks.' : 'Salvestatud.');
+          setNotice(decision === 'approve' ? 'Kontrolltöö on kinnitatud.' : decision === 'return' ? 'Kontrolltöö saadeti parandamiseks.' : 'Salvestatud.');
           return;
         }
         const body = await response.clone().json().catch(() => ({})) as { state?: ParentReview };
@@ -102,21 +102,21 @@ export function ParentUnitTestReview({ attemptId }: { attemptId: string }) {
     return (
       <main className='parent-page ut-parent-page'>
         <Link className='pv-home' href={BACK}>← Vanema ala</Link>
-        {error ? <p className='parent-toast parent-toast-error' role='alert'>{error}</p> : <p className='vocab-loading'>Laadin testi…</p>}
+        {error ? <p className='parent-toast parent-toast-error' role='alert'>{error}</p> : <p className='vocab-loading'>Laadin kontrolltööd…</p>}
       </main>
     );
   }
 
   const open = review.status === 'submitted';
   const learner = review.learner === 'kiur' ? 'Kiur' : 'Kirsi';
-  const statusText = review.status === 'submitted' ? 'Ootab sinu hinnangut' : review.status === 'returned' ? 'Saadetud parandamiseks' : review.status === 'approved' ? 'Kinnitatud' : 'Laps teeb testi';
+  const statusText = review.status === 'submitted' ? 'Ootab sinu hinnangut' : review.status === 'returned' ? 'Saadetud parandamiseks' : review.status === 'approved' ? 'Kinnitatud' : 'Laps teeb kontrolltööd';
   const wrongCount = review.slots.filter((slot) => marks[slot.key] !== 1).length;
 
   return (
     <main className='parent-page ut-parent-page' data-only-issues={onlyIssues && open ? 'true' : undefined}>
       <Link className='pv-home' href={BACK}>← Vanema ala</Link>
       <header className='ut-parent-head'>
-        <h1>{learner} · Lisatest: {review.unitLabel}</h1>
+        <h1>{learner} · Kontrolltöö: {review.unitLabel}</h1>
         <p>Variant {review.variant} · „{review.title}” · {statusText}{review.submissions > 1 ? ` · ${review.submissions}. esitamine` : ''}</p>
       </header>
 
@@ -184,9 +184,9 @@ export function ParentUnitTestPreview({ unit, variant }: { unit: number; variant
     void parentFetch(`/api/parent/english-unit-tests?unit=${unit}&variant=${variant}`, { cache: 'no-store' })
       .then(async (response) => {
         if (response.ok) setData(await response.json());
-        else setError(await failureMessage(response, 'Testi ei saanud avada.'));
+        else setError(await failureMessage(response, 'Kontrolltööd ei saanud avada.'));
       })
-      .catch(() => setError('Testi ei saanud avada.'));
+      .catch(() => setError('Kontrolltööd ei saanud avada.'));
   }, [unit, variant]);
   const slots = useMemo(() => new Map((data?.slots ?? []).map((slot) => [slot.key, slot])), [data]);
   return (
@@ -196,7 +196,7 @@ export function ParentUnitTestPreview({ unit, variant }: { unit: number; variant
       {data ? (
         <>
           <header className='ut-parent-head'>
-            <h1>Lisatesti eelvaade: Unit {unit}{variant}</h1>
+            <h1>Kontrolltöö eelvaade: Unit {unit}{variant}</h1>
             <p>„{data.test.title}” · {data.slots.length} hinnatavat vastust · {data.active ? 'lapsele avatud' : 'välja lülitatud'}</p>
           </header>
           <UnitTestSheet test={data.test} answers={{}} editable={NO_EDIT} slotExtra={(key) => {

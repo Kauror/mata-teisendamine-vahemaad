@@ -1,4 +1,4 @@
-# English unit tests (Lisatestid)
+# English unit tests (Kontrolltööd; internally "lisatest")
 
 These are the workbook tests ("I Love English", Test N A/B) that follow a
 vocabulary unit's words test. Kaur's decisions (20.11.2026):

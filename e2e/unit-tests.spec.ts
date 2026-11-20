@@ -112,7 +112,7 @@ test('parent imports a unit test, Kiur answers and hands it in, parent approves'
 
   // The parent imports the test in Halda → Õppesisu.
   await page.getByRole('button', { name: 'Õppesisu', exact: true }).click();
-  await page.getByRole('button', { name: /Inglise keele lisatestid/ }).click();
+  await page.getByRole('button', { name: /Inglise keele kontrolltööd/ }).click();
   await page.locator('input[type="file"][accept*=".json"]').setInputFiles({ name: `unit${unitNumber}-A.json`, mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(data), 'utf8') });
   await expect(page.locator('.ut-report')).toContainText(`Unit ${unitNumber}A`);
 
@@ -120,8 +120,8 @@ test('parent imports a unit test, Kiur answers and hands it in, parent approves'
   await page.context().addCookies([{ name: 'harjutaja_peek_off', value: '1', url: new URL(page.url()).origin }]);
   await page.setViewportSize({ width: 360, height: 800 });
   await navigateStable(page, '/kiur/inglise-keel');
-  await page.getByRole('link', { name: 'Tee lisatest' }).first().click();
-  await expect(page.getByRole('heading', { name: new RegExp(`Lisatest: ${data.title}`) })).toBeVisible();
+  await page.getByRole('link', { name: 'Tee kontrolltöö' }).first().click();
+  await expect(page.getByRole('heading', { name: new RegExp(`Kontrolltöö: ${data.title}`) })).toBeVisible();
   await shot(page, `${browserName}-1-child-empty`);
   await answerAll(page, data);
   await expect(page.getByText('✓ Salvestatud')).toBeVisible({ timeout: 10_000 });
@@ -131,15 +131,15 @@ test('parent imports a unit test, Kiur answers and hands it in, parent approves'
   await page.reload();
   await expect(page.locator('.ut-option[aria-pressed="true"]').first()).toBeVisible();
 
-  await page.getByRole('button', { name: 'Anna test ära' }).click();
+  await page.getByRole('button', { name: 'Anna kontrolltöö ära' }).click();
   await page.getByRole('button', { name: 'Jah, annan ära' }).click();
-  await expect(page.getByText('Test on ära antud.')).toBeVisible();
+  await expect(page.getByText('Kontrolltöö on ära antud.')).toBeVisible();
 
   // The parent finds it on Täna, marks what is open and approves.
   await page.context().clearCookies({ name: 'harjutaja_peek_off' });
   await navigateStable(page, '/vanem');
   await page.locator('.pv-ask').filter({ hasText: `Unit ${unitNumber}` }).getByRole('link', { name: 'Vaata üle' }).click();
-  await expect(page.getByRole('heading', { name: /Lisatest: Unit/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Kontrolltöö: Unit/ })).toBeVisible();
   // "Only what to check" hides every answer already marked right.
   const allBars = await page.locator('.ut-markbar').count();
   await page.getByRole('button', { name: /Näita ainult/ }).click();
@@ -150,12 +150,12 @@ test('parent imports a unit test, Kiur answers and hands it in, parent approves'
   }
   await shot(page, `${browserName}-3-parent-review`);
   await page.getByRole('button', { name: /^Kinnita/ }).click();
-  await expect(page.getByText('Test on kinnitatud.')).toBeVisible();
+  await expect(page.getByText('Kontrolltöö on kinnitatud.')).toBeVisible();
 
   // Kiur sees the grade.
   await page.context().addCookies([{ name: 'harjutaja_peek_off', value: '1', url: new URL(page.url()).origin }]);
   await navigateStable(page, '/kiur/inglise-keel');
-  await page.getByRole('link', { name: /Lisatest: hinne 5/ }).first().click();
+  await page.getByRole('link', { name: /Kontrolltöö: hinne 5/ }).first().click();
   await expect(page.locator('.ut-grade strong')).toHaveText('5');
   await shot(page, `${browserName}-4-child-graded`);
 });

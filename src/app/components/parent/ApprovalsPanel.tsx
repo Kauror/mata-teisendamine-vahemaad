@@ -96,7 +96,7 @@ export function ApprovalsPanel() {
         <div key={`u-${item.id}`} className='pv-ask'>
           <div className='pv-ask-line'>
             <span>
-              {learnerLabel(item.learner)} · Lisatest: {item.unitLabel} ({item.variant})
+              {learnerLabel(item.learner)} · Kontrolltöö: {item.unitLabel} ({item.variant})
               <small>
                 {item.submissions > 1 ? 'Parandatud test' : 'Ära antud'} · {item.submittedAt.slice(0, 10)}
                 {item.autoScore.unmarked > 0 ? ` · ${item.autoScore.unmarked} vastust vajab sinu hinnangut` : ''}

@@ -11,7 +11,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   if (!await hasParentSession()) return NextResponse.json({ message: 'Ligipääs puudub.' }, { status: 401 });
   const { id } = await params;
-  if (!validAttemptId(id)) return NextResponse.json({ message: 'Lisatesti ei leitud.' }, { status: 404 });
+  if (!validAttemptId(id)) return NextResponse.json({ message: 'Kontrolltööd ei leitud.' }, { status: 404 });
   try {
     return NextResponse.json(getParentReview(id));
   } catch (error) {
@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   if (!await hasParentSession()) return NextResponse.json({ message: 'Ligipääs puudub.' }, { status: 401 });
   const { id } = await params;
-  if (!validAttemptId(id)) return NextResponse.json({ message: 'Lisatesti ei leitud.' }, { status: 404 });
+  if (!validAttemptId(id)) return NextResponse.json({ message: 'Kontrolltööd ei leitud.' }, { status: 404 });
   const body = await req.json().catch(() => ({})) as { revision?: unknown; marks?: unknown; comment?: unknown; decision?: unknown };
   try {
     return NextResponse.json(reviewUnitTest(id, body));
