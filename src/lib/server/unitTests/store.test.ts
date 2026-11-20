@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import db from '@/lib/db';
 import { updateChildLearningExerciseStatus } from '@/lib/learningExercises';
 import { updateLearningPointSettings } from '@/lib/learningPoints';
 import { getBalance } from '@/lib/tasks';
+import { ensureCurrentRewardPolicy } from '@/lib/server/rewards/policy';
+import { applyRewardProjectionV2 } from '@/lib/server/rewards/projection';
 import { VOCAB_EXERCISE_ID } from '@/lib/vocabulary/constants';
 import { addWord, createUnit, updateUnit } from '@/lib/server/vocabulary/units';
 import { getChildVocabularyHome } from '@/lib/server/vocabulary/overview';
@@ -178,5 +180,43 @@ describe('unit test flow', () => {
     importUnitTests([{ name: 'a.json', data: changed }]);
     expect(startOrResumeUnitTest(LEARNER, u.id).test.title).toBe('Sample');
     expect(view.test.title).toBe('Sample');
+  });
+});
+
+// B6: the kontrolltöö counts on the day the child handed it in, not on the day
+// the parent happens to approve it, so the approval day's daily cap cannot
+// zero it and its streak day is the child's.
+describe('unit test star day', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('dates the approved attempt by the child\'s hand-in day', () => {
+    updateLearningPointSettings({ baseValue: 1, decayStep: 0.1, minimumValue: 0, dailyCap: 1, streakIntervalDays: 7, streakBonusAmount: 0, learningPointsEnabled: true, streakBonusEnabled: false });
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-18T15:00:00.000Z'));
+    const u = unit(3);
+    importUnitTests([{ name: 'a.json', data: sampleUnitTest(3, 'A') }]);
+    passWordsTest(u.id);
+    let view = startOrResumeUnitTest(LEARNER, u.id);
+    view = saveUnitTestAnswers(LEARNER, view.id, { revision: view.revision, answers: { ...RIGHT, '2.2.0': 'I go to school.' }, submit: true });
+
+    // Next day the child fills that day's cap with another exercise...
+    vi.setSystemTime(new Date('2026-11-19T09:00:00.000Z'));
+    const policy = ensureCurrentRewardPolicy();
+    const other = Number(db.prepare(`
+      INSERT INTO attempts (createdAt, category, difficulty, questionCount, score, elapsedSeconds, questions, learner, subject, topic,
+        exerciseId, runnerId, clientAttemptId, completedAt, effectiveCompletedAt, completionDate, rewardPolicyVersion, protocolVersion, rewardSettlementStatus)
+      VALUES (?, 'Lugemine', 'Lihtne', 5, 5, 60, '[]', ?, 'lugemine', 'loe-ja-vasta', 'kiur.reading.loe-ja-vasta', 'kiur-reading', 'b6-other', ?, ?, '2026-11-19', ?, 2, 'eligible')
+    `).run('2026-11-19T09:00:00.000Z', LEARNER, '2026-11-19T09:00:00.000Z', '2026-11-19T09:00:00.000Z', policy.version).lastInsertRowid);
+    applyRewardProjectionV2(LEARNER, other);
+    expect(getBalance(LEARNER)).toBe(1);
+
+    // ...and the parent approves the test only in the evening.
+    vi.setSystemTime(new Date('2026-11-19T18:00:00.000Z'));
+    let review = getParentReview(view.id);
+    review = reviewUnitTest(view.id, { revision: review.revision, marks: Object.fromEntries(review.slots.map((slot) => [slot.key, slot.mark ?? 1])), comment: '', decision: 'approve' });
+    expect(review.stars).toBe(1);
+    expect(getBalance(LEARNER)).toBe(2);
+    const attempt = db.prepare('SELECT completionDate, effectiveCompletedAt FROM attempts WHERE clientAttemptId = ?').get(`unit-test:${view.id}`);
+    expect(attempt).toEqual({ completionDate: '2026-11-18', effectiveCompletedAt: '2026-11-18T15:00:00.000Z' });
   });
 });

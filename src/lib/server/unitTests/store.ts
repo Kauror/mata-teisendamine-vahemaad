@@ -502,7 +502,13 @@ function insertApprovedAttempt(row: AttemptRow, slots: ParentReviewSlot[], score
     isCorrect: slot.mark === 1,
     kind: 'text' as const
   }));
-  const completionDate = isoToAppDate(now) ?? now.slice(0, 10);
+  // The test counts on the day the child handed it in (B6), not on the day the
+  // parent approves it: otherwise the approval day's daily cap could zero it
+  // and its streak day would be the parent's. The projection orders attempts
+  // by completion date and time over the whole history, so a back-dated
+  // attempt settles in its own day like a late offline attempt does.
+  const completedAt = row.submittedAt && Number.isFinite(Date.parse(row.submittedAt)) && row.submittedAt <= now ? row.submittedAt : now;
+  const completionDate = isoToAppDate(completedAt) ?? completedAt.slice(0, 10);
   const permitted = hasActiveLearningExercise(row.learner, VOCAB_EXERCISE_ID);
   const policy = ensureCurrentRewardPolicy();
   const elapsed = Math.max(0, Math.round((Date.parse(row.submittedAt ?? now) - Date.parse(row.startedAt)) / 1000));
@@ -518,8 +524,8 @@ function insertApprovedAttempt(row: AttemptRow, slots: ParentReviewSlot[], score
   `).run(
     now, UNIT_TEST_CATEGORY, Math.round(score.total), Math.round(score.earned), Math.min(elapsed, 4 * 3600), JSON.stringify(questions),
     row.learner, VOCAB_SUBJECT, UNIT_TEST_TOPIC, VOCAB_EXERCISE_ID,
-    clientAttemptId, row.startedAt, now, now, now,
-    now, now, completionDate,
+    clientAttemptId, row.startedAt, completedAt, completedAt, now,
+    completedAt, completedAt, completionDate,
     policy.version, REWARD_ENGINE_VERSION, UNIT_TEST_GENERATOR_VERSION, UNIT_TEST_RUNNER_ID, UNIT_TEST_RUNNER_VERSION,
     `${row.unitNumber}${row.variant}`, JSON.stringify(slots.map((slot) => slot.key)),
     permitted ? 'eligible' : 'withheld', permitted ? null : 'not_permitted'
