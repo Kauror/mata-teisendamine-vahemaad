@@ -12,7 +12,7 @@ export const unit19: Unit = {
     "to": 73
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.1",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u19-o1",
@@ -1586,7 +1586,7 @@ export const unit19: Unit = {
           },
           {
             "id": "p2",
-            "text": "Võetakse kivim maakoore alt."
+            "text": "Puuritakse maakoorde sügav auk ja võetakse kivimiproove."
           },
           {
             "id": "p3",
@@ -3128,7 +3128,7 @@ export const unit19: Unit = {
           },
           {
             "id": "i4",
-            "text": "See koosneb ainult õhust"
+            "text": "See on täiesti vedel kuum magma, mis vabalt loksub"
           }
         ],
         "correctOptionId": "i1"
@@ -3555,7 +3555,7 @@ export const unit19: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Kõrge temperatuuri ja suure rõhu tõttu"
+            "text": "Sest seal on kõrge temperatuur ja suur rõhk"
           },
           {
             "id": "i2",
@@ -3856,7 +3856,7 @@ export const unit19: Unit = {
         "options": [
           {
             "id": "i1",
-            "text": "Seal on tohutu rõhk"
+            "text": "Sest seal on tohutu rõhk"
           },
           {
             "id": "i2",
@@ -3902,15 +3902,15 @@ export const unit19: Unit = {
           },
           {
             "id": "i2",
-            "text": "Umbes 6 °C"
+            "text": "Umbes 600 °C"
           },
           {
             "id": "i3",
-            "text": "Umbes 40 °C"
+            "text": "Kuni umbes 60 000 °C"
           },
           {
             "id": "i4",
-            "text": "Umbes −20 °C"
+            "text": "Umbes 100 °C"
           }
         ],
         "correctOptionId": "i1"
@@ -4478,7 +4478,7 @@ export const unit19: Unit = {
           },
           {
             "id": "i2",
-            "text": "Pilve liikumiseks"
+            "text": "Maa sisemuses oleva vedela magma kihiks"
           },
           {
             "id": "i3",
@@ -5283,7 +5283,7 @@ export const unit19: Unit = {
           },
           {
             "id": "i4",
-            "text": "Kuu jõuab Maa sisse"
+            "text": "Laamad on nii kerged, et tuul ja lained neid raputavad"
           }
         ],
         "correctOptionId": "i1"

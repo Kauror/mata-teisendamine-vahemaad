@@ -16,7 +16,7 @@ export const unit20: Unit = {
     "to": 77
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.2",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u20-o1",
@@ -1671,7 +1671,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o4",
-            "text": "Vulkaanist eemal olev jõgi"
+            "text": "Vulkaani all asuv suur sula kivimi hoidla"
           }
         ],
         "correctOptionId": "o1"
@@ -1747,7 +1747,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o2",
-            "text": "Allikast pärit puhas veeaur"
+            "text": "Vulkaani kohale tekkinud tavaline vihmapilv"
           },
           {
             "id": "o3",
@@ -2569,7 +2569,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o4",
-            "text": "Tuhk on alati vesi"
+            "text": "Tuhk tekib pilvedes ja langeb siis vulkaanile"
           }
         ],
         "correctOptionId": "o3"
@@ -3151,7 +3151,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o2",
-            "text": "Riigipiirid tõmbavad magmat"
+            "text": "Laamade piiridel on maakoor kõige paksem ja tugevam"
           },
           {
             "id": "o3",
@@ -3554,7 +3554,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o4",
-            "text": "Jah, vulkaanid esinevad ainult Eestis"
+            "text": "Ei, sest vulkaanid tekivad ainult ookeani keskel"
           }
         ],
         "correctOptionId": "o2"
@@ -3725,7 +3725,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o4",
-            "text": "Pildil on vana kivim"
+            "text": "Mäe nõlval kasvab mets ja tipus on lund"
           }
         ],
         "correctOptionId": "o2"
@@ -4047,7 +4047,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o4",
-            "text": "Jah, kui foto on tehtud päeval"
+            "text": "Ei, aga kaks vaikset fotot järjest tõestavad seda"
           }
         ],
         "correctOptionId": "o1"
@@ -4585,7 +4585,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o4",
-            "text": "Tuhk puhastab automaatselt õhu"
+            "text": "Tuhk on raske ja kukub alati kohe vulkaani lähedale maha"
           }
         ],
         "correctOptionId": "o2"
@@ -4671,11 +4671,11 @@ export const unit20: Unit = {
           },
           {
             "id": "o3",
-            "text": "Sest purse peab alati olema täpselt kell 12"
+            "text": "Sest purse algab alati täpselt kell kaksteist"
           },
           {
             "id": "o4",
-            "text": "Ohud võivad areneda kiiresti ja piirkonda jäämine on ohtlik"
+            "text": "Sest ohud võivad kiiresti areneda ja piirkonda jäämine on ohtlik"
           }
         ],
         "correctOptionId": "o4"
@@ -5135,7 +5135,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o4",
-            "text": "Jah, laava on alati savimuld"
+            "text": "Ei, aga piisab, kui laava on üheks ööks jahtunud"
           }
         ],
         "correctOptionId": "o1"
@@ -5303,7 +5303,7 @@ export const unit20: Unit = {
         "options": [
           {
             "id": "o1",
-            "text": "Kivim peab jahtuma ja aja jooksul murenduma"
+            "text": "Sest kivim peab jahtuma ja aja jooksul murenema"
           },
           {
             "id": "o2",
@@ -5796,7 +5796,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o4",
-            "text": "Viljakas muld tõrjub laava alati tagasi"
+            "text": "Viljaka mulla tõttu on vulkaani lähedal elamine alati ohutu"
           }
         ],
         "correctOptionId": "o3"
@@ -5830,7 +5830,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o2",
-            "text": "Tavaline külm jõgi"
+            "text": "Külm allikas, mille vesi voolab ühtlaselt välja"
           },
           {
             "id": "o3",
@@ -5880,7 +5880,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o4",
-            "text": "Maas peituv rauakivi"
+            "text": "Järv, mille vett soojendab ainult päike"
           }
         ],
         "correctOptionId": "o1"
@@ -6044,7 +6044,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o3",
-            "text": "Geisris pole vett"
+            "text": "Geiser ja vulkaan on sama asi, ainult eri suurusega"
           },
           {
             "id": "o4",
@@ -6694,7 +6694,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o3",
-            "text": "Vulkaani fotokaamera marki"
+            "text": "Mitu turisti vulkaani juures sel päeval käis"
           },
           {
             "id": "o4",
@@ -6736,7 +6736,7 @@ export const unit20: Unit = {
           },
           {
             "id": "o3",
-            "text": "Minna tuhapilve alla mängima"
+            "text": "Avada kõik aknad, et tuhk saaks toast välja tuulduda"
           },
           {
             "id": "o4",
@@ -6821,11 +6821,11 @@ export const unit20: Unit = {
           },
           {
             "id": "o2",
-            "text": "Sest seal pole üldse vett"
+            "text": "Sest geiser saab vett ainult siis, kui vihma sajab"
           },
           {
             "id": "o3",
-            "text": "Maa-aluses kanalis võib vee ja auru rõhk koguneda"
+            "text": "Sest vee ja auru rõhk peab maa-aluses kanalis enne kogunema"
           },
           {
             "id": "o4",

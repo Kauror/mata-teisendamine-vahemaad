@@ -70,7 +70,7 @@ describe('shipped content', () => {
 
   it('Unit 12 "Kaart": ready, publishable without warnings, all six answer types, 20-question tests buildable', () => {
     const unit12 = loodusopetusOpikCourse.units.find((unit) => unit.number === 12)!;
-    expect(unit12).toMatchObject({ id: 'lo-opik-u12', status: 'ready', contentVersion: '2026-10-17.1', pages: { from: 50, to: 53 } });
+    expect(unit12).toMatchObject({ id: 'lo-opik-u12', status: 'ready', contentVersion: '2026-11-20.1', pages: { from: 50, to: 53 } });
     const result = validateUnit(unit12, loodusopetusOpikCourse, { imageExists: () => true });
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -94,9 +94,9 @@ describe('shipped content', () => {
     expect(JSON.stringify(unit12.questions.map((question) => question.id))).toMatch(/^[\x00-\x7f]*$/);
   });
 
-  it('Unit 13 "Kaardi mõõtkava" is ready and publishable without warnings, unpublished content version 2026-10-17.1', () => {
+  it('Unit 13 "Kaardi mõõtkava" is ready and publishable without warnings, unpublished content version 2026-11-20.1', () => {
     const unit13 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u13')!;
-    expect(unit13).toMatchObject({ number: 13, title: 'Kaardi mõõtkava', status: 'ready', contentVersion: '2026-10-17.1', pages: { from: 54, to: 57 } });
+    expect(unit13).toMatchObject({ number: 13, title: 'Kaardi mõõtkava', status: 'ready', contentVersion: '2026-11-20.1', pages: { from: 54, to: 57 } });
     const result = validateUnit(unit13, loodusopetusOpikCourse);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -112,7 +112,7 @@ describe('shipped content', () => {
 
   it('Unit 14 "Kaartide mitmekesisus" is ready and publishable without warnings (owner-reviewed package counts)', () => {
     const unit14 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u14')!;
-    expect(unit14).toMatchObject({ number: 14, status: 'ready', contentVersion: '2026-10-17.1', title: 'Kaartide mitmekesisus', pages: { from: 58, to: 59 } });
+    expect(unit14).toMatchObject({ number: 14, status: 'ready', contentVersion: '2026-11-20.1', title: 'Kaartide mitmekesisus', pages: { from: 58, to: 59 } });
     const result = validateUnit(unit14, loodusopetusOpikCourse);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -152,7 +152,7 @@ describe('shipped content', () => {
 
   it('Unit 15 "Mandrid ja maailmajaod" is ready and publishable without warnings (package counts)', () => {
     const unit15 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u15')!;
-    expect(unit15).toMatchObject({ number: 15, status: 'ready', contentVersion: '2026-10-17.1', title: 'Mandrid ja maailmajaod', pages: { from: 60, to: 63 } });
+    expect(unit15).toMatchObject({ number: 15, status: 'ready', contentVersion: '2026-11-20.1', title: 'Mandrid ja maailmajaod', pages: { from: 60, to: 63 } });
     const result = validateUnit(unit15, loodusopetusOpikCourse);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -192,7 +192,7 @@ describe('shipped content', () => {
 
   it('Unit 19 "Maakera siseehitus" is ready and publishable without warnings (package counts)', () => {
     const unit19 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u19')!;
-    expect(unit19).toMatchObject({ number: 19, status: 'ready', contentVersion: '2026-10-17.1', title: 'Maakera siseehitus', pages: { from: 70, to: 73 } });
+    expect(unit19).toMatchObject({ number: 19, status: 'ready', contentVersion: '2026-11-20.1', title: 'Maakera siseehitus', pages: { from: 70, to: 73 } });
     const result = validateUnit(unit19, loodusopetusOpikCourse);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -237,7 +237,7 @@ describe('shipped content', () => {
 
   it('Unit 18 "Euroopa kaart" is ready and publishable without warnings (package counts)', () => {
     const unit18 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u18')!;
-    expect(unit18).toMatchObject({ number: 18, status: 'ready', contentVersion: '2026-10-17.1', title: 'Euroopa kaart', pages: { from: 68, to: 69 } });
+    expect(unit18).toMatchObject({ number: 18, status: 'ready', contentVersion: '2026-11-20.1', title: 'Euroopa kaart', pages: { from: 68, to: 69 } });
     const result = validateUnit(unit18, loodusopetusOpikCourse);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -277,7 +277,7 @@ describe('shipped content', () => {
 
   it('Unit 17 "Eesti geograafiline asend" is ready and publishable without warnings (package counts)', () => {
     const unit17 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u17')!;
-    expect(unit17).toMatchObject({ number: 17, status: 'ready', contentVersion: '2026-10-17.1', title: 'Eesti geograafiline asend', pages: { from: 66, to: 67 } });
+    expect(unit17).toMatchObject({ number: 17, status: 'ready', contentVersion: '2026-11-20.1', title: 'Eesti geograafiline asend', pages: { from: 66, to: 67 } });
     const result = validateUnit(unit17, loodusopetusOpikCourse);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -317,7 +317,7 @@ describe('shipped content', () => {
 
   it('Unit 16 "Maailmameri" is ready and publishable without warnings (package counts)', () => {
     const unit16 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u16')!;
-    expect(unit16).toMatchObject({ number: 16, status: 'ready', contentVersion: '2026-10-17.2', title: 'Maailmameri', pages: { from: 64, to: 65 } });
+    expect(unit16).toMatchObject({ number: 16, status: 'ready', contentVersion: '2026-11-20.1', title: 'Maailmameri', pages: { from: 64, to: 65 } });
     const result = validateUnit(unit16, loodusopetusOpikCourse);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -362,7 +362,7 @@ describe('shipped content', () => {
 
   it('Unit 20 "Vulkaanid" is ready and publishable without warnings (package counts)', () => {
     const unit20 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u20')!;
-    expect(unit20).toMatchObject({ number: 20, status: 'ready', contentVersion: '2026-10-17.2', title: 'Vulkaanid', pages: { from: 74, to: 77 } });
+    expect(unit20).toMatchObject({ number: 20, status: 'ready', contentVersion: '2026-11-20.1', title: 'Vulkaanid', pages: { from: 74, to: 77 } });
     const result = validateUnit(unit20, loodusopetusOpikCourse);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -403,7 +403,7 @@ describe('shipped content', () => {
 
   it('Unit 21 "Maavärinad" is ready and publishable without warnings (package counts)', () => {
     const unit21 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u21')!;
-    expect(unit21).toMatchObject({ number: 21, status: 'ready', contentVersion: '2026-10-17.2', title: 'Maavärinad', pages: { from: 78, to: 81 } });
+    expect(unit21).toMatchObject({ number: 21, status: 'ready', contentVersion: '2026-11-20.1', title: 'Maavärinad', pages: { from: 78, to: 81 } });
     const result = validateUnit(unit21, loodusopetusOpikCourse);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -443,7 +443,7 @@ describe('shipped content', () => {
 
   it('Unit 22 "Loodusõnnetused" is ready and publishable without warnings (package counts)', () => {
     const unit22 = loodusopetusOpikCourse.units.find((unit) => unit.id === 'lo-opik-u22')!;
-    expect(unit22).toMatchObject({ number: 22, status: 'ready', contentVersion: '2026-10-17.2', title: 'Loodusõnnetused', pages: { from: 82, to: 83 } });
+    expect(unit22).toMatchObject({ number: 22, status: 'ready', contentVersion: '2026-11-20.1', title: 'Loodusõnnetused', pages: { from: 82, to: 83 } });
     // The chapter goes on after p 83; the note keeps that limit visible to the parent.
     expect(unit22.pages?.note).toMatch(/jätkub pärast lk 83/u);
     const result = validateUnit(unit22, loodusopetusOpikCourse);

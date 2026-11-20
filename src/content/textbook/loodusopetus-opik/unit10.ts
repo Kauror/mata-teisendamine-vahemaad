@@ -17,7 +17,7 @@ export const unit10: Unit = {
     "to": 47
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.1",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u10-o1",
@@ -1518,7 +1518,7 @@ export const unit10: Unit = {
           },
           {
             "id": "poord",
-            "text": "Kuu muutub ise mustaks kiviks."
+            "text": "Kuu läheb Päikese ja Maa vahele ning jääb ise varju."
           },
           {
             "id": "meri",
@@ -1941,7 +1941,7 @@ export const unit10: Unit = {
           },
           {
             "id": "viimane",
-            "text": "Silmapiir on viimane koht maailmas."
+            "text": "Silmapiir on koht, kus Maa pind tegelikult lõpeb."
           },
           {
             "id": "paike",
@@ -1983,7 +1983,7 @@ export const unit10: Unit = {
           },
           {
             "id": "liigub",
-            "text": "Laev peab enne serva õhku tõusma."
+            "text": "Silmapiiri taga on serv, aga laevad pööravad enne seda tagasi."
           },
           {
             "id": "peit",
@@ -2322,7 +2322,7 @@ export const unit10: Unit = {
           },
           {
             "id": "serv",
-            "text": "Laev on kindlasti jõudnud mere servani."
+            "text": "Laev on kindlasti jõudnud Maa servani ja pöörab nüüd tagasi."
           }
         ],
         "correctOptionId": "olemas"
@@ -2718,7 +2718,7 @@ export const unit10: Unit = {
           },
           {
             "id": "serv",
-            "text": "Reis leidis Maa serva."
+            "text": "Reis näitas, et Maa on lame ja ümmargune nagu taldrik."
           },
           {
             "id": "pilt",
