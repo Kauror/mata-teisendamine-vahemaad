@@ -2,7 +2,7 @@ import db, { stmt } from '@/lib/db';
 import { addAppDays } from '@/lib/appDate';
 import { getBalance, type Learner } from '@/lib/tasks';
 import { rebuildDailyLeaderboard, recordDailyLeaderboard } from '@/lib/leaderboard';
-import { REWARD_ENGINE_VERSION, rewardPolicyByVersion, type RewardPolicyV2 } from '@/lib/server/rewards/policy';
+import { REWARD_ENGINE_VERSION, rewardPolicyByVersion, studyValueFactor, type RewardPolicyV2 } from '@/lib/server/rewards/policy';
 import { emitAttemptChange } from '@/lib/offline/server/attemptChanges';
 import { sprintAttemptQualifies } from '@/lib/sprintReward';
 import { recomputeSprintQualifications } from '@/lib/sprintQualification';
@@ -73,7 +73,9 @@ export function projectCanonicalRewardsPure(
         sprintAttemptQualifies(attempt);
       const base = Math.max(policy.learning.minimumValue, policy.learning.baseValue - policy.learning.decayStep * (attemptNumber - 1));
       const remaining = Math.max(0, policy.learning.dailyCap - dailyAwarded);
-      const study = qualifies ? rounded(Math.min(base, remaining)) : 0;
+      // The score tier and session length scale the decayed value (policy
+      // versions without tiers give a factor of 1, as before).
+      const study = qualifies ? rounded(Math.min(base * studyValueFactor(policy, attempt), remaining)) : 0;
       dailyAwarded = rounded(dailyAwarded + study);
       if (qualifies) qualified.push(attempt);
       components.push({

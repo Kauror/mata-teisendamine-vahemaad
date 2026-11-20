@@ -15,7 +15,7 @@ import {
   type RemediationQuestion,
   type RemediationRendererType
 } from '@/lib/shared/remediationQuestion';
-import { ensureCurrentRewardPolicy, REWARD_ENGINE_VERSION, rewardPolicyByVersion } from '@/lib/server/rewards/policy';
+import { ensureCurrentRewardPolicy, REWARD_ENGINE_VERSION, rewardPolicyByVersion, studyValueFactor } from '@/lib/server/rewards/policy';
 import { applyRewardProjectionV2, getCanonicalRewardSummary } from '@/lib/server/rewards/projection';
 import { getBalance, Learner, nowIso } from '@/lib/tasks';
 import { isQuestionVisual } from '@/lib/types';
@@ -754,11 +754,11 @@ function remediationRewardV2(attemptId: number): RemediationReward | null {
   const summary = getCanonicalRewardSummary(attemptId);
   if (!summary) return null;
   const attempt = db.prepare(`
-    SELECT learner, score, questionCount, completionDate, rewardPolicyVersion, runnerId, exerciseId, effectiveCompletedAt
+    SELECT learner, score, questionCount, completionDate, rewardPolicyVersion, runnerId, exerciseId, effectiveCompletedAt, topic
     FROM attempts WHERE id = ?
   `).get(attemptId) as {
     learner: Learner; score: number; questionCount: number; completionDate: string; rewardPolicyVersion: string;
-    runnerId: string; exerciseId: string; effectiveCompletedAt: string;
+    runnerId: string; exerciseId: string; effectiveCompletedAt: string; topic: string | null;
   };
   const policy = rewardPolicyByVersion(attempt.rewardPolicyVersion);
   let capReached = false;
@@ -774,7 +774,8 @@ function remediationRewardV2(attemptId: number): RemediationReward | null {
     `).get(attempt.learner, attempt.completionDate, attempt.runnerId, attempt.exerciseId,
       attempt.effectiveCompletedAt, attempt.effectiveCompletedAt, attemptId) as { position: number };
     const base = Math.max(policy.learning.minimumValue, policy.learning.baseValue - policy.learning.decayStep * (Math.max(1, position) - 1));
-    capReached = summary.study < Math.round(base * 100) / 100;
+    // The score tier (B8) lowers the value on purpose; only the cap counts here.
+    capReached = summary.study < Math.round(base * studyValueFactor(policy, attempt) * 100) / 100;
   }
   return { awardedAmount: summary.total, balanceAfter: getBalance(attempt.learner), capReached };
 }
