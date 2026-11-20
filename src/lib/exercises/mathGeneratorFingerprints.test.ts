@@ -164,7 +164,7 @@ const FROZEN: Record<string, Record<string, string>> = {
 };
 
 describe('frozen maths generator versions', () => {
-  it.each([MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3, MATH_GENERATOR_VERSION_V4])('%s generates exactly what it generated', (version) => {
+  it.each<MathGeneratorVersion>([MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V3, MATH_GENERATOR_VERSION_V4])('%s generates exactly what it generated', (version) => {
     expect(fingerprintSessions(version)).toEqual(FROZEN[version]);
   }, 120_000);
 });

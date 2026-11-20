@@ -1,9 +1,9 @@
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { generateSession as generateLengthSession } from '@/lib/exercises/lengths';
 import { isKiurLengthTopic } from '@/lib/kiurMathTopics';
-import { kiurTextProblemPool, kiurTextProblemPoolV4 } from '@/lib/kiurTextProblems';
+import { kiurTextProblemPool, kiurTextProblemPoolV4, kiurTextProblemPoolV5 } from '@/lib/kiurTextProblems';
 import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
-import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V4, isMathGeneratorAtLeast, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V2, MATH_GENERATOR_VERSION_V4, MATH_GENERATOR_VERSION_V5, isMathGeneratorAtLeast, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 import { FIGURE_LETTERS } from '@/lib/visualLabels';
 
 const rInt = randomInt;
@@ -171,7 +171,7 @@ const PLACE_WEIGHT_MISTAKES: ReadonlyArray<readonly number[]> = (() => {
 // thousands gave two identical wrong options, and only the wrong options showed
 // «+ 0» terms. Here every option drops its zero terms, no wrong option sums to
 // the number, and no two options are the same.
-function placeValueSplitV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
+function placeValueSplitV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion, questionFor = (n: number) => `Milline on arvu ${n} õige lahutus?`): GeneratedQuestion {
   for (;;) {
     const n = rInt(rng, 1001, 9999);
     const digits = String(n).split('').map(Number);
@@ -189,7 +189,7 @@ function placeValueSplitV2(cat: TopicCategory, d: Difficulty, rng: RNG, i: numbe
       if (wrong.length === 2) break;
     }
     if (wrong.length < 2) continue;
-    return { id: `n9-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: `Milline on arvu ${n} õige lahutus?`, correctAnswer: 0, kind: 'choice', choiceOptions: [good, ...wrong], explanation: `Arvus ${n} on ${placeCount(t, 0, v)}, ${placeCount(s, 1, v)}, ${placeCount(k, 2, v)} ja ${placeCount(y, 3, v)}.` };
+    return { id: `n9-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud', question: questionFor(n), correctAnswer: 0, kind: 'choice', choiceOptions: [good, ...wrong], explanation: `Arvus ${n} on ${placeCount(t, 0, v)}, ${placeCount(s, 1, v)}, ${placeCount(k, 2, v)} ja ${placeCount(y, 3, v)}.` };
   }
 }
 
@@ -448,6 +448,366 @@ function circleQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: Math
   return { id: `cm-${i}`, category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon', question: `Ring on jagatud kaheks osaks. Värvitud osa on ${knownA}°. Kui suur on teine osa?`, correctAnswer: 360 - knownA, explanation: `Täisring on 360°. 360° − ${knownA}° = ${360 - knownA}°.`, visual: 'sector-missing', visualKnownDegrees: knownA };
 }
 
+// ---------------------------------------------------------------------------
+// Maths generator v5 (math-2026-11). Everything below is reached only from v5,
+// so the branches above keep generating exactly what v1-v4 generated.
+// ---------------------------------------------------------------------------
+
+const isV5 = (v: MathGeneratorVersion) => isMathGeneratorAtLeast(v, MATH_GENERATOR_VERSION_V5);
+
+// Quotient ranges per difficulty. Every dividend stays two-digit (10..99), the
+// topic «kahekohalise arvu jagamine ühekohalisega». Keskmine leaves out the
+// smallest table facts, Raske goes past the multiplication table.
+const V5_QUOTIENT: Record<Difficulty, readonly [number, number]> = { Lihtne: [2, 16], Keskmine: [6, 25], Raske: [11, 49] };
+// Splitting a division into two easier ones only means something past the
+// multiplication table: «Milline abitehe sobib arvutamiseks 20 : 5?» did not.
+const V5_SPLIT_CATS: ReadonlySet<TopicCategory> = new Set<TopicCategory>(['Jaga osadeks', 'Vali sobiv jaotus', 'Vali abitehe']);
+
+function divisionNumbersV5(rng: RNG, d: Difficulty, split: boolean) {
+  const [low, high] = V5_QUOTIENT[d];
+  for (;;) {
+    const divisor = rInt(rng, 2, 9);
+    const quotient = rInt(rng, split ? Math.max(11, low) : low, split ? Math.max(16, high) : high);
+    const dividend = divisor * quotient;
+    if (dividend >= 10 && dividend <= 99) return { dividend, divisor, quotient };
+  }
+}
+
+// The split a child is taught: whole tens of the divisor, then the rest
+// (72 : 6 = 60 : 6 + 12 : 6), or the dividend's own tens when both parts divide
+// (84 : 4 = 80 : 4 + 4 : 4).
+function goodSplitV5(dividend: number, divisor: number) {
+  const tens = Math.floor(dividend / 10) * 10;
+  if (tens % divisor === 0 && dividend - tens > 0) return tens;
+  return divisor * 10;
+}
+
+// Wrong splits that look like the right one: the parts still add up to the
+// dividend, but the first part does not divide (and so neither does the second).
+function wrongSplitsV5(rng: RNG, dividend: number, divisor: number, good: number) {
+  const tens = Math.floor(dividend / 10) * 10;
+  const candidates = [tens, good + 1, good - 1, good + 2, good - 2, good + 5, good - 5, good + 10, good - 10, 10, dividend - 10];
+  const usable = Array.from(new Set(candidates)).filter((a) => a > 0 && a < dividend && a !== good && a % divisor !== 0);
+  return shuffleWithRng(rng, usable).slice(0, 2);
+}
+
+const DIVISION_CONTAINERS = {
+  kott: { illative: 'kottidesse', inessive: 'kotis', partitive: 'kotti' },
+  karp: { illative: 'karpidesse', inessive: 'karbis', partitive: 'karpi' },
+  korv: { illative: 'korvidesse', inessive: 'korvis', partitive: 'korvi' },
+  virn: { illative: 'virnadesse', inessive: 'virnas', partitive: 'virna' }
+} as const;
+// Only containers a thing really goes into: no «palli pannakse virnadesse».
+const DIVISION_THINGS = [
+  { partitive: 'õuna', containers: ['kott', 'korv', 'karp'] },
+  { partitive: 'klotsi', containers: ['karp', 'virn', 'kott'] },
+  { partitive: 'palli', containers: ['korv', 'kott', 'karp'] },
+  { partitive: 'raamatut', containers: ['virn', 'karp', 'kott'] }
+] as const;
+
+function divisionQV5(cat: TopicCategory, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+  const { dividend, divisor, quotient } = divisionNumbersV5(rng, d, V5_SPLIT_CATS.has(cat));
+  const base = { category: cat as unknown as Category, difficulty: d, subtopic: 'kahekohalise-arvu-jagamine' };
+  const check = `${dividend} : ${divisor} = ${quotient}, sest ${quotient} × ${divisor} = ${dividend}.`;
+  const splitExplanation = (a: number) => `${a} : ${divisor} = ${a / divisor} ja ${dividend - a} : ${divisor} = ${(dividend - a) / divisor}. Kokku ${a / divisor} + ${(dividend - a) / divisor} = ${quotient}.`;
+
+  if (cat === 'Arvuta jagatis') return { ...base, id: `jd-${i}`, question: `Arvuta jagatis: ${dividend} : ${divisor} = ?`, correctAnswer: quotient, explanation: check };
+  if (cat === 'Jaga osadeks') {
+    const a = goodSplitV5(dividend, divisor);
+    return { ...base, id: `jo-${i}`, question: `${dividend} : ${divisor} = (${a} : ${divisor}) + (${dividend - a} : ${divisor}). Arvuta jagatis.`, correctAnswer: quotient, explanation: splitExplanation(a) };
+  }
+  if (cat === 'Vali sobiv jaotus' || cat === 'Vali abitehe') {
+    const a = goodSplitV5(dividend, divisor);
+    const wrong = wrongSplitsV5(rng, dividend, divisor, a);
+    const option = (x: number) => `${x} : ${divisor} ja ${dividend - x} : ${divisor}`;
+    const question = cat === 'Vali sobiv jaotus' ? `Milline jaotus aitab arvutada ${dividend} : ${divisor}?` : `Milline abitehe sobib arvutamiseks ${dividend} : ${divisor}?`;
+    return { ...base, id: `${cat === 'Vali sobiv jaotus' ? 'vj' : 'ab'}-${i}`, question, correctAnswer: 0, kind: 'choice', choiceOptions: [option(a), ...wrong.map(option)], explanation: `Mõlemad osad peavad jaguma ${divisor}-ga. ${splitExplanation(a)}` };
+  }
+  if (cat === 'Jaga võrdselt') {
+    const things = pick(rng, ['kommi', 'kleepsu', 'pliiatsit', 'kaarti']);
+    const who = pick(rng, ['lapse', 'sõbra', 'mängija', 'õpilase']);
+    return { ...base, id: `jv-${i}`, question: `${dividend} ${things} jagatakse võrdselt ${divisor} ${who} vahel. Mitu saab igaüks?`, correctAnswer: quotient, explanation: check };
+  }
+  if (cat === 'Jaga rühmadesse') {
+    const thing = pick(rng, DIVISION_THINGS);
+    const container = DIVISION_CONTAINERS[pick(rng, thing.containers)];
+    return { ...base, id: `jr-${i}`, question: `${dividend} ${thing.partitive} pannakse ${container.illative}. Igas ${container.inessive} on ${divisor} ${thing.partitive}. Mitu ${container.partitive} saab?`, correctAnswer: quotient, explanation: `${dividend} : ${divisor} = ${quotient}, sest ${quotient} × ${divisor} = ${dividend}. Saab ${quotient} ${container.partitive}.` };
+  }
+  if (cat === 'Vali jagamistehe') {
+    return { ...base, id: `vt-${i}`, question: `${dividend} eset jagatakse võrdselt ${divisor} rühmaks. Milline arvutus sobib?`, correctAnswer: 0, kind: 'choice', choiceOptions: [`${dividend} : ${divisor}`, `${dividend} - ${divisor}`, `${divisor} : ${dividend}`], explanation: `Võrdseks jagamine on jagamine: ${dividend} : ${divisor} = ${quotient}.` };
+  }
+  if (cat === 'Kontrolli korrutamisega') {
+    return { ...base, id: `kc-${i}`, question: `${dividend} : ${divisor} = ${quotient}. Milline tehe kontrollib vastust?`, correctAnswer: 0, kind: 'choice', choiceOptions: [`${quotient} × ${divisor} = ${dividend}`, `${quotient} + ${divisor} = ${dividend}`, `${dividend} - ${quotient} = ${divisor}`], explanation: `Jagamist kontrollime korrutamisega: ${quotient} × ${divisor} = ${dividend}.` };
+  }
+  if (cat === 'Vali jagatis') {
+    const candidates = [quotient, quotient + 1, quotient - 1, quotient + divisor, quotient + 2, quotient - 2, quotient + 10].filter((value) => value >= 1);
+    const options = Array.from(new Set(candidates)).slice(0, 4);
+    return { ...base, id: `vjg-${i}`, question: `Vali õige vastus: ${dividend} : ${divisor} = ?`, correctAnswer: 0, kind: 'choice', choiceOptions: options.map(String), explanation: check };
+  }
+  if (cat === 'Rühmadega jagamine') {
+    return { ...base, id: `rg-${i}`, question: `${dividend} eset jagatakse võrdselt ${divisor} rühmaks. Mitu eset on igas rühmas?`, correctAnswer: quotient, explanation: check };
+  }
+  if (cat === 'Kas arvutus on õige?') {
+    const ok = rInt(rng, 0, 1) === 0;
+    const shown = ok ? quotient : quotient + pick(rng, quotient > 2 ? [-2, -1, 1, 2] : [1, 2]);
+    return { ...base, id: `ko-${i}`, question: `Kas arvutus on õige? ${dividend} : ${divisor} = ${shown}`, correctAnswer: ok ? 0 : 1, kind: 'choice', choiceOptions: ['Õige', 'Vale'], explanation: ok ? check : `${shown} × ${divisor} = ${shown * divisor}, mitte ${dividend}. Õige on ${check}` };
+  }
+  // 'Jaga sama arvuga': two divisions by the same divisor; the second is asked.
+  const other = Math.min(Math.floor(99 / divisor), quotient + pick(rng, [1, 2, 3]));
+  const askOther = other !== quotient && divisor * other >= 10 && rInt(rng, 0, 1) === 0;
+  const q2 = askOther ? other : quotient;
+  return { ...base, id: `sa-${i}`, question: `Arvuta järgmine jagatis: ${divisor * q2} : ${divisor}`, correctAnswer: q2, explanation: `${divisor * q2} : ${divisor} = ${q2}, sest ${q2} × ${divisor} = ${divisor * q2}.` };
+}
+
+// v5 Segaharjutus for division: v1-v4 listed 'Segaharjutus' among the division
+// categories, and it fell through to «Vali abitehe», so most sessions asked
+// that one twice next to the near-identical «Vali sobiv jaotus». v5 asks one of
+// the two, once, and fills the remaining slots from the other categories.
+function divisionPlanV5(rng: RNG, count: number) {
+  const splitChoice: TopicCategory = rInt(rng, 0, 1) === 0 ? 'Vali sobiv jaotus' : 'Vali abitehe';
+  const types = DIV_CATS.filter((cat) => cat !== 'Segaharjutus' && cat !== 'Vali sobiv jaotus' && cat !== 'Vali abitehe') as TopicCategory[];
+  const base = shuffleWithRng(rng, [...types, splitChoice]);
+  if (count <= base.length) return base.slice(0, count);
+  const extras: TopicCategory[] = [];
+  let pool: TopicCategory[] = [];
+  while (base.length + extras.length < count) {
+    if (!pool.length) pool = shuffleWithRng(rng, types);
+    extras.push(pool.shift()!);
+  }
+  return shuffleWithRng(rng, [...base, ...extras]);
+}
+
+// «Liida tuhanded, sajad, kümned ja ühelised eraldi.» told the child nothing;
+// these show the steps with the numbers of the task.
+function placeSumSteps(a: number, b: number) {
+  const parts = [1000, 100, 10, 1].map((unit) => {
+    const x = Math.floor((a % (unit * 10)) / unit) * unit;
+    const y = Math.floor((b % (unit * 10)) / unit) * unit;
+    return { x: unit === 1000 ? Math.floor(a / 1000) * 1000 : x, y: unit === 1000 ? Math.floor(b / 1000) * 1000 : y };
+  });
+  const used = parts.filter(({ x, y }) => x + y > 0);
+  const sums = used.map(({ x, y }) => x + y);
+  return `${used.map(({ x, y }, index) => `${x} + ${y} = ${sums[index]}`).join(', ')}. Kokku ${sums.join(' + ')} = ${a + b}.`;
+}
+
+function subtractSteps(a: number, b: number) {
+  const thousands = Math.floor(b / 1000) * 1000;
+  const rest = b - thousands;
+  if (!thousands || !rest) return `${a} - ${b} = ${a - b}.`;
+  return `Kõigepealt ${a} - ${thousands} = ${a - thousands}, siis ${a - thousands} - ${rest} = ${a - b}.`;
+}
+
+function addSmallSteps(a: number, b: number) {
+  const hundreds = Math.floor(b / 100) * 100;
+  const rest = b - hundreds;
+  if (!hundreds || !rest) return `${a} + ${b} = ${a + b}.`;
+  return `Kõigepealt ${a} + ${hundreds} = ${a + hundreds}, siis ${a + hundreds} + ${rest} = ${a + b}.`;
+}
+
+function subtractSmallSteps(a: number, b: number) {
+  const hundreds = Math.floor(b / 100) * 100;
+  const rest = b - hundreds;
+  if (!hundreds || !rest) return `${a} - ${b} = ${a - b}.`;
+  return `Kõigepealt ${a} - ${hundreds} = ${a - hundreds}, siis ${a - hundreds} - ${rest} = ${a - b}.`;
+}
+
+// The 2- or 3-digit number added or taken away: Lihtne keeps v4's friendly
+// list, Keskmine whole tens, Raske any number.
+function smallAddendV5(rng: RNG, d: Difficulty) {
+  if (d === 'Lihtne') return rInt(rng, 2, 9) * 10 + pick(rng, [0, 20, 40, 60, 80, 100, 120, 240, 300, 440]);
+  if (d === 'Keskmine') return rInt(rng, 1, 9) * 100 + rInt(rng, 1, 9) * 10;
+  for (;;) {
+    const b = rInt(rng, 23, 899);
+    if (b % 10 !== 0) return b;
+  }
+}
+
+function bigNumberQV5(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
+  const base = { category: cat as unknown as Category, difficulty: d, subtopic: 'suured-arvud' };
+  if (cat === 'Lahuta arv järkudeks') {
+    // «Milline on arvu 2380 õige lahutus?» also reads as «subtraction».
+    return placeValueSplitV2(cat, d, rng, i, v, (n) => `Kuidas saab arvu ${n} kirjutada järkude summana?`);
+  }
+  if (cat === 'Liida 2- või 3-kohaline arv') {
+    const b = smallAddendV5(rng, d);
+    const a = rInt(rng, 2000, Math.min(9300, 10000 - b));
+    return { ...base, id: `n5-${i}`, question: `Arvuta summa: ${a} + ${b}`, correctAnswer: a + b, explanation: addSmallSteps(a, b) };
+  }
+  if (cat === 'Lahuta 2- või 3-kohaline arv') {
+    const b = smallAddendV5(rng, d);
+    const a = rInt(rng, Math.max(2300, b + 100), 9800);
+    return { ...base, id: `n6-${i}`, question: `Arvuta vahe: ${a} - ${b}`, correctAnswer: a - b, explanation: subtractSmallSteps(a, b) };
+  }
+  if (cat === 'Liida kaks 4-kohalist arvu') {
+    const a = rInt(rng, 1200, 7000);
+    const b = rInt(rng, 1100, 9000 - a);
+    return { ...base, id: `n7-${i}`, question: `Liida arvud: ${a} + ${b}`, correctAnswer: a + b, explanation: placeSumSteps(a, b) };
+  }
+  if (cat === 'Lahuta 4-kohalised arvud') {
+    const a = rInt(rng, 3500, 9800);
+    const b = rInt(rng, 1200, a - 100);
+    return { ...base, id: `n8-${i}`, question: `Lahuta arvud: ${a} - ${b}`, correctAnswer: a - b, explanation: subtractSteps(a, b) };
+  }
+  if (cat === 'Ligikaudne arvutus') {
+    const add = rInt(rng, 0, 1) === 0;
+    const a = rInt(rng, 2300, 9100);
+    const b = rInt(rng, 700, add ? 10000 - a : a - 500);
+    const ra = Math.round(a / 100) * 100;
+    const rb = Math.round(b / 100) * 100;
+    const est = add ? ra + rb : ra - rb;
+    return { ...base, id: `n13-${i}`, question: `Vali ligikaudne vastus: ${a} ${add ? '+' : '-'} ${b}`, correctAnswer: 0, kind: 'choice', choiceOptions: [String(est), String(est + 400), String(Math.max(0, est - 400))], explanation: `Ümardame sajalisteni: ${a} ≈ ${ra} ja ${b} ≈ ${rb}. ${ra} ${add ? '+' : '-'} ${rb} = ${est}.` };
+  }
+  return bigNumberQ(cat, d, rng, i, v);
+}
+
+const V5_RADIUS: Record<Difficulty, readonly [number, number]> = { Lihtne: [3, 15], Keskmine: [8, 30], Raske: [16, 49] };
+
+function circleQV5(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
+  const base = { category: cat as unknown as Category, difficulty: d, subtopic: 'ring-ja-ringjoon' };
+  if (cat === 'Läbimõõt raadiusest' || cat === 'Raadius läbimõõdust') {
+    const unit = pick(rng, ['cm', 'mm'] as const);
+    const r = rInt(rng, V5_RADIUS[d][0], V5_RADIUS[d][1]);
+    if (cat === 'Läbimõõt raadiusest') return { ...base, id: `cdf-${i}`, question: `Ringjoone raadius on ${r} ${unit}. Kui pikk on läbimõõt?`, expectedUnit: unit, correctAnswer: r * 2, explanation: `Läbimõõt on kaks raadiust: 2 × ${r} ${unit} = ${r * 2} ${unit}.` };
+    return { ...base, id: `crf-${i}`, question: `Ringjoone läbimõõt on ${r * 2} ${unit}. Kui pikk on raadius?`, expectedUnit: unit, correctAnswer: r, explanation: `Raadius on pool läbimõõdust: ${r * 2} ${unit} : 2 = ${r} ${unit}.` };
+  }
+  if (cat === 'Sama keskpunkt') {
+    const bigger = d === 'Lihtne' ? pick(rng, [6, 8, 10]) : 2 * rInt(rng, d === 'Keskmine' ? 6 : 11, d === 'Keskmine' ? 15 : 30);
+    return { ...base, id: `cc-${i}`, question: `Kahel ringjoonel on sama keskpunkt. Suurema ringjoone raadius on ${bigger} cm. Väiksema ringjoone raadius on poole väiksem. Kui suur on väiksema ringjoone raadius?`, expectedUnit: 'cm', correctAnswer: bigger / 2, explanation: `Poole väiksem tähendab, et jagame kahega: ${bigger} cm : 2 = ${bigger / 2} cm.`, visual: 'concentric-circles' };
+  }
+  if (cat === 'Ringi kraadid') {
+    const set = [
+      { q: 'Mitu kraadi on täisring?', a: 360, v: 'circle-full' as const, e: 'Täisring on 360°.' },
+      { q: 'Mitu kraadi on pool ringi?', a: 180, v: 'circle-half' as const, e: 'Pool ringi on 360° : 2 = 180°.' },
+      { q: 'Mitu kraadi on veerand ringi?', a: 90, v: 'circle-quarter' as const, e: 'Veerand ringi on 360° : 4 = 90°.' },
+      { q: 'Mitu kraadi on kolmveerand ringi?', a: 270, v: 'sector-missing' as const, e: 'Veerand ringi on 90°, kolmveerand on 3 × 90° = 270°.' }
+    ] as const;
+    const it = pick(rng, set);
+    return { ...base, id: `ck-${i}`, question: it.q, correctAnswer: it.a, explanation: it.e, visual: it.v, visualKnownDegrees: it.v === 'sector-missing' ? 360 - it.a : undefined };
+  }
+  if (cat === 'Puuduv kraad') {
+    const knownA = d === 'Lihtne'
+      ? pick(rng, [45, 60, 75, 90, 120, 135, 150, 180, 190, 210, 240, 270, 300])
+      : d === 'Keskmine' ? 15 * rInt(rng, 2, 22) : 5 * rInt(rng, 6, 66);
+    return { ...base, id: `cm-${i}`, question: `Ring on jagatud kaheks osaks. Värvitud osa on ${knownA}°. Kui suur on teine osa?`, correctAnswer: 360 - knownA, explanation: `Täisring on 360°. 360° − ${knownA}° = ${360 - knownA}°.`, visual: 'sector-missing', visualKnownDegrees: knownA };
+  }
+  return circleQ(cat, d, rng, i, v);
+}
+
+// Pattern steps per difficulty.
+const V5_STEPS: Record<Difficulty, readonly number[]> = { Lihtne: [100, 200, 500], Keskmine: [50, 150, 250, 300], Raske: [25, 75, 125, 250] };
+const SHAPES = ['■', '▲', '●', '★'] as const;
+const SHAPE_NAMES: Record<(typeof SHAPES)[number], string> = { '■': 'ruut', '▲': 'kolmnurk', '●': 'ring', '★': 'täht' };
+
+function patternQV5(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
+  const base = { category: cat as unknown as Category, difficulty: d, subtopic: 'arvu-ja-loogikamustrid' };
+  const t = rInt(rng, 0, 13);
+  const step = pick(rng, V5_STEPS[d]);
+  const id = `mp-${i}`;
+
+  if (t === 0) {
+    const start = rInt(rng, 10, 60) * 100;
+    const seq = [0, 1, 2, 3].map((k) => start + k * step);
+    return { ...base, id, question: `Jätka mustrit: ${seq.join(', ')}, __`, correctAnswer: start + 4 * step, explanation: `Iga kord lisatakse ${step}: ${seq[3]} + ${step} = ${start + 4 * step}.` };
+  }
+  if (t === 1) {
+    const start = rInt(rng, Math.ceil((4 * step + 1000) / 100), 95) * 100;
+    const seq = [0, 1, 2, 3].map((k) => start - k * step);
+    return { ...base, id, question: `Jätka mustrit: ${seq.join(', ')}, __`, correctAnswer: start - 4 * step, explanation: `Iga kord võetakse maha ${step}: ${seq[3]} - ${step} = ${start - 4 * step}.` };
+  }
+  if (t === 2) {
+    const start = rInt(rng, 15, 60) * 100;
+    const miss = rInt(rng, 1, 3);
+    const seq = [0, 1, 2, 3, 4].map((k) => start + k * step);
+    const shown = seq.map((n, index) => index === miss ? '__' : String(n)).join(', ');
+    return { ...base, id, question: `Leia puuduv arv mustris: ${shown}`, correctAnswer: seq[miss], explanation: `Muster suureneb iga kord ${step} võrra: ${seq[miss - 1]} + ${step} = ${seq[miss]}.` };
+  }
+  if (t === 3) {
+    const start = rInt(rng, 10, 60) * 100;
+    const seq = [0, 1, 2, 3].map((k) => start + k * step);
+    return { ...base, id, question: `Leia reegel: ${seq.join(', ')}`, correctAnswer: 0, kind: 'choice', choiceOptions: [`+${step}`, `-${step}`, `+${2 * step}`, `+${10 * step}`], explanation: `${seq[1]} - ${seq[0]} = ${step}, seega iga kord lisatakse ${step}.` };
+  }
+  if (t === 4) {
+    const unit = pick(rng, d === 'Lihtne' ? [100] : d === 'Keskmine' ? [50, 100, 200] : [25, 75, 150]);
+    const start = rInt(rng, 10, 50) * 100;
+    const seq = [0, 1, 3, 6, 10].map((k) => start + k * unit);
+    return { ...base, id, question: `Jälgi, kuidas samm muutub: ${seq.join(', ')}, __`, correctAnswer: start + 15 * unit, explanation: `Sammud on +${unit}, +${2 * unit}, +${3 * unit}, +${4 * unit}. Järgmine samm on +${5 * unit}: ${seq[4]} + ${5 * unit} = ${start + 15 * unit}.` };
+  }
+  if (t === 5) {
+    const add = step * 2;
+    const sub = step;
+    const start = rInt(rng, 10, 50) * 100;
+    const seq = [start, start + add, start + add - sub, start + 2 * add - sub, start + 2 * add - 2 * sub];
+    return { ...base, id, question: `Jälgi vahelduvat mustrit: ${seq.join(', ')}, __`, correctAnswer: start + 3 * add - 2 * sub, explanation: `Muster vaheldub: +${add}, siis -${sub}. Järgmine on ${seq[4]} + ${add} = ${start + 3 * add - 2 * sub}.` };
+  }
+  if (t === 6) {
+    const start = rInt(rng, 10, 60) * 100;
+    const correct = [0, 1, 2, 3, 4].map((k) => start + k * step);
+    const odd = rInt(rng, 1, 3);
+    const shift = step >= 100 ? 50 : 10;
+    const shown = correct.map((value, index) => index === odd ? value + shift : value);
+    return { ...base, id, question: `Leia arv, mis ei sobi mustrisse: ${shown.join(', ')}`, correctAnswer: odd, kind: 'choice', choiceOptions: shown.map(String), explanation: `Muster suureneb iga kord ${step} võrra, seega seal peaks olema ${correct[odd]}, mitte ${shown[odd]}.` };
+  }
+  if (t === 7) {
+    const mode = rInt(rng, 0, 2);
+    if (mode === 0) {
+      const k = rInt(rng, 1, 5) * 100;
+      const first = rInt(rng, 1, 5) * 1000;
+      const inputs = [0, 1, 2, 3].map((n) => first + n * 1000);
+      return { ...base, id, question: `Leia tabeli reegel: ${inputs.slice(0, 3).map((x) => `${x}→${x + k}`).join(', ')}, ${inputs[3]}→__`, correctAnswer: inputs[3] + k, explanation: `Iga sisendarvule lisatakse ${k}: ${inputs[3]} + ${k} = ${inputs[3] + k}.` };
+    }
+    if (mode === 1) {
+      const first = rInt(rng, 1, 4) * 500;
+      const inputs = [0, 1, 2, 3].map((n) => first + n * 500);
+      return { ...base, id, question: `Leia tabeli reegel: ${inputs.slice(0, 3).map((x) => `${x}→${2 * x}`).join(', ')}, ${inputs[3]}→__`, correctAnswer: 2 * inputs[3], explanation: `Väljund on kaks korda suurem: 2 × ${inputs[3]} = ${2 * inputs[3]}.` };
+    }
+    const k = rInt(rng, 1, 9) * 100;
+    const first = rInt(rng, 2, 6) * 1000;
+    const inputs = [0, 1, 2, 3].map((n) => first + n * 1000);
+    return { ...base, id, question: `Leia tabeli reegel: ${inputs.slice(0, 3).map((x) => `${x}→${x - k}`).join(', ')}, ${inputs[3]}→__`, correctAnswer: inputs[3] - k, explanation: `Igast sisendarvust lahutatakse ${k}: ${inputs[3]} - ${k} = ${inputs[3] - k}.` };
+  }
+  if (t === 8) {
+    const signed = rInt(rng, 0, 2) === 0 ? -step : step;
+    const start = signed < 0 ? rInt(rng, Math.ceil((4 * step + 500) / 100), 90) * 100 : rInt(rng, 10, 50) * 100;
+    const seq = [0, 1, 2, 3].map((k) => start + k * signed);
+    return { ...base, id, question: `Jätka arvutusahelat: ${seq.join(' → ')} → __`, correctAnswer: start + 4 * signed, explanation: `Sama tehe kordub: ${signed > 0 ? '+' : '-'}${step}. ${seq[3]} ${signed > 0 ? '+' : '-'} ${step} = ${start + 4 * signed}.` };
+  }
+  if (t === 9) {
+    const period = rInt(rng, 2, 3);
+    const unitShapes = shuffleWithRng(rng, [...SHAPES]).slice(0, period);
+    const length = rInt(rng, period + 3, 7);
+    const shown = Array.from({ length }, (_, index) => unitShapes[index % period]);
+    const answer = unitShapes[length % period];
+    const others = SHAPES.filter((shape) => shape !== answer);
+    const options = [answer, ...shuffleWithRng(rng, others).slice(0, 2)];
+    return { ...base, id, question: `Jätka mustrit: ${shown.join(' ')} __`, correctAnswer: 0, kind: 'choice', choiceOptions: [...options], explanation: `Muster kordub: ${unitShapes.map((shape) => SHAPE_NAMES[shape]).join(', ')}. Järgmine on ${SHAPE_NAMES[answer]}.` };
+  }
+  if (t === 10) {
+    const first = rInt(rng, 1, d === 'Lihtne' ? 4 : 9);
+    const grow = rInt(rng, 1, d === 'Lihtne' ? 3 : d === 'Keskmine' ? 6 : 12);
+    const seq = [first, first + grow, first + 2 * grow];
+    return { ...base, id, question: `Vaata, kuidas muster kasvab: ${blockCount(seq[0], v)}, ${seq[1]} plokki, ${seq[2]} plokki. Mitu plokki on järgmises reas?`, correctAnswer: first + 3 * grow, explanation: `Igas reas on ${blockCount(grow, v)} rohkem: ${seq[2]} + ${grow} = ${first + 3 * grow}.` };
+  }
+  if (t === 11) {
+    const n = d === 'Lihtne' ? rInt(rng, 1, 9) * 100 : d === 'Keskmine' ? rInt(rng, 1, 19) * 50 : rInt(rng, 1, 39) * 25;
+    const seq = [1, 2, 3, 4].map((k) => k * n);
+    return { ...base, id, question: `Mis arv tuleb järgmisena? ${seq.join(', ')}, __`, correctAnswer: 5 * n, explanation: `Arv suureneb iga kord ${n} võrra: ${seq[3]} + ${n} = ${5 * n}.` };
+  }
+  if (t === 12) {
+    const start = pick(rng, d === 'Lihtne' ? [50, 100, 200, 300] : d === 'Keskmine' ? [25, 75, 125, 150] : [15, 35, 45, 55, 65]);
+    const seq = [1, 2, 4, 8].map((k) => k * start);
+    return { ...base, id, question: `Iga arv on eelmisest kaks korda suurem. Jätka: ${seq.join(', ')}, __`, correctAnswer: 16 * start, explanation: `Iga kord korrutatakse kahega: 2 × ${seq[3]} = ${16 * start}.` };
+  }
+  const options = ['suureneb', 'väheneb', 'kordub kujunditena', 'ei ole muster'];
+  const mode = rInt(rng, 0, 2);
+  if (mode === 2) {
+    const pair = shuffleWithRng(rng, [...SHAPES]).slice(0, 2);
+    return { ...base, id, question: `Milline muster see on? ${[0, 1, 2, 3, 4, 5].map((k) => pair[k % 2]).join(' ')}`, correctAnswer: 2, kind: 'choice', choiceOptions: options, explanation: `Kujundid ${SHAPE_NAMES[pair[0]]} ja ${SHAPE_NAMES[pair[1]]} korduvad kindlas järjekorras.` };
+  }
+  const start = mode === 0 ? rInt(rng, 10, 50) * 100 : rInt(rng, 50, 95) * 100;
+  const seq = [0, 1, 2, 3].map((k) => start + (mode === 0 ? k : -k) * step);
+  return { ...base, id, question: `Milline muster see on? ${seq.join(', ')}`, correctAnswer: mode, kind: 'choice', choiceOptions: options, explanation: `Arvud ${mode === 0 ? 'suurenevad' : 'vähenevad'} iga kord ${step} võrra.` };
+}
+
 function patternQ(cat: TopicCategory, d: Difficulty, rng: RNG, i: number, v: MathGeneratorVersion): GeneratedQuestion {
   const t = rInt(rng, 0, 13);
 
@@ -614,7 +974,8 @@ function generateTextProblemSession(seed: number, v: MathGeneratorVersion): Gene
   const rng = seededRng(seed);
   // v4 corrects some tasks in place (same ids, same order), so a seed picks the
   // same tasks in every version; v1-v3 replay the pool as it was.
-  return shuffleWithRng(rng, isV4(v) ? kiurTextProblemPoolV4 : kiurTextProblemPool).slice(0, 5).map((task, index) => ({
+  // v5 adds textAnswerRules (absent before, so v1-v4 questions are unchanged).
+  return shuffleWithRng(rng, isV5(v) ? kiurTextProblemPoolV5 : isV4(v) ? kiurTextProblemPoolV4 : kiurTextProblemPool).slice(0, 5).map((task, index) => ({
     id: `${task.id}-${index}`,
     type: 'text-problem',
     category: 'Tekstülesanded' as Category,
@@ -624,6 +985,7 @@ function generateTextProblemSession(seed: number, v: MathGeneratorVersion): Gene
     correctAnswer: 0,
     correctAnswerText: task.answer,
     acceptedAnswers: task.acceptedAnswers,
+    textAnswerRules: task.textAnswerRules,
     explanation: task.solution,
     kind: 'text',
     exerciseKey: TEXT_PROBLEM_EXERCISE_KEY
@@ -645,7 +1007,9 @@ export function generateKiurMathSession(topic: string, category: string, difficu
   const topicTypes = normalizedTopic === 'jagamine-kahekohaline-uhekohaline' ? DIV_CATS : isBigNumbers ? BIG_NUM_CATS : normalizedTopic === 'ring-ja-ringjoon' ? CIRCLE_CATS : normalizedTopic === 'mustrid' ? PATTERN_CATS : null;
   if (!topicTypes) return [];
   const plan = v === MATH_GENERATOR_VERSION_V1 ? mixedPlan : mixedPlanV2;
-  const types = category === 'Segaharjutus' ? plan(rng, count, topicTypes) : Array.from({ length: count }, () => category as TopicCategory);
+  const types = category !== 'Segaharjutus'
+    ? Array.from({ length: count }, () => category as TopicCategory)
+    : isV5(v) && topicTypes === DIV_CATS ? divisionPlanV5(rng, count) : plan(rng, count, topicTypes);
   // v1 keyed on the answer too, so «Kus asub punkt A?» could repeat with the
   // same text; v2 treats the same visible question as a repeat. v3 keeps v2's
   // key on purpose: the figure's lettering does not make «Kus asub punkt A?»
@@ -659,13 +1023,14 @@ export function generateKiurMathSession(topic: string, category: string, difficu
     let tries = 0;
     let q: GeneratedQuestion;
     do {
+      const index = i + tries * 17;
       q = normalizedTopic === 'jagamine-kahekohaline-uhekohaline'
-        ? divisionQ(types[i], difficulty, rng, i + tries * 17, v)
+        ? (isV5(v) ? divisionQV5(types[i], difficulty, rng, index) : divisionQ(types[i], difficulty, rng, index, v))
         : isBigNumbers
-          ? bigNumberQ(types[i], difficulty, rng, i + tries * 17, v)
+          ? (isV5(v) ? bigNumberQV5(types[i], difficulty, rng, index, v) : bigNumberQ(types[i], difficulty, rng, index, v))
           : normalizedTopic === 'mustrid'
-            ? patternQ(types[i], difficulty, rng, i + tries * 17, v)
-            : circleQ(types[i], difficulty, rng, i + tries * 17, v);
+            ? (isV5(v) ? patternQV5(types[i], difficulty, rng, index, v) : patternQ(types[i], difficulty, rng, index, v))
+            : (isV5(v) ? circleQV5(types[i], difficulty, rng, index, v) : circleQ(types[i], difficulty, rng, index, v));
       tries++;
     } while (used.has(signature(q)) && tries < 20);
     used.add(signature(q));

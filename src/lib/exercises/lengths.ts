@@ -1,6 +1,6 @@
 import { Category, Difficulty, GeneratedQuestion } from '@/lib/types';
 import { RNG, pickRandom, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
-import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V4, isMathGeneratorAtLeast, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V4, MATH_GENERATOR_VERSION_V5, isMathGeneratorAtLeast, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 
 type InternalType =
   | 'suitable-unit-choice'
@@ -121,6 +121,156 @@ function byType(type: InternalType, d: Difficulty, rng: RNG, i: number, v4 = fal
   return {id:`real-${i}`,category:'Tekstülesanded',difficulty:d,kind:'choice',question:'Vali realistlik pikkus pliiatsi jaoks.',choiceOptions:opts,correctAnswer:1,explanation:'Pliiatsi pikkus on tavaliselt sentimeetrites.',subtopic:'pikkusuhikud'};
 }
 
+// ---------------------------------------------------------------------------
+// v5 (math-2026-11). v1-v4 asked several questions with the very same numbers
+// every time («Lõik A on 45 mm. Lõik B on 6 cm» came up in 325 of 400
+// sessions), so these draw their numbers, show the worked steps, and widen the
+// ranges for Keskmine and Raske. Reached only from v5.
+// ---------------------------------------------------------------------------
+
+const LEVEL: Record<Difficulty, number> = { Lihtne: 0, Keskmine: 1, Raske: 2 };
+
+// A realistic length for a thing, in the one unit that fits it; the options
+// put the same number in front of every unit.
+const REALISTIC_LENGTHS = [
+  { thing: 'pliiatsi', unit: 'cm', min: 12, max: 18 },
+  { thing: 'vihiku', unit: 'cm', min: 20, max: 30 },
+  { thing: 'sipelga', unit: 'mm', min: 3, max: 8 },
+  { thing: 'klassiruumi', unit: 'm', min: 7, max: 12 },
+  { thing: 'jalgpalliväljaku', unit: 'm', min: 90, max: 110 },
+  { thing: 'kahe linna vahelise tee', unit: 'km', min: 30, max: 90 }
+] as const;
+
+const ROUTES = [
+  { from: 'Kodust', to: 'vanaema juurde' },
+  { from: 'Linnast', to: 'suvilasse' },
+  { from: 'Koolist', to: 'spordilaagrisse' },
+  { from: 'Külast', to: 'mere äärde' }
+] as const;
+
+function byTypeV5(type: InternalType, d: Difficulty, rng: RNG, i: number): GeneratedQuestion {
+  const level = LEVEL[d];
+  if (type === 'suitable-unit-choice') {
+    const items = [
+      { question: 'Millise ühikuga mõõdaksid pliiatsi pikkust?', units: ['cm'], explanation: 'Pliiatsi pikkust mõõdetakse tavaliselt sentimeetrites.' },
+      { question: 'Millise ühikuga mõõdaksid kaugust kahe linna vahel?', units: ['km'], explanation: 'Kaugust linnade vahel mõõdetakse tavaliselt kilomeetrites.' },
+      { question: 'Vali sobiv ühik: koolimaja kõrgus.', units: ['m'], explanation: 'Koolimaja kõrgust mõõdetakse tavaliselt meetrites.' },
+      { question: 'Millise ühikuga mõõdaksid paberilehe paksust?', units: ['mm'], explanation: 'Paberilehe paksust mõõdetakse tavaliselt millimeetrites.' },
+      { question: 'Vali sobiv ühik vihiku laiuse mõõtmiseks.', units: ['mm', 'cm', 'dm'], explanation: 'Vihiku laiust saab mõõta millimeetrites, sentimeetrites või detsimeetrites. Meetrit ja kilomeetrit siin praktiliselt ei kasutata.' }
+    ] as const;
+    const it = pick(rng, items);
+    const opts = shuffle(rng, ['km', 'm', 'dm', 'cm', 'mm']);
+    const correctAnswers = it.units.map((unit) => opts.indexOf(unit)).filter((idx) => idx >= 0);
+    return { id: `mu-${i}`, category: 'Teisendamine', difficulty: d, kind: 'choice', question: it.question, choiceOptions: opts, correctAnswer: correctAnswers[0], correctAnswers, explanation: it.explanation, subtopic: 'pikkusuhikud' };
+  }
+  if (type === 'cm-mm-conversion') {
+    const mode = rInt(rng, 0, 2);
+    if (mode === 0) { const cm = rInt(rng, 2, [12, 40, 99][level]); return { id: `cmm-${i}`, category: 'Teisendamine', difficulty: d, question: `${cm} cm = mitu mm?`, expectedUnit: 'mm', correctAnswer: cm * 10, explanation: `1 cm = 10 mm, seega ${cm} cm = ${cm} × 10 mm = ${cm * 10} mm.`, subtopic: 'pikkusuhikud' }; }
+    if (mode === 1) { let mm = rInt(rng, 11, [98, 398, 998][level]); if (mm % 10 === 0) mm += 3; return { id: `cmm-${i}`, category: 'Teisendamine', difficulty: d, question: `${mm} mm = mitu cm ja mm? Sisesta ainult cm arv.`, expectedUnit: 'cm', correctAnswer: Math.floor(mm / 10), explanation: `${mm} mm = ${Math.floor(mm / 10) * 10} mm + ${mm % 10} mm = ${Math.floor(mm / 10)} cm ${mm % 10} mm.`, subtopic: 'pikkusuhikud' }; }
+    const cm = rInt(rng, 2, [9, 30, 80][level]), mm = rInt(rng, 1, 9);
+    return { id: `cmm-${i}`, category: 'Teisendamine', difficulty: d, question: `${cm} cm ${mm} mm = mitu mm?`, expectedUnit: 'mm', correctAnswer: cmMmToMm(cm, mm), explanation: `${cm} cm = ${cm * 10} mm, ${cm * 10} mm + ${mm} mm = ${cmMmToMm(cm, mm)} mm.`, subtopic: 'pikkusuhikud' };
+  }
+  if (type === 'km-m-conversion') {
+    const mode = rInt(rng, 0, 2);
+    if (mode === 0) { const km = rInt(rng, 2, 9); return { id: `kmm-${i}`, category: 'Teisendamine', difficulty: d, question: `${km} km = mitu m?`, expectedUnit: 'm', correctAnswer: km * 1000, explanation: `1 km = 1000 m, seega ${km} km = ${km} × 1000 m = ${km * 1000} m.`, subtopic: 'pikkusuhikud' }; }
+    if (mode === 1) { let m = rInt(rng, 1100, 9800); if (m % 1000 === 0) m += 50; return { id: `kmm-${i}`, category: 'Teisendamine', difficulty: d, question: `${m} m = mitu km ja m? Sisesta ainult km arv.`, expectedUnit: 'km', correctAnswer: Math.floor(m / 1000), explanation: `${m} m = ${Math.floor(m / 1000) * 1000} m + ${m % 1000} m = ${Math.floor(m / 1000)} km ${m % 1000} m.`, subtopic: 'pikkusuhikud' }; }
+    const km = rInt(rng, 1, 8);
+    const m = level === 0 ? pick(rng, [20, 60, 120, 300, 500, 700]) : level === 1 ? rInt(rng, 1, 9) * 100 + rInt(rng, 0, 9) * 10 : rInt(rng, 5, 995);
+    return { id: `kmm-${i}`, category: 'Teisendamine', difficulty: d, question: `${km} km ${m} m = mitu m?`, expectedUnit: 'm', correctAnswer: kmMToM(km, m), explanation: `${km} km = ${km * 1000} m, ${km * 1000} m + ${m} m = ${kmMToM(km, m)} m.`, subtopic: 'pikkusuhikud' };
+  }
+  if (type === 'length-comparison') {
+    const mode = rInt(rng, 0, 1);
+    const options = ['A', 'B', 'võrdsed'];
+    if (mode === 0) {
+      const aCm = rInt(rng, 3, [9, 30, 80][level]), aMm = rInt(rng, 0, 9);
+      const a = cmMmToMm(aCm, aMm);
+      const b = a + pick(rng, level === 2 ? [-1, 0, 1, 9, -9] : [-2, 0, 3, 10, -10]);
+      const idx = a > b ? 0 : a < b ? 1 : 2;
+      return { id: `cmp-${i}`, category: 'Võrdlemine', difficulty: d, kind: 'choice', question: `Kumb on pikem? A) ${aCm} cm ${aMm} mm  B) ${b} mm`, choiceOptions: options, correctAnswer: idx, explanation: `A = ${aCm} cm ${aMm} mm = ${a} mm. B = ${b} mm. ${idx === 2 ? 'Need on võrdsed.' : `Pikem on ${options[idx]}.`}`, subtopic: 'pikkusuhikud' };
+    }
+    const aKm = rInt(rng, 1, 4 + 2 * level);
+    const aM = level === 0 ? pick(rng, [20, 200, 450, 500, 800]) : rInt(rng, 1, 99) * 10;
+    const left = kmMToM(aKm, aM);
+    const right = left + pick(rng, level === 2 ? [-10, 0, 10, -900, 900] : [-80, -50, 0, 70, 120]);
+    const idx = left > right ? 0 : left < right ? 1 : 2;
+    return { id: `cmp-${i}`, category: 'Võrdlemine', difficulty: d, kind: 'choice', question: `Kumb on pikem? A) ${aKm} km ${aM} m  B) ${right} m`, choiceOptions: options, correctAnswer: idx, explanation: `A = ${aKm} km ${aM} m = ${left} m. B = ${right} m. ${idx === 2 ? 'Need on võrdsed.' : `Pikem on ${options[idx]}.`}`, subtopic: 'pikkusuhikud' };
+  }
+  if (type === 'length-ordering') {
+    const dir = rInt(rng, 0, 1) === 0 ? 'asc' : 'desc';
+    const cards = orderingCards(rng, i);
+    const sorted = [...cards].sort((a, b) => dir === 'asc' ? a.valueMm - b.valueMm : b.valueMm - a.valueMm);
+    return { id: `ord-${i}`, category: 'Järjestamine', difficulty: d, kind: 'ordering', question: dir === 'asc' ? 'Järjesta pikkused lühimast pikimani.' : 'Järjesta pikkused pikimast lühimani.', orderingCards: shuffle(rng, cards), orderingDirection: dir, expectedUnit: 'mm', correctAnswer: 0, explanation: `Teisenda kõik millimeetriteks: ${sorted.map((card) => card.label === `${card.valueMm} mm` ? card.label : `${card.label} = ${card.valueMm} mm`).join(', ')}.`, subtopic: 'pikkusuhikud' };
+  }
+  if (type === 'length-addition') {
+    if (rInt(rng, 0, 1) === 0) {
+      const aCm = rInt(rng, 2, [8, 30, 60][level]), aMm = rInt(rng, 1, 8), bCm = rInt(rng, 1, [6, 20, 40][level]), bMm = rInt(rng, 1, 8);
+      const a = cmMmToMm(aCm, aMm), b = cmMmToMm(bCm, bMm);
+      return { id: `add-${i}`, category: 'Arvutamine', difficulty: d, question: `Arvuta pikkustega: ${aCm} cm ${aMm} mm + ${bCm} cm ${bMm} mm = mitu mm?`, expectedUnit: 'mm', correctAnswer: a + b, explanation: `${aCm} cm ${aMm} mm = ${a} mm ja ${bCm} cm ${bMm} mm = ${b} mm. ${a} + ${b} = ${a + b} mm.`, subtopic: 'pikkusuhikud' };
+    }
+    const metres = (): number => level === 0 ? pick(rng, [100, 200, 300, 400, 500]) : level === 1 ? rInt(rng, 1, 9) * 100 : rInt(rng, 1, 99) * 10;
+    const aKm = rInt(rng, 1, 5), aM = metres(), bKm = rInt(rng, 1, 3), bM = metres();
+    const a = kmMToM(aKm, aM), b = kmMToM(bKm, bM);
+    return { id: `add-${i}`, category: 'Arvutamine', difficulty: d, question: `Arvuta pikkustega: ${aKm} km ${aM} m + ${bKm} km ${bM} m = mitu m?`, expectedUnit: 'm', correctAnswer: a + b, explanation: `${aKm} km ${aM} m = ${a} m ja ${bKm} km ${bM} m = ${b} m. ${a} + ${b} = ${a + b} m.`, subtopic: 'pikkusuhikud' };
+  }
+  if (type === 'length-subtraction') {
+    const a = rInt(rng, 60, [95, 300, 900][level]), b = rInt(rng, 20, a - 5);
+    return { id: `sub-${i}`, category: 'Arvutamine', difficulty: d, question: `Arvuta pikkustega: ${a} cm - ${b} cm = ?`, expectedUnit: 'cm', correctAnswer: a - b, explanation: `Lahutame sentimeetrid: ${a} - ${b} = ${a - b}.`, subtopic: 'pikkusuhikud' };
+  }
+  if (type === 'missing-measurement') {
+    const mode = rInt(rng, 0, 2);
+    if (mode === 0) {
+      const cm = rInt(rng, 3, [8, 30, 80][level]);
+      const rest = rInt(rng, 1, 9);
+      const full = cm * 10 + rest;
+      return { id: `mis-${i}`, category: 'Puuduv arv', difficulty: d, question: `${cm} cm __ mm = ${full} mm. Leia puuduv mm arv.`, expectedUnit: 'mm', correctAnswer: rest, explanation: `${cm} cm = ${cm * 10} mm. ${full} - ${cm * 10} = ${rest} mm.`, subtopic: 'pikkusuhikud' };
+    }
+    if (mode === 1) {
+      const km = rInt(rng, 1, 9);
+      const m = level === 0 ? rInt(rng, 1, 9) * 100 : level === 1 ? rInt(rng, 1, 19) * 50 : rInt(rng, 1, 99) * 10;
+      const total = km * 1000 + m;
+      return { id: `mis-${i}`, category: 'Puuduv arv', difficulty: d, question: `__ km ${m} m = ${total} m. Leia puuduv km arv.`, expectedUnit: 'km', correctAnswer: km, explanation: `${total} m - ${m} m = ${km * 1000} m = ${km} km.`, subtopic: 'pikkusuhikud' };
+    }
+    const km = rInt(rng, 1, 8);
+    const m = level === 0 ? rInt(rng, 1, 9) * 100 : level === 1 ? rInt(rng, 1, 19) * 50 : rInt(rng, 1, 99) * 10;
+    const total = km * 1000 + m;
+    return { id: `mis-${i}`, category: 'Puuduv arv', difficulty: d, question: `${km} km + __ m = ${total} m. Mitu meetrit puudub?`, expectedUnit: 'm', correctAnswer: m, explanation: `${km} km = ${km * 1000} m. ${total} - ${km * 1000} = ${m} m.`, subtopic: 'pikkusuhikud' };
+  }
+  if (type === 'perimeter-with-units') {
+    const mode = rInt(rng, 0, 2);
+    if (mode === 0) { const s = rInt(rng, 3, [12, 25, 60][level]); return { id: `per-${i}`, category: 'Ümbermõõt', difficulty: d, question: `Ruudu külg on ${s} cm. Leia ümbermõõt.`, expectedUnit: 'cm', correctAnswer: s * 4, explanation: `Ruudu ümbermõõt on 4 × ${s} cm = ${s * 4} cm.`, subtopic: 'pikkusuhikud' }; }
+    if (mode === 1) { const a = rInt(rng, 4, [9, 30, 80][level]), b = rInt(rng, 3, a - 1); return { id: `per-${i}`, category: 'Ümbermõõt', difficulty: d, question: `Ristküliku küljed on ${a} cm ja ${b} cm. Leia ümbermõõt.`, expectedUnit: 'cm', correctAnswer: 2 * (a + b), explanation: `2 × (${a} + ${b}) = 2 × ${a + b} = ${2 * (a + b)} cm.`, subtopic: 'pikkusuhikud' }; }
+    const top = [9, 25, 60][level];
+    const a = rInt(rng, 3, top - 2), b = rInt(rng, 4, top - 1);
+    const c = rInt(rng, Math.max(3, Math.abs(a - b) + 1), Math.min(top, a + b - 1));
+    return { id: `per-${i}`, category: 'Ümbermõõt', difficulty: d, question: `Kolmnurga küljed on ${a} cm, ${b} cm ja ${c} cm. Leia ümbermõõt.`, expectedUnit: 'cm', correctAnswer: a + b + c, explanation: `${a} + ${b} + ${c} = ${a + b + c} cm.`, subtopic: 'pikkusuhikud' };
+  }
+  if (type === 'route-distance') {
+    const mode = rInt(rng, 0, 2);
+    if (mode === 0) {
+      const route = pick(rng, ROUTES);
+      const km = rInt(rng, 12, [60, 150, 400][level]);
+      return { id: `rt-${i}`, category: 'Tekstülesanded', difficulty: d, question: `${route.from} ${route.to} on ${km} km. Kui pikk on edasi-tagasi sõit?`, expectedUnit: 'km', correctAnswer: 2 * km, explanation: `Edasi-tagasi tähendab teed kaks korda: 2 × ${km} km = ${2 * km} km.`, subtopic: 'pikkusuhikud' };
+    }
+    if (mode === 1) {
+      const a = rInt(rng, 15, [60, 150, 400][level]), b = rInt(rng, 15, [60, 150, 400][level]);
+      return { id: `rt-${i}`, category: 'Tekstülesanded', difficulty: d, question: `Buss sõitis enne lõunat ${a} km ja pärast lõunat ${b} km. Kui pika tee buss kokku sõitis?`, expectedUnit: 'km', correctAnswer: a + b, explanation: `${a} km + ${b} km = ${a + b} km.`, subtopic: 'pikkusuhikud' };
+    }
+    const b = rInt(rng, 20, [80, 200, 500][level]);
+    const a = b + rInt(rng, 5, [60, 150, 400][level]);
+    return { id: `rt-${i}`, category: 'Tekstülesanded', difficulty: d, question: `Üks tee on ${a} km ja teine ${b} km. Kui palju on esimene tee pikem?`, expectedUnit: 'km', correctAnswer: a - b, explanation: `${a} km - ${b} km = ${a - b} km.`, subtopic: 'pikkusuhikud' };
+  }
+  if (type === 'ruler-or-segment') {
+    let a = rInt(rng, 21, [89, 189, 489][level]);
+    if (a % 10 === 0) a += 4;
+    const b = Math.ceil(a / 10) + rInt(rng, 0, 3);
+    return { id: `seg-${i}`, category: 'Võrdlemine', difficulty: d, question: `Lõik A on ${a} mm. Lõik B on ${b} cm. Kui palju on B pikem?`, expectedUnit: 'mm', correctAnswer: b * 10 - a, explanation: `${b} cm = ${b * 10} mm, seega B on ${b * 10} - ${a} = ${b * 10 - a} mm pikem.`, subtopic: 'pikkusuhikud' };
+  }
+  const it = pick(rng, REALISTIC_LENGTHS);
+  const n = rInt(rng, it.min, it.max);
+  const units = ['mm', 'cm', 'm', 'km'] as const;
+  return { id: `real-${i}`, category: 'Tekstülesanded', difficulty: d, kind: 'choice', question: `Vali realistlik pikkus ${it.thing} jaoks.`, choiceOptions: units.map((unit) => `${n} ${unit}`), correctAnswer: units.indexOf(it.unit), explanation: `${n} ${it.unit} on ${it.thing} jaoks paras; ${units.filter((unit) => unit !== it.unit).map((unit) => `${n} ${unit}`).join(', ')} ei sobi.`, subtopic: 'pikkusuhikud' };
+}
+
 function mixedPlan(rng: RNG, count: number): InternalType[] {
   if (count <= INTERNAL_TYPES.length) return shuffle(rng, [...INTERNAL_TYPES]).slice(0, count);
   const out = shuffle(rng, [...INTERNAL_TYPES]);
@@ -152,6 +302,7 @@ export function generateSession(_mode: Category, difficulty: Difficulty, count: 
   const rng = seededRng(seed);
   const v1 = generatorVersion === MATH_GENERATOR_VERSION_V1;
   const v4 = isMathGeneratorAtLeast(generatorVersion, MATH_GENERATOR_VERSION_V4);
+  const v5 = isMathGeneratorAtLeast(generatorVersion, MATH_GENERATOR_VERSION_V5);
   const types = v1 ? mixedPlan(rng, count) : mixedPlanV2(rng, count);
   const out: GeneratedQuestion[] = [];
   const used = new Set<string>();
@@ -165,7 +316,7 @@ export function generateSession(_mode: Category, difficulty: Difficulty, count: 
     let tries = 0;
     let q: GeneratedQuestion;
     do {
-      q = byType(types[i], difficulty, rng, i + tries * 31, v4);
+      q = v5 ? byTypeV5(types[i], difficulty, rng, i + tries * 31) : byType(types[i], difficulty, rng, i + tries * 31, v4);
       tries++;
     } while (used.has(signature(q)) && tries < 20);
     used.add(signature(q));

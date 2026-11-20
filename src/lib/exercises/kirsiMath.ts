@@ -1,6 +1,6 @@
 import { Category, GeneratedQuestion } from '@/lib/types';
 import { RNG, randomInt, seededRng, shuffleWithRng } from '@/lib/random';
-import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { MATH_GENERATOR_VERSION, MATH_GENERATOR_VERSION_V1, MATH_GENERATOR_VERSION_V5, isMathGeneratorAtLeast, type MathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
 
 type KirsiCategory = 'Loendamine' | 'Arvutamine 10 piires' | 'Arvutamine 20 piires' | 'Suurem või väiksem kuni 100' | 'Segaülesanded' | 'Kellaaeg';
 
@@ -42,7 +42,15 @@ function countingChoices(rng: RNG, correct: number) {
   return shuffle(rng, Array.from(values));
 }
 
-function countingSession(count: number, seed: number): GeneratedQuestion[] {
+// v5: the two numbers next to the right one (1-2-3, 6-7-8, 18-19-20), so the
+// wrong options are near misses a counting child makes, not a random 1..20.
+function countingChoicesV5(rng: RNG, correct: number) {
+  const low = Math.max(1, Math.min(correct - 1, 18));
+  return shuffle(rng, [low, low + 1, low + 2]);
+}
+
+function countingSession(count: number, seed: number, generatorVersion: MathGeneratorVersion): GeneratedQuestion[] {
+  const v5 = isMathGeneratorAtLeast(generatorVersion, MATH_GENERATOR_VERSION_V5);
   const rng = seededRng(seed);
   const bank = COUNTING_BANK.flatMap((item) => item.counts.map((itemCount) => ({
     id: `${item.objectLabel}-${itemCount}`,
@@ -52,7 +60,7 @@ function countingSession(count: number, seed: number): GeneratedQuestion[] {
   })));
 
   return shuffle(rng, bank).slice(0, count).map((item, index) => {
-    const choices = countingChoices(rng, item.count);
+    const choices = v5 ? countingChoicesV5(rng, item.count) : countingChoices(rng, item.count);
     return {
       id: `counting-${item.id}-${index}`,
       type: 'counting',
@@ -99,6 +107,59 @@ function calc20(rng: RNG, i: number): GeneratedQuestion {
     question: `${a} ${add ? '+' : '-'} ${b} = ___`,
     correctAnswer: add ? a + b : a - b,
     kind: 'numeric'
+  };
+}
+
+// v5 sums: v1-v4 drew both operands from 0 up, so 31 % of «10 piires» sums had
+// a zero operand and 13 % were a − a. v5 keeps a zero in about 5 % and a − a in
+// about 3 % of sums; the rest use two non-zero numbers.
+function plusMinusV5(rng: RNG, i: number, max: number, id: string, difficulty: GeneratedQuestion['difficulty']): GeneratedQuestion {
+  const add = i % 2 === 0;
+  const roll = rInt(rng, 1, 100);
+  let a: number;
+  let b: number;
+  if (add) {
+    a = rInt(rng, 1, max - 1);
+    b = rInt(rng, 1, max - a);
+    if (roll <= 5) b = 0;
+  } else {
+    a = rInt(rng, 2, max);
+    b = rInt(rng, 1, a - 1);
+    if (roll <= 5) b = 0;
+    else if (roll <= 11) b = a;
+  }
+  return {
+    id: `${id}-${i}`,
+    category: 'Arvutamine' as Category,
+    difficulty,
+    question: `${a} ${add ? '+' : '-'} ${b} = ___`,
+    correctAnswer: add ? a + b : a - b,
+    kind: 'numeric'
+  };
+}
+
+// v5 comparisons: v1-v4 made every fourth pair equal on purpose and random
+// pairs could be equal too, so 30 % were «=». v5 asks an equal pair about 8 %
+// of the time, and half of the others share the tens digit (47 ___ 42), which
+// is where comparing actually needs thought.
+function compare100V5(rng: RNG, i: number): GeneratedQuestion {
+  const a = rInt(rng, 1, 99);
+  const roll = rInt(rng, 1, 100);
+  let b: number;
+  if (roll <= 8) b = a;
+  else {
+    do {
+      b = roll <= 54 ? Math.floor(a / 10) * 10 + rInt(rng, 0, 9) : rInt(rng, 1, 99);
+    } while (b === a || b < 1);
+  }
+  const correct = a === b ? '=' : a > b ? '>' : '<';
+  return {
+    id: `kcmp-${i}`,
+    category: 'Võrdlemine' as Category,
+    difficulty: 'Lihtne',
+    question: `${a} ___ ${b}`,
+    correctAnswer: correct === '<' ? -1 : correct === '=' ? 0 : 1,
+    kind: 'choice'
   };
 }
 
@@ -197,7 +258,8 @@ function clockSession(count: number, seed: number, generatorVersion: MathGenerat
 
 // `generatorVersion`: see mathGeneratorVersion.ts.
 export function generateKirsiSession(mode: KirsiCategory, count: number, seed: number, generatorVersion: MathGeneratorVersion = MATH_GENERATOR_VERSION): GeneratedQuestion[] {
-  if (mode === 'Loendamine') return countingSession(count, seed);
+  if (mode === 'Loendamine') return countingSession(count, seed, generatorVersion);
+  const v5 = isMathGeneratorAtLeast(generatorVersion, MATH_GENERATOR_VERSION_V5);
   if (mode === 'Kellaaeg') return clockSession(count, seed, generatorVersion);
   const rng = seededRng(seed);
   const types = mode === 'Segaülesanded'
@@ -212,9 +274,10 @@ export function generateKirsiSession(mode: KirsiCategory, count: number, seed: n
     let tries = 0;
     do {
       const t = types[i];
-      q = t === 'Arvutamine 10 piires' ? calc10(rng, i + tries * 7)
-        : t === 'Arvutamine 20 piires' ? calc20(rng, i + tries * 7)
-        : compare100(rng, i + tries * 7);
+      const index = i + tries * 7;
+      q = t === 'Arvutamine 10 piires' ? (v5 ? plusMinusV5(rng, index, 10, 'k10', 'Lihtne') : calc10(rng, index))
+        : t === 'Arvutamine 20 piires' ? (v5 ? plusMinusV5(rng, index, 20, 'k20', 'Keskmine') : calc20(rng, index))
+        : v5 ? compare100V5(rng, index) : compare100(rng, index);
       tries += 1;
     } while (used.has(q.question) && tries < 20);
     used.add(q.question);
