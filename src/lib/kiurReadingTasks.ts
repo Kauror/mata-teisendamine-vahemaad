@@ -1,10 +1,14 @@
+import { kiurReadingStoryTasks } from '@/lib/kiurReadingStories';
+
 export type KiurReadingQuestionType =
   | 'detail'
   | 'tegevus'
   | 'koht'
   | 'tegelane'
   | 'omadus'
-  | 'jareldus';
+  | 'jareldus'
+  // A word read in context («Mida tähendab tekstis …?»).
+  | 'sona';
 
 export type KiurReadingTask = {
   id: string;
@@ -23,7 +27,10 @@ export type KiurReadingTask = {
   questionType: KiurReadingQuestionType;
 };
 
-export const KIUR_READING_TASKS = [
+// The first bank: 100 bird columns («Linnunädalad»), one detail question each.
+// Their questions and keys are frozen (uploaded runs are verified against
+// them); only the distractors were rebalanced on 2026-11-20.
+const LINNUNADALAD_TASKS = [
   {
     "id": "01-suitsupaasuke",
     "learner": "kiur",
@@ -2025,6 +2032,9 @@ export const KIUR_READING_TASKS = [
     "questionType": "detail"
   }
 ] satisfies KiurReadingTask[];
+
+// Bird columns plus the original stories of ./kiurReadingStories.
+export const KIUR_READING_TASKS: KiurReadingTask[] = [...LINNUNADALAD_TASKS, ...kiurReadingStoryTasks()];
 
 function isValidKiurReadingTask(task: KiurReadingTask) {
   return task.learner === 'kiur'
