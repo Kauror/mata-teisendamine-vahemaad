@@ -55,7 +55,7 @@ export function UnitTestsPanel() {
       const body = await res.json() as { results: Array<{ unit: number; variant: string; title: string; status: string; points: number }> };
       const label: Record<string, string> = { added: 'lisatud', updated: 'uuendatud', unchanged: 'muutmata' };
       setReport(body.results.map((item) => `Unit ${item.unit}${item.variant} „${item.title}” — ${label[item.status] ?? item.status}, ${item.points} punkti`));
-      api.setNotice('Lisatestid imporditud.');
+      api.setNotice('Kontrolltööd imporditud.');
       api.bus.after('unitTests');
     });
   };
@@ -67,7 +67,7 @@ export function UnitTestsPanel() {
   });
 
   const remove = (item: ParentVariantSummary) => api.guarded(async () => {
-    if (!window.confirm(`Kas kustutan lisatesti Unit ${item.unitNumber}${item.variant}? Alustatud testid jäävad alles.`)) return;
+    if (!window.confirm(`Kas kustutan kontrolltöö Unit ${item.unitNumber}${item.variant}? Alustatud kontrolltööd jäävad alles.`)) return;
     const res = await api.request(`/api/parent/english-unit-tests?unit=${item.unitNumber}&variant=${item.variant}`, { method: 'DELETE' });
     if (!res.ok) api.setError(await failureMessage(res, 'Kustutamine ebaõnnestus.'));
     api.bus.after('unitTests');
@@ -80,12 +80,12 @@ export function UnitTestsPanel() {
         Faile ei ole koodis (õpik on autoriõigusega kaitstud), need imporditakse siit.
       </p>
       <div className='ut-import'>
-        <input ref={input} className='sr-only' type='file' accept='.json,application/json' multiple onChange={importFiles} aria-label='Vali lisatestide failid' />
-        <button type='button' className='pv-btn' data-k='ok' onClick={() => input.current?.click()}>Impordi lisatestid (JSON)</button>
+        <input ref={input} className='sr-only' type='file' accept='.json,application/json' multiple onChange={importFiles} aria-label='Vali kontrolltööde failid' />
+        <button type='button' className='pv-btn' data-k='ok' onClick={() => input.current?.click()}>Impordi kontrolltööd (JSON)</button>
       </div>
       {report.length > 0 ? <ul className='ut-report'>{report.map((line) => <li key={line}>{line}</li>)}</ul> : null}
 
-      {variants.length === 0 ? <p className='pv-done'>Lisateste veel ei ole.</p> : (
+      {variants.length === 0 ? <p className='pv-done'>Kontrolltöid veel ei ole.</p> : (
         <ul className='ut-variant-list'>
           {variants.map((item) => (
             <li key={`${item.unitNumber}${item.variant}`} className='ut-variant' data-active={item.active}>

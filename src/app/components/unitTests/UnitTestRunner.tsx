@@ -48,7 +48,7 @@ export default function UnitTestRunner({ unitId, attemptId }: { unitId: string; 
     const body = await readJson(response);
     if (response.status === 409 && body.state) {
       accept(body.state as ChildAttemptView);
-      setProblem({ message: typeof body.message === 'string' ? body.message : 'Test on vahepeal muutunud.' });
+      setProblem({ message: typeof body.message === 'string' ? body.message : 'Kontrolltöö on vahepeal muutunud.' });
       return;
     }
     setProblem({ message: typeof body.message === 'string' ? body.message : 'Midagi läks valesti. Proovi uuesti.', retry: response.status >= 500 ? retry : undefined });
@@ -64,7 +64,7 @@ export default function UnitTestRunner({ unitId, attemptId }: { unitId: string; 
         if (response.ok) accept(await response.json() as ChildAttemptView);
         else await handleFailure(response, load);
       })
-      .catch(() => setProblem({ message: 'Lisatest vajab internetiühendust. Kontrolli ühendust ja proovi uuesti.', retry: load }));
+      .catch(() => setProblem({ message: 'Kontrolltöö vajab internetiühendust. Kontrolli ühendust ja proovi uuesti.', retry: load }));
   }, [accept, attemptId, handleFailure, unitId]);
 
   useEffect(load, [load]);
@@ -124,20 +124,20 @@ export default function UnitTestRunner({ unitId, attemptId }: { unitId: string; 
           window.history.replaceState(null, '', `${VOCAB_HOME_ROUTE}/${unitId}/lisatest`);
         } else await handleFailure(response, retake);
       })
-      .catch(() => setProblem({ message: 'Lisatest vajab internetiühendust.' }))
+      .catch(() => setProblem({ message: 'Kontrolltöö vajab internetiühendust.' }))
       .finally(() => setBusy(false));
   };
 
   if (!view) {
     return (
-      <VocabularyShell title='Lisatest'>
+      <VocabularyShell title='Kontrolltöö'>
         {problem ? (
           <div className='vocab-problem' role='alert'>
             <p>{problem.message}</p>
             {problem.retry ? <button type='button' className='start-button' onClick={problem.retry}>Proovi uuesti</button> : null}
             <Link className='vocab-secondary-button' href={VOCAB_HOME_ROUTE}>Tagasi õppetükkide juurde</Link>
           </div>
-        ) : <p className='vocab-loading'>Laadin lisatesti…</p>}
+        ) : <p className='vocab-loading'>Laadin kontrolltööd…</p>}
       </VocabularyShell>
     );
   }
@@ -147,7 +147,7 @@ export default function UnitTestRunner({ unitId, attemptId }: { unitId: string; 
   const empty = editableKeys.filter((key) => !(answers[key] ?? '').trim()).length;
 
   return (
-    <VocabularyShell eyebrow={view.unitLabel} title={`Lisatest: ${view.test.title}`}>
+    <VocabularyShell eyebrow={view.unitLabel} title={`Kontrolltöö: ${view.test.title}`}>
       {problem ? (
         <div className='vocab-problem' role='alert'>
           <p>{problem.message}</p>
@@ -157,14 +157,14 @@ export default function UnitTestRunner({ unitId, attemptId }: { unitId: string; 
 
       {view.status === 'submitted' ? (
         <div className='ut-banner' data-kind='wait' role='status'>
-          <strong>Test on ära antud.</strong>
+          <strong>Kontrolltöö on ära antud.</strong>
           <p>Ootab vanema kinnitust. Vanem vaatab vastused üle ja annab hinde.</p>
         </div>
       ) : null}
 
       {view.status === 'returned' ? (
         <div className='ut-banner' data-kind='fix' role='status'>
-          <strong>Vanem saatis testi parandamiseks.</strong>
+          <strong>Vanem saatis kontrolltöö parandamiseks.</strong>
           <p>Paranda vastused, mis ei ole õiged (✗ või ½). Õigeid vastuseid muuta ei saa.</p>
           {view.comment ? <p className='ut-comment'>„{view.comment}”</p> : null}
         </div>
@@ -174,7 +174,7 @@ export default function UnitTestRunner({ unitId, attemptId }: { unitId: string; 
         <div className='ut-banner' data-kind={view.score.passed ? 'pass' : 'fail'} role='status'>
           <p className='ut-grade'><span>Hinne</span><strong>{view.score.grade}</strong><small>{gradeText(view.score.grade)}</small></p>
           <p>{formatPoints(view.score.earned)} / {formatPoints(view.score.total)} punkti · {Math.round((view.score.earned / view.score.total) * 100)}%</p>
-          <p>{view.score.passed ? 'Lisatest on sooritatud!' : 'Seekord jäi alla 75%. Tee uus test — see võib olla teine variant.'}</p>
+          <p>{view.score.passed ? 'Kontrolltöö on sooritatud!' : 'Seekord jäi alla 75%. Tee uus kontrolltöö — see võib olla teine variant.'}</p>
           {view.stars !== null && view.stars > 0 ? <p>Teenitud: <strong>+{formatStars(view.stars)} ⭐</strong></p> : null}
           {view.comment ? <p className='ut-comment'>„{view.comment}”</p> : null}
           {!view.score.passed ? <button type='button' className='start-button' disabled={busy} onClick={retake}>Tee uus test</button> : null}
@@ -189,15 +189,15 @@ export default function UnitTestRunner({ unitId, attemptId }: { unitId: string; 
             {saving === 'saving' ? 'Salvestan…' : saving === 'pending' ? 'Salvestamata muudatused' : saving === 'saved' ? '✓ Salvestatud' : ''}
           </span>
           {confirming ? (
-            <div className='ut-confirm' role='alertdialog' aria-label='Kas annad testi ära?'>
-              <p>{empty > 0 ? `${empty === 1 ? '1 vastus on' : `${empty} vastust on`} veel tühi. Kas annad testi ikkagi ära?` : 'Kas annad testi ära? Pärast seda vaatab vanem selle üle.'}</p>
+            <div className='ut-confirm' role='alertdialog' aria-label='Kas annad kontrolltöö ära?'>
+              <p>{empty > 0 ? `${empty === 1 ? '1 vastus on' : `${empty} vastust on`} veel tühi. Kas annad kontrolltöö ikkagi ära?` : 'Kas annad kontrolltöö ära? Pärast seda vaatab vanem selle üle.'}</p>
               <div className='vocab-actions'>
                 <button type='button' className='start-button' disabled={busy} onClick={() => { setBusy(true); void send(true).finally(() => { setBusy(false); setConfirming(false); }); }}>Jah, annan ära</button>
-                <button type='button' className='vocab-secondary-button' onClick={() => setConfirming(false)}>Tagasi testi juurde</button>
+                <button type='button' className='vocab-secondary-button' onClick={() => setConfirming(false)}>Tagasi kontrolltöö juurde</button>
               </div>
             </div>
           ) : (
-            <button type='button' className='start-button' onClick={() => setConfirming(true)}>{view.status === 'returned' ? 'Saada parandused' : 'Anna test ära'}</button>
+            <button type='button' className='start-button' onClick={() => setConfirming(true)}>{view.status === 'returned' ? 'Saada parandused' : 'Anna kontrolltöö ära'}</button>
           )}
         </div>
       ) : (

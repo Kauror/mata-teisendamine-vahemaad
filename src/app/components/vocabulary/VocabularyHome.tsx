@@ -48,12 +48,12 @@ function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boo
   if (unitTest) {
     const lisatest = `${base}/lisatest`;
     const view = unitTest.attemptId ? `${lisatest}?katse=${encodeURIComponent(unitTest.attemptId)}` : lisatest;
-    if (unitTest.state === 'available') actions.unshift({ href: lisatest, label: 'Tee lisatest', primary: true });
-    if (unitTest.state === 'in_progress') actions.unshift({ href: lisatest, label: 'Jätka lisatesti', primary: true });
-    if (unitTest.state === 'returned') actions.unshift({ href: lisatest, label: 'Paranda lisatest', primary: true });
-    if (unitTest.state === 'retake') actions.unshift({ href: lisatest, label: 'Tee lisatest uuesti', primary: true });
-    if (unitTest.state === 'submitted') actions.push({ href: view, label: 'Lisatest ootab vanemat' });
-    if (unitTest.state === 'passed') actions.push({ href: view, label: `Lisatest: hinne ${unitTest.grade ?? ''}`.trim() });
+    if (unitTest.state === 'available') actions.unshift({ href: lisatest, label: 'Tee kontrolltöö', primary: true });
+    if (unitTest.state === 'in_progress') actions.unshift({ href: lisatest, label: 'Jätka kontrolltööd', primary: true });
+    if (unitTest.state === 'returned') actions.unshift({ href: lisatest, label: 'Paranda kontrolltöö', primary: true });
+    if (unitTest.state === 'retake') actions.unshift({ href: lisatest, label: 'Tee kontrolltöö uuesti', primary: true });
+    if (unitTest.state === 'submitted') actions.push({ href: view, label: 'Kontrolltöö ootab vanemat' });
+    if (unitTest.state === 'passed') actions.push({ href: view, label: `Kontrolltöö: hinne ${unitTest.grade ?? ''}`.trim() });
   }
   if (card.weakCount > 0 && card.status !== 'locked') {
     actions.push({ href: `${VOCAB_HOME_ROUTE}/korda?unit=${encodeURIComponent(card.id)}`, label: 'Korda eksitud sõnu' });
