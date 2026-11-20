@@ -17,7 +17,7 @@ export function offlineStatusPresentation({
   syncState: OfflineSyncState;
 }): OfflineStatusPresentation | null {
   if (syncState === 'auth_blocked') {
-    return { label: 'Palun sisesta PIN uuesti, et tulemused saaks sünkroonida', tone: 'warn' };
+    return { label: 'Sisesta pere parool uuesti, et tulemused saaks saata', tone: 'warn' };
   }
   if (syncState === 'upgrade_required') {
     return { label: 'Rakendus vajab uuendamist enne sünkroonimist', tone: 'warn' };
