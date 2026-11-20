@@ -1,6 +1,6 @@
 import { normalizeSlotAnswer, sentenceWords } from './grading';
-import { layoutCrossword } from './crossword';
-import { UNIT_TEST_FORMAT, type CrosswordEntry, type UnitTestContent, type UnitTestExercise } from './types';
+import { crosswordLayoutProblems, layoutCrossword } from './crossword';
+import { UNIT_TEST_FORMAT, type CrosswordEntry, type TextItem, type UnitTestContent, type UnitTestExercise } from './types';
 
 // Validates an imported unit-test file. The file comes from the parent's
 // upload, so every field is checked and only known fields are copied into the
@@ -44,6 +44,11 @@ function textList(ctx: Ctx, value: unknown, where: string, allowEmpty = false): 
   return list;
 }
 
+function uniqueList(ctx: Ctx, list: string[], where: string) {
+  if (new Set(list).size !== list.length) ctx.problems.push(`${where}: sõnad korduvad.`);
+  return list;
+}
+
 function points(ctx: Ctx, value: unknown, where: string): number | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 5) {
@@ -72,7 +77,7 @@ function exercise(ctx: Ctx, raw: unknown, index: number, seen: Set<string>): Uni
     id: id(ctx, record.id, where, seen),
     instruction: text(ctx, record.instruction, `${where} juhend`),
     ...(record.scene !== undefined ? { scene: text(ctx, record.scene, `${where} pildi kirjeldus`) } : {}),
-    ...(record.wordBank !== undefined ? { wordBank: textList(ctx, record.wordBank, `${where} sõnapank`) } : {})
+    ...(record.wordBank !== undefined ? { wordBank: uniqueList(ctx, textList(ctx, record.wordBank, `${where} sõnapank`), `${where} sõnapank`) } : {})
   };
   const itemsOf = (): Record<string, unknown>[] => {
     if (!Array.isArray(record.items) || record.items.length === 0) {
@@ -96,6 +101,7 @@ function exercise(ctx: Ctx, raw: unknown, index: number, seen: Set<string>): Uni
       const answer = text(ctx, item.answer, `${w} vastus`);
       const pool = options ?? base.wordBank;
       if (!pool || pool.length < 2) ctx.problems.push(`${w}: valikud puuduvad.`);
+      else if (new Set(pool).size !== pool.length) ctx.problems.push(`${w}: valikud korduvad.`);
       else if (!pool.includes(answer)) ctx.problems.push(`${w}: vastus ei ole valikute hulgas.`);
       return { id: id(ctx, item.id, w, itemIds), prompt: text(ctx, item.prompt, `${w} küsimus`, false), ...(options ? { options } : {}), answer, ...example(item), ...withPoints(item, w) };
     });
@@ -106,14 +112,20 @@ function exercise(ctx: Ctx, raw: unknown, index: number, seen: Set<string>): Uni
       const w = `${where} ülesanne ${i + 1}`;
       const fields = item.fields === undefined ? undefined : textList(ctx, item.fields, `${w} väljad`);
       if (fields && fields.length > 4) ctx.problems.push(`${w}: liiga palju välju.`);
-      const check: 'auto' | 'parent' | null = item.check === 'auto' || item.check === 'parent' ? item.check : null;
-      if (!check) ctx.problems.push(`${w}: check peab olema auto või parent.`);
       const fieldCount = fields?.length ?? 1;
+      // One rule for the whole item, or one per field (a closed gap next to
+      // the child's own answer: ["auto", "parent"]).
+      const isCheck = (value: unknown): value is 'auto' | 'parent' => value === 'auto' || value === 'parent';
+      const check: TextItem['check'] | null = isCheck(item.check)
+        ? item.check
+        : Array.isArray(item.check) && item.check.length === fieldCount && item.check.every(isCheck) ? item.check as Array<'auto' | 'parent'> : null;
+      if (!check) ctx.problems.push(`${w}: check peab olema auto, parent või iga välja jaoks üks neist.`);
+      const checkOf = (field: number) => (Array.isArray(check) ? check[field] : check);
       const answers = Array.isArray(item.answers) ? item.answers.map((list, f) => textList(ctx, list, `${w} vastused ${f + 1}`, true)) : [];
       if (answers.length !== fieldCount) ctx.problems.push(`${w}: igal väljal peab olema oma vastuste loend.`);
       answers.forEach((list, f) => {
         const accepted = list.filter(Boolean);
-        if (check === 'auto' && accepted.length === 0) ctx.problems.push(`${w}: automaatselt kontrollitaval väljal ${f + 1} pole vastust.`);
+        if (checkOf(f) === 'auto' && accepted.length === 0) ctx.problems.push(`${w}: automaatselt kontrollitaval väljal ${f + 1} pole vastust.`);
         if (new Set(accepted.map(normalizeSlotAnswer)).size !== accepted.length) ctx.problems.push(`${w}: vastused korduvad.`);
       });
       return { id: id(ctx, item.id, w, itemIds), prompt: text(ctx, item.prompt, `${w} küsimus`), ...(fields ? { fields } : {}), answers: answers.map((list) => list.filter(Boolean)), check: check ?? 'parent', ...example(item), ...withPoints(item, w) };
@@ -162,7 +174,8 @@ function exercise(ctx: Ctx, raw: unknown, index: number, seen: Set<string>): Uni
     if (placed !== 0 && placed !== entries.length) ctx.problems.push(`${where}: paigutus peab olema kas kõigil sõnadel või mitte ühelgi.`);
     if (ctx.problems.length === 0) {
       try {
-        layoutCrossword(entries);
+        const layout = layoutCrossword(entries);
+        if (placed > 0) for (const problem of crosswordLayoutProblems(layout)) ctx.problems.push(`${where}: ${problem}`);
       } catch (error) {
         ctx.problems.push(`${where}: ${(error as Error).message}`);
       }

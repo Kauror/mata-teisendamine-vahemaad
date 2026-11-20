@@ -93,7 +93,7 @@ export function toClientUnitTest(content: UnitTestContent): ClientUnitTest {
           prompt: item.prompt,
           ...(item.fields ? { fields: item.fields } : {}),
           ...(item.example ? { example: item.answers.map((list) => list[0] ?? '') } : {}),
-          ...(item.check === 'parent' ? { parentChecked: true } : {})
+          ...((Array.isArray(item.check) ? item.check.includes('parent') : item.check === 'parent') ? { parentChecked: true } : {})
         }))
       };
     })

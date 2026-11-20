@@ -5,6 +5,7 @@ import { approvalMeta, learnerLabel } from './format';
 import { failureMessage, jsonInit } from './parentApi';
 import type { Dashboard, HeldReward, OfflineTaskReview } from './types';
 import { useParentApi, useParentResource } from './useParentApi';
+import { isoToAppDate } from '@/lib/appDate';
 
 const heldFrom = (body: unknown) => {
   const held = (body as { held?: unknown } | null)?.held;
@@ -98,8 +99,8 @@ export function ApprovalsPanel() {
             <span>
               {learnerLabel(item.learner)} · Kontrolltöö: {item.unitLabel} ({item.variant})
               <small>
-                {item.submissions > 1 ? 'Parandatud test' : 'Ära antud'} · {item.submittedAt.slice(0, 10)}
-                {item.autoScore.unmarked > 0 ? ` · ${item.autoScore.unmarked} vastust vajab sinu hinnangut` : ''}
+                {item.submissions > 1 ? 'Parandatud kontrolltöö' : 'Ära antud'} · {isoToAppDate(item.submittedAt) ?? ''}
+                {item.autoScore.unmarked > 0 ? ` · ${item.autoScore.unmarked} ${item.autoScore.unmarked === 1 ? 'vastus vajab' : 'vastust vajavad'} sinu hinnangut` : ''}
               </small>
             </span>
           </div>

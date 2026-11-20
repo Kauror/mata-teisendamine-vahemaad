@@ -102,7 +102,43 @@ function autoPlace(entries: CrosswordEntry[]) {
   return placed;
 }
 
+// Layouts are recomputed for every read and save of a test; the entries of a
+// parsed content object never change, so each array is laid out once.
+const layoutCache = new WeakMap<CrosswordEntry[], CrosswordLayout>();
+
 export function layoutCrossword(entries: CrosswordEntry[]): CrosswordLayout {
+  const cached = layoutCache.get(entries);
+  if (cached) return cached;
+  const layout = computeLayout(entries);
+  layoutCache.set(entries, layout);
+  return layout;
+}
+
+// A book layout must be a real crossword: no two different numbers in one
+// start cell, and no two letters side by side unless one word runs through
+// both (otherwise the grid shows a "word" nobody asked for).
+export function crosswordLayoutProblems(layout: CrosswordLayout): string[] {
+  const problems: string[] = [];
+  const starts = new Map<string, number>();
+  for (const entry of layout.entries) {
+    const key = cellKey(entry.row, entry.col);
+    const existing = starts.get(key);
+    if (existing !== undefined && existing !== entry.number) problems.push(`Ruudus (${entry.row + 1}, ${entry.col + 1}) algavad sõnad numbritega ${existing} ja ${entry.number}.`);
+    starts.set(key, entry.number);
+  }
+  const covered = (dir: 'across' | 'down', a: { row: number; col: number }, b: { row: number; col: number }) =>
+    layout.entries.some((entry) => entry.dir === dir && [a, b].every((cell) => entryCells(entry).some((item) => item.row === cell.row && item.col === cell.col)));
+  const letters = new Set(layout.cells.map((cell) => cellKey(cell.row, cell.col)));
+  for (const cell of layout.cells) {
+    const right = { row: cell.row, col: cell.col + 1 };
+    const below = { row: cell.row + 1, col: cell.col };
+    if (letters.has(cellKey(right.row, right.col)) && !covered('across', cell, right)) problems.push(`Ruudud (${cell.row + 1}, ${cell.col + 1}) ja (${right.row + 1}, ${right.col + 1}) on kõrvuti, kuid ükski sõna ei läbi neid.`);
+    if (letters.has(cellKey(below.row, below.col)) && !covered('down', cell, below)) problems.push(`Ruudud (${cell.row + 1}, ${cell.col + 1}) ja (${below.row + 1}, ${below.col + 1}) on üksteise all, kuid ükski sõna ei läbi neid.`);
+  }
+  return problems;
+}
+
+function computeLayout(entries: CrosswordEntry[]): CrosswordLayout {
   const explicit = entries.every((entry) => entry.dir !== undefined && entry.row !== undefined && entry.col !== undefined);
   const raw = explicit
     ? entries.map((entry) => ({ entry, row: entry.row!, col: entry.col!, dir: entry.dir! }))

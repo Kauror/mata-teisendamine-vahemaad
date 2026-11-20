@@ -5,6 +5,7 @@ import { useRef, useState, type ChangeEvent } from 'react';
 import type { ParentVariantSummary } from '@/lib/server/unitTests/store';
 import { failureMessage, jsonInit } from './parentApi';
 import { useParentApi, useParentResource } from './useParentApi';
+import { isoToAppDate } from '@/lib/appDate';
 
 type Recent = { id: string; learner: 'kiur' | 'kirsi'; unitLabel: string; variant: string; approvedAt: string | null; grade: number | null; passed: boolean };
 type Data = { variants: ParentVariantSummary[]; recent: Recent[] };
@@ -76,7 +77,7 @@ export function UnitTestsPanel() {
   return (
     <div className='ut-panel'>
       <p className='pv-hint'>
-        Õpiku testid, mis avanevad Kiurile pärast õppetüki sõnade testi. Iga õppetüki jaoks juhuslikult variant A või B.
+        Õpiku kontrolltööd, mis avanevad Kiurile pärast õppetüki sõnade testi. Iga õppetüki jaoks juhuslikult variant A või B.
         Faile ei ole koodis (õpik on autoriõigusega kaitstud), need imporditakse siit.
       </p>
       <div className='ut-import'>
@@ -116,7 +117,7 @@ export function UnitTestsPanel() {
               <li key={item.id} className='ut-variant'>
                 <span className='ut-variant-name'>
                   <strong>{item.unitLabel} ({item.variant})</strong>
-                  <small>{item.learner === 'kiur' ? 'Kiur' : 'Kirsi'} · hinne {item.grade ?? '–'} · {item.passed ? 'sooritatud' : 'alla 75%'} · {item.approvedAt?.slice(0, 10)}</small>
+                  <small>{item.learner === 'kiur' ? 'Kiur' : 'Kirsi'} · hinne {item.grade ?? '–'} · {item.passed ? 'sooritatud' : 'alla 75%'} · {item.approvedAt ? isoToAppDate(item.approvedAt) : ''}</small>
                 </span>
                 <span className='ut-variant-actions'>
                   <Link className='pv-btn' data-k='no' href={`/vanem/lisatest/${item.id}`}>Vaata</Link>

@@ -21,7 +21,8 @@ export type TextItem = {
   prompt: string;
   fields?: string[];
   answers: string[][];
-  check: 'auto' | 'parent';
+  // For the whole item, or one per field.
+  check: 'auto' | 'parent' | Array<'auto' | 'parent'>;
   example?: boolean;
   points?: number;
 };

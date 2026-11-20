@@ -30,7 +30,18 @@ describe('runner liveness', () => {
     expect(isRunnerPath(pathname)).toBe(true);
   });
 
-  it.each(['/', '/kiur', '/history', '/opi/matemaatika'])('does not treat %s as a runner route', (pathname) => {
+  it.each([
+    '/kiur/inglise-keel/vu_1/lisatest',
+    '/kiur/inglise-keel/vu_1/test',
+    '/kiur/inglise-keel/korda',
+    '/kiur/loodusopetus/opik/lo-opik-u10/test',
+    '/kiur/kordamine',
+    '/kirsi/kordamine'
+  ])('holds the update reload on the server-backed run %s', (pathname) => {
+    expect(isRunnerPath(pathname)).toBe(true);
+  });
+
+  it.each(['/', '/kiur', '/history', '/opi/matemaatika', '/kiur/inglise-keel', '/kiur/loodusopetus/opik/lo-opik-u10'])('does not treat %s as a runner route', (pathname) => {
     expect(isRunnerPath(pathname)).toBe(false);
   });
 

@@ -77,7 +77,7 @@ export function buildSlots(content: UnitTestContent): AnswerSlot[] {
           exerciseId: exercise.id,
           kind: 'text',
           points: item.points ?? 1,
-          check: item.check,
+          check: Array.isArray(item.check) ? item.check[index] ?? 'parent' : item.check,
           accepted: item.answers[index] ?? [],
           label: field ? `${item.prompt} (${field})` : item.prompt
         });
