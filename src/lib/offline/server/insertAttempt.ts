@@ -12,7 +12,7 @@ import { recomputeSprintQualifications } from '@/lib/sprintQualification';
 import { metadataMatchesContract, validateAttemptRecordV2 } from '@/lib/server/http/requestValidation';
 import { getOfflineRunnerCapability } from '@/lib/offline/capabilities';
 import { isOfflineProtocolV2Enabled } from '@/lib/offline/protocol';
-import { validateAttemptTiming } from '@/lib/offline/server/attemptTiming';
+import { attemptIsImplausiblyFast, validateAttemptTiming } from '@/lib/offline/server/attemptTiming';
 import { MATH_GENERATOR_VERSIONS } from '@/lib/exercises/mathGeneratorVersion';
 import { createHash } from 'node:crypto';
 
@@ -256,6 +256,11 @@ export function insertAttempt(input: InsertAttemptInput): InsertAttemptResult {
     permitted = false;
     review = true;
     reasonCode = reasonCode ?? validation.reasonCode;
+  }
+  // An implausibly fast attempt is kept, but its stars wait for the parent (B3).
+  if (permitted && !review && attemptIsImplausiblyFast({ runnerId: String(input.runnerId), questionCount, score, elapsedSeconds })) {
+    review = true;
+    reasonCode = 'too_fast';
   }
 
   // Authoritative reward eligibility, persisted on the row. Only 'eligible'
