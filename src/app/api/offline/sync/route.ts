@@ -3,9 +3,8 @@ import { runSyncPullV2, runSyncPushV2 } from '@/lib/offline/server/syncService';
 import type { OfflineSyncPullRequestV2, OfflineSyncPushRequestV2 } from '@/lib/shared/types';
 import { parseOfflineSyncRequest, PublicRequestError, readJsonBody } from '@/lib/server/http/requestValidation';
 import { runSyncRouteFaultInjector } from './faultInjection';
-import { PARENT_SESSION_COOKIE } from '@/lib/auth/constants';
-import { verifySession } from '@/lib/auth/session';
-import { isPeekReadOnlyRequest, PEEK_READ_ONLY_ACTION_MESSAGE, PEEK_READ_ONLY_CODE } from '@/lib/peekMode';
+import { PEEK_READ_ONLY_ACTION_MESSAGE, PEEK_READ_ONLY_CODE } from '@/lib/peekMode';
+import { isPeekingRequest } from '@/lib/server/peekRequest';
 import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
 import type { ChildLearner } from '@/lib/auth/deviceBinding';
 
@@ -41,8 +40,7 @@ export async function POST(req: NextRequest) {
     if (body.phase === 'push') {
       // Peek mode is read-only: a signed-in parent (not "Vaata nagu laps")
       // may pull, but never push attempts or task actions for a child (C3b).
-      const parent = await verifySession(req.cookies.get(PARENT_SESSION_COOKIE)?.value, 'parent');
-      if (isPeekReadOnlyRequest({ parentSession: Boolean(parent), cookieHeader: req.headers.get('cookie') })) {
+      if (await isPeekingRequest(req)) {
         return NextResponse.json({ code: PEEK_READ_ONLY_CODE, message: PEEK_READ_ONLY_ACTION_MESSAGE }, { status: 403 });
       }
       // A device bound to one child cannot push records for the other (B4).

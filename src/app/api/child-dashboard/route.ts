@@ -5,6 +5,7 @@ import { getActiveLearningStreak } from '@/lib/learningPoints';
 import { ensureMonthlyPrizeAwarded, getMonthlyCelebration, getMonthlyTrophies } from '@/lib/monthlyCompetition';
 import { getStreakFreezeState, settleStreakFreezes } from '@/lib/streakFreeze';
 import { studyDates } from '@/lib/studyDays';
+import { isPeekingRequest } from '@/lib/server/peekRequest';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,13 +20,17 @@ export async function GET(req: NextRequest) {
   // One app date for the whole response, so a read straddling midnight cannot
   // mix two days.
   const today = todayDateString();
-  ensureMonthlyPrizeAwarded(today);
+  // Peek mode is read-only for the child's data (C3b): a parent looking at the
+  // child's page must not settle last month's prize or spend a held streak
+  // freeze. Both are idempotent and happen on the child's own next visit.
+  const peeking = await isPeekingRequest(req);
+  if (!peeking) ensureMonthlyPrizeAwarded(today);
   // Read once: freeze settlement, the streak and the weekly achievement all
   // need the child's study days, and settling never changes them.
   const dates = studyDates(learner);
   // Spend any held freeze on a day that was missed before reading the streak,
   // so the child never sees the streak they saved flash as broken.
-  settleStreakFreezes(learner, today, dates);
+  if (!peeking) settleStreakFreezes(learner, today, dates);
   return NextResponse.json({
     ...getChildDashboard(learner, today),
     streak: getActiveLearningStreak(learner, today, dates),
