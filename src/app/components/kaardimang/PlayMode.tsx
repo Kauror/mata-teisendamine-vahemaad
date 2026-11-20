@@ -123,7 +123,7 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
   const shownMap = map.areas.some((area) => area.kind === 'sea')
     ? { ...map, areas: map.areas.filter((area) => area.kind === (question.targetType === 'sea' ? 'sea' : 'ocean')) }
     : map;
-  const options = question.options?.filter((option) => !question.state.removedOptionIds.includes(option.id) || option.id === question.correctId) ?? [];
+  const options = question.options?.filter((option) => !question.state.removedOptionIds.includes(option.id) || option.id === question.correctOptionId) ?? [];
   const tone = feedback?.questionIndex === shown ? feedback.outcome : null;
   const message = feedback?.questionIndex === shown ? feedback.messageEt : question.state.attempts > 0 && !resolved ? `Proovi veel. ${question.hintEt ?? ''}`.trim() : '';
 
@@ -155,7 +155,7 @@ export default function PlayMode({ client, map, initialRound, title, onPlayAgain
           {question.answering === 'buttons' ? (
             <div className='km-options'>
               {options.map((option) => {
-                const state = question.correctId === option.id ? 'correct' : question.state.wrongIds.includes(option.id) ? 'wrong' : undefined;
+                const state = question.correctOptionId === option.id ? 'correct' : question.wrongOptionIds.includes(option.id) ? 'wrong' : undefined;
                 return (
                   <button
                     key={option.id}

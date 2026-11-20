@@ -3,6 +3,7 @@ import { formatStars } from '@/lib/formatStars';
 import { exerciseWord, prizeWord, starWord, trophyWord } from '@/lib/history';
 import { LEARNING_EXERCISE_SUBJECT_LABELS, type LearningExerciseStatus, type LearningExerciseSubject } from '@/lib/shared/types';
 import type { AssignmentMode, Learner, ParentHistoryAttempt, PendingApproval, RecurrenceType, RewardLearnerScope, StoreStockType, StoreVisibility } from './types';
+import { reviewReasonLabel } from '@/lib/reviewReasons';
 
 // Labels and small formatters shared by the parent panels. Pure, so the
 // wording rules are unit-tested.
@@ -90,6 +91,19 @@ export function approvalMeta(item: Pick<PendingApproval, 'points' | 'date' | 'co
   const day = item.date && item.date !== todayDate ? ` · ${shortDayLabel(item.date)}` : '';
   const clock = item.completedAt ? ` · ${clockLabel(item.completedAt)}` : '';
   return `+${item.points} ⭐${day}${clock}`;
+}
+
+// Why an offline task completion waits for the parent. The common case is a
+// completion for an earlier day (the device's clock dates it, so it is never
+// settled without the parent); the rest are a since-changed or removed task.
+export function offlineReviewReason(reasonCode: string | null | undefined) {
+  if (reasonCode === 'late_completion') return 'Märgitud tehtuks varasemal päeval, jõudis kohale hiljem';
+  return `Tehtud võrguühenduseta${reasonCode ? ` · ${reviewReasonLabel(reasonCode)}` : ''}`;
+}
+
+// Why an exercise's stars were held back, in words where the code is ours.
+export function heldReasonLabel(reasonCode: string | null | undefined) {
+  return reviewReasonLabel(reasonCode);
 }
 
 export function parseWeekdays(raw: string | null) {

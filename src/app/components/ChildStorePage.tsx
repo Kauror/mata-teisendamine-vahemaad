@@ -7,6 +7,7 @@ import { starWord } from '@/lib/history';
 import { useOffline } from '@/app/components/offline/OfflineProvider';
 import { readPeekMode } from '@/app/components/usePeekMode';
 import { PEEK_READ_ONLY_ACTION_MESSAGE } from '@/lib/peekMode';
+import { createRunId } from '@/lib/offline/runnerSession';
 
 // Buying, freezes and gifts spend the child's stars, so a peeking parent is
 // stopped before the request (the server refuses it as well).
@@ -68,6 +69,10 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
   const [data, setData] = useState<StoreData | null>(null);
   const [error, setError] = useState('');
   const [confirmItem, setConfirmItem] = useState<StoreItem | null>(null);
+  // One id per opened purchase dialog, resent when the child taps again after
+  // an error: if the first request did go through, the server returns that
+  // purchase instead of buying a second time.
+  const [purchaseId, setPurchaseId] = useState('');
   const [success, setSuccess] = useState<{ title: string; price: number; balanceAfter: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const recipient: Learner = learner === 'kiur' ? 'kirsi' : 'kiur';
@@ -106,7 +111,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
       const res = await fetch('/api/store/purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ learner, itemId: confirmItem.id })
+        body: JSON.stringify({ learner, itemId: confirmItem.id, clientPurchaseId: purchaseId || undefined })
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.message || 'Ostu ei saanud teha.');
@@ -220,7 +225,7 @@ export default function ChildStorePage({ learner }: { learner: Learner }) {
                 {online && !item.canBuy && item.stateLabel && <small>{item.stateLabel}</small>}
               </span>
               <span className='store-price'>{item.price} ⭐</span>
-              <button type='button' className='store-buy' disabled={!online || !item.canBuy} aria-label={`Osta ${item.title}`} onClick={() => online && item.canBuy && setConfirmItem(item)}>Osta</button>
+              <button type='button' className='store-buy' disabled={!online || !item.canBuy} aria-label={`Osta ${item.title}`} onClick={() => { if (online && item.canBuy) { setPurchaseId(createRunId()); setConfirmItem(item); } }}>Osta</button>
             </li>
           ))}
           {data && data.items.length === 0 && <li className='store-empty'>Poes ei ole praegu esemeid.</li>}

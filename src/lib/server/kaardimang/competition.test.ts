@@ -17,7 +17,16 @@ import {
   setPlayerLevel,
   standingsFor
 } from '@/lib/server/kaardimang/competition';
-import { answer, getOverview, getRound, markShown, startRound, type KaardimangContext } from '@/lib/server/kaardimang/rounds';
+import { answer as answerWithToken, getOverview, getRound, markShown, optionTokenForTests, startRound, type KaardimangContext } from '@/lib/server/kaardimang/rounds';
+
+// Button answers go in as the round's opaque option tokens (B5); these tests
+// name the place, so translate it the way the client's button would.
+function answer(context: KaardimangContext, roundId: string, input: Parameters<typeof answerWithToken>[2]) {
+  const answerId = typeof input.questionIndex === 'number' && typeof input.answerId === 'string'
+    ? optionTokenForTests(roundId, input.questionIndex, input.answerId)
+    : input.answerId;
+  return answerWithToken(context, roundId, { ...input, answerId });
+}
 import { getBalance } from '@/lib/tasks';
 
 // The family competition on a real (test) database: counted rounds, points,

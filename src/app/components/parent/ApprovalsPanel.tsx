@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { approvalMeta, learnerLabel } from './format';
+import { approvalMeta, heldReasonLabel, learnerLabel, offlineReviewReason } from './format';
 import { failureMessage, jsonInit } from './parentApi';
 import type { Dashboard, HeldReward, OfflineTaskReview } from './types';
 import { useParentApi, useParentResource } from './useParentApi';
 import { isoToAppDate } from '@/lib/appDate';
-import { reviewReasonLabel } from '@/lib/reviewReasons';
 
 const heldFrom = (body: unknown) => {
   const held = (body as { held?: unknown } | null)?.held;
@@ -116,7 +115,7 @@ export function ApprovalsPanel() {
       {reviews.map((item) => (
         <div key={`r-${item.clientActionId}`} className='pv-ask'>
           <div className='pv-ask-line'>
-            <span>{learnerLabel(item.learner)} · {item.title}<small>Tehtud võrguühenduseta, tegevus on vahepeal muutunud · {item.taskDate}{item.reasonCode ? ` · ${reviewReasonLabel(item.reasonCode)}` : ''}</small></span>
+            <span>{learnerLabel(item.learner)} · {item.title}<small>{offlineReviewReason(item.reasonCode)} · {item.taskDate}</small></span>
             <span>+{item.points} ⭐</span>
           </div>
           <div className='pv-btns'>
@@ -136,7 +135,7 @@ export function ApprovalsPanel() {
               <small>
                 Harjutuse tähed on kinni peetud · {item.score}/{item.questionCount}
                 {item.completionDate ? ` · ${item.completionDate}` : ''}
-                {item.reviewReasonCode ? ` · ${reviewReasonLabel(item.reviewReasonCode)}` : ''}
+                {item.reviewReasonCode ? ` · ${heldReasonLabel(item.reviewReasonCode)}` : ''}
               </small>
             </span>
           </div>

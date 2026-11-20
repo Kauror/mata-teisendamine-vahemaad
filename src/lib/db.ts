@@ -1533,6 +1533,21 @@ const migrations: Migration[] = [
     name: 'english_unit_tests',
     checksumSource: 'english_unit_tests:v1:2026-11-20',
     up: addEnglishUnitTests
+  },
+  {
+    id: 18,
+    name: 'store_purchase_client_id',
+    checksumSource: 'store_purchase_client_id:v1:2026-11-20',
+    // A purchase carries the id the child's device generated for it, so a
+    // retry after a lost response returns the original purchase instead of
+    // buying twice (review C8). Older rows have none.
+    up: (connection) => {
+      connection.exec(`
+        ALTER TABLE store_purchases ADD COLUMN clientPurchaseId TEXT;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_store_purchases_client_id
+          ON store_purchases(clientPurchaseId) WHERE clientPurchaseId IS NOT NULL;
+      `);
+    }
   }
 ];
 

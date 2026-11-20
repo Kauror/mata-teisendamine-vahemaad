@@ -124,3 +124,33 @@ describe('a reward policy edit during a run', () => {
     }
   });
 });
+
+// A perfect 15-question maths session cannot be done in a few seconds. Such an
+// attempt is kept but its stars wait for the parent (B3).
+describe('an implausibly fast attempt', () => {
+  it('is stored but held for the parent as too_fast', () => {
+    const served = serveGrant();
+    const payload = { ...v2Attempt(served, 'too-fast-1', '2026-07-12T09:00:00.000Z', 15), elapsedSeconds: 3 };
+    const result = insertAttempt(payload);
+    expect(result).toMatchObject({ status: 'needs_review', reasonCode: 'too_fast' });
+    const stored = db.prepare('SELECT id, rewardSettlementStatus, reviewReasonCode FROM attempts WHERE clientAttemptId = ?').get(cid('too-fast-1')) as { id: number; rewardSettlementStatus: string; reviewReasonCode: string };
+    expect(stored).toMatchObject({ rewardSettlementStatus: 'needs_review', reviewReasonCode: 'too_fast' });
+    expect(getBalance('kiur')).toBe(0);
+    approveHeldRewardAttempt(stored.id);
+    expect(getBalance('kiur')).toBe(1);
+  });
+
+  it('does not hold a fast but humanly possible session', () => {
+    const served = serveGrant();
+    // 15 questions in 23 s: about 1.5 s each.
+    const payload = { ...v2Attempt(served, 'fast-ok-1', '2026-07-12T09:00:00.000Z', 15), elapsedSeconds: 23 };
+    expect(insertAttempt(payload).status).toBe('created');
+    expect(getBalance('kiur')).toBe(1);
+  });
+
+  it('does not hold a fast session that earns nothing', () => {
+    const served = serveGrant();
+    const payload = { ...v2Attempt(served, 'fast-wrong-1', '2026-07-12T09:00:00.000Z', 2), elapsedSeconds: 3 };
+    expect(insertAttempt(payload).status).toBe('created');
+  });
+});

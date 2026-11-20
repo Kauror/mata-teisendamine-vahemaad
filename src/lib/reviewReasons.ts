@@ -18,13 +18,14 @@ const REASONS: Record<string, string> = {
   runner_exercise_mismatch: 'harjutus ei klapi',
   question_contract_mismatch: 'küsimused ei klapi',
   metadata_mismatch: 'andmed ei klapi',
-  too_fast: 'tehtud kahtlaselt kiiresti',
+  too_fast: 'vastatud ebatavaliselt kiiresti',
   template_changed: 'tegevus on vahepeal muutunud',
   template_deleted: 'tegevus on vahepeal kustutatud',
   template_removed: 'tegevust enam ei ole',
   no_assignment: 'tegevust polnud sel päeval',
   late_completion: 'tehtud varasemal päeval, jõudis hiljem',
-  future_task_date: 'kuupäev on tulevikus'
+  future_task_date: 'kuupäev on tulevikus',
+  task_date_too_old: 'päev on liiga ammu möödas'
 };
 
 export function reviewReasonLabel(code: string | null | undefined): string {

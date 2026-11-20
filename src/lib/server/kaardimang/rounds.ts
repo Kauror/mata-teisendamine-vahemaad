@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import db from '@/lib/db';
@@ -11,6 +11,9 @@ import {
   buildRound,
   gradeAnswer,
   toClientQuestion,
+  type ClientQuestion,
+  type FrozenQuestion,
+  type QuestionState,
   type RoundState,
   type TargetStat,
   type ViewGeometry
@@ -110,6 +113,46 @@ function summaryOf(row: RoundRow, state: RoundState): RoundSummary {
   };
 }
 
+// A button option's id as the client sees it: opaque and different in every
+// round, so a "which country is highlighted" question (whose highlighted shape
+// is the answer) or a capital question (whose capital ids start with the
+// country's) cannot be answered by reading ids out of the response (B5).
+function optionToken(salt: string, question: FrozenQuestion, optionId: string) {
+  return `o${createHmac('sha256', salt).update(`${question.id}:${optionId}`).digest('hex').slice(0, 16)}`;
+}
+
+function clientQuestion(state: RoundState, index: number): ClientQuestion {
+  const question = state.questions[index];
+  const questionState: QuestionState = state.states[index];
+  const view = toClientQuestion(question, questionState);
+  const salt = state.optionSalt;
+  if (!salt || !question.options) return view;
+  const optionIds = new Set(question.options.map((option) => option.id));
+  const token = (id: string) => optionToken(salt, question, id);
+  return {
+    ...view,
+    options: question.options.map((option) => ({ id: token(option.id), label: option.label })),
+    state: { ...view.state, removedOptionIds: questionState.removedOptionIds.map(token) },
+    correctOptionId: view.correctOptionId ? token(view.correctOptionId) : null,
+    wrongOptionIds: questionState.wrongIds.filter((id) => optionIds.has(id)).map(token)
+  };
+}
+
+// The place id behind a button token; undefined for a token of no option.
+function optionIdForToken(state: RoundState, question: FrozenQuestion, answerId: string) {
+  if (!state.optionSalt || !question.options) return answerId;
+  return question.options.find((option) => optionToken(state.optionSalt!, question, option.id) === answerId)?.id;
+}
+
+// Test-only: the token the client would send for a place id.
+export function optionTokenForTests(roundId: string, questionIndex: number, optionId: string) {
+  const row = db.prepare('SELECT stateJson FROM kaardimang_rounds WHERE id = ?').get(roundId) as { stateJson: string };
+  const state = JSON.parse(row.stateJson) as RoundState;
+  const question = state.questions[questionIndex];
+  if (!question || !state.optionSalt || !question.options?.some((option) => option.id === optionId)) return optionId;
+  return optionToken(state.optionSalt, question, optionId);
+}
+
 function toView(row: RoundRow): RoundView {
   const state = JSON.parse(row.stateJson) as RoundState;
   return {
@@ -121,7 +164,7 @@ function toView(row: RoundRow): RoundView {
     status: row.status,
     revision: row.revision,
     cursor: state.cursor,
-    questions: state.questions.map((question, index) => toClientQuestion(question, state.states[index])),
+    questions: state.questions.map((_, index) => clientQuestion(state, index)),
     summary: row.status === 'completed' ? summaryOf(row, state) : null,
     competition: row.competitionId === null ? null : roundCompetition(row)
   };
@@ -219,7 +262,7 @@ export function startRound(context: KaardimangContext, input: { actionId: string
     const now = nowIso();
     db.prepare("UPDATE kaardimang_rounds SET status = 'abandoned', updatedAt = ? WHERE learner = ? AND status = 'active'").run(now, context.learner);
     const seed = Math.floor(Math.random() * 2 ** 31);
-    const state = buildRound({ view, setId, level }, viewGeometry(view.id), loadStats(context.learner), seededRng(seed));
+    const state: RoundState = { ...buildRound({ view, setId, level }, viewGeometry(view.id), loadStats(context.learner), seededRng(seed)), optionSalt: randomBytes(16).toString('hex') };
     const id = `km_${randomUUID()}`;
     // The first rounds of the day on a competition map count; every started
     // one uses a slot, so restarting for easier questions gains nothing.
@@ -282,7 +325,7 @@ export function markShown(context: KaardimangContext, roundId: string, questionI
 export function answer(context: KaardimangContext, roundId: string, input: { actionId: string; revision: number; questionIndex: unknown; answerId: unknown }): AnswerResponse {
   if (typeof input.answerId !== 'string' || !ANSWER_ID_PATTERN.test(input.answerId)) throw new KaardimangApiError('invalid_request', 'Vastus puudub.');
   if (typeof input.questionIndex !== 'number' || !Number.isInteger(input.questionIndex)) throw new KaardimangApiError('invalid_request', 'Küsimus puudub.');
-  const answerId = input.answerId;
+  const sentAnswerId = input.answerId;
   const questionIndex = input.questionIndex;
   return db.transaction(() => {
     const row = loadRow(context, roundId);
@@ -295,6 +338,9 @@ export function answer(context: KaardimangContext, roundId: string, input: { act
     const state = JSON.parse(row.stateJson) as RoundState;
     if (questionIndex !== state.cursor) throw new KaardimangApiError('not_current_question', 'See küsimus ei ole praegu ekraanil.', toView(row));
     const question = state.questions[state.cursor];
+    // A button answer arrives as the round's opaque option token.
+    const answerId = optionIdForToken(state, question, sentAnswerId);
+    if (answerId === undefined) throw new KaardimangApiError('invalid_request', 'See vastus ei sobi selle küsimusega.');
     let result: ReturnType<typeof gradeAnswer>;
     try {
       result = gradeAnswer(question, state.states[state.cursor], answerId);

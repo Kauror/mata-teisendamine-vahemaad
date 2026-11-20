@@ -35,8 +35,9 @@ function addTask(title: string, points: number, extra: Partial<{ assignmentMode:
 
 describe('Mille eest tähti saab', () => {
   it('describes exercises from the parent\'s learning-point settings', () => {
-    expect(lines('harjutused').slice(0, 3)).toEqual([
-      'Iga tehtud harjutus annab 1,5 ⭐, kui vähemalt 50% vastustest on õiged.',
+    expect(lines('harjutused').slice(0, 4)).toEqual([
+      'Iga tehtud harjutus annab 1,5 ⭐, kui vähemalt 75% vastustest on õiged.',
+      'Kui õigeid on 50–74%, annab harjutus poole sellest. Alla 50% tähti ei anna.',
       'Sama harjutus samal päeval uuesti: iga kord 0,5 ⭐ vähem, aga vähemalt 0,5 ⭐.',
       'Harjutustest saab päevas kokku kuni 8 ⭐.'
     ]);
