@@ -32,6 +32,7 @@ import {
   type RemediationActionResult,
   type TaskActionResult
 } from '@/lib/shared/types';
+import { getMathLevels } from '@/lib/server/mathLevels';
 
 function dashboardFor(learner: Learner): ChildDashboardSnapshot {
   return {
@@ -39,7 +40,8 @@ function dashboardFor(learner: Learner): ChildDashboardSnapshot {
     balance: getBalance(learner),
     streak: getActiveLearningStreak(learner),
     trophies: getMonthlyTrophies(learner),
-    updatedAt: nowIso()
+    updatedAt: nowIso(),
+    ...(learner === 'kiur' ? { mathLevels: getMathLevels(learner) } : {})
   };
 }
 

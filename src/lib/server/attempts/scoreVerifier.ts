@@ -1,6 +1,7 @@
 import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
-import { isSupportedMathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { isMathGeneratorAtLeast, isSupportedMathGeneratorVersion, MATH_GENERATOR_VERSION_V5 } from '@/lib/exercises/mathGeneratorVersion';
+import { isDifficulty } from '@/lib/mathDifficulty';
 import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
 import { kirsiPictureWordQuestions, KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
@@ -79,6 +80,10 @@ function verifyMath(input: VerifiableAttempt) {
   const seed = numberSeed(input.seed);
   const version = input.generatorVersion;
   if (!isSupportedMathGeneratorVersion(version)) throw new AttemptContractError(`Unsupported math generator version: ${String(version)}`);
+  // v5 generates by difficulty (adaptive levels); only the three levels exist.
+  if (input.learner === 'kiur' && isMathGeneratorAtLeast(version, MATH_GENERATOR_VERSION_V5) && !isDifficulty(input.difficulty)) {
+    throw new AttemptContractError(`Unsupported difficulty: ${String(input.difficulty)}`);
+  }
   const expected = input.learner === 'kirsi'
     ? generateKirsiSession(input.category as Parameters<typeof generateKirsiSession>[0], count, seed, version)
     : generateKiurMathSession(input.topic, input.category, input.difficulty as Difficulty, count, seed, version);
