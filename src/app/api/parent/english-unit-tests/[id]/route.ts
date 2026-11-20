@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { hasParentSession } from '@/lib/parentAuth';
 import { unitTestErrorResponse, validAttemptId } from '@/lib/server/unitTests/http';
 import { cancelUnitTest, getParentReview, reviewUnitTest } from '@/lib/server/unitTests/store';
@@ -24,7 +25,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!await hasParentSession()) return NextResponse.json({ message: 'Ligipääs puudub.' }, { status: 401 });
   const { id } = await params;
   if (!validAttemptId(id)) return NextResponse.json({ message: 'Kontrolltööd ei leitud.' }, { status: 404 });
-  const body = await req.json().catch(() => ({})) as { revision?: unknown; marks?: unknown; comment?: unknown; decision?: unknown };
+  const jsonBody = await readJsonObjectRequest(req);
+  if (jsonBody instanceof NextResponse) return jsonBody;
+  const body = jsonBody as { revision?: unknown; marks?: unknown; comment?: unknown; decision?: unknown };
   try {
     return NextResponse.json(reviewUnitTest(id, body));
   } catch (error) {

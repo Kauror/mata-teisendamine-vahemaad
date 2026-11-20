@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { Learner } from '@/lib/tasks';
 import { purchaseStoreItem } from '@/lib/store';
@@ -14,7 +16,9 @@ function parseLearner(value: unknown): Learner | null {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const jsonBody = await readJsonObjectRequest(req);
+    if (jsonBody instanceof NextResponse) return jsonBody;
+    const body = jsonBody;
     const learner = parseLearner(body.learner);
     const itemId = Number(body.itemId);
     // Optional for clients from before the retry key; when present it must be a
@@ -22,6 +26,8 @@ export async function POST(req: NextRequest) {
     const clientPurchaseId = body.clientPurchaseId == null ? null : String(body.clientPurchaseId);
     if (!learner || !Number.isInteger(itemId)) return NextResponse.json({ message: 'Vale ost.' }, { status: 400 });
     if (clientPurchaseId !== null && !UUID.test(clientPurchaseId)) return NextResponse.json({ message: 'Vale ost.' }, { status: 400 });
+    const deviceDenied = await assertDeviceMayActAs(req, learner);
+    if (deviceDenied) return deviceDenied;
     return NextResponse.json(purchaseStoreItem(learner, itemId, undefined, clientPurchaseId));
   } catch (error) {
     return NextResponse.json({ message: publicErrorMessage(error, 'Ostu ei saanud teha.') }, { status: 409 });

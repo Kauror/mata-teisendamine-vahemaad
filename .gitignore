@@ -17,3 +17,5 @@ public/sw.js
 /e2e-prod/.auth/
 /.e2e-data/
 /.e2e-audit-data/
+# The children's real school timetable is private (see src/lib/schoolTimetable.ts).
+school-timetable.json

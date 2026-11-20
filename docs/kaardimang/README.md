@@ -25,8 +25,8 @@ Mäng ei ole õpiku osa (see on paralleelne õppetükkidega 10–22) ja vajab in
 
 ## Perevõistlus
 
-Kaardimäng on kogu pere jaoks (Kauri otsused 19.10, backlog KM-02).
-- **Mängijad:** Kiur ja Kirsi mängivad oma lehtedelt (`?player=kiur|kirsi`). Kairi ja Kaur mängivad vanema alast („Mängi Kairina / Kaurina“, vanema sessioon). Eelvaade jääb eraldi ja võistlusesse ei loe.
+Kaardimäng on kogu pere jaoks (vanema otsused 19.10, backlog KM-02).
+- **Mängijad:** Kiur ja Kirsi mängivad oma lehtedelt (`?player=kiur|kirsi`). Mõlemad vanemad mängivad vanema alast („Mängi …“, vanema sessioon). Eelvaade jääb eraldi ja võistlusesse ei loe.
 - **Tase:** igal mängijal on oma tase, mille määrab vanem. Algväärtused: Kirsi Avastaja, Kiur Rändur, vanemad Geograaf.
 - **Võistlus:** vanem avab võistluse nime, kaartide ja päevade arvuga ning määrab tähed 1.–3. kohale (vaikimisi 20 / 10 / 5). Korraga käib üks võistlus. Võistluse saab lõpetada varem või pikendada ning see lõpeb ise pärast viimast päeva.
 - **Kaardid võistluse ajal:** mängijatele on lahti ainult võistluse kaardid. Teised kohad on lukus („🔒 Võistluse ajal kinni“) ja server keeldub neil voorust. Kui võistlust ei käi, on kõik lahti; eelvaade ei ole kunagi lukus.
@@ -40,12 +40,12 @@ Kaardimäng on kogu pere jaoks (Kauri otsused 19.10, backlog KM-02).
 - **Järjestus:** punktid; viigi korral otsustab võistluse ajal õpitud uute kohtade arv. Täielik viik jagab kohta.
 - **Lõpus** saavad esikolm medali. Lapsed saavad lisaks tähed (`point_ledger.source = 'kaardimang_prize'`, ainult üks kord, `kaardimang_awards`). Tähed lähevad päris koha järgi: vanem esikolmikus ei tõsta lapsi ülespoole.
 - **Kus näha:** avalehel on tabel 1.–4. koht. Laste lehtedel on Kaardimängu kaart, kus näeb võistlust ja medaleid. „Mille eest tähti saab“ nimetab avatud võistluse auhinnad.
-- **Andmebaas:** migratsioon 14 (`kaardimang_competition`). See ehitab `kaardimang_rounds` ja `kaardimang_target_stats` uuesti, et lubada Kairit ja Kauri; kõik vanad read kopeeritakse. Lisaks tabelid `kaardimang_player_settings`, `kaardimang_competitions`, `kaardimang_points` ja `kaardimang_awards`.
+- **Andmebaas:** migratsioon 14 (`kaardimang_competition`). See ehitab `kaardimang_rounds` ja `kaardimang_target_stats` uuesti, et lubada ka vanemaid; kõik vanad read kopeeritakse. Lisaks tabelid `kaardimang_player_settings`, `kaardimang_competitions`, `kaardimang_points` ja `kaardimang_awards`.
 - **Reeglid** on failis `src/lib/kaardimang/competition.ts`, server failides `src/lib/server/kaardimang/competition.ts` ja `rounds.ts`.
 
 ### Teated
 
-Kaks ühekordset teadet (Kauri soov 31.10), mida iga mängija näeb üks kord võistluse kohta. Need avanevad laste oma lehel Kaardimängu kaardi kohal ja mängu avalehel, vanematel nende mängulehel; eelvaates mitte. Sulgemine salvestatakse serverisse (migratsioon 16, tabel `kaardimang_notices`), nii et teisel seadmel teade uuesti ei tule. Vaatlusrežiimis vanem sulgeb teate ainult selleks korraks, nagu teisedki laste ühekordsed teated. Kui lahti on ka eilne kokkuvõte, ootab teade selle sulgemist.
+Kaks ühekordset teadet (vanema soov 31.10), mida iga mängija näeb üks kord võistluse kohta. Need avanevad laste oma lehel Kaardimängu kaardi kohal ja mängu avalehel, vanematel nende mängulehel; eelvaates mitte. Sulgemine salvestatakse serverisse (migratsioon 16, tabel `kaardimang_notices`), nii et teisel seadmel teade uuesti ei tule. Vaatlusrežiimis vanem sulgeb teate ainult selleks korraks, nagu teisedki laste ühekordsed teated. Kui lahti on ka eilne kokkuvõte, ootab teade selle sulgemist.
 - **Tulemuste ekraan** pärast võistluse lõppu: poodium (1.–3. koht medalite ja punktidega, tõuseb animatsiooniga), ülejäänud kohad, mängija enda koht ja saadud tähed, konfetid või mõni haruldasem pidu. Võitjale „Sa võitsid, Kiur!“ ja krooni, teistele „Võistlus on läbi!“. Näidatakse kaks nädalat pärast lõppu; tühistatud võistlust ega sellist, kus keegi punkte ei saanud, ei kuulutata.
 - **„Viimased päevad mängida!“**, kui jäänud on kaks päeva või vähem: lõpukuupäev, mitu päeva veel, ja mängija oma seis. Pikendamine nullib selle, nii et uute viimaste päevade saabudes tuleb meeldetuletus uuesti.
 - **Pärast lõppu:** avalehe tabel jääb nädalaks märkega „lõppes“ ja kaob siis; laste lehel jääb Kaardimängu kaart medalitega alles ning kõik kaardid on jälle lahti. Uue võistluse avab vanem.
@@ -67,7 +67,7 @@ Igal mängijal on oma saavutuste riiul (backlog KM-03). See on Kaardimängu aval
 
 Maailma kaardi õpperühm „Mered“ (backlog KM-01): 16 merd ja lahte, küsimus „Leia Vahemeri.“, vastatakse kaardil.
 - **Õpikust (5. peatükk, 16. teema):** Läänemeri, Põhjameri, Vahemeri, Soome laht, Bengali laht, Guinea laht, Pärsia laht.
-- **Tuntumad lisaks** (Kauri valik 23.10): Must meri, Punane meri, Kariibi meri, Araabia meri, Lõuna-Hiina meri, Liivi laht, Botnia laht, Mehhiko laht, Hudsoni laht.
+- **Tuntumad lisaks** (vanema valik 23.10): Must meri, Punane meri, Kariibi meri, Araabia meri, Lõuna-Hiina meri, Liivi laht, Botnia laht, Mehhiko laht, Hudsoni laht.
 - **Kujud** on Natural Earth 10m merepolügoonidest (`ne_10m_geography_marine_polys`, pinned `sources.json`-is).
   - Vahemeri on põhibassein koos 11 nimelise osaga (Aadria, Joonia, Egeuse meri jne).
   - Must meri on koos Aasovi merega.
@@ -137,6 +137,6 @@ Toorallikad (13 MB GeoJSON-i) repos ei ole.
 
 ## Teadlikult tegemata
 
-- Pealinnapunkti puudutamine kaardil ja naabrite küsimused. Kaur valis esimeseks versiooniks põhikomplekti.
+- Pealinnapunkti puudutamine kaardil ja naabrite küsimused. Vanem valis esimeseks versiooniks põhikomplekti.
 - Tähed vastuste eest: neid ei anta. Tähti annab ainult perevõistluse lõpp (vt „Perevõistlus“).
 - Windowsi brauser lipuemojisid ei kuva (seal paistavad tähed, nt „GH“). Telefonides on lipud olemas.

@@ -7,6 +7,7 @@ import { getAchievements } from '@/lib/achievements';
 import { getActiveLearningStreak } from '@/lib/learningPoints';
 import { ensureMonthlyPrizeAwarded, getMonthlyCelebration, getMonthlyTrophies } from '@/lib/monthlyCompetition';
 import { getStreakFreezeState, grantStreakFreeze, settleStreakFreezes } from '@/lib/streakFreeze';
+import { issueSession } from '@/lib/auth/session';
 import { createTaskTemplate, getChildDashboard, invalidateTaskInstancePreparation, type Learner } from '@/lib/tasks';
 
 const TODAY = '2026-10-15';
@@ -88,5 +89,32 @@ describe('/api/child-dashboard reads study days once (SRV-10)', () => {
   it('still refuses an unknown learner', async () => {
     const response = await GET(new NextRequest('https://example.test/api/child-dashboard?learner=x'));
     expect(response.status).toBe(400);
+  });
+});
+
+describe('/api/child-dashboard in peek mode (C3b)', () => {
+  it('does not spend a held streak freeze or settle the monthly prize while a parent peeks', async () => {
+    vi.stubEnv('APP_SESSION_SECRET_CURRENT', 'child-dashboard-peek-secret-0123456789');
+    try {
+      studyDay('kiur', addAppDays(TODAY, -3));
+      studyDay('kiur', addAppDays(TODAY, -2));
+      grantStreakFreeze('kiur');
+      const parent = await issueSession('parent', { maxAgeSeconds: 60, authVersion: 1 });
+      const awardsBefore = (db.prepare('SELECT COUNT(*) AS count FROM monthly_competition_awards').get() as { count: number }).count;
+      const response = await GET(new NextRequest('https://example.test/api/child-dashboard?learner=kiur', {
+        headers: { cookie: `parent_session=${parent.token}` }
+      }));
+      expect(response.status).toBe(200);
+      expect(getStreakFreezeState('kiur').held).toBe(1);
+      expect((db.prepare('SELECT COUNT(*) AS count FROM monthly_competition_awards').get() as { count: number }).count).toBe(awardsBefore);
+
+      // "Vaata nagu laps" is the child's own view again.
+      await GET(new NextRequest('https://example.test/api/child-dashboard?learner=kiur', {
+        headers: { cookie: `parent_session=${parent.token}; harjutaja_peek_off=1` }
+      }));
+      expect(getStreakFreezeState('kiur').held).toBe(0);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

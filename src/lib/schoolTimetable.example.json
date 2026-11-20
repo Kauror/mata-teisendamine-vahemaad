@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "bells": [["08:00", "08:45"], ["08:55", "09:40"], ["09:50", "10:35"], ["10:50", "11:35"], ["11:45", "12:30"], ["12:40", "13:25"]],
+  "children": {
+    "kiur": {
+      "className": "5A",
+      "days": [
+        { "lessons": [null, "Matemaatika", "Eesti keel", "Loodusõpetus", "Inglise keel"], "clubs": [], "bring": ["Raamatukogu raamat"] },
+        { "lessons": ["Eesti keel", "Matemaatika", "Kehaline kasvatus", "Inglise keel", "Muusika", "Digioskused"], "clubs": [{ "name": "Male", "start": "17:30", "end": "19:00", "icon": "♟️" }], "bring": ["Spordiriided"] },
+        { "lessons": ["Inglise keel", "Eesti keel", "Matemaatika", "Kunst / tööõpetus", "Loodusõpetus"], "clubs": [{ "name": "Kokandus", "start": "12:45", "end": "14:00", "icon": "🍳" }], "bring": ["Põll"] },
+        { "lessons": ["Matemaatika", "Inglise keel", "Eesti keel", "Kehaline kasvatus"], "clubs": [], "bring": [] },
+        { "lessons": ["Eesti keel", "Kunst / tööõpetus", "Matemaatika", "Muusika", "Loodusõpetus", "Kehaline kasvatus"], "clubs": [{ "name": "Ujumine", "start": "16:00", "end": "17:00", "icon": "🏊" }], "bring": ["Spordiriided", "Kunstitarbed", "Ujumisriided"] }
+      ]
+    },
+    "kirsi": {
+      "className": "2B",
+      "days": [
+        { "lessons": [null, "Eesti keel", "Matemaatika", "Muusika", "Kehaline kasvatus"], "clubs": [{ "name": "Laulukoor", "start": "13:00", "end": "13:45", "icon": "🎤" }], "bring": ["Spordiriided"] },
+        { "lessons": [null, "Matemaatika", "Eesti keel", "Kunst / tööõpetus"], "clubs": [], "bring": ["Kunstitarbed"] },
+        { "lessons": [null, "Matemaatika", "Eesti keel", "Loodusõpetus", "Tehnoloogiline avastusõpe"], "clubs": [], "bring": [] },
+        { "lessons": [null, "Kehaline kasvatus", "Eesti keel", "Matemaatika"], "clubs": [{ "name": "Lugemisring", "start": "12:00", "end": "12:45", "icon": "📚" }], "bring": ["Spordiriided"] },
+        { "lessons": [null, "Eesti keel", "Muusika", "Matemaatika", "Kunst / tööõpetus"], "clubs": [], "bring": ["Kunstitarbed"] }
+      ]
+    }
+  }
+}

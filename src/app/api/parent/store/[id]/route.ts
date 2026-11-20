@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { deleteStoreItem, hideStoreItemToday, showStoreItemToday, StoreStockType, StoreVisibility, updateStoreItem } from '@/lib/store';
@@ -33,7 +34,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const id = await storeId(params);
   if (!id) return NextResponse.json({ message: 'Vale ese.' }, { status: 400 });
   try {
-    updateStoreItem(id, parseBody(await req.json()));
+    const jsonBody = await readJsonObjectRequest(req);
+    if (jsonBody instanceof NextResponse) return jsonBody;
+    updateStoreItem(id, parseBody(jsonBody));
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ message: publicErrorMessage(error, 'Poe eset ei saanud muuta.') }, { status: 400 });
@@ -44,7 +47,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!await hasParentSession()) return NextResponse.json({ message: 'Ligipääs puudub.' }, { status: 401 });
   const id = await storeId(params);
   if (!id) return NextResponse.json({ message: 'Vale ese.' }, { status: 400 });
-  const body = await req.json();
+  const jsonBody = await readJsonObjectRequest(req);
+  if (jsonBody instanceof NextResponse) return jsonBody;
+  const body = jsonBody;
   if (body.action === 'hide_today') hideStoreItemToday(id);
   if (body.action === 'show_today') showStoreItemToday(id);
   return NextResponse.json({ ok: true });

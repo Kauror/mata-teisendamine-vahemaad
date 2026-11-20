@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import db from '@/lib/db';
 import { hasParentSession } from '@/lib/parentAuth';
@@ -20,7 +21,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!await hasParentSession()) return NextResponse.json({ message: 'Ligipääs puudub.' }, { status: 401 });
   try {
-    const body = await req.json();
+    const jsonBody = await readJsonObjectRequest(req);
+    if (jsonBody instanceof NextResponse) return jsonBody;
+    const body = jsonBody;
     const attemptId = Number(body.attemptId);
     if (!Number.isInteger(attemptId)) return NextResponse.json({ message: 'Vale harjutus.' }, { status: 400 });
     if (body.action !== 'approve') return NextResponse.json({ message: 'Vale tegevus.' }, { status: 400 });

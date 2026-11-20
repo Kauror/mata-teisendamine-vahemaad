@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { isScryptHash } from '@/lib/auth/password';
 import type { SignedSession } from '@/lib/auth/session';
 import type { DatabaseConnection } from '@/lib/db';
@@ -49,6 +50,27 @@ export function replaceParentPasswordHash(connection: DatabaseConnection, nextHa
   return nextVersion;
 }
 
+function revocationKey(payload: SignedSession) {
+  return createHash('sha256').update(`parent-session:${payload.csrf}`).digest('hex');
+}
+
+// Parent logout: the signed token stays cryptographically valid until it
+// expires, so its identity is recorded and refused from now on (C4).
+export function revokeParentSession(connection: DatabaseConnection, payload: SignedSession, nowMs = Date.now()) {
+  const now = new Date(nowMs).toISOString();
+  connection.transaction(() => {
+    connection.prepare('DELETE FROM parent_session_revocations WHERE expiresAt < ?').run(now);
+    connection.prepare(`
+      INSERT INTO parent_session_revocations (tokenHash, expiresAt, revokedAt) VALUES (?, ?, ?)
+      ON CONFLICT(tokenHash) DO NOTHING
+    `).run(revocationKey(payload), new Date(payload.expiresAt * 1000).toISOString(), now);
+  })();
+}
+
+export function isParentSessionRevoked(connection: DatabaseConnection, payload: SignedSession) {
+  return Boolean(connection.prepare('SELECT 1 FROM parent_session_revocations WHERE tokenHash = ?').get(revocationKey(payload)));
+}
+
 export function parentSessionMatchesCurrentVersion(connection: DatabaseConnection, payload: SignedSession | null) {
-  return Boolean(payload && payload.authVersion === parentAuthVersion(connection));
+  return Boolean(payload && payload.authVersion === parentAuthVersion(connection) && !isParentSessionRevoked(connection, payload));
 }

@@ -1427,6 +1427,20 @@ function addEnglishUnitTests(connection: DatabaseConnection) {
   `);
 }
 
+// Parent logout revokes the signed parent token (C4): its CSRF value is unique
+// per session, so its hash names the token without storing it. Rows are kept
+// only until the token would have expired anyway.
+function addParentSessionRevocations(connection: DatabaseConnection) {
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS parent_session_revocations (
+      tokenHash TEXT PRIMARY KEY,
+      expiresAt TEXT NOT NULL,
+      revokedAt TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_parent_session_revocations_expires ON parent_session_revocations(expiresAt);
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -1548,6 +1562,12 @@ const migrations: Migration[] = [
           ON store_purchases(clientPurchaseId) WHERE clientPurchaseId IS NOT NULL;
       `);
     }
+  },
+  {
+    id: 19,
+    name: 'parent_session_revocations',
+    checksumSource: 'parent_session_revocations:v1:2026-11-20',
+    up: addParentSessionRevocations
   }
 ];
 

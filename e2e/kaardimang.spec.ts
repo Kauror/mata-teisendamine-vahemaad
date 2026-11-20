@@ -4,6 +4,10 @@ import { navigateStable } from './navigation';
 import { CATALOG, quizCapital } from '../src/content/kaardimang/catalog';
 import { CONTINENTS, COUNTIES, OCEANS, SEAS, WORLD_PARTS } from '../src/content/kaardimang/regions';
 import type { OverviewResponse, ParentKaardimangResponse } from '../src/lib/kaardimang/api';
+import { CHILD_PLAYERS, PARENT_PLAYERS } from '../src/lib/kaardimang/competition';
+
+// The two parent players, by the ids the app uses (not spelled out here).
+const [OTHER_PARENT, PLAYING_PARENT] = PARENT_PLAYERS;
 
 // Kaardimäng end to end on a 375 px phone. While the game is in parent testing
 // (KAARDIMANG_CHILD_ENABLED = false) Kiur cannot reach it, so everything is
@@ -125,7 +129,7 @@ async function dismissDialogs(page: Page, firstWait = 15_000) {
   }
 }
 
-const PLAYERS = ['kiur', 'kirsi', 'kairi', 'kaur'] as const;
+const PLAYERS = [...CHILD_PLAYERS, ...PARENT_PLAYERS] as const;
 
 // Every player closes a finished competition's results splash, so it does not
 // cover a child's page in a later test (the database is shared by the run).
@@ -175,7 +179,7 @@ test('Kiur and Kirsi open Kaardimäng from their own pages, each as themselves',
   expect((await (await page.request.get('/api/kaardimang?player=kirsi')).json()).player).toBe('kirsi');
   await navigateStable(page, '/kiur/loodusopetus');
   await expect(page.getByRole('link', { name: /Kaardimäng/ })).toBeVisible();
-  expect((await page.request.get('/api/kaardimang?player=kaur')).status()).toBe(400);
+  expect((await page.request.get(`/api/kaardimang?player=${PLAYING_PARENT}`)).status()).toBe(400);
 });
 
 test('the parent opens Kaardimäng from the parent area and every world part has a real map', async ({ page }) => {
@@ -352,7 +356,7 @@ test('the parent preview plays without touching Kiur and can be reset', async ({
   expect(cleared.practiced['europe-baltics'][0]).toBe(0);
 });
 
-test('a family competition: the parent opens it, Kaur and Kirsi score, the home page ranks them, ending it pays Kirsi', async ({ page }) => {
+test('a family competition: the parent opens it, a parent and Kirsi score, the home page ranks them, ending it pays Kirsi', async ({ page }) => {
   test.setTimeout(240_000);
   // Any competition left by an earlier test ends first.
   const before = await (await page.request.get('/api/parent/kaardimang/competition')).json() as { active: { id: number } | null };
@@ -369,12 +373,12 @@ test('a family competition: the parent opens it, Kaur and Kirsi score, the home 
   expect(await background(chosen)).not.toBe(await background(form.getByRole('button', { name: 'Maailm', exact: true })));
   await page.getByRole('button', { name: 'Ava võistlus' }).click();
   await expect(page.locator('.km-parent-comp .km-comp-title')).toContainText('Eesti nädal');
-  await page.locator('.km-parent-comp').screenshot({ path: 'C:/Users/kaur/AppData/Local/Temp/claude/C--CC/9087efb9-063d-4cfc-bf65-b2f2de760393/scratchpad/shots/23-parent-competition.png' });
+  await page.locator('.km-parent-comp').screenshot({ path: test.info().outputPath('23-parent-competition.png') });
 
-  // Kaur plays from the parent area: his round counts.
-  await page.getByRole('link', { name: '▶ Mängi Kaurina' }).click();
-  // The parent panel shows the same title, so wait for Kaur's own page first.
-  await page.waitForURL('**/vanem/kaardimang/kaur', { timeout: 60_000 });
+  // A parent plays from the parent area: the round counts.
+  await page.locator(`a[href$="/vanem/kaardimang/${PLAYING_PARENT}"]`, { hasText: '▶ Mängi' }).first().click();
+  // The parent panel shows the same title, so wait for the parent's own page first.
+  await page.waitForURL(`**/vanem/kaardimang/${PLAYING_PARENT}`, { timeout: 60_000 });
   await expect(page.getByRole('heading', { name: '🗺️ Kaardimäng' })).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('.km-comp-title')).toContainText('Eesti nädal');
   await dismissDialogs(page, 1_000);
@@ -398,12 +402,12 @@ test('a family competition: the parent opens it, Kaur and Kirsi score, the home 
   await page.getByRole('button', { name: /^Eesti / }).click();
   await page.getByRole('button', { name: /Mängi/ }).click();
   await playRound(page);
-  await page.screenshot({ path: 'C:/Users/kaur/AppData/Local/Temp/claude/C--CC/9087efb9-063d-4cfc-bf65-b2f2de760393/scratchpad/shots/24-kirsi-summary.png' });
+  await page.screenshot({ path: test.info().outputPath('24-kirsi-summary.png') });
 
   await navigateStable(page, '/');
   await expect(page.locator('.km-home')).toContainText('Eesti nädal');
   await expect(page.locator('.km-home-table li')).toHaveCount(4);
-  await page.locator('.km-home').screenshot({ path: 'C:/Users/kaur/AppData/Local/Temp/claude/C--CC/9087efb9-063d-4cfc-bf65-b2f2de760393/scratchpad/shots/25-home-standings.png' });
+  await page.locator('.km-home').screenshot({ path: test.info().outputPath('25-home-standings.png') });
 
   const balanceBefore = await (await page.request.get('/api/child-dashboard?learner=kirsi')).json() as { balance: number };
   const active = (await (await page.request.get('/api/parent/kaardimang/competition')).json() as { active: { id: number; standings: Array<{ player: string; rank: number }> } }).active;
@@ -415,7 +419,7 @@ test('a family competition: the parent opens it, Kaur and Kirsi score, the home 
   // The others have seen the results; Kirsi meets them on her page, after
   // yesterday's recap: the podium with everyone's points, her own place and
   // stars, shown once.
-  await spendResultsNotices(page, active.id, ['kiur', 'kairi', 'kaur']);
+  await spendResultsNotices(page, active.id, ['kiur', OTHER_PARENT, PLAYING_PARENT]);
   await navigateStable(page, '/kirsi');
   const recap = page.locator('.task-modal-backdrop[aria-labelledby="points-recap-title"]');
   await recap.waitFor({ state: 'visible', timeout: 15_000 }).then(() => recap.getByRole('button').click(), () => undefined);
@@ -436,10 +440,10 @@ test('a family competition: the parent opens it, Kaur and Kirsi score, the home 
   await page.reload();
   await expect(page.locator('.km-tile-medals')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.km-finale')).toHaveCount(0);
-  await page.locator('.km-tile').screenshot({ path: 'C:/Users/kaur/AppData/Local/Temp/claude/C--CC/9087efb9-063d-4cfc-bf65-b2f2de760393/scratchpad/shots/26-kirsi-tile-medal.png' });
+  await page.locator('.km-tile').screenshot({ path: test.info().outputPath('26-kirsi-tile-medal.png') });
   // The medal is also an achievement on her Kaardimäng shelf.
   await page.locator('.km-tile').click();
   const shelf = page.locator('.km-shelf');
   await expect(shelf.locator('.km-shelf-item[data-unlocked="true"]', { hasText: 'Esikolmikus' })).toBeVisible();
-  await shelf.screenshot({ path: 'C:/Users/kaur/AppData/Local/Temp/claude/C--CC/9087efb9-063d-4cfc-bf65-b2f2de760393/scratchpad/shots/30-shelf.png' });
+  await shelf.screenshot({ path: test.info().outputPath('30-shelf.png') });
 });

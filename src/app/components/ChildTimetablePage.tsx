@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import SchoolTimetable from '@/app/components/SchoolTimetable';
-import { SCHOOL_TIMETABLE } from '@/lib/schoolTimetable';
+import TimetableClassName from '@/app/components/TimetableClassName';
 import type { Learner } from '@/lib/shared/types';
 
-// The child's own timetable page. The timetable is static data, so the page
-// carries no server state and is part of the offline shell.
+// The child's own timetable page. The timetable comes from the API with an
+// offline copy (useAppClock), so the page carries no server state and is part
+// of the offline shell.
 export default function ChildTimetablePage({ learner, title, avatar }: { learner: Learner; title: string; avatar: string }) {
   return (
     <main className='container child-home-page'>
@@ -14,7 +15,7 @@ export default function ChildTimetablePage({ learner, title, avatar }: { learner
           <span className='child-home-avatar timetable-avatar' aria-hidden><span>{avatar}</span></span>
           <div>
             <h1>{title}</h1>
-            <p>{SCHOOL_TIMETABLE[learner].className} klass</p>
+            <TimetableClassName learner={learner} />
           </div>
         </header>
         <SchoolTimetable learner={learner} />
