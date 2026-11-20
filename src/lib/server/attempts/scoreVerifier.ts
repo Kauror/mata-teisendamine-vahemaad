@@ -5,7 +5,7 @@ import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
 import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
 import { kirsiPictureWordQuestions, KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { KIUR_READING_TASKS } from '@/lib/kiurReadingTasks';
-import { LOODUSOPETUS_TASKS } from '@/lib/loodusopetus/tasks';
+import { FORMER_SCIENCE_MATCHES, LOODUSOPETUS_TASKS } from '@/lib/loodusopetus/tasks';
 import { isChoiceTask, type ScienceTask } from '@/lib/loodusopetus/types';
 import type { Difficulty, GeneratedQuestion } from '@/lib/types';
 import { verifyGeneratedMathAnswer } from '@/lib/shared/answerVerification';
@@ -126,7 +126,10 @@ function verifyScience(input: VerifiableAttempt) {
     if (!expected || actual.type !== expected.type) throw new AttemptContractError(`Unknown science task ${input.questionIds[index]}.`);
     if (isChoiceTask(expected)) return actual.selectedChoiceId === expected.correctAnswer;
     if (expected.type === 'sort') return sameStringMap(actual.selectedGroups, expectedScienceGroups(expected));
-    if (expected.type === 'match') return sameStringMap(actual.selectedMatches, expected.correctMatches);
+    if (expected.type === 'match') {
+      return [expected.correctMatches, ...(FORMER_SCIENCE_MATCHES[expected.id] ?? [])]
+        .some((key) => sameStringMap(actual.selectedMatches, key));
+    }
     return false;
   });
 }

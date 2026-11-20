@@ -13,7 +13,7 @@ export const unit13: Unit = {
     "to": 57
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.1",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u13-o1",
@@ -712,7 +712,7 @@ export const unit13: Unit = {
                 "kind": "textbook",
                 "pages": "56"
               },
-              "text": "Õpiku leheküljel 56 palutakse mõõta ka Kuressaare ja Pärnu vahemaa. Seda tuleb teha just sama trükitud kaardi mõõtkava arvestades. Rakenduses ei anta Kuressaare–Pärnu jaoks väljamõeldud mõõdetud sentimeetreid ega hinnata vastust ekraanil joonlauaga mõõdetud pikkuse järgi."
+              "text": "Õpiku leheküljel 56 palutakse mõõta ka Kuressaare ja Pärnu vahemaa. Seda saad teha õpiku trükitud kaardil, arvestades just selle kaardi mõõtkava. Ekraanil joonlauaga mõõtmine õiget tulemust ei anna, sest pilt võib olla suurendatud või vähendatud."
             },
             {
               "id": "lo-opik-u13-b040",
@@ -1915,7 +1915,7 @@ export const unit13: Unit = {
           },
           {
             "id": "d",
-            "text": "Kaardi värv peab olema heledam."
+            "text": "Kaardil on rohkem riike ja suuremad pindalad."
           }
         ],
         "correctOptionId": "a"
@@ -2043,7 +2043,7 @@ export const unit13: Unit = {
           },
           {
             "id": "c",
-            "text": "Mitu linna on kaardil."
+            "text": "Kui palju aega kulub kahe linna vahel sõitmiseks."
           },
           {
             "id": "d",
@@ -2484,15 +2484,15 @@ export const unit13: Unit = {
           },
           {
             "id": "b",
-            "text": "Selleks, et arvutada linnade vanust."
+            "text": "Linnade vanuse arvutamiseks."
           },
           {
             "id": "c",
-            "text": "Selleks, et teada auto keskmist kiirust."
+            "text": "Auto keskmise kiiruse leidmiseks."
           },
           {
             "id": "d",
-            "text": "Selleks, et määrata õhu temperatuuri."
+            "text": "Õhutemperatuuri määramiseks kaardil."
           }
         ],
         "correctOptionId": "a"
@@ -2795,7 +2795,7 @@ export const unit13: Unit = {
           },
           {
             "id": "d",
-            "text": "1 : 300 000"
+            "text": "1 : 30 000"
           }
         ],
         "correctOptionIds": [
@@ -5114,7 +5114,7 @@ export const unit13: Unit = {
           },
           {
             "id": "d",
-            "text": "Sellel ei saa kasutada joonmõõtkava."
+            "text": "See näitab sama kaardi suurusega alati suuremat maa-ala."
           }
         ],
         "correctOptionId": "a"
@@ -5381,7 +5381,7 @@ export const unit13: Unit = {
         "options": [
           {
             "id": "a",
-            "text": "Tee teeb kurve ja läbib eri kohti."
+            "text": "Sest tee teeb kurve ja läbib eri kohti."
           },
           {
             "id": "b",
@@ -5918,7 +5918,7 @@ export const unit13: Unit = {
     {
       "id": "lo-opik-u13-q116",
       "unitId": "lo-opik-u13",
-      "stem": "Õige või vale? Kui kahe linna linnulennuline vahemaa on 60 km, on nendevaheline maanteetee alati samuti 60 km.",
+      "stem": "Õige või vale? Kui kahe linna linnulennuline vahemaa on 60 km, on teekond mööda maanteed alati samuti 60 km.",
       "primaryObjectiveId": "lo-opik-u13-o8",
       "variantGroupId": "lo-opik-u13-g099",
       "cognitiveLevel": "understanding",

@@ -15,7 +15,7 @@ export const unit21: Unit = {
     "to": 81
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.2",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u21-o1",
@@ -491,7 +491,7 @@ export const unit21: Unit = {
             {
               "id": "lo-opik-u21-b024",
               "type": "paragraph",
-              "text": "Õpiku kirjelduses tekkis Osmussaarel pangavarenguid ja ühe kivihoone seina suur pragu. Raputamist tunti ka Tallinnas: kõikusid lambid ja klirisesid aknad.",
+              "text": "Õpiku kirjelduses tekkis Osmussaarel pangavaringuid ja ühe kivihoone seina suur pragu. Raputamist tunti ka Tallinnas: kõikusid lambid ja klirisesid aknad.",
               "source": {
                 "kind": "textbook",
                 "pages": "79"
@@ -1580,7 +1580,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i3",
-            "text": "Ainult vulkaanituha langemist"
+            "text": "Maapinna vajumist pärast väga suurt vihmasadu"
           },
           {
             "id": "i4",
@@ -3582,7 +3582,7 @@ export const unit21: Unit = {
         "practice": true,
         "test": true
       },
-      "explanation": "Kõigepealt toimus maavärin, siis levis selle mõju kaugemale.",
+      "explanation": "Pinge kogunes kivimitesse, siis toimus järsk nihe ja selle lained levisid kaugemale, kuni Tallinnani.",
       "sources": [
         {
           "kind": "textbook",
@@ -3594,19 +3594,19 @@ export const unit21: Unit = {
         "items": [
           {
             "id": "i1",
-            "text": "Osmussaare lähistel toimus maavärin."
+            "text": "Kivimitesse kogunes pikka aega pinge."
           },
           {
             "id": "i2",
-            "text": "Seismilised lained levisid ümbruses."
+            "text": "Osmussaare lähistel toimus järsk nihe ehk maavärin."
           },
           {
             "id": "i3",
-            "text": "Saarel täheldati kahjustusi."
+            "text": "Seismilised lained levisid igas suunas."
           },
           {
             "id": "i4",
-            "text": "Ka Tallinnas märgati raputamist."
+            "text": "Lained jõudsid Tallinnasse ja seal märgati raputamist."
           }
         ],
         "correctOrder": [
@@ -3853,7 +3853,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i4",
-            "text": "Jaapanis ei liigu laamad kunagi."
+            "text": "Eestis on maavärinaoht suurem, sest Eesti on väike ja madal."
           }
         ],
         "correctOptionId": "i1"
@@ -3935,7 +3935,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i2",
-            "text": "Aeglased pilved mere kohal"
+            "text": "Tugev tuul, mis puhub mitu päeva mere kohal"
           },
           {
             "id": "i3",
@@ -4122,7 +4122,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i4",
-            "text": "Laine muutub rannal seisvaks jääks."
+            "text": "Ranniku lähedal on vesi sügavam ja laine liigub kiiremini."
           }
         ],
         "correctOptionId": "i1"
@@ -4559,7 +4559,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i4",
-            "text": "Tsunami ei liigu kunagi avamerel."
+            "text": "Tsunami on tavaline tuulelaine, mis tekib tormi ajal."
           }
         ],
         "correctOptionId": "i1"
@@ -4695,7 +4695,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i2",
-            "text": "Tavaline mõõn igal õhtul"
+            "text": "Lainete muutumine kõrgemaks tugeva tuule ajal"
           },
           {
             "id": "i3",
@@ -5521,7 +5521,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i2",
-            "text": "Kõrge müüri alla varju."
+            "text": "Hoone seina äärde, sest seal on kõige kindlam."
           },
           {
             "id": "i3",
@@ -5573,7 +5573,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i3",
-            "text": "Seisan aknalaua peale."
+            "text": "Lähen akna juurde, et näha, mis väljas toimub."
           },
           {
             "id": "i4",
@@ -5621,7 +5621,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i3",
-            "text": "Haaran kinni elektrijuhtmest."
+            "text": "Jään hoone seina kõrvale, et sellele toetuda."
           },
           {
             "id": "i4",
@@ -6037,15 +6037,15 @@ export const unit21: Unit = {
           },
           {
             "id": "i2",
-            "text": "Ainult jalanõusid"
+            "text": "Jalgu ja põlvi kätega"
           },
           {
             "id": "i3",
-            "text": "Ainult oma telefoni"
+            "text": "Telefoni ja koolikotti"
           },
           {
             "id": "i4",
-            "text": "Ainult koolikotti"
+            "text": "Selga vastu seina surudes"
           }
         ],
         "correctOptionId": "i1"
@@ -6183,7 +6183,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i4",
-            "text": "Astun sellest teadlikult üle."
+            "text": "Lähen lähemale ja vaatan, kas juhtmes on veel voolu."
           }
         ],
         "correctOptionId": "i1"
@@ -6263,7 +6263,7 @@ export const unit21: Unit = {
           },
           {
             "id": "i3",
-            "text": "Juhtmeid katsudes"
+            "text": "Minnes ise kontrollima, kas elektriliinid on terved"
           },
           {
             "id": "i4",

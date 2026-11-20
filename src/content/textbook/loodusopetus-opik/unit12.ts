@@ -15,7 +15,7 @@ export const unit12: Unit = {
     "to": 53
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.1",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u12-o1",
@@ -1320,7 +1320,7 @@ export const unit12: Unit = {
           },
           {
             "id": "c",
-            "text": "Kaart kujutab alati kogu maailma."
+            "text": "Gloobusel on kõik linnad suuremad ja selgemad kui kaardil."
           },
           {
             "id": "d",
@@ -1605,7 +1605,7 @@ export const unit12: Unit = {
           },
           {
             "id": "d",
-            "text": "Gloobus pöörleb ümber telje."
+            "text": "Mõni linn on kaardile kirjutatud vale nimega."
           }
         ],
         "correctOptionId": "a"
@@ -1714,7 +1714,7 @@ export const unit12: Unit = {
           },
           {
             "id": "v",
-            "text": "Apelsinil ei ole koort."
+            "text": "Koor on liiga paks ja kõva, et seda üldse noaga lõigata."
           }
         ],
         "correctOptionId": "k"
@@ -1932,7 +1932,7 @@ export const unit12: Unit = {
           },
           {
             "id": "n",
-            "text": "Kaartidel ei tohi mandreid kujutada."
+            "text": "Üks kaardi tegija on lihtsalt mandri joonistamisel eksinud."
           }
         ],
         "correctOptionId": "v"
@@ -2117,15 +2117,15 @@ export const unit12: Unit = {
           },
           {
             "id": "p",
-            "text": "Ainult kriidiga tahvlile."
+            "text": "Käsitsi pliiatsiga paberile."
           },
           {
             "id": "k",
-            "text": "Ainult käärides paberit."
+            "text": "Paberist välja lõigates."
           },
           {
             "id": "e",
-            "text": "Ainult käsitsi puutüvele."
+            "text": "Kriidiga suurele tahvlile."
           }
         ],
         "correctOptionId": "a"
@@ -2709,7 +2709,7 @@ export const unit12: Unit = {
           },
           {
             "id": "m",
-            "text": "Kartograaf ei tohi fotosid vaadata."
+            "text": "Fotodel on kõik objektid alati liiga suured ja moonutatud."
           },
           {
             "id": "a",
@@ -3242,7 +3242,7 @@ export const unit12: Unit = {
           },
           {
             "id": "p",
-            "text": "Aerofotod on alati käsitsi maalitud."
+            "text": "Aerofotol on rohkem leppemärke ja kirjutatud nimesid kui kaardil."
           }
         ],
         "correctOptionId": "k"
@@ -3337,7 +3337,7 @@ export const unit12: Unit = {
           },
           {
             "id": "m",
-            "text": "Aerofoto koosneb ainult leppemärkidest."
+            "text": "Aerofotol on iga hoone nimi ja otstarve alati kirjas."
           },
           {
             "id": "v",
@@ -4562,7 +4562,7 @@ export const unit12: Unit = {
           },
           {
             "id": "p",
-            "text": "Legendi pole kunagi vaja vaadata."
+            "text": "Sinine tähendab jõge ainult paberkaardil, digikaardil aga metsa."
           },
           {
             "id": "t",
@@ -4833,15 +4833,15 @@ export const unit12: Unit = {
           },
           {
             "id": "o",
-            "text": "Ainult hoonete katuste värvus aerofotol."
+            "text": "Hoonete katuste värvus aerofotol."
           },
           {
             "id": "v",
-            "text": "Ainult linna suurus."
+            "text": "Hoonete suurus ja kuju kaardil."
           },
           {
             "id": "t",
-            "text": "Ainult gloobuse pöörlemine."
+            "text": "Tänavate nimed hoonete kõrval."
           }
         ],
         "correctOptionId": "s"
@@ -4879,7 +4879,7 @@ export const unit12: Unit = {
           },
           {
             "id": "s",
-            "text": "Valin juhusliku silla."
+            "text": "Otsin kõige suurema hoone ja eeldan, et see on muuseum."
           },
           {
             "id": "p",

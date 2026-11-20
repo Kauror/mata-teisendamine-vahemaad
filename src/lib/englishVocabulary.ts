@@ -5,6 +5,10 @@ export type EnglishVocabularyWord = {
   // A label this word used to carry. An offline device can still upload a
   // sprint answered with the old label, and the score verifier must accept it.
   formerEstonian?: string[];
+  // An exact duplicate row (same English and Estonian as an earlier word).
+  // It stays in the list so the verifier can still score an uploaded sprint
+  // that used its id, but new sprints never show it.
+  retired?: true;
   category?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
 };
@@ -76,7 +80,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_064', english: 'in', estonian: 'sees; sisse (eessõna)' },
   { id: 'word_065', english: 'come', estonian: 'tulema' },
   { id: 'word_066', english: 'say', estonian: 'ütlema' },
-  { id: 'word_067', english: 'the', estonian: 'artikkel' },
+  { id: 'word_067', english: 'the', estonian: 'see, too (määrav artikkel)', formerEstonian: ['artikkel'] },
   { id: 'word_068', english: 'the ABC', estonian: 'tähestik' },
   { id: 'word_069', english: 'shoe, shoes', estonian: 'king, kingad' },
   { id: 'word_070', english: 'so', estonian: 'nii', formerEstonian: ['nnii'] },
@@ -96,7 +100,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_084', english: 'six', estonian: 'kuus' },
   { id: 'word_085', english: 'tree', estonian: 'puu' },
   { id: 'word_086', english: 'in the tree', estonian: 'puu otsas' },
-  { id: 'word_087', english: 'good', estonian: 'hea' },
+  { id: 'word_087', english: 'good', estonian: 'hea', retired: true },
   { id: 'word_088', english: 'is good at', estonian: 'oskab hästi' },
   { id: 'word_089', english: 'play', estonian: 'mängima' },
   { id: 'word_090', english: 'trick', estonian: 'vemp, vingerpuss' },
@@ -114,7 +118,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_102', english: 'puzzle', estonian: 'mõistatus; pusle' },
   { id: 'word_103', english: 'year', estonian: 'aasta' },
   { id: 'word_104', english: 'I’m in year three.', estonian: 'Ma olen kolmandas klassis.' },
-  { id: 'word_105', english: 'a', estonian: 'artikkel' },
+  { id: 'word_105', english: 'a', estonian: 'üks (umbmäärane artikkel)', formerEstonian: ['artikkel'] },
   { id: 'word_106', english: 'student', estonian: 'õpilane' },
   { id: 'word_107', english: 'I’m a year-three student.', estonian: 'Ma olen kolmanda klassi õpilane.' },
   { id: 'word_108', english: 'class', estonian: 'klass; tund' },
@@ -130,7 +134,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_118', english: 'know', estonian: 'teadma' },
   { id: 'word_119', english: 'spell', estonian: 'tähthaaval ütlema' },
   { id: 'word_120', english: 'be', estonian: 'olema' },
-  { id: 'word_121', english: 'an', estonian: 'artikkel' },
+  { id: 'word_121', english: 'an', estonian: 'üks (umbmäärane artikkel täishääliku ees)', formerEstonian: ['artikkel'] },
   { id: 'word_122', english: 'school', estonian: 'kool' },
   { id: 'word_123', english: 'think', estonian: 'arvama; mõtlema' },
   { id: 'word_124', english: 'bright', estonian: 'terane, tark' },
@@ -152,7 +156,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_140', english: 'nine', estonian: 'üheksa' },
   { id: 'word_141', english: 'ten', estonian: 'kümme' },
   { id: 'word_142', english: 'many', estonian: 'palju' },
-  { id: 'word_143', english: 'How many?', estonian: 'Kui palju?' },
+  { id: 'word_143', english: 'How many?', estonian: 'Mitu?', formerEstonian: ['Kui palju?'] },
   { id: 'word_144', english: 'red', estonian: 'punane' },
   { id: 'word_145', english: 'phone', estonian: 'telefon' },
   { id: 'word_146', english: 'mobile (phone)', estonian: 'mobiil(telefon)' },
@@ -220,7 +224,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_208', english: 'skirt', estonian: 'seelik' },
   { id: 'word_209', english: 'jacket', estonian: 'jakk' },
   { id: 'word_210', english: 'jumper', estonian: 'džemper' },
-  { id: 'word_211', english: 'coat', estonian: 'jope' },
+  { id: 'word_211', english: 'coat', estonian: 'mantel', formerEstonian: ['jope'] },
   { id: 'word_212', english: 'right', estonian: 'õige' },
   { id: 'word_213', english: 'scarf; scarves', estonian: 'sall; sallid' },
   { id: 'word_214', english: 'too', estonian: 'samuti, ka' },
@@ -271,7 +275,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_259', english: 'too', estonian: 'liiga' },
   { id: 'word_260', english: 'then', estonian: 'siis' },
   { id: 'word_261', english: 'Great.', estonian: 'Tore.' },
-  { id: 'word_262', english: 'to', estonian: 'sisse, juurde (eessõna)' },
+  { id: 'word_262', english: 'to', estonian: 'juurde, -le (kuhu?)', formerEstonian: ['sisse, juurde (eessõna)'] },
   { id: 'word_263', english: 'to the park', estonian: 'parki' },
   { id: 'word_264', english: 'wrong', estonian: 'vale' },
   { id: 'word_265', english: 'work', estonian: 'töö; töötama' },
@@ -346,7 +350,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_334', english: 'neck', estonian: 'kael' },
   { id: 'word_335', english: 'arm', estonian: 'käsivars' },
   { id: 'word_336', english: 'finger', estonian: 'sõrm' },
-  { id: 'word_337', english: 'foot; feet', estonian: 'jalg; jalad' },
+  { id: 'word_337', english: 'foot; feet', estonian: 'jalalaba; jalalabad', formerEstonian: ['jalg; jalad'] },
   { id: 'word_338', english: 'hair', estonian: 'juuksed' },
   { id: 'word_339', english: 'ear', estonian: 'kõrv' },
   { id: 'word_340', english: 'mouth', estonian: 'suu' },
@@ -446,7 +450,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_434', english: 'call', estonian: 'helistama; kutsuma; hõikama' },
   { id: 'word_435', english: 'maths', estonian: 'matemaatika' },
   { id: 'word_436', english: 'PE', estonian: 'kehaline kasvatus' },
-  { id: 'word_437', english: 'birthday', estonian: 'sünnipäev' },
+  { id: 'word_437', english: 'birthday', estonian: 'sünnipäev', retired: true },
   { id: 'word_438', english: 'window', estonian: 'aken' },
   { id: 'word_439', english: 'map', estonian: 'maakaart' },
   { id: 'word_440', english: 'door', estonian: 'uks' },
@@ -573,7 +577,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_561', english: 'October', estonian: 'oktoober' },
   { id: 'word_562', english: 'November', estonian: 'november' },
   { id: 'word_563', english: 'December', estonian: 'detsember' },
-  { id: 'word_564', english: 'when', estonian: 'millal (küsisõna)' },
+  { id: 'word_564', english: 'when', estonian: 'millal (küsisõna)', retired: true },
   { id: 'word_565', english: 'holidays', estonian: 'puhkus; koolivaheaeg' },
   { id: 'word_566', english: 'school holidays', estonian: 'koolivaheaeg' },
   { id: 'word_567', english: 'Easter', estonian: 'lihavõtted' },
@@ -642,4 +646,7 @@ export const ENGLISH_VOCABULARY: EnglishVocabularyWord[] = [
   { id: 'word_630', english: 'write in pencil', estonian: 'pliiatsiga kirjutama' },
 ];
 
-export const ENGLISH_VOCABULARY_COUNT = ENGLISH_VOCABULARY.length;
+// The words a new sprint may show: every word except the retired duplicates.
+export const ACTIVE_ENGLISH_VOCABULARY = ENGLISH_VOCABULARY.filter((word) => !word.retired);
+
+export const ENGLISH_VOCABULARY_COUNT = ACTIVE_ENGLISH_VOCABULARY.length;

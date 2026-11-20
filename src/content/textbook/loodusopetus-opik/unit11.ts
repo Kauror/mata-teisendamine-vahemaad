@@ -15,7 +15,7 @@ export const unit11: Unit = {
     "to": 49
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.1",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u11-o1",
@@ -735,7 +735,7 @@ export const unit11: Unit = {
           },
           {
             "id": "kaart",
-            "text": "Väga suur linnaplaan"
+            "text": "Maa suurendatud ja täpne mudel"
           },
           {
             "id": "paike",
@@ -1321,7 +1321,7 @@ export const unit11: Unit = {
           },
           {
             "id": "sea",
-            "text": "Gloobus näitab ainult ookeane."
+            "text": "Gloobusel on tänavad küll olemas, aga valesti paigutatud."
           }
         ],
         "correctOptionId": "detail"
@@ -3185,7 +3185,7 @@ export const unit11: Unit = {
           },
           {
             "id": "sea",
-            "text": "Et eraldada ookeanid maismaast."
+            "text": "Et jagada Maa põhjapoolkeraks ja lõunapoolkeraks."
           },
           {
             "id": "axis",

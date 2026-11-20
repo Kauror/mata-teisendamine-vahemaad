@@ -12,7 +12,7 @@ export const unit18: Unit = {
     "to": 69
   },
   "status": "ready",
-  "contentVersion": "2026-10-17.1",
+  "contentVersion": "2026-11-20.1",
   "objectives": [
     {
       "id": "lo-opik-u18-o1",
@@ -2998,7 +2998,7 @@ export const unit18: Unit = {
           },
           {
             "id": "d",
-            "text": "Ei, Euroopa paikneb ainult nullmeridiaanil."
+            "text": "Jah, aga mõlemad osad on ühesuurused."
           }
         ],
         "correctOptionId": "a"
@@ -4505,15 +4505,15 @@ export const unit18: Unit = {
           },
           {
             "id": "b",
-            "text": "Riigi kogupindala."
+            "text": "Riigi kogupindala ruutkilomeetrites."
           },
           {
             "id": "c",
-            "text": "Riigi pealinnade arvu."
+            "text": "Riigi kõigi elanike koguarvu."
           },
           {
             "id": "d",
-            "text": "Riigi lipu värvide arvu."
+            "text": "Linnade arvu ühe riigi kohta."
           }
         ],
         "correctOptionId": "a"
@@ -5234,7 +5234,7 @@ export const unit18: Unit = {
           },
           {
             "id": "d",
-            "text": "Kõige kõrgema mäega riiki."
+            "text": "Riiki, kus elab kõige rohkem inimesi ühel ruutkilomeetril."
           }
         ],
         "correctOptionId": "a"
@@ -5444,7 +5444,7 @@ export const unit18: Unit = {
           },
           {
             "id": "d",
-            "text": "Teine kaart on alati tagurpidi."
+            "text": "Pindalakaart näitab rahvaarvu, tihedusekaart riikide suurust."
           }
         ],
         "correctOptionId": "a"
@@ -5641,7 +5641,7 @@ export const unit18: Unit = {
           },
           {
             "id": "b",
-            "text": "Riigis ei ela kindlasti ühtegi inimest."
+            "text": "Riigis ei ela kindlasti ühtegi inimest, sest number puudub."
           },
           {
             "id": "c",
@@ -5649,7 +5649,7 @@ export const unit18: Unit = {
           },
           {
             "id": "d",
-            "text": "Riigil pole üldse pindala."
+            "text": "Riik ei kuulu Euroopasse, kuigi see on Euroopa kaardil."
           }
         ],
         "correctOptionId": "a"
@@ -5780,15 +5780,15 @@ export const unit18: Unit = {
           },
           {
             "id": "b",
-            "text": "84 km² pindala."
+            "text": "84 000 km² suurune pindala."
           },
           {
             "id": "c",
-            "text": "84 pealinna."
+            "text": "Ligikaudu 84 tuhat inimest pealinnas."
           },
           {
             "id": "d",
-            "text": "84 kilomeetrit rannajoont."
+            "text": "84 inimest ühel ruutkilomeetril kaardi koostamise ajal."
           }
         ],
         "correctOptionId": "a"
@@ -6358,7 +6358,7 @@ export const unit18: Unit = {
           },
           {
             "id": "d",
-            "text": "Ekvaator on Euroopa idapiir."
+            "text": "Ekvaator kulgeb põhjast lõunasse, nullmeridiaan idast läände."
           }
         ],
         "correctOptionId": "a"

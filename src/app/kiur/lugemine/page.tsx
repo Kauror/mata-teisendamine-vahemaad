@@ -6,6 +6,7 @@ import { completedTodayFromHistory, ClientCompletionAttempt } from '@/lib/client
 import { shuffleWithSeed as shuffle } from '@/lib/random';
 import { formatStars } from '@/lib/formatStars';
 import type { KiurReadingTask } from '@/lib/kiurReadingTasks';
+import { pickKiurReadingRun } from '@/lib/kiurReadingRun';
 import {
   createRunnerSession,
   ensureRunIdInCurrentUrl,
@@ -73,8 +74,7 @@ function loadValidKiurReadingTasks() {
 
 function buildSession(validTasks: KiurReadingTask[]) {
   const seed = Date.now() + Math.floor(Math.random() * 100000);
-  return shuffle(validTasks, seed)
-    .slice(0, Math.min(RUN_LENGTH, validTasks.length))
+  return pickKiurReadingRun(validTasks, seed, RUN_LENGTH)
     .map((task, index) => ({
       ...task,
       shuffledOptions: shuffle(task.options, seed + index * 7919)
