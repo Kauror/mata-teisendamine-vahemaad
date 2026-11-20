@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
 import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { VOCAB_LEARNER } from '@/lib/vocabulary/constants';
 import { unitTestErrorResponse } from '@/lib/server/unitTests/http';
@@ -13,6 +14,8 @@ export async function POST(req: NextRequest) {
   const jsonBody = await readJsonObjectRequest(req);
   if (jsonBody instanceof NextResponse) return jsonBody;
   const body = jsonBody as { unitId?: unknown };
+  const deviceDenied = await assertDeviceMayActAs(req, VOCAB_LEARNER);
+  if (deviceDenied) return deviceDenied;
   const unitId = typeof body.unitId === 'string' && body.unitId.length <= 64 ? body.unitId : null;
   if (!unitId) return NextResponse.json({ code: 'invalid', message: 'Õppetükk puudub.' }, { status: 400 });
   try {

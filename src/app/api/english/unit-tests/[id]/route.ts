@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
 import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { VOCAB_LEARNER } from '@/lib/vocabulary/constants';
 import { unitTestErrorResponse, validAttemptId } from '@/lib/server/unitTests/http';
@@ -26,6 +27,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const jsonBody = await readJsonObjectRequest(req);
   if (jsonBody instanceof NextResponse) return jsonBody;
   const body = jsonBody as { revision?: unknown; answers?: unknown; submit?: unknown };
+  const deviceDenied = await assertDeviceMayActAs(req, VOCAB_LEARNER);
+  if (deviceDenied) return deviceDenied;
   try {
     return NextResponse.json(saveUnitTestAnswers(VOCAB_LEARNER, id, { revision: body.revision, answers: body.answers, submit: body.submit === true }));
   } catch (error) {

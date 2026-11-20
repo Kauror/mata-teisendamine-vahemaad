@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
 import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { VOCAB_LEARNER } from '@/lib/vocabulary/constants';
 import { vocabErrorResponse } from '@/lib/server/vocabulary/http';
@@ -31,6 +32,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const jsonBody = await readJsonObjectRequest(req);
   if (jsonBody instanceof NextResponse) return jsonBody;
   const body = jsonBody as { actionId?: unknown; revision?: unknown; action?: unknown };
+  const deviceDenied = await assertDeviceMayActAs(req, VOCAB_LEARNER);
+  if (deviceDenied) return deviceDenied;
   try {
     return NextResponse.json(applySessionAction(VOCAB_LEARNER, id, { actionId: body.actionId, revision: body.revision, action: body.action }));
   } catch (error) {

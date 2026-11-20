@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
 import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { isLearner } from '@/lib/learningExercises';
@@ -28,6 +29,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ses
   const elapsedSeconds = Number(body.elapsedSeconds) || 0;
 
   if (!isLearner(learner) || !Number.isInteger(id)) return NextResponse.json({ message: 'Vale kordamine.' }, { status: 400 });
+  const deviceDenied = await assertDeviceMayActAs(req, learner);
+  if (deviceDenied) return deviceDenied;
 
   try {
     // The daily leaderboard is refreshed inside the submission transaction, for

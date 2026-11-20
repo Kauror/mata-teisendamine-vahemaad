@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
 import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { completeTaskAssignment, Learner } from '@/lib/tasks';
@@ -20,6 +21,8 @@ export async function POST(req: NextRequest) {
     if (!learner || !Number.isInteger(assignmentId)) {
       return NextResponse.json({ message: 'Vale tegevus.' }, { status: 400 });
     }
+    const deviceDenied = await assertDeviceMayActAs(req, learner);
+    if (deviceDenied) return deviceDenied;
     return NextResponse.json(completeTaskAssignment(assignmentId, learner));
   } catch (error) {
     return NextResponse.json({ message: publicErrorMessage(error, 'Tegevust ei saanud märkida.') }, { status: 409 });

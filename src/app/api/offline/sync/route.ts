@@ -3,12 +3,31 @@ import { runSyncPullV2, runSyncPushV2 } from '@/lib/offline/server/syncService';
 import type { OfflineSyncPullRequestV2, OfflineSyncPushRequestV2 } from '@/lib/shared/types';
 import { parseOfflineSyncRequest, PublicRequestError, readJsonBody } from '@/lib/server/http/requestValidation';
 import { runSyncRouteFaultInjector } from './faultInjection';
+import { PARENT_SESSION_COOKIE } from '@/lib/auth/constants';
+import { verifySession } from '@/lib/auth/session';
+import { isPeekReadOnlyRequest, PEEK_READ_ONLY_ACTION_MESSAGE, PEEK_READ_ONLY_CODE } from '@/lib/peekMode';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
+import type { ChildLearner } from '@/lib/auth/deviceBinding';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 async function getDb() {
   return (await import('@/lib/db')).default;
+}
+
+// The learners a push would write for, as the records claim them.
+function pushLearners(body: OfflineSyncPushRequestV2): ChildLearner[] {
+  const pending = body.pending as unknown as Record<string, unknown>;
+  const learners = new Set<ChildLearner>();
+  for (const key of ['attempts', 'taskActions', 'remediationActions']) {
+    const records = Array.isArray(pending?.[key]) ? pending[key] as unknown[] : [];
+    for (const record of records) {
+      const learner = (record as { learner?: unknown } | null)?.learner;
+      if (learner === 'kiur' || learner === 'kirsi') learners.add(learner);
+    }
+  }
+  return [...learners];
 }
 
 // Unified push-before-pull sync. Untrusted client input: validated, batch-limited,
@@ -19,6 +38,18 @@ export async function POST(req: NextRequest) {
   try {
     const body = parseOfflineSyncRequest(await readJsonBody(req));
     runSyncRouteFaultInjector();
+    if (body.phase === 'push') {
+      // Peek mode is read-only: a signed-in parent (not "Vaata nagu laps")
+      // may pull, but never push attempts or task actions for a child (C3b).
+      const parent = await verifySession(req.cookies.get(PARENT_SESSION_COOKIE)?.value, 'parent');
+      if (isPeekReadOnlyRequest({ parentSession: Boolean(parent), cookieHeader: req.headers.get('cookie') })) {
+        return NextResponse.json({ code: PEEK_READ_ONLY_CODE, message: PEEK_READ_ONLY_ACTION_MESSAGE }, { status: 403 });
+      }
+      // A device bound to one child cannot push records for the other (B4).
+      // The whole batch is refused so the rows stay in the device outbox.
+      const deviceDenied = await assertDeviceMayActAs(req, pushLearners(body as OfflineSyncPushRequestV2));
+      if (deviceDenied) return deviceDenied;
+    }
     const response = body.phase === 'push'
       ? runSyncPushV2(body as OfflineSyncPushRequestV2)
       : runSyncPullV2(body as OfflineSyncPullRequestV2);

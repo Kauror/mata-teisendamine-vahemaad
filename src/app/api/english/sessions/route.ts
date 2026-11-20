@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
 import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { VOCAB_LEARNER } from '@/lib/vocabulary/constants';
 import { vocabErrorResponse } from '@/lib/server/vocabulary/http';
@@ -13,6 +14,8 @@ export async function POST(req: NextRequest) {
   const jsonBody = await readJsonObjectRequest(req);
   if (jsonBody instanceof NextResponse) return jsonBody;
   const body = jsonBody as { unitId?: unknown; mode?: unknown };
+  const deviceDenied = await assertDeviceMayActAs(req, VOCAB_LEARNER);
+  if (deviceDenied) return deviceDenied;
   const mode = body.mode;
   if (mode !== 'study' && mode !== 'test' && mode !== 'practice') {
     return NextResponse.json({ code: 'invalid', message: 'Vale harjutusviis.' }, { status: 400 });

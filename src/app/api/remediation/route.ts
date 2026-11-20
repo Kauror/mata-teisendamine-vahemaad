@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertDeviceMayActAs } from '@/lib/server/deviceAccess';
 import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { isLearner } from '@/lib/learningExercises';
@@ -19,6 +20,8 @@ export async function POST(req: NextRequest) {
   const body = jsonBody;
   const learner = body.learner;
   if (!isLearner(learner)) return NextResponse.json({ message: 'Vale laps.' }, { status: 400 });
+  const deviceDenied = await assertDeviceMayActAs(req, learner);
+  if (deviceDenied) return deviceDenied;
 
   try {
     return NextResponse.json(startRemediationSession(learner), { status: 201 });

@@ -2670,3 +2670,7 @@ a.pv-btn{display:inline-flex;align-items:center;justify-content:center;text-deco
 .eluka-demo .phint{color:#9cc9ff;text-decoration:underline;cursor:pointer;display:inline-block;padding:4px 0}
 .eluka-demo .ptoast{position:absolute;left:10px;right:10px;text-align:center;background:#2f7a43;color:#fff;border-radius:10px;padding:6px 10px;font-size:12.5px;line-height:1.35;z-index:5;opacity:0;transition:opacity .35s;pointer-events:none;box-sizing:border-box}
 .eluka-demo .ptip{position:absolute;left:4px;right:4px;background:#11141d;color:#f5efe6;border:1px solid #4a5266;border-radius:8px;padding:6px 8px;font-size:12px;line-height:1.4;z-index:6;display:none;pointer-events:none;box-sizing:border-box}
+
+/* Vanem → Seaded → See seade (per-device child binding) */
+.device-binding-card{display:grid;gap:10px}
+.device-binding-notice{margin:0;font-size:14px;line-height:1.4;color:#92400e;background:#fffbeb;box-shadow:0 0 0 1px #fcd34d}
