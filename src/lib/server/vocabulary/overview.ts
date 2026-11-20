@@ -15,6 +15,7 @@ import {
   unstudiedWordIds
 } from '@/lib/server/vocabulary/units';
 import { activeSessionIds, weakWordCounts } from '@/lib/server/vocabulary/sessions';
+import { childUnitTestStatuses, type ChildUnitTestStatus } from '@/lib/server/unitTests/store';
 
 // Read models for the two screens: the child's unit list and the parent's
 // administration and statistics. Neither writes anything.
@@ -38,6 +39,8 @@ export type ChildUnitCard = {
   weakCount: number;
   // Words added after the unit was studied; studied before the test reopens.
   newWordsCount: number;
+  // The workbook test after the words test (lisatest); null when the unit has none yet.
+  unitTest: ChildUnitTestStatus | null;
 };
 
 export type ChildVocabularyHome = {
@@ -58,6 +61,7 @@ export function getChildVocabularyHome(learner: Learner): ChildVocabularyHome {
   const sessions = activeSessionIds(learner);
   const weak = weakWordCounts(learner);
   const byNumber = new Map(units.map((unit) => [unit.unitNumber, unit]));
+  const unitTests = childUnitTestStatuses(learner, units);
 
   // The child sees published units only; an unpublished unit does not exist
   // for them, so there is nothing confusing to explain.
@@ -93,7 +97,8 @@ export function getChildVocabularyHome(learner: Learner): ChildVocabularyHome {
         activeTestSessionId,
         activePracticeSessionId: session('practice'),
         weakCount: unitAccess.accessible ? weak.get(unit.id) ?? 0 : 0,
-        newWordsCount: unitAccess.accessible ? unstudiedWordIds(row, wordIds.get(unit.id) ?? []).length : 0
+        newWordsCount: unitAccess.accessible ? unstudiedWordIds(row, wordIds.get(unit.id) ?? []).length : 0,
+        unitTest: unitTests.get(unit.id) ?? null
       };
     });
 

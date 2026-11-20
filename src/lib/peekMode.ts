@@ -72,6 +72,8 @@ export function hasPeekOptOutCookie(cookieHeader: string | null | undefined) {
 export function isChildWritePath(pathname: string) {
   return pathname === '/api/english/sessions'
     || pathname.startsWith('/api/english/sessions/')
+    // English unit tests (lisatestid): starting, saving and submitting.
+    || pathname.startsWith('/api/english/unit-tests')
     // Textbook reading, practice and test writes. The parent preview lives
     // under /api/parent/textbook/preview and is the parent's own, so it is not
     // listed here.

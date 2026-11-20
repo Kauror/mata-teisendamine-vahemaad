@@ -24,10 +24,11 @@ import { PARENT_HALDA_TABS, type ParentHaldaTab, type ParentView } from '@/app/c
 const loadingPanel = () => <p>Laadin...</p>;
 const ParentEnglishVocabulary = dynamic(() => import('@/app/components/ParentEnglishVocabulary'), { loading: loadingPanel });
 const TextbookPanel = dynamic(() => import('@/app/components/parent/TextbookPanel').then((module) => module.TextbookPanel), { loading: loadingPanel });
+const UnitTestsPanel = dynamic(() => import('@/app/components/parent/UnitTestsPanel').then((module) => module.UnitTestsPanel), { loading: loadingPanel });
 const KaardimangPanel = dynamic(() => import('@/app/components/kaardimang/KaardimangParentPanel'), { loading: loadingPanel });
 const OfflineReadiness = dynamic(() => import('@/app/components/offline/OfflineReadiness').then((module) => module.OfflineReadiness), { loading: loadingPanel });
 
-type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'learning' | 'vocabulary' | 'textbook' | 'kaardimang' | 'password' | 'rewards' | 'history' | 'eluka';
+type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'learning' | 'vocabulary' | 'unitTests' | 'textbook' | 'kaardimang' | 'password' | 'rewards' | 'history' | 'eluka';
 type CountedSection = 'library' | 'textbook' | 'tasks' | 'store' | 'rewards' | 'history';
 
 // What a section header says before its panel has loaded its own data; the
@@ -156,6 +157,9 @@ function ParentHubView({ view, tab }: { view: ParentView; tab?: ParentHaldaTab }
                 </ParentAccordionSection>
                 <ParentAccordionSection title='Inglise keele sõnavara' summary='Õppetükid, import ja edenemine' {...section('vocabulary')} keepMounted>
                   <ParentEnglishVocabulary setNotice={api.setNotice} setError={api.setError} />
+                </ParentAccordionSection>
+                <ParentAccordionSection title='Inglise keele lisatestid' summary='Õpiku testid A/B, import ja eelvaade' {...section('unitTests')}>
+                  <UnitTestsPanel />
                 </ParentAccordionSection>
                 <ParentAccordionSection title='Kaardimäng' summary='Perevõistlus, tasemed, mängi ise, eelvaade' {...section('kaardimang')}>
                   <KaardimangPanel />

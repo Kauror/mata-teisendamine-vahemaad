@@ -8,6 +8,7 @@ import { VocabularyProblem, VocabularyProgress, VocabularyShell } from '@/app/co
 import { formatStars } from '@/lib/formatStars';
 import { VOCAB_ALL_PASSED_MESSAGE, VOCAB_HOME_ROUTE } from '@/lib/vocabulary/constants';
 import type { TypedFeedback } from '@/lib/vocabulary/engine';
+import { UnitTestNextLink } from '@/app/components/unitTests/UnitTestNextLink';
 
 // The typed-answer screens: the unit test and "Korda eksitud sõnu". One word at
 // a time, no timer, no score race.
@@ -118,6 +119,7 @@ export function VocabularyTest({ unitId }: { unitId: string }) {
               : <p>Selle eest tänaseid tähti enam ei tule, aga test on läbitud.</p>}
           </div>
         ) : null}
+        {view.unit ? <UnitTestNextLink unitId={view.unit.id} /> : null}
         <div className='vocab-actions'>
           {view.nextUnit ? <Link className='start-button vocab-start-link' href={`${VOCAB_HOME_ROUTE}/${view.nextUnit.id}/opi`}>Alusta: {view.nextUnit.label}</Link> : null}
           <Link className={view.nextUnit ? 'vocab-secondary-button' : 'start-button vocab-start-link'} href={VOCAB_HOME_ROUTE}>Tagasi õppetükkide juurde</Link>

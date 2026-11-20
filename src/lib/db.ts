@@ -1372,6 +1372,61 @@ function addKaardimangNotices(connection: DatabaseConnection) {
   `);
 }
 
+// English unit tests ("lisatestid", Kaur 20.11): the workbook test that
+// follows a vocabulary unit's words test. Content is imported by the parent
+// (one row per unit and variant A/B). An attempt keeps a snapshot of the
+// content it was taken on, so a later re-import never changes what the child
+// answered or how it is marked. Open answers wait for the parent; stars are
+// paid only when the parent approves (docs/english-unit-tests.md).
+function addEnglishUnitTests(connection: DatabaseConnection) {
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS english_unit_test_variants (
+      unitNumber INTEGER NOT NULL CHECK (unitNumber BETWEEN 1 AND 999),
+      variant TEXT NOT NULL CHECK (variant IN ('A', 'B')),
+      title TEXT NOT NULL,
+      contentJson TEXT NOT NULL,
+      contentHash TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+      importedAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      PRIMARY KEY (unitNumber, variant)
+    );
+
+    CREATE TABLE IF NOT EXISTS english_unit_test_attempts (
+      id TEXT PRIMARY KEY,
+      learner TEXT NOT NULL CHECK (learner IN ('kiur', 'kirsi')),
+      unitId TEXT NOT NULL,
+      unitNumber INTEGER NOT NULL,
+      variant TEXT NOT NULL CHECK (variant IN ('A', 'B')),
+      contentHash TEXT NOT NULL,
+      contentJson TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('in_progress', 'submitted', 'returned', 'approved')),
+      answersJson TEXT NOT NULL DEFAULT '{}',
+      marksJson TEXT NOT NULL DEFAULT '{}',
+      parentComment TEXT,
+      revision INTEGER NOT NULL DEFAULT 0,
+      submissions INTEGER NOT NULL DEFAULT 0,
+      earned REAL,
+      total REAL,
+      grade INTEGER,
+      passed INTEGER CHECK (passed IN (0, 1)),
+      attemptId INTEGER,
+      startedAt TEXT NOT NULL,
+      submittedAt TEXT,
+      returnedAt TEXT,
+      approvedAt TEXT,
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (unitId) REFERENCES english_vocab_units(id),
+      FOREIGN KEY (attemptId) REFERENCES attempts(id)
+    );
+    -- At most one unfinished test per child and unit.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_english_unit_test_open
+      ON english_unit_test_attempts(learner, unitId) WHERE status <> 'approved';
+    CREATE INDEX IF NOT EXISTS idx_english_unit_test_status
+      ON english_unit_test_attempts(status, submittedAt);
+  `);
+}
+
 const migrations: Migration[] = [
   {
     id: 1,
@@ -1472,6 +1527,12 @@ const migrations: Migration[] = [
     name: 'kaardimang_notices',
     checksumSource: 'kaardimang_notices:v1:2026-10-31',
     up: addKaardimangNotices
+  },
+  {
+    id: 17,
+    name: 'english_unit_tests',
+    checksumSource: 'english_unit_tests:v1:2026-11-20',
+    up: addEnglishUnitTests
   }
 ];
 

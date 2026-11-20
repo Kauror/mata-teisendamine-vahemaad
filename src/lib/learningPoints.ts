@@ -169,6 +169,8 @@ export function exerciseKeyForAttempt(learner: Learner, category: string, topic?
   if (topic === 'kordamine' || category === 'Kordamine') return `${learner}.remediation.mixed`;
   if (learner === 'kiur' && topic === 'sprint') return 'kiur.english.sprint';
   if (learner === 'kiur' && topic === 'sonavara') return 'kiur.english.vocabulary';
+  // The workbook test after a vocabulary unit (lisatest) belongs to the same exercise.
+  if (learner === 'kiur' && topic === 'lisatest') return 'kiur.english.vocabulary';
   if (learner === 'kiur' && topic === 'loe-ja-vasta') return 'kiur.reading.loe-ja-vasta';
   if (learner === 'kiur' && topic === 'korrutamine') return 'kiur.math.multiplication';
   if (learner === 'kiur' && topic === 'tekstulesanded') return 'kiur.math.tekstulesanded';

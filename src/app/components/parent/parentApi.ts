@@ -80,7 +80,7 @@ export function createSaveGuard(onSavingChange: (saving: boolean) => void, onFai
 // The data a panel can show. A panel subscribes to the topics it reads and
 // re-fetches when one is invalidated; a mutation invalidates exactly the
 // topics whose numbers it changes (see PARENT_INVALIDATIONS).
-export type ParentTopic = 'dashboard' | 'heldRewards' | 'taskReviews' | 'monthly' | 'freeze' | 'weekly' | 'store' | 'library' | 'learning' | 'rewards' | 'today';
+export type ParentTopic = 'dashboard' | 'heldRewards' | 'taskReviews' | 'monthly' | 'freeze' | 'weekly' | 'store' | 'library' | 'learning' | 'rewards' | 'today' | 'unitTests';
 
 export const PARENT_RESOURCE_URLS: Record<ParentTopic, string> = {
   dashboard: '/api/parent/dashboard',
@@ -93,7 +93,8 @@ export const PARENT_RESOURCE_URLS: Record<ParentTopic, string> = {
   library: '/api/parent/learning-exercises',
   learning: '/api/parent/learning-settings',
   rewards: '/api/parent/reward-rules',
-  today: '/api/parent/today'
+  today: '/api/parent/today',
+  unitTests: '/api/parent/english-unit-tests'
 };
 
 // Which panels' numbers each mutation changes. The dashboard holds the star
@@ -110,7 +111,8 @@ export const PARENT_INVALIDATIONS = {
   freezeGrant: ['freeze'],
   taskTemplate: ['dashboard', 'today'],
   storeItem: ['store'],
-  library: ['library', 'today']
+  library: ['library', 'today'],
+  unitTests: ['unitTests', 'dashboard', 'monthly', 'weekly', 'today']
 } as const satisfies Record<string, readonly ParentTopic[]>;
 
 export type ParentMutation = keyof typeof PARENT_INVALIDATIONS;
