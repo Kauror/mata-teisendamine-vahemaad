@@ -57,7 +57,7 @@ export default function LocalResultContent({ clientId }: { clientId: string | nu
   const backHref = attempt.learner === 'kirsi' ? '/kirsi' : attempt.learner === 'kiur' ? '/kiur' : '/';
   const local = result.kind === 'local' ? result.row : null;
   const status = result.kind === 'confirmed'
-    ? 'Sünkroonitud'
+    ? 'Salvestatud'
     : local?.status === 'pending' || local?.status === 'syncing'
       ? 'Ootab sünkroonimist'
       : local?.status === 'needs_review'

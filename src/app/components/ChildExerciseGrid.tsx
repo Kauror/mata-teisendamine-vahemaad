@@ -6,6 +6,12 @@ import type { ChildExerciseCard } from '@/lib/childExerciseCards';
 import { questionWord } from '@/lib/history';
 import type { Learner } from '@/lib/shared/types';
 import { getTodaysExercisesOffline } from '@/lib/offline/api';
+import { useOffline } from '@/app/components/offline/OfflineProvider';
+
+// Exercises that only work with a connection (their sessions live on the
+// server). Offline, their cards say so instead of opening a dead end.
+const ONLINE_ONLY_ROUTES = ['/kiur/inglise-keel', '/kiur/loodusopetus/opik', '/kiur/kordamine', '/kirsi/kordamine'];
+const needsNetwork = (href: string) => ONLINE_ONLY_ROUTES.some((route) => href === route || href.startsWith(`${route}/`));
 
 // Renders the child's exercise cards. Server-rendered props are the initial view;
 // on the client it recomputes today's cards from the cached catalogue so a new
@@ -32,6 +38,8 @@ export default function ChildExerciseGrid({
   completedExerciseCounts?: Record<string, number>;
 }) {
   const [exercises, setExercises] = useState<ChildExerciseCard[]>(initialExercises);
+  const { online } = useOffline();
+  const offlineNote = (href: string) => (!online && needsNetwork(href) ? <small className='child-exercise-offline'>Vajab internetti</small> : null);
   const doneCounts: Record<string, number> = completedExerciseCounts
     ?? Object.fromEntries((completedExerciseIds ?? []).map((id) => [id, 1]));
 
@@ -54,6 +62,7 @@ export default function ChildExerciseGrid({
             <span className='child-exercise-copy'>
               <strong>Loodusõpetus</strong>
               <small>Õpiku õppetükid: loe, harjuta ja tee test.</small>
+              {offlineNote(loodusopetusHref)}
             </span>
           </Link>
         ) : null}
@@ -72,6 +81,7 @@ export default function ChildExerciseGrid({
             <span className='child-exercise-copy'>
               <strong>{exercise.title}</strong>
               {exercise.description ? <small>{exercise.description}</small> : null}
+              {offlineNote(exercise.route)}
             </span>
           </Link>
         ))}
@@ -85,11 +95,12 @@ export default function ChildExerciseGrid({
             <span className='child-exercise-copy'>
               <strong>Kordamine</strong>
               <small>Harjuta uuesti neid ülesandeid, mis vajavad veel tähelepanu.</small>
+              {offlineNote(remediationHref)}
             </span>
           </Link>
         ) : null}
       </div>
-      {exercises.length === 0 && !remediationHref && !loodusopetusHref ? <p className='recent-empty'>Harjutusi ei ole praegu aktiivne.</p> : null}
+      {exercises.length === 0 && !remediationHref && !loodusopetusHref ? <p className='recent-empty'>Praegu ei ole ühtegi harjutust avatud.</p> : null}
     </section>
   );
 }

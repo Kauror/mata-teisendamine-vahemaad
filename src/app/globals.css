@@ -487,6 +487,7 @@ a.child-status:focus-visible{outline:3px solid var(--focus-ring);outline-offset:
 .child-exercise-copy{min-width:0;display:grid;gap:3px}
 .child-exercise-copy strong{font-size:21px;line-height:1.1}
 .child-exercise-copy small{color:#4b5f99;font-size:14px;font-weight:750;line-height:1.25}
+.child-exercise-copy .child-exercise-offline{color:var(--vocab-unknown-ink)}
 .done-today-marker,.exercise-count-marker{position:absolute;top:50%;right:12px;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:26px;height:26px;padding:0 9px;border-radius:999px;background:var(--marker-bg);border:1px solid var(--marker-border);color:var(--marker-ink);font-size:13px;font-weight:900;line-height:1;pointer-events:none;z-index:1}
 
 /* The identity card is deliberately absent here: it is one layout at every

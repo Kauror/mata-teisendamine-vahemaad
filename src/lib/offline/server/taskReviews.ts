@@ -21,7 +21,7 @@ export function listOfflineTaskReviews(): OfflineTaskReview[] {
   return rows.flatMap((row) => {
     if (row.learner !== 'kiur' && row.learner !== 'kirsi') return [];
     const value = snapshot(row.snapshotJson);
-    return [{ clientActionId: row.clientActionId, learner: row.learner, taskDate: row.taskDate, title: value.title ?? 'Offline tegevus', points: Math.max(0, Math.trunc(Number(value.points) || 0)), completedAt: row.completedAt, reasonCode: row.reasonCode }];
+    return [{ clientActionId: row.clientActionId, learner: row.learner, taskDate: row.taskDate, title: value.title ?? 'Tegevus', points: Math.max(0, Math.trunc(Number(value.points) || 0)), completedAt: row.completedAt, reasonCode: row.reasonCode }];
   });
 }
 
@@ -38,7 +38,7 @@ export function resolveOfflineTaskReview(clientActionId: string, action: 'approv
     if (updated.changes !== 1) throw new Error('Ülevaatust ootavat tegevust ei leitud.');
     if (action === 'approve' && review.points > 0) {
       db.prepare(`INSERT INTO point_ledger (learner, amount, source, description, createdAt, metadataJson, effectiveDate, idempotencyKey) VALUES (?, ?, 'real_world_task', ?, ?, ?, ?, ?)`)
-        .run(review.learner, review.points, `Offline tegevus: ${review.title}`, now, JSON.stringify({ clientActionId, taskDate: review.taskDate, offlineReview: true, approved: true }), review.taskDate, `offline-task-review:${clientActionId}`);
+        .run(review.learner, review.points, `Võrguühenduseta tegevus: ${review.title}`, now, JSON.stringify({ clientActionId, taskDate: review.taskDate, offlineReview: true, approved: true }), review.taskDate, `offline-task-review:${clientActionId}`);
     }
     emitTaskChangeForAction({ clientActionId, learner: review.learner, state, reasonCode, serverState, changedAt: now });
     return serverState;

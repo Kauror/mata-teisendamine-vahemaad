@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
+import db from '@/lib/db';
 import { hasParentSession } from '@/lib/parentAuth';
 import { approveHeldRewardAttempt, listHeldRewardAttempts } from '@/lib/server/rewards/projection';
 
@@ -11,7 +12,9 @@ export const runtime = 'nodejs';
 // once (approval also refreshes the daily leaderboard).
 export async function GET() {
   if (!await hasParentSession()) return NextResponse.json({ message: 'Ligipääs puudub.' }, { status: 401 });
-  return NextResponse.json({ held: listHeldRewardAttempts() });
+  // The exercise's own title, so the parent reads "Korrutamine", not an id.
+  const titles = new Map((db.prepare('SELECT id, title FROM learning_exercises').all() as Array<{ id: string; title: string }>).map((row) => [row.id, row.title]));
+  return NextResponse.json({ held: listHeldRewardAttempts().map((item) => ({ ...item, exerciseTitle: item.exerciseId ? titles.get(item.exerciseId) ?? null : null })) });
 }
 
 export async function POST(req: NextRequest) {

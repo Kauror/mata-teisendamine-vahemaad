@@ -38,7 +38,7 @@ export function offlineStatusPresentation({
     return { label: 'Sünkroonin…', tone: 'muted' };
   }
   if (pendingCount > 0) {
-    return { label: `${pendingCount} tulemust ootab sünkroonimist`, tone: 'ok' };
+    return { label: `${pendingCount} ${pendingCount === 1 ? 'tulemus ootab' : 'tulemust ootavad'} saatmist`, tone: 'ok' };
   }
 
   // Both a healthy idle state and the harmless initial unknown state should be

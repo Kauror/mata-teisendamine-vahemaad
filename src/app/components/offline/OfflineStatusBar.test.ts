@@ -47,7 +47,7 @@ describe('offlineStatusPresentation', () => {
       pendingCount: 2,
       syncState: 'unknown'
     })).toEqual({
-      label: '2 tulemust ootab sünkroonimist',
+      label: '2 tulemust ootavad saatmist',
       tone: 'ok'
     });
   });

@@ -6,6 +6,7 @@ import { failureMessage, jsonInit } from './parentApi';
 import type { Dashboard, HeldReward, OfflineTaskReview } from './types';
 import { useParentApi, useParentResource } from './useParentApi';
 import { isoToAppDate } from '@/lib/appDate';
+import { reviewReasonLabel } from '@/lib/reviewReasons';
 
 const heldFrom = (body: unknown) => {
   const held = (body as { held?: unknown } | null)?.held;
@@ -67,7 +68,7 @@ export function ApprovalsPanel() {
       api.setError(await failureMessage(res, 'Toimingut ei saanud teha.'));
       return;
     }
-    api.setNotice(action === 'approve' ? 'Offline tegevus kinnitatud ja tähed lisatud.' : 'Offline tegevus lükati tagasi.');
+    api.setNotice(action === 'approve' ? 'Võrguühenduseta tehtud tegevus kinnitatud ja tähed lisatud.' : 'Võrguühenduseta tehtud tegevus lükati tagasi.');
     api.bus.after('taskReview');
   });
 
@@ -115,7 +116,7 @@ export function ApprovalsPanel() {
       {reviews.map((item) => (
         <div key={`r-${item.clientActionId}`} className='pv-ask'>
           <div className='pv-ask-line'>
-            <span>{learnerLabel(item.learner)} · {item.title}<small>Tehtud võrguühenduseta, tegevus on vahepeal muutunud · {item.taskDate}{item.reasonCode ? ` · ${item.reasonCode}` : ''}</small></span>
+            <span>{learnerLabel(item.learner)} · {item.title}<small>Tehtud võrguühenduseta, tegevus on vahepeal muutunud · {item.taskDate}{item.reasonCode ? ` · ${reviewReasonLabel(item.reasonCode)}` : ''}</small></span>
             <span>+{item.points} ⭐</span>
           </div>
           <div className='pv-btns'>
@@ -131,11 +132,11 @@ export function ApprovalsPanel() {
         <div key={`h-${item.id}`} className='pv-ask'>
           <div className='pv-ask-line'>
             <span>
-              {learnerLabel(item.learner)} · {item.exerciseId ?? 'harjutus'}
+              {learnerLabel(item.learner)} · {item.exerciseTitle ?? item.exerciseId ?? 'harjutus'}
               <small>
                 Harjutuse tähed on kinni peetud · {item.score}/{item.questionCount}
                 {item.completionDate ? ` · ${item.completionDate}` : ''}
-                {item.reviewReasonCode ? ` · ${item.reviewReasonCode}` : ''}
+                {item.reviewReasonCode ? ` · ${reviewReasonLabel(item.reviewReasonCode)}` : ''}
               </small>
             </span>
           </div>

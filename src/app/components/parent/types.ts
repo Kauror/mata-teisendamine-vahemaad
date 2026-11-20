@@ -8,7 +8,7 @@ export type StoreStockType = 'unlimited' | 'fixed_stock' | 'daily_stock' | 'one_
 
 export type Template = { id: number; title: string; points: number; assignmentMode: AssignmentMode; recurrenceType: RecurrenceType; selectedWeekdaysJson: string | null; startDate: string | null; onceDate: string | null; requiresApproval: number };
 export type PendingApproval = { assignmentId: number; learner: Learner; title: string; points: number; assignmentMode: AssignmentMode; completedAt: string | null; date: string };
-export type HeldReward = { id: number; learner: Learner; completionDate: string | null; score: number; questionCount: number; exerciseId: string | null; status: 'withheld' | 'needs_review'; reviewReasonCode: string | null };
+export type HeldReward = { id: number; learner: Learner; completionDate: string | null; score: number; questionCount: number; exerciseId: string | null; exerciseTitle?: string | null; status: 'withheld' | 'needs_review'; reviewReasonCode: string | null };
 export type OfflineTaskReview = { clientActionId: string; learner: Learner; taskDate: string; title: string; points: number; completedAt: string | null; reasonCode: string | null };
 export type ParentHistoryAttempt = { id: number; createdAt: string; learner: Learner | null; category: string; score: number; questionCount: number };
 export type StreakFreezeState = { held: number; maxHeld: number; price: number; canBuy: boolean; blockedReason: string | null; recentlyCovered: string[] };
