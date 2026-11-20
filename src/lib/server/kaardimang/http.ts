@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEFAULT_JSON_BODY_BYTES } from '@/lib/server/http/jsonRequest';
+import { readJsonBody } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { ACTION_ID_PATTERN } from '@/lib/textbook/api';
 import { KAARDIMANG_CHILD_ENABLED, KAARDIMANG_ERROR_STATUS, ROUND_ID_PATTERN, type KaardimangErrorResponse, type KaardimangScope } from '@/lib/kaardimang/api';
@@ -47,7 +49,12 @@ async function run(work: () => Promise<unknown> | unknown) {
 }
 
 async function readJson(req: NextRequest): Promise<Record<string, unknown>> {
-  const body = await req.json().catch(() => null) as unknown;
+  let body: unknown;
+  try {
+    body = await readJsonBody(req, DEFAULT_JSON_BODY_BYTES);
+  } catch {
+    throw new KaardimangApiError('invalid_request', 'Päring on vigane.');
+  }
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new KaardimangApiError('invalid_request', 'Päring on vigane.');
   return body as Record<string, unknown>;
 }

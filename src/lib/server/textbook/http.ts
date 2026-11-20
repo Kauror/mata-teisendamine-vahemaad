@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEFAULT_JSON_BODY_BYTES } from '@/lib/server/http/jsonRequest';
+import { readJsonBody } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { ACTION_ID_PATTERN, TEXTBOOK_ERROR_STATUS, type TextbookErrorResponse } from '@/lib/textbook/api';
 import { childContext, previewContext, TextbookApiError, type TextbookContext } from '@/lib/server/textbook/context';
@@ -31,7 +33,12 @@ export function textbookErrorResponse(error: unknown) {
 }
 
 export async function readJson(req: NextRequest): Promise<Record<string, unknown>> {
-  const body = await req.json().catch(() => null) as unknown;
+  let body: unknown;
+  try {
+    body = await readJsonBody(req, DEFAULT_JSON_BODY_BYTES);
+  } catch {
+    throw new TextbookApiError('invalid_request', 'Päring on vigane.');
+  }
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new TextbookApiError('invalid_request', 'Päring on vigane.');
   return body as Record<string, unknown>;
 }
