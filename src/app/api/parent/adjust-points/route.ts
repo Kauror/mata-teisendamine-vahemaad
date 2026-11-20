@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { Learner, manualPointAdjustment } from '@/lib/tasks';
@@ -13,7 +14,9 @@ function parseLearner(value: unknown): Learner | null {
 export async function POST(req: NextRequest) {
   if (!await hasParentSession()) return NextResponse.json({ message: 'Ligipääs puudub.' }, { status: 401 });
   try {
-    const body = await req.json();
+    const jsonBody = await readJsonObjectRequest(req);
+    if (jsonBody instanceof NextResponse) return jsonBody;
+    const body = jsonBody;
     const learner = parseLearner(body.learner);
     const amount = Number(body.amount);
     if (!learner) return NextResponse.json({ message: 'Vale laps.' }, { status: 400 });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { isLearner } from '@/lib/learningExercises';
 import { getOpenRenderableMistakeCount, startRemediationSession } from '@/lib/remediation';
@@ -13,7 +14,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
+  const jsonBody = await readJsonObjectRequest(req);
+  if (jsonBody instanceof NextResponse) return jsonBody;
+  const body = jsonBody;
   const learner = body.learner;
   if (!isLearner(learner)) return NextResponse.json({ message: 'Vale laps.' }, { status: 400 });
 

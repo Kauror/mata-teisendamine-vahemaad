@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { IMPORT_JSON_BODY_BYTES, readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { hasParentSession } from '@/lib/parentAuth';
 import { unitTestErrorResponse } from '@/lib/server/unitTests/http';
 import {
@@ -42,7 +43,9 @@ export async function GET(req: NextRequest) {
 // Imports test files: { files: [{ name, data }] }, data being the parsed JSON.
 export async function POST(req: NextRequest) {
   if (!await hasParentSession()) return denied();
-  const body = await req.json().catch(() => null) as { files?: unknown } | null;
+  const jsonBody = await readJsonObjectRequest(req, IMPORT_JSON_BODY_BYTES);
+  if (jsonBody instanceof NextResponse) return jsonBody;
+  const body = jsonBody as { files?: unknown } | null;
   if (!body || !Array.isArray(body.files)) return NextResponse.json({ message: 'Failid puuduvad.' }, { status: 400 });
   try {
     const files = body.files.map((file, index) => {
@@ -57,7 +60,9 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   if (!await hasParentSession()) return denied();
-  const body = await req.json().catch(() => ({})) as { unitNumber?: unknown; variant?: unknown; active?: unknown };
+  const jsonBody = await readJsonObjectRequest(req, IMPORT_JSON_BODY_BYTES);
+  if (jsonBody instanceof NextResponse) return jsonBody;
+  const body = jsonBody as { unitNumber?: unknown; variant?: unknown; active?: unknown };
   const target = variantParams(body.unitNumber, body.variant);
   if (!target || typeof body.active !== 'boolean') return NextResponse.json({ message: 'Vale test.' }, { status: 400 });
   try {

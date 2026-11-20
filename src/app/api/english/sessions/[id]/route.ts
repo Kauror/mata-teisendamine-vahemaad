@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { VOCAB_LEARNER } from '@/lib/vocabulary/constants';
 import { vocabErrorResponse } from '@/lib/server/vocabulary/http';
 import { applySessionAction, getSessionView } from '@/lib/server/vocabulary/sessions';
@@ -27,7 +28,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
   if (!validId(id)) return NextResponse.json({ code: 'not_found', message: 'Harjutuskorda ei leitud.' }, { status: 404 });
-  const body = await req.json().catch(() => ({})) as { actionId?: unknown; revision?: unknown; action?: unknown };
+  const jsonBody = await readJsonObjectRequest(req);
+  if (jsonBody instanceof NextResponse) return jsonBody;
+  const body = jsonBody as { actionId?: unknown; revision?: unknown; action?: unknown };
   try {
     return NextResponse.json(applySessionAction(VOCAB_LEARNER, id, { actionId: body.actionId, revision: body.revision, action: body.action }));
   } catch (error) {

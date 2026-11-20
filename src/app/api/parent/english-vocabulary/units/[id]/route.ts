@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { hasParentSession } from '@/lib/parentAuth';
 import { VOCAB_LEARNER } from '@/lib/vocabulary/constants';
 import { vocabErrorResponse } from '@/lib/server/vocabulary/http';
@@ -24,7 +25,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   if (!await hasParentSession()) return NextResponse.json({ message: 'Ligipääs puudub.' }, { status: 401 });
   const { id } = await params;
-  const body = await req.json().catch(() => ({})) as { unitNumber?: unknown; title?: unknown; published?: unknown; manualUnlock?: unknown };
+  const jsonBody = await readJsonObjectRequest(req);
+  if (jsonBody instanceof NextResponse) return jsonBody;
+  const body = jsonBody as { unitNumber?: unknown; title?: unknown; published?: unknown; manualUnlock?: unknown };
   try {
     return NextResponse.json({ unit: patchUnit(VOCAB_LEARNER, id, body) });
   } catch (error) {

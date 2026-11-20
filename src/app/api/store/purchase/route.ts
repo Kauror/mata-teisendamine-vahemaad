@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { Learner } from '@/lib/tasks';
 import { purchaseStoreItem } from '@/lib/store';
@@ -12,7 +13,9 @@ function parseLearner(value: unknown): Learner | null {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const jsonBody = await readJsonObjectRequest(req);
+    if (jsonBody instanceof NextResponse) return jsonBody;
+    const body = jsonBody;
     const learner = parseLearner(body.learner);
     const itemId = Number(body.itemId);
     if (!learner || !Number.isInteger(itemId)) return NextResponse.json({ message: 'Vale ost.' }, { status: 400 });

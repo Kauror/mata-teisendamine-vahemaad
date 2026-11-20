@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readJsonObjectRequest } from '@/lib/server/http/jsonRequest';
 import { publicErrorMessage } from '@/lib/server/http/requestValidation';
 import { hasParentSession } from '@/lib/parentAuth';
 import { deleteRewardRule, listRewardRules, RewardLearnerScope, updateRewardRule } from '@/lib/rewardRules';
@@ -27,7 +28,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const id = await ruleId(params);
   if (!id) return NextResponse.json({ message: 'Vale auhind.' }, { status: 400 });
   try {
-    updateRewardRule(id, parseBody(await req.json()));
+    const jsonBody = await readJsonObjectRequest(req);
+    if (jsonBody instanceof NextResponse) return jsonBody;
+    updateRewardRule(id, parseBody(jsonBody));
     return NextResponse.json({ rules: listRewardRules() });
   } catch (error) {
     return NextResponse.json({ message: publicErrorMessage(error, 'Auhinda ei saanud muuta.') }, { status: 400 });
