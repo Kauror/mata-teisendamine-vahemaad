@@ -11,8 +11,8 @@ import {
   nextDayHeading,
   nextSchoolDate,
   nextTabLabel,
-  SCHOOL_BELLS,
-  SCHOOL_TIMETABLE,
+  childTimetable,
+  schoolBells,
   schoolDay,
   schoolEndsAt,
   subjectOf,
@@ -49,7 +49,7 @@ function DayList({ learner, weekday, clock }: { learner: Learner; weekday: numbe
       <ol className='timetable-day'>
         {day.lessons.map((name, index) => {
           if (!name) return null;
-          const [start, finish] = SCHOOL_BELLS[index];
+          const [start, finish] = schoolBells()[index] ?? [0, 0];
           const state = when(start, finish);
           return (
             <li key={index} data-subject={subjectOf(name).key} data-when={state} aria-current={state === 'now' ? 'time' : undefined}>
@@ -80,9 +80,9 @@ function DayList({ learner, weekday, clock }: { learner: Learner; weekday: numbe
 
 function WeekGrid({ learner, clock }: { learner: Learner; clock: AppClock }) {
   const [picked, setPicked] = useState<number | null>(null);
-  const { days } = SCHOOL_TIMETABLE[learner];
+  const { days } = childTimetable(learner);
   const today = isSchoolDate(clock.date) ? clock.weekday : -1;
-  const rows = SCHOOL_BELLS.map((bell, index) => ({ bell, index })).filter(({ index }) => days.some((day) => day.lessons[index]));
+  const rows = schoolBells().map((bell, index) => ({ bell, index })).filter(({ index }) => days.some((day) => day.lessons[index]));
 
   return (
     <>

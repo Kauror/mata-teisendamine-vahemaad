@@ -20,6 +20,8 @@ services:
       NODE_ENV: production
       MATHS_GAME_DB_FILE: /data/maths-game.sqlite
       MATHS_GAME_BACKUP_DIR: /data/backups
+      # Private, not in the repository: the deploy places it in the data folder.
+      SCHOOL_TIMETABLE_FILE: /data/school-timetable.json
     volumes:
       - ${APP_DATA_DIR:-./data}:/data
     networks:

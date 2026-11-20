@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import SchoolTimetable from '@/app/components/SchoolTimetable';
-import { SCHOOL_TIMETABLE } from '@/lib/schoolTimetable';
+import TimetableClassName from '@/app/components/TimetableClassName';
 import type { Learner } from '@/lib/shared/types';
 
 const CHILDREN: ReadonlyArray<{ learner: Learner; name: string; avatar: string; accent: 'blue' | 'pink' }> = [
@@ -24,7 +24,7 @@ export default function BothTimetablesPage() {
               <span className='child-home-avatar timetable-avatar' aria-hidden><span>{child.avatar}</span></span>
               <div>
                 <h2 id={`${child.learner}-timetable-title`}>{child.name}</h2>
-                <p>{SCHOOL_TIMETABLE[child.learner].className} klass</p>
+                <TimetableClassName learner={child.learner} />
               </div>
             </header>
             <SchoolTimetable learner={child.learner} />
