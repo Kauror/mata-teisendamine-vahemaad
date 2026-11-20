@@ -14,8 +14,23 @@ The existing Sprint is unchanged and still linked from that page.
    every word has had one *Teadsin*. The first-encounter score is kept.
 2. **Test (typed).** Opens after study. The child types the English word.
    Comparison ignores letter case, surrounding/repeated spaces, typographic
-   apostrophes (’ vs ') and a closing `. ! ?`; nothing else is forgiven unless
-   the parent stored the spelling as an accepted answer.
+   apostrophes (’ vs ') and a closing `. ! ?`. An English entry that holds
+   several forms accepts each of them (`answerForms` in
+   `src/lib/vocabulary/answers.ts`):
+   - `;` separates whole alternatives — `girl; girls` accepts *girl* and *girls*;
+   - a comma list of single words is a list of alternatives — `shoe, shoes`,
+     `drink, drank, drunk` (a sentence like `Sorry, I'm late.` stays one answer);
+   - `/` swaps the word before it for the word after it — `eat / have breakfast`
+     accepts *eat breakfast* and *have breakfast*; `there is / are` accepts
+     *there is* and *there are*;
+   - a bracketed part is optional — `look (at)` accepts *look* and *look at*.
+
+   A hyphen and a space are the same (`ice-cream` = `ice cream`, but not
+   `icecream`), and so are the US and UK spellings of the common words listed
+   in `US_TO_UK` (`color` = `colour`, `gray` = `grey`, `mom` = `mum`). Nothing
+   else is forgiven unless the parent stored the spelling as an accepted
+   answer. Every rule only adds answers: an answer that matched the stored
+   text before still matches.
 3. **95% rule.** Only a complete round counts. Below 95%: a correction round
    with just the missed words (each repeated until typed right), then the whole
    unit again. Integer arithmetic: 19/20 passes, 18/20 fails, an 18-word unit
