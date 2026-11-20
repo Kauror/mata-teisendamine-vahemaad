@@ -4,9 +4,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PictureWordSprintBoard, { type PictureWordSprintBoardState } from '@/app/components/PictureWordSprintBoard';
 import Celebration from '@/app/components/Celebration';
-import { shuffleWithSeed as shuffle } from '@/lib/random';
 import { fetchBestKirsiReadingSprintScore } from '@/lib/kirsiReadingHistory';
-import { buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS, KirsiReadingPair } from '@/lib/kirsiReadingPairs';
+import { buildKirsiPictureWordBoard, buildKirsiPictureWordQuestion, KIRSI_READING_PAIRS, KirsiReadingPair } from '@/lib/kirsiReadingPairs';
 import { formatStars } from '@/lib/formatStars';
 import { formatElapsed } from '@/lib/validation';
 import {
@@ -68,11 +67,9 @@ type PictureWordSession = RunnerSessionV3<KirsiReadingPair, ReviewItem, PictureW
 
 const BOARD_SIZE = 5;
 
+// Never two look-alike pictures (🍳 and 🥚) on one board.
 function buildBoardPairs(pool: KirsiReadingPair[], runSeed: number, boardIndex: number) {
-  const cycle = Math.floor((boardIndex * BOARD_SIZE) / pool.length);
-  const start = (boardIndex * BOARD_SIZE) % pool.length;
-  const deck = shuffle(pool, runSeed + cycle * 7919);
-  return deck.slice(start, start + BOARD_SIZE);
+  return buildKirsiPictureWordBoard(pool, runSeed, boardIndex, BOARD_SIZE);
 }
 
 export default function KirsiPictureWordSprintPage() {

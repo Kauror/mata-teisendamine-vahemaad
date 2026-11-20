@@ -1,6 +1,6 @@
 import db from '@/lib/db';
 import { ENGLISH_VOCABULARY } from '@/lib/englishVocabulary';
-import { KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
+import { isFairFirstSoundDistractor, KIRSI_FIRST_SOUND_TASKS } from '@/lib/kirsiFirstSoundTasks';
 import { KIRSI_READING_PAIRS } from '@/lib/kirsiReadingPairs';
 import { isoToAppDate } from '@/lib/appDate';
 import { exerciseKeyForAttempt, getStudyReward } from '@/lib/learningPoints';
@@ -158,12 +158,18 @@ function distractorsFor(type: RemediationRendererType) {
 // survive the cap — otherwise a question with more options than `total` renders
 // without a right answer and cannot be answered at all.
 function choicesWithDistractors(snapshot: PromptSnapshot, seed: number, total = 5) {
+  // «Esimene häälik» never offers a letter that sounds the same (B for P) or
+  // starts another name for the picture, not even the one picked last time.
+  const firstSoundTask = snapshot.rendererType === 'initial_sound'
+    ? KIRSI_FIRST_SOUND_TASKS.find((task) => task.word === snapshot.targetWord && task.correctLetter === snapshot.correctAnswerLabel)
+    : undefined;
+  const fair = (choice: string) => !firstSoundTask || choice === firstSoundTask.correctLetter || isFairFirstSoundDistractor(firstSoundTask, choice);
   const required = unique([
     ...(snapshot.acceptedAnswerLabels?.length ? snapshot.acceptedAnswerLabels : [snapshot.correctAnswerLabel]),
     snapshot.wrongAnswerLabel
-  ]);
-  const base = unique([...required, ...(snapshot.choices ?? [])]);
-  const fillers = distractorsFor(snapshot.rendererType).filter((choice) => !base.some((existing) => normalize(existing) === normalize(choice)));
+  ].filter(fair));
+  const base = unique([...required, ...(snapshot.choices ?? []).filter(fair)]);
+  const fillers = distractorsFor(snapshot.rendererType).filter((choice) => fair(choice) && !base.some((existing) => normalize(existing) === normalize(choice)));
   return shuffle(unique([...base, ...fillers]).slice(0, Math.max(total, required.length)), seed);
 }
 
