@@ -3,6 +3,7 @@ import db from '@/lib/db';
 import {
   captureMistakesForAttempt,
   getOpenRenderableMistakeCount,
+  REMEDIATION_MIN_OPEN_MISTAKES,
   REMEDIATION_QUESTION_COUNT,
   startRemediationSession,
   submitRemediationSession
@@ -46,7 +47,7 @@ function numericMistake(index: number) {
   };
 }
 
-// Enough usable mistakes to open a session (REMEDIATION_MIN_OPEN_MISTAKES = 10).
+// Enough usable mistakes to open a session (REMEDIATION_MIN_OPEN_MISTAKES = 5).
 function seedUsablePool(count = 12) {
   captureMath(Array.from({ length: count }, (_, index) => numericMistake(index + 1)));
 }
@@ -452,38 +453,52 @@ describe('submitRemediationSession', () => {
   }
 
   function statusOf(mistakeId: number) {
-    return db.prepare('SELECT status, reviewWrongCount FROM mistake_pool WHERE id = ?').get(mistakeId) as
-      { status: string; reviewWrongCount: number };
+    return db.prepare('SELECT status, reviewWrongCount, reviewCorrectCount FROM mistake_pool WHERE id = ?').get(mistakeId) as
+      { status: string; reviewWrongCount: number; reviewCorrectCount: number };
   }
 
-  it('resolves a mistake answered correctly and scores the whole session', () => {
-    seedUsablePool(15);
-    const session = startRemediationSession('kiur');
-    const result = answerAll(session, (question) => question.correctAnswerLabel);
+  // The next review happens on another app day.
+  function nextDay() {
+    db.prepare("UPDATE mistake_pool SET lastCorrectReviewDate = '2000-01-01' WHERE lastCorrectReviewDate IS NOT NULL").run();
+  }
 
+  it('clears a mistake only after right answers on two different days', () => {
+    seedUsablePool(15);
+    const first = startRemediationSession('kiur');
+    const result = answerAll(first, (question) => question.correctAnswerLabel);
     expect(result.score).toBe(REMEDIATION_QUESTION_COUNT);
-    expect(result.resolvedCount).toBe(15);
-    for (const question of session.questions) expect(statusOf(question.mistakeId).status).toBe('resolved');
+    expect(result.resolvedCount).toBe(0);
+    for (const question of first.questions) expect(statusOf(question.mistakeId)).toMatchObject({ status: 'open', reviewCorrectCount: 1 });
+
+    // Right again the same day: still one day.
+    const sameDay = startRemediationSession('kiur');
+    expect(answerAll(sameDay, (question) => question.correctAnswerLabel).resolvedCount).toBe(0);
+    for (const question of sameDay.questions) expect(statusOf(question.mistakeId)).toMatchObject({ status: 'open', reviewCorrectCount: 1 });
+
+    nextDay();
+    const second = startRemediationSession('kiur');
+    expect(answerAll(second, (question) => question.correctAnswerLabel).resolvedCount).toBe(15);
+    for (const question of second.questions) expect(statusOf(question.mistakeId).status).toBe('resolved');
   });
 
-  it('keeps a mistake open and counts the review miss when it is answered wrong', () => {
+  it('keeps a mistake open, counts the review miss and restarts the day count when it is answered wrong', () => {
     seedUsablePool(15);
+    answerAll(startRemediationSession('kiur'), (question) => question.correctAnswerLabel);
+    nextDay();
     const session = startRemediationSession('kiur');
     const result = answerAll(session, () => 'ilmselgelt vale');
 
     expect(result.score).toBe(0);
     expect(result.resolvedCount).toBe(0);
     for (const question of session.questions) {
-      const row = statusOf(question.mistakeId);
-      expect(row.status).toBe('open');
-      expect(row.reviewWrongCount).toBe(1);
+      expect(statusOf(question.mistakeId)).toMatchObject({ status: 'open', reviewWrongCount: 1, reviewCorrectCount: 0 });
     }
   });
 
-  // A pool smaller than the session length repeats mistakes to fill the 15
-  // slots. A repeated mistake is only mastered if EVERY appearance was right —
-  // getting it right once and wrong once must not count as fixed.
-  it('resolves a repeated mistake only when every appearance was right', () => {
+  // A pool smaller than the round is topped up with more siblings of its
+  // generated mistakes. A mistake counts as right for the day only if EVERY
+  // appearance was right.
+  it('counts a repeated mistake only when every appearance was right', () => {
     seedUsablePool(10);
     const session = startRemediationSession('kiur');
 
@@ -494,8 +509,6 @@ describe('submitRemediationSession', () => {
     const repeated = [...appearances.entries()].filter(([, count]) => count > 1).map(([id]) => id);
     expect(repeated.length).toBeGreaterThan(0);
 
-    // Answer the first appearance of one repeated mistake wrong, everything
-    // else right.
     const spoiled = repeated[0];
     let seenSpoiled = false;
     const result = answerAll(session, (question) => {
@@ -506,10 +519,9 @@ describe('submitRemediationSession', () => {
       return question.correctAnswerLabel;
     });
 
-    expect(result.score).toBe(REMEDIATION_QUESTION_COUNT - 1);
-    expect(statusOf(spoiled).status).toBe('open');
-    expect(statusOf(spoiled).reviewWrongCount).toBe(1);
-    for (const id of repeated.slice(1)) expect(statusOf(id).status).toBe('resolved');
+    expect(result.score).toBe(session.questions.length - 1);
+    expect(statusOf(spoiled)).toMatchObject({ status: 'open', reviewWrongCount: 1, reviewCorrectCount: 0 });
+    for (const id of repeated.slice(1)) expect(statusOf(id).reviewCorrectCount).toBe(1);
   });
 
   it('returns the same saved attempt if the same session is submitted twice', () => {
@@ -520,8 +532,62 @@ describe('submitRemediationSession', () => {
 
     expect(second.historyAttemptId).toBe(first.historyAttemptId);
     expect(second.score).toBe(first.score);
-    // The retry must not reopen what the first submission already fixed.
-    for (const question of session.questions) expect(statusOf(question.mistakeId).status).toBe('resolved');
+    expect(second.questionCount).toBe(first.questionCount);
+    // The retry must not undo what the first submission counted.
+    for (const question of session.questions) expect(statusOf(question.mistakeId)).toMatchObject({ reviewCorrectCount: 1, reviewWrongCount: 0 });
+  });
+});
+
+describe('Kordamine with new numbers', () => {
+  function sessionPrompts() {
+    return startRemediationSession('kiur').questions;
+  }
+
+  it('opens at five mistakes', () => {
+    expect(REMEDIATION_MIN_OPEN_MISTAKES).toBe(5);
+    seedUsablePool(4);
+    expect(() => startRemediationSession('kiur')).toThrow(/5 asja/);
+    captureMath([numericMistake(40)]);
+    expect(startRemediationSession('kiur').questions.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('asks a generated mistake again as a sibling: same template, new numbers, a right key', () => {
+    seedUsablePool(6);
+    const originals = new Set(Array.from({ length: 6 }, (_, index) => numericMistake(index + 1).question));
+    const questions = sessionPrompts();
+    expect(questions).toHaveLength(REMEDIATION_QUESTION_COUNT);
+    for (const question of questions) {
+      expect(originals.has(question.promptText), question.promptText).toBe(false);
+      const m = /^Arvuta: (\d+) \+ (\d+)$/.exec(question.promptText);
+      expect(m, question.promptText).not.toBeNull();
+      expect(question.correctAnswerLabel).toBe(String(Number(m![1]) + Number(m![2])));
+    }
+  });
+
+  it('never asks the same question twice in a round', () => {
+    for (const count of [5, 8, 15]) {
+      db.prepare('DELETE FROM remediation_session_items').run();
+      db.prepare('DELETE FROM remediation_sessions').run();
+      db.prepare('DELETE FROM mistake_pool').run();
+      seedUsablePool(count);
+      const prompts = sessionPrompts().map((question) => `${question.promptText}|${question.promptVisualLabels ?? ''}`);
+      expect(new Set(prompts).size).toBe(prompts.length);
+    }
+  });
+
+  it('replays a fixed-content mistake as it was, once, and shortens the round instead of repeating it', () => {
+    captureMistakesForAttempt({
+      attemptId: insertAttempt(), learner: 'kiur', subject: 'matemaatika', topic: 'tekstulesanded', category: 'Tekstülesanded',
+      questions: Array.from({ length: 6 }, (_, index) => ({
+        id: `tekst-${index}`, question: `Tekstülesanne ${index}: mitu?`, kind: 'text', type: 'text-problem',
+        correctAnswer: 0, correctAnswerText: `${index + 3} õuna`, userAnswer: '1', isCorrect: false
+      }))
+    });
+    const questions = sessionPrompts();
+    expect(questions).toHaveLength(6);
+    expect(new Set(questions.map((question) => question.promptText)).size).toBe(6);
+    const result = submitRemediationSession({ learner: 'kiur', sessionId: startRemediationSession('kiur').sessionId, answers: [], elapsedSeconds: 1 });
+    expect(result.questionCount).toBe(6);
   });
 });
 

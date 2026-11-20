@@ -384,6 +384,9 @@ export type ChildDashboardSnapshot = {
   streak: number;
   trophies: number;
   updatedAt: string;
+  // Kiur's maths level per adaptive topic as of updatedAt (mathDifficulty.ts).
+  // Absent for Kirsi and in snapshots from before adaptive difficulty.
+  mathLevels?: Record<string, { level: 'Lihtne' | 'Keskmine' | 'Raske'; goodSessions: number }>;
 };
 
 // A record that a confirmed attempt was deleted server-side, so devices drop it

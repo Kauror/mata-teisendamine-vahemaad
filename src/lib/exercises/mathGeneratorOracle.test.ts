@@ -3,10 +3,10 @@ import { generateKiurMathSession } from '@/lib/exercises/kiurMath';
 import { generateKirsiSession } from '@/lib/exercises/kirsiMath';
 import { MATH_GENERATOR_VERSION } from '@/lib/exercises/mathGeneratorVersion';
 import { verifyGeneratedMathAnswer } from '@/lib/shared/answerVerification';
-import type { GeneratedQuestion } from '@/lib/types';
+import type { Difficulty, GeneratedQuestion } from '@/lib/types';
 
 // Independent oracles for every question the CURRENT maths generator version
-// can ask. Each oracle reads the question as the child sees it, works the
+// can ask, at every difficulty. Each oracle reads the question as the child sees it, works the
 // answer out on its own (it never calls the generator's arithmetic) and checks
 // the answer key, the options, the explanation and the wording against it.
 // Every generated question must be recognised by exactly one oracle, so a new
@@ -39,6 +39,32 @@ function grammarProblems(text: string): Verdict {
   return problems;
 }
 
+// «48 õuna pannakse kottidesse. Igas kotis on 6 õuna. Mitu kotti saab?»:
+// pannakse + illative (-desse), igas + inessive, mitu + partitive, and only
+// containers that thing goes into. v1-v4 wrote «pannakse kottides».
+const CONTAINER_FORMS: Record<string, [string, string]> = { kottidesse: ['kotis', 'kotti'], karpidesse: ['karbis', 'karpi'], korvidesse: ['korvis', 'korvi'], virnadesse: ['virnas', 'virna'] };
+const THING_CONTAINERS: Record<string, string[]> = { õuna: ['kottidesse', 'korvidesse', 'karpidesse'], klotsi: ['karpidesse', 'virnadesse', 'kottidesse'], palli: ['korvidesse', 'kottidesse', 'karpidesse'], raamatut: ['virnadesse', 'karpidesse', 'kottidesse'] };
+function caseProblems(text: string): Verdict {
+  const m = /^\d+ (\S+) pannakse (\S+)\. Igas (\S+) on \d+ \S+\. Mitu (\S+) saab\?$/.exec(text);
+  if (!m) return [];
+  const forms = CONTAINER_FORMS[m[2]];
+  if (!forms) return [`«pannakse ${m[2]}» is not an illative`];
+  const problems: Verdict = [];
+  if (forms[0] !== m[3]) problems.push(`«Igas ${m[3]}» does not match «${m[2]}»`);
+  if (forms[1] !== m[4]) problems.push(`«Mitu ${m[4]}» does not match «${m[2]}»`);
+  if (!THING_CONTAINERS[m[1]]?.includes(m[2])) problems.push(`«${m[1]} pannakse ${m[2]}»`);
+  return problems;
+}
+
+// Explanations a child is shown after a wrong answer. These said nothing about
+// the task in hand; v5 shows the steps with the task's own numbers.
+const EMPTY_EXPLANATIONS = [
+  'Jagame sama jagajaga.', 'Sobiv jaotus annab kaks osa, mis mõlemad jaguvad sama jagajaga.', 'Võrdseks jagamine tähendab jagamistehet.',
+  'Jagamist kontrollime korrutamisega.', 'Liida tuhanded, sajad, kümned ja ühelised eraldi.', 'Lahuta järgud rahulikult osade kaupa.',
+  'Raadius on pool läbimõõdust.', 'Poole väiksem tähendab, et jagame kahega.', 'Täisring on 360° ja sellest leitakse osad.',
+  'Võrdlemiseks teisenda kõik millimeetriteks.'
+];
+
 function parsePlaceParts(text: string, separator: RegExp) {
   return text.split(separator).reduce((sum, part) => {
     const match = /^(\d) (tuhandel|sajal|kümnel|ühel)(?:ine|ist)$/u.exec(part.trim());
@@ -57,6 +83,9 @@ function oracle(q: GeneratedQuestion): Verdict | null {
   const t = q.question;
   const opts = q.choiceOptions ?? [];
   const p: Verdict = [...grammarProblems(t), ...grammarProblems(q.explanation ?? '')];
+  if (EMPTY_EXPLANATIONS.includes(q.explanation ?? '')) p.push(`explanation without the task's numbers: ${q.explanation}`);
+  if (q.kind !== 'choice' && q.kind !== 'ordering' && !(q.explanation ?? '').includes(String(q.correctAnswer))) p.push('explanation does not reach the answer');
+  if (/(?:linna vahemaad|Leia arvu ja pildi muster|Leia paaride muster|õige lahutus|Leia puuduv meeter)/u.test(t)) p.push('old wording');
   if (q.kind === 'choice' && opts.length) {
     if (new Set(opts).size !== opts.length) p.push(`repeated option ${opts.join('|')}`);
     if (opts[q.correctAnswer] === undefined) p.push('key outside options');
@@ -75,6 +104,7 @@ function oracle(q: GeneratedQuestion): Verdict | null {
     const [a, d, x, y] = m.slice(1).map(Number);
     if (x + y !== a || x % d || y % d) p.push('split is not a split into multiples');
     if (x === 0 || y === 0) p.push('split has a zero part');
+    if (a / d < 11) p.push('split of a multiplication-table fact');
     expectKey(p, q, a / d);
     return p;
   }
@@ -85,15 +115,17 @@ function oracle(q: GeneratedQuestion): Verdict | null {
       return parts && Number(parts[1]) + Number(parts[3]) === a && Number(parts[2]) === d && Number(parts[4]) === d && Number(parts[1]) % d === 0 && Number(parts[3]) % d === 0 && Number(parts[1]) > 0 && Number(parts[3]) > 0;
     });
     if (good.length !== 1 || good[0] !== keyOf(q)) p.push(`not exactly one useful split`);
+    if (a / d < 11) p.push('split of a multiplication-table fact');
     return p;
   }
   if ((m = /^(\d+) (?:kommi|kleepsu|pliiatsit|kaarti) jagatakse võrdselt (\d+) (?:lapse|sõbra|mängija|õpilase) vahel\. Mitu saab igaüks\?$/.exec(t))
     || (m = /^(\d+) (?:õuna|klotsi|palli|raamatut) pannakse \S+\. Igas \S+ on (\d+) (?:õuna|klotsi|palli|raamatut)\. Mitu \S+ saab\?$/.exec(t))
-    || (m = /^(\d+) eset jagatakse võrdselt (\d+) rühma vahel\. Mitu eset on igas rühmas\?$/.exec(t))) {
+    || (m = /^(\d+) eset jagatakse võrdselt (\d+) rühma(?: vahel|ks)\. Mitu eset on igas rühmas\?$/.exec(t))) {
+    p.push(...caseProblems(t));
     expectKey(p, q, Number(m[1]) / Number(m[2]));
     return p;
   }
-  if ((m = /^(\d+) eset jagatakse võrdselt (\d+) rühma\. Milline arvutus sobib\?$/.exec(t))) {
+  if ((m = /^(\d+) eset jagatakse võrdselt (\d+) rühma(?:ks)?\. Milline arvutus sobib\?$/.exec(t))) {
     expectKey(p, q, `${m[1]} : ${m[2]}`);
     return p;
   }
@@ -124,7 +156,7 @@ function oracle(q: GeneratedQuestion): Verdict | null {
     if (!(q.explanation ?? '').includes(String(r))) p.push('explanation does not give the right result');
     return p;
   }
-  if ((m = /^Milline on arvu (\d{4}) õige lahutus\?$/.exec(t))) {
+  if ((m = /^Milline on arvu (\d{4}) õige lahutus\?$/.exec(t)) || (m = /^Kuidas saab arvu (\d{4}) kirjutada järkude summana\?$/.exec(t))) {
     const n = Number(m[1]);
     const sums = opts.map((option) => option.split(' + ').reduce((sum, term) => sum + Number(term), 0));
     if (sums.filter((sum) => sum === n).length !== 1 || sums[q.correctAnswer] !== n) p.push('not exactly one split adds up');
@@ -215,13 +247,19 @@ function oracle(q: GeneratedQuestion): Verdict | null {
     return p;
   }
   // ---- Mustrid
-  if ((m = /^(?:Jätka mustrit|Leia arvu ja pildi muster|Leia paaride muster): ([\d, ]+), __$/.exec(t)) || (m = /^Jätka arvutusahelat: ([\d →]+) → __$/.exec(t))) {
+  if ((m = /^(?:Jätka mustrit|Leia arvu ja pildi muster|Leia paaride muster): ([\d, ]+), __$/.exec(t)) || (m = /^Mis arv tuleb järgmisena\? ([\d, ]+), __$/.exec(t)) || (m = /^Jätka arvutusahelat: ([\d →]+) → __$/.exec(t))) {
     const nums = m[1].split(/, | → /).map(Number);
     const step = arithmeticSeries(nums);
     if (step === null) p.push('not an arithmetic sequence');
     const next = nums[nums.length - 1] + (step ?? 0);
     if (next < 0) p.push('negative answer');
     expectKey(p, q, next);
+    return p;
+  }
+  if ((m = /^Iga arv on eelmisest kaks korda suurem\. Jätka: ([\d, ]+), __$/.exec(t))) {
+    const nums = m[1].split(', ').map(Number);
+    if (!nums.every((value, index) => index === 0 || value === nums[index - 1] * 2)) p.push('does not double');
+    expectKey(p, q, nums[nums.length - 1] * 2);
     return p;
   }
   if ((m = /^Jälgi, kuidas samm muutub: ([\d, ]+), __$/.exec(t))) {
@@ -324,7 +362,7 @@ function oracle(q: GeneratedQuestion): Verdict | null {
     expectKey(p, q, rest);
     return p;
   }
-  if ((m = /^__ km (\d+) m = (\d+) m\. Leia puuduv km arv\.$/.exec(t)) || (m = /^(\d+) km \+ __ m = (\d+) m\. Leia puuduv meeter\.$/.exec(t))) {
+  if ((m = /^__ km (\d+) m = (\d+) m\. Leia puuduv km arv\.$/.exec(t)) || (m = /^(\d+) km \+ __ m = (\d+) m\. (?:Leia puuduv meeter\.|Mitu meetrit puudub\?)$/.exec(t))) {
     const isKm = t.startsWith('__');
     const missing = isKm ? (Number(m[2]) - Number(m[1])) / 1000 : Number(m[2]) - Number(m[1]) * 1000;
     if (!Number.isInteger(missing) || missing < 0 || (isKm && Number(m[1]) >= 1000)) p.push('no whole number fits the gap');
@@ -341,10 +379,26 @@ function oracle(q: GeneratedQuestion): Verdict | null {
     return p;
   }
   if (t === 'Tallinnast Paidesse on 93 km. Kui pikk on edasi-tagasi sõit?') { expectKey(p, q, 186); return p; }
-  if (t === 'Tartu–Põltsamaa on 56 km ja Põltsamaa–Paide on 48 km. Kui pikk on tee kokku?') { expectKey(p, q, 104); return p; }
-  if (t === 'Üks tee on 129 km ja teine 93 km. Kui palju on esimene tee pikem?') { expectKey(p, q, 36); return p; }
-  if (t === 'Lõik A on 45 mm. Lõik B on 6 cm. Kui palju on B pikem?') { expectKey(p, q, 15); return p; }
-  if (t === 'Vali realistlik pikkus pliiatsi jaoks.') { expectKey(p, q, '5 cm'); return p; }
+  if ((m = /^\S+ .+ on (\d+) km\. Kui pikk on edasi-tagasi sõit\?$/.exec(t))) { expectKey(p, q, 2 * Number(m[1])); return p; }
+  if ((m = /^Buss sõitis enne lõunat (\d+) km ja pärast lõunat (\d+) km\. Kui pika tee buss kokku sõitis\?$/.exec(t))) { expectKey(p, q, Number(m[1]) + Number(m[2])); return p; }
+  if ((m = /^Üks tee on (\d+) km ja teine (\d+) km\. Kui palju on esimene tee pikem\?$/.exec(t))) {
+    if (Number(m[1]) <= Number(m[2])) p.push('first road is not longer');
+    expectKey(p, q, Number(m[1]) - Number(m[2]));
+    return p;
+  }
+  if ((m = /^Lõik A on (\d+) mm\. Lõik B on (\d+) cm\. Kui palju on B pikem\?$/.exec(t))) {
+    if (Number(m[2]) * 10 <= Number(m[1])) p.push('B is not longer');
+    expectKey(p, q, Number(m[2]) * 10 - Number(m[1]));
+    return p;
+  }
+  if ((m = /^Vali realistlik pikkus (.+) jaoks\.$/.exec(t))) {
+    const unit: Record<string, string> = { pliiatsi: 'cm', vihiku: 'cm', sipelga: 'mm', klassiruumi: 'm', jalgpalliväljaku: 'm', 'kahe linna vahelise tee': 'km' };
+    const key = keyOf(q);
+    if (!unit[m[1]] || !key.endsWith(` ${unit[m[1]]}`)) p.push(`unrealistic key ${key}`);
+    const number = key.split(' ')[0];
+    if (!opts.every((option) => option.startsWith(`${number} `))) p.push('options are not the same number');
+    return p;
+  }
   if (/ühik/.test(t) && q.correctAnswers) {
     const units = t.includes('vihiku') ? ['mm', 'cm', 'dm'] : t.includes('pliiatsi') ? ['cm'] : t.includes('linna') ? ['km'] : t.includes('koolimaja') ? ['m'] : t.includes('paberilehe') ? ['mm'] : [];
     const labels = q.correctAnswers.map((index) => opts[index]).sort();
@@ -399,12 +453,19 @@ const KIUR_CATEGORIES: Record<string, string[]> = {
   'mootuhikud-pikkused': ['Segaharjutus']
 };
 
+function sessionKey(question: GeneratedQuestion) {
+  return JSON.stringify([question.question, question.visual, question.visualLabels, question.visualKnownDegrees, question.clockHour, question.clockMinutes, question.emoji, question.count, question.orderingCards?.map((card) => card.label)]);
+}
+
 function sweep(generate: (seed: number) => GeneratedQuestion[], check: (q: GeneratedQuestion) => Verdict | null) {
   const failures = new Map<string, string>();
   const unrecognised: string[] = [];
   let checked = 0;
+  let repeatedSessions = 0;
   for (let seed = 1; seed <= SEEDS; seed += 1) {
-    for (const question of generate(seed)) {
+    const session = generate(seed);
+    if (new Set(session.map(sessionKey)).size !== session.length) repeatedSessions += 1;
+    for (const question of session) {
       checked += 1;
       const verdict = check(question);
       if (verdict === null) { if (unrecognised.length < 5) unrecognised.push(question.question); continue; }
@@ -415,17 +476,23 @@ function sweep(generate: (seed: number) => GeneratedQuestion[], check: (q: Gener
         : keyOf(question))) failures.set('scorer rejects the key', question.question);
     }
   }
-  return { checked, failures: [...failures].map(([problem, example]) => `${problem} :: ${example}`), unrecognised };
+  return { checked, repeatedSessions, failures: [...failures].map(([problem, example]) => `${problem} :: ${example}`), unrecognised };
 }
+
+const DIFFICULTIES: Difficulty[] = ['Lihtne', 'Keskmine', 'Raske'];
 
 describe(`maths generator ${v}: independent oracles`, () => {
   for (const [topic, categories] of Object.entries(KIUR_CATEGORIES)) {
-    it.each(categories)(`${topic} / %s`, (category) => {
-      const result = sweep((seed) => generateKiurMathSession(topic, category, 'Lihtne', 15, seed, v), oracle);
-      expect(result.unrecognised).toEqual([]);
-      expect(result.failures).toEqual([]);
-      expect(result.checked).toBe(SEEDS * 15);
-    }, TIMEOUT);
+    for (const difficulty of DIFFICULTIES) {
+      it.each(categories)(`${topic} / ${difficulty} / %s`, (category) => {
+        const result = sweep((seed) => generateKiurMathSession(topic, category, difficulty, 15, seed, v), oracle);
+        expect(result.unrecognised).toEqual([]);
+        expect(result.failures).toEqual([]);
+        expect(result.checked).toBe(SEEDS * 15);
+        // A mixed session never asks the same question twice.
+        if (category === 'Segaharjutus') expect(result.repeatedSessions).toBe(0);
+      }, TIMEOUT);
+    }
   }
 
   it.each(['Loendamine', 'Arvutamine 10 piires', 'Arvutamine 20 piires', 'Suurem või väiksem kuni 100', 'Segaülesanded', 'Kellaaeg'] as const)('Kirsi / %s', (mode) => {
@@ -444,12 +511,12 @@ describe(`maths generator ${v}: the defects fixed in v4 stay fixed`, () => {
     for (const q of questions) {
       const metres = Number(q.question.split(' ')[0]);
       if (metres % 1000) expect(q.question).toBe(`${metres} m = mitu km ja m? Sisesta ainult km arv.`);
-      expect(q.explanation).toBe(`${metres} m = ${Math.floor(metres / 1000)} km ${metres % 1000} m.`);
+      expect(q.explanation).toContain(`= ${Math.floor(metres / 1000)} km ${metres % 1000} m.`);
     }
   }, TIMEOUT);
 
-  it('only asks «__ km 300 m» for totals that end in 300 m (EDU-02)', () => {
-    const questions = all('mootuhikud-pikkused', 'Segaharjutus').filter((q) => q.question.startsWith('__ km 300 m'));
+  it('only asks «__ km N m» when a whole number of kilometres fits (EDU-02)', () => {
+    const questions = all('mootuhikud-pikkused', 'Segaharjutus').filter((q) => q.question.startsWith('__ km '));
     expect(questions.length).toBeGreaterThan(20);
     for (const q of questions) expect(Number.isInteger(q.correctAnswer)).toBe(true);
   }, TIMEOUT);
@@ -465,8 +532,9 @@ describe(`maths generator ${v}: the defects fixed in v4 stay fixed`, () => {
 
   it('writes «1 plokk», «2 plokki» and «1 sajaline» (EDU-04, EDU-05)', () => {
     const blocks = all('mustrid', 'Segaharjutus').filter((q) => q.question.startsWith('Vaata, kuidas muster kasvab'));
-    expect(blocks.some((q) => q.question.startsWith('Vaata, kuidas muster kasvab: 2 plokki, 4 plokki'))).toBe(true);
-    expect(blocks.some((q) => q.explanation === 'Igas reas on 1 plokk rohkem.')).toBe(true);
+    expect(blocks.some((q) => q.question.startsWith('Vaata, kuidas muster kasvab: 1 plokk, '))).toBe(true);
+    expect(blocks.some((q) => q.explanation?.startsWith('Igas reas on 1 plokk rohkem'))).toBe(true);
+    expect(blocks.some((q) => q.explanation?.startsWith('Igas reas on 2 plokki rohkem'))).toBe(true);
     const composed = all('arvud-10000-piires', 'Pane arv kokku');
     expect(composed.some((q) => /(^|, )1 sajaline/.test(q.question))).toBe(true);
   }, TIMEOUT);

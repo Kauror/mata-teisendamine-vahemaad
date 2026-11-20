@@ -10,6 +10,7 @@ import {
   createRunnerSession,
   ensureRunIdInCurrentUrl,
   finalizeRunnerSession,
+  getAdaptiveMathDifficulty,
   getCatalogueContract,
   getCatalogueExercise,
   getLocalAttempt,
@@ -27,6 +28,7 @@ import { buildMathQuestionResults, mathChoiceLabels, type MathAnswerSnapshot } f
 import { verifyMathTextAnswer } from '@/lib/shared/answerVerification';
 import { composeTextAnswer, textAnswerFields, textAnswerValues } from '@/lib/textAnswerFields';
 import { isSupportedMathGeneratorVersion } from '@/lib/exercises/mathGeneratorVersion';
+import { isAdaptiveMathTopic, isDifficulty } from '@/lib/mathDifficulty';
 import { buildMathOptionOrder, displayedMathOptions, type MathOptionOrder } from '@/lib/mathOptionOrder';
 
 type MathRunnerState = {
@@ -36,6 +38,9 @@ type MathRunnerState = {
   countingFeedback: { answer: string; isCorrect: boolean } | null;
   textFeedback: { answer: string; isCorrect: boolean } | null;
   showStopConfirm: boolean;
+  // The level the run was generated at. Absent in runs paused before adaptive
+  // difficulty existed, which were all Lihtne.
+  difficulty?: Difficulty;
 };
 
 type MathSession = RunnerSessionV3<GeneratedQuestion, string, MathRunnerState, null>;
@@ -68,7 +73,6 @@ function TestPageContent() {
   const topic = params.get('topic') || '';
   const categoryParam = params.get('category') || 'Teisendamine';
   const exerciseIdParam = params.get('exerciseId');
-  const difficulty = 'Lihtne' as Difficulty;
   const requestedCount = Number(params.get('count'));
   const count = topic === 'tekstulesanded' || categoryParam === 'Tekstülesanded'
     ? 5
@@ -79,6 +83,9 @@ function TestPageContent() {
   const baseSelectionUrl = learner === 'kirsi' ? '/kirsi' : learner === 'kiur' ? '/kiur' : '/';
 
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
+  // Kiur's generated topics adapt to his results (mathDifficulty.ts); the level
+  // is fixed when the run is created and travels with it.
+  const [difficulty, setDifficulty] = useState<Difficulty>('Lihtne');
   const [optionOrder, setOptionOrder] = useState<MathOptionOrder | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
@@ -142,6 +149,7 @@ function TestPageContent() {
         exerciseIdRef.current = existing.exerciseId;
         contractRef.current = contractFromSession(existing);
         generatorVersionRef.current = existing.generatorVersion;
+        setDifficulty(isDifficulty(state.difficulty) ? state.difficulty : 'Lihtne');
         setQuestions(stored);
         setOptionOrder((existing.optionOrder ?? null) as MathOptionOrder | null);
         setAnswers(state.answers?.length === stored.length ? state.answers : Array(stored.length).fill(''));
@@ -174,11 +182,12 @@ function TestPageContent() {
       if (!capability) throw new Error('Matemaatikaharjutuse võrguühenduseta leping puudub.');
       const currentVersion = capability.generatorVersion;
       if (!isSupportedMathGeneratorVersion(currentVersion)) throw new Error('Matemaatikaharjutuse küsimuste versioon ei ole toetatud.');
+      const runDifficulty: Difficulty = learnerId && isAdaptiveMathTopic(learnerId, topic) ? await getAdaptiveMathDifficulty(learnerId, topic) : 'Lihtne';
       // Only the learner's own generator loads, and only for a new run (a
       // precached chunk offline): Kiur's carries his text-problem bank.
       const generated = isKirsiMath
         ? (await import('@/lib/exercises/kirsiMath')).generateKirsiSession(categoryParam as never, count, seed, currentVersion)
-        : (await import('@/lib/exercises/kiurMath')).generateKiurMathSession(topic, categoryParam, difficulty, count, seed, currentVersion);
+        : (await import('@/lib/exercises/kiurMath')).generateKiurMathSession(topic, categoryParam, runDifficulty, count, seed, currentVersion);
       const emptyAnswers = Array(generated.length).fill('');
       const emptyOrdering = Array.from({ length: generated.length }, () => [] as string[]);
       const beganAt = new Date().toISOString();
@@ -188,7 +197,8 @@ function TestPageContent() {
         choiceAnswers: emptyAnswers,
         countingFeedback: null,
         textFeedback: null,
-        showStopConfirm: false
+        showStopConfirm: false,
+        difficulty: runDifficulty
       };
       const created = await createRunnerSession<GeneratedQuestion, string, MathRunnerState, null>({
         runId: id,
@@ -216,6 +226,8 @@ function TestPageContent() {
       contractRef.current = contract;
       generatorVersionRef.current = created.generatorVersion;
       exerciseIdRef.current = resolvedExerciseId;
+      // A run that already existed for this id keeps its own level.
+      setDifficulty(isDifficulty(created.runnerState?.difficulty) ? created.runnerState.difficulty : 'Lihtne');
       startedAtRef.current = created.startedAt;
       setQuestions(created.questions);
       setOptionOrder((created.optionOrder ?? null) as MathOptionOrder | null);
@@ -235,20 +247,20 @@ function TestPageContent() {
       if (!cancelled) setStorageError(runnerStorageFailure(cause).message);
     });
     return () => { cancelled = true; };
-  }, [categoryParam, count, difficulty, exerciseAvailability, exerciseIdParam, isKirsiMath, learnerId, seed, sessionReady, subject, topic]);
+  }, [categoryParam, count, exerciseAvailability, exerciseIdParam, isKirsiMath, learnerId, seed, sessionReady, subject, topic]);
 
   const snapshotRef = useRunnerAutosave<MathSession>({
     currentIndex: index,
     currentPhase: countingFeedback || textFeedback ? 'feedback' : 'question',
     answers,
     activeElapsedMs: elapsed * 1000,
-    runnerState: { answers, orderingAnswers, choiceAnswers, countingFeedback, textFeedback, showStopConfirm },
+    runnerState: { answers, orderingAnswers, choiceAnswers, countingFeedback, textFeedback, showStopConfirm, difficulty },
     status: storageError ? 'paused' : isSaving ? 'finalizing' : 'active'
   }, {
     enabled: sessionReady && Boolean(questions.length) && !isSaving && !storageError,
     runId,
     setStorageError,
-    changes: [answers, choiceAnswers, countingFeedback, index, isSaving, orderingAnswers, questions.length, runId, sessionReady, showStopConfirm, storageError, textFeedback]
+    changes: [answers, choiceAnswers, countingFeedback, difficulty, index, isSaving, orderingAnswers, questions.length, runId, sessionReady, showStopConfirm, storageError, textFeedback]
   });
 
   useVisibleElapsedTimer(Boolean(questions.length && sessionReady && !isSaving && !storageError), setElapsed);
@@ -366,7 +378,7 @@ function TestPageContent() {
         subject: subject || null,
         topic,
         category: categoryParam,
-        difficulty: 'Lihtne',
+        difficulty,
         exerciseId: exerciseIdRef.current,
         startedAt: startedAtRef.current,
         questionCount: results.length,
@@ -394,7 +406,7 @@ function TestPageContent() {
       <section className='test-shell'>
 
         <section className='test-progress-card'>
-          <div className='progress-row'><strong>Küsimus {index + 1} / {count}</strong><span>{percent}%</span></div>
+          <div className='progress-row'><strong>Küsimus {index + 1} / {count}{learnerId && isAdaptiveMathTopic(learnerId, topic) ? ` · ${difficulty}` : ''}</strong><span>{percent}%</span></div>
           <div className='progress-track'><span style={{ width: `${percent}%` }} /></div>
         </section>
 
@@ -489,17 +501,18 @@ function TestPageContent() {
         {saveError && <p className='test-error'>{saveError}</p>}
 
         <footer className='test-actions-panel'>
-          <button type='button' className='next-button' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : isTextQuestion && !textFeedback ? 'Vasta' : index === count - 1 ? 'Lõpeta test' : 'Järgmine'}</button>
+          <button type='button' className='next-button' onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Salvestan...' : isTextQuestion && !textFeedback ? 'Vasta' : index === count - 1 ? 'Lõpeta' : 'Järgmine'}</button>
           {showStopConfirm ? (
             <div className='stop-confirm-panel' role='alertdialog' aria-labelledby='stop-confirm-title'>
-              <p id='stop-confirm-title'>Kas soovid harjutuse lõpetada?</p>
+              <p id='stop-confirm-title'>Kas katkestad harjutuse? Selle korra tulemust ei salvestata.</p>
               <div className='stop-confirm-actions'>
                 <button type='button' className='stop-cancel-button' onClick={() => setShowStopConfirm(false)}>Jätka harjutust</button>
-                <button type='button' className='stop-confirm-button' onClick={handleStopConfirm}>Jah, lõpeta</button>
+                <button type='button' className='stop-confirm-button' onClick={handleStopConfirm}>Jah, katkesta</button>
               </div>
             </div>
           ) : (
-            <button type='button' className='stop-button' onClick={() => setShowStopConfirm(true)}>Lõpeta harjutus</button>
+            // «Lõpeta» on the last question saves; leaving early is «Katkesta».
+            <button type='button' className='stop-button' disabled={isSaving} onClick={() => setShowStopConfirm(true)}>Katkesta</button>
           )}
         </footer>
       </section>

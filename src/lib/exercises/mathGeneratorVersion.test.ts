@@ -8,6 +8,7 @@ import {
   MATH_GENERATOR_VERSION_V2,
   MATH_GENERATOR_VERSION_V3,
   MATH_GENERATOR_VERSION_V4,
+  MATH_GENERATOR_VERSION_V5,
   MATH_GENERATOR_VERSIONS,
   isSupportedMathGeneratorVersion,
   type MathGeneratorVersion
@@ -109,7 +110,7 @@ function verify(questions: GeneratedQuestion[], seed: number, generatorVersion: 
 
 describe('maths generator versions', () => {
   it('starts new sessions on the current version, which the runner contract names', () => {
-    expect(MATH_GENERATOR_VERSION).toBe(MATH_GENERATOR_VERSION_V4);
+    expect(MATH_GENERATOR_VERSION).toBe(MATH_GENERATOR_VERSION_V5);
     expect(getOfflineRunnerCapability('math')?.generatorVersion).toBe(MATH_GENERATOR_VERSION);
     expect(generateKiurMathSession('ring-ja-ringjoon', 'Segaharjutus', 'Lihtne', 15, 7)).toEqual(generateKiurMathSession('ring-ja-ringjoon', 'Segaharjutus', 'Lihtne', 15, 7, MATH_GENERATOR_VERSION));
     expect(generateKirsiSession('Kellaaeg', 15, 7)).toEqual(generateKirsiSession('Kellaaeg', 15, 7, MATH_GENERATOR_VERSION));
@@ -119,7 +120,7 @@ describe('maths generator versions', () => {
     expect(MATH_GENERATOR_VERSIONS).toContain(MATH_GENERATOR_VERSION_V1);
     expect(MATH_GENERATOR_VERSION_V1).toBe('2026-07-1');
     expect(isSupportedMathGeneratorVersion('2026-07-1')).toBe(true);
-    expect(MATH_GENERATOR_VERSIONS).toEqual(['2026-07-1', 'math-2026-10', 'math-2026-10b', 'math-2026-10c']);
+    expect(MATH_GENERATOR_VERSIONS).toEqual(['2026-07-1', 'math-2026-10', 'math-2026-10b', 'math-2026-10c', 'math-2026-11']);
     expect(isSupportedMathGeneratorVersion('math-2026-10b')).toBe(true);
     expect(isSupportedMathGeneratorVersion('math-2026-10')).toBe(true);
     expect(isSupportedMathGeneratorVersion('math-1999')).toBe(false);
@@ -149,6 +150,14 @@ describe('maths generator versions', () => {
     const before = V3_DIGESTS[name] ?? UNBRANCHED_BEFORE_V4_DIGESTS[name];
     if (name === 'kirsi-kell') expect(digest(session, MATH_GENERATOR_VERSION_V4)).toBe(before);
     else expect(digest(session, MATH_GENERATOR_VERSION_V4)).not.toBe(before);
+  });
+
+  // v5 (exercise review 2026-11-20) changes every Kiur session and leaves
+  // Kirsi's clock alone; v4 itself is pinned in mathGeneratorFingerprints.test.ts.
+  it.each([...SESSIONS, ...UNBRANCHED_SESSIONS].map((session) => [session.name, session] as const))('v5 %s changes exactly the sessions it should', (name, session) => {
+    const v4 = digest(session, MATH_GENERATOR_VERSION_V4);
+    if (name === 'kirsi-kell') expect(digest(session, MATH_GENERATOR_VERSION_V5)).toBe(v4);
+    else expect(digest(session, MATH_GENERATOR_VERSION_V5)).not.toBe(v4);
   });
 
   it.each(SESSIONS.filter((session) => session.name !== 'jagamine').map((session) => [session.name, session] as const))('v2 %s differs from v1, so the version really selects the generator', (_name, session) => {
@@ -227,6 +236,34 @@ describe('server replay by version', () => {
       }
     }
     expect(rejected).toBeGreaterThan(0);
+  });
+
+  it('verifies an attempt generated with v4 after the v5 change, at every difficulty', () => {
+    for (let seed = 1; seed <= 25; seed += 1) {
+      for (const topic of ['ring-ja-ringjoon', 'arvud-10000-piires', 'mootuhikud-pikkused', 'jagamine-kahekohaline-uhekohaline', 'mustrid']) {
+        const v4 = generateKiurMathSession(topic, 'Segaharjutus', 'Lihtne', 15, seed, MATH_GENERATOR_VERSION_V4);
+        expect(verify(v4, seed, MATH_GENERATOR_VERSION_V4, topic).score).toBe(15);
+      }
+      const division = generateKiurMathSession('jagamine-kahekohaline-uhekohaline', 'Segaharjutus', 'Raske', 15, seed, MATH_GENERATOR_VERSION_V4);
+      expect(recomputeScore({
+        runnerId: 'math', learner: 'kiur', subject: 'matemaatika', topic: 'jagamine-kahekohaline-uhekohaline', category: 'Segaharjutus', difficulty: 'Raske',
+        seed, generatorVersion: MATH_GENERATOR_VERSION_V4, questionIds: division.map((question) => question.id), questions: correctResults(division)
+      }).score).toBe(15);
+    }
+  });
+
+  it('does not verify a v5 attempt as if it were v4', () => {
+    let rejected = 0;
+    for (let seed = 1; seed <= 25; seed += 1) {
+      const v5 = generateKiurMathSession('jagamine-kahekohaline-uhekohaline', 'Segaharjutus', 'Lihtne', 15, seed, MATH_GENERATOR_VERSION_V5);
+      try {
+        if (verify(v5, seed, MATH_GENERATOR_VERSION_V4, 'jagamine-kahekohaline-uhekohaline').score < 15) rejected += 1;
+      } catch (error) {
+        expect(error).toBeInstanceOf(AttemptContractError);
+        rejected += 1;
+      }
+    }
+    expect(rejected).toBe(25);
   });
 
   it('verifies Kirsi clock attempts of both versions', () => {

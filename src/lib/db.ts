@@ -1378,6 +1378,14 @@ function addKaardimangNotices(connection: DatabaseConnection) {
 // content it was taken on, so a later re-import never changes what the child
 // answered or how it is marked. Open answers wait for the parent; stars are
 // paid only when the parent approves (docs/english-unit-tests.md).
+// Kordamine clears a mistake only after right answers on two different app
+// days: how many such days so far, and the last one (an app date, YYYY-MM-DD).
+function addRemediationSpacedReview(connection: DatabaseConnection) {
+  const columns = new Set((connection.prepare('PRAGMA table_info(mistake_pool)').all() as Array<{ name: string }>).map((column) => column.name));
+  if (!columns.has('reviewCorrectCount')) connection.exec('ALTER TABLE mistake_pool ADD COLUMN reviewCorrectCount INTEGER NOT NULL DEFAULT 0');
+  if (!columns.has('lastCorrectReviewDate')) connection.exec('ALTER TABLE mistake_pool ADD COLUMN lastCorrectReviewDate TEXT');
+}
+
 function addEnglishUnitTests(connection: DatabaseConnection) {
   connection.exec(`
     CREATE TABLE IF NOT EXISTS english_unit_test_variants (
@@ -1568,6 +1576,12 @@ const migrations: Migration[] = [
     name: 'parent_session_revocations',
     checksumSource: 'parent_session_revocations:v1:2026-11-20',
     up: addParentSessionRevocations
+  },
+  {
+    id: 20,
+    name: 'remediation_spaced_review',
+    checksumSource: 'remediation_spaced_review:v1:2026-11-20',
+    up: addRemediationSpacedReview
   }
 ];
 

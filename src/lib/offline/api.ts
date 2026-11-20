@@ -19,6 +19,8 @@ import { selectTodaysLearningExercisesVersioned } from '@/lib/shared/rotation';
 import { projectTasksForDate } from '@/lib/shared/taskProjection';
 import { todayDateString } from '@/lib/appDate';
 import type { ChildDashboardSnapshot, Learner } from '@/lib/shared/types';
+import type { Difficulty } from '@/lib/types';
+import { INITIAL_MATH_LEVEL, isAdaptiveMathTopic, isMathLevelState, mathLevelAfter } from '@/lib/mathDifficulty';
 import { LEGACY_REWARD_POLICY_VERSION, LEGACY_RUNNER_VERSION } from '@/lib/shared/types';
 
 // The service layer the child UI calls instead of fetch(): local-first reads,
@@ -113,6 +115,24 @@ export async function getCatalogueExercise(learner: Learner, match: { exerciseId
 
 export async function getDashboardSnapshot(learner: Learner): Promise<ChildDashboardSnapshot | undefined> {
   return snapshotRepo.get(learner);
+}
+
+// The level a new Kiur maths run of this topic uses: the server's state from
+// the last synced dashboard, carried over the attempts the server had not
+// counted yet (still pending here, or finished after that snapshot). Rejected
+// and held attempts do not count, as on the server. See mathDifficulty.ts.
+export async function getAdaptiveMathDifficulty(learner: Learner, topic: string): Promise<Difficulty> {
+  if (!isAdaptiveMathTopic(learner, topic)) return 'Lihtne';
+  const snapshot = await snapshotRepo.get(learner);
+  const stored = snapshot?.mathLevels?.[topic];
+  const from = isMathLevelState(stored) ? stored : INITIAL_MATH_LEVEL;
+  const since = snapshot?.updatedAt ? Date.parse(snapshot.updatedAt) : Number.NEGATIVE_INFINITY;
+  const later = (await getMergedExerciseHistory())
+    .filter((item) => item.learner === learner && item.subject === 'matemaatika' && item.topic === topic)
+    .filter((item) => item.localStatus !== 'rejected' && item.localStatus !== 'needs_review' && (item.rewardSettlementStatus ?? 'eligible') === 'eligible')
+    .filter((item) => item.pending || Date.parse(item.createdAt) > since)
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  return mathLevelAfter(later, from).level;
 }
 
 // ---- Sessions ----

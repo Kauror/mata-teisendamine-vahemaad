@@ -1,9 +1,12 @@
+import type { TextAnswerRules } from '@/lib/types';
+
 export type TextProblemTask = {
   id: string;
   question: string;
   answer: string;
   solution: string;
   acceptedAnswers?: string[];
+  textAnswerRules?: TextAnswerRules;
 };
 
 export const kiurTextProblemPool: TextProblemTask[] = [
@@ -785,3 +788,31 @@ const TEXT_PROBLEM_V4_CORRECTIONS: Readonly<Record<string, Partial<TextProblemTa
 };
 
 export const kiurTextProblemPoolV4: TextProblemTask[] = kiurTextProblemPool.map((task) => ({ ...task, ...TEXT_PROBLEM_V4_CORRECTIONS[task.id] }));
+
+// Corrections from the exercise review of 2026-11-20, used from maths generator
+// v5 (math-2026-11) on, on top of the v4 ones. Same ids and order again, so a
+// seed picks the same tasks in every version.
+const TEXT_PROBLEM_V5_CORRECTIONS: Readonly<Record<string, Partial<TextProblemTask>>> = {
+  // Any arrangement of signs whose value is below 2 is right, e.g.
+  // 9 - 6 : 2 - 5 = 1; v1-v4 accepted only the two listed.
+  "tekst-026": { textAnswerRules: { natural: true, expression: { numbers: [9, 6, 2, 5], lessThan: 2 } } },
+  // A whole sentence naming the right child counts, unless it names another.
+  "tekst-024": { textAnswerRules: { natural: true, keyword: "Eve", rivals: ["Anu", "Kristel", "Katrin"] } },
+  "tekst-032": { textAnswerRules: { natural: true, keyword: "Tiit", rivals: ["Anti", "Margus"] } },
+  // «Kui palju aeda on vaja kogu aia ümber?» asked for fence around a fence.
+  "tekst-077": { question: "Ristkülikukujuline aiamaa on 14 m pikk ja 6 m lai. Kui pikk aed tuleb teha ümber kogu aiamaa?" },
+  // «vahe» between two marks read as a subtraction.
+  "tekst-088": {
+    question: "Ringjoonele märgiti 4 punkti nii, et mööda ringjoont on iga kahe naaberpunkti vahel 3 cm. Kui pikk on kogu ringjoon?",
+    solution: "Punktid jagavad ringjoone 4 võrdseks osaks. 4 × 3 = 12."
+  },
+  "tekst-101": { acceptedAnswers: ["võrdsed", "on võrdsed", "mõlemad on võrdsed", "sama pikad", "need on sama pikad", "ühepikkused", "ühe pikkusega", "sama pikk", "on sama pikk", "mõlemad on sama pikad", "ühepikad"] }
+};
+
+const NATURAL_ANSWERS: TextAnswerRules = { natural: true };
+
+export const kiurTextProblemPoolV5: TextProblemTask[] = kiurTextProblemPoolV4.map((task) => ({
+  ...task,
+  textAnswerRules: NATURAL_ANSWERS,
+  ...TEXT_PROBLEM_V5_CORRECTIONS[task.id]
+}));

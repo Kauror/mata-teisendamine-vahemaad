@@ -25,7 +25,8 @@ const REASONS: Record<string, string> = {
   no_assignment: 'tegevust polnud sel päeval',
   late_completion: 'tehtud varasemal päeval, jõudis hiljem',
   future_task_date: 'kuupäev on tulevikus',
-  task_date_too_old: 'päev on liiga ammu möödas'
+  task_date_too_old: 'päev on liiga ammu möödas',
+  difficulty_below_level: 'tehtud kergemal tasemel, kui lubatud'
 };
 
 export function reviewReasonLabel(code: string | null | undefined): string {
