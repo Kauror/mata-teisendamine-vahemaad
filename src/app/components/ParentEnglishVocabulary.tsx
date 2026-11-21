@@ -494,7 +494,7 @@ export default function ParentEnglishVocabulary({ setNotice, setError }: { setNo
   return (
     <>
       <section className='parent-card'>
-        <p>Kiur õpib iga õppetüki kõigepealt kaartidega ja teeb siis kirjutamistesti. Järgmine avaldatud õppetükk avaneb, kui test on ühe korraga vähemalt 95%. Avaldamata õppetükki laps ei näe — see ei avane ka käsitsi, enne kui on avaldatud. Avaldatud õppetüki saab avada ka käsitsi, ilma eelmise testita. Harjutus ise lülitatakse sisse „Harjutuste kogu“ all (Sõnavara).</p>
+        <p>Kiur õpib iga õppetüki kõigepealt kaartidega ja teeb siis kirjutamistesti. Järgmine avaldatud õppetükk avaneb, kui test on ühe korraga vähemalt 95%. Avaldamata õppetükki laps ei näe — see ei avane ka käsitsi, enne kui on avaldatud. Avaldatud õppetüki saab avada ka käsitsi, ilma eelmise testita. Harjutus ise lülitatakse sisse „Harjutuste kogu“ all (English).</p>
       </section>
       <VocabularyImport onImported={load} setNotice={setNotice} setError={setError} />
       <section className='parent-card'>

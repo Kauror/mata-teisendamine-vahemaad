@@ -111,13 +111,19 @@ export function childPageLearner(pathname: string): ChildLearner | null {
   return null;
 }
 
-// Where a document navigation should go on a bound device: a phone bound to
-// one child is sent from the other child's pages to its own child's page.
+// The stop page a bound phone gets instead of the other child's pages: it says
+// whose device this is, links to that child's page, and lets a parent switch
+// the device with the parent password (src/app/vale-seade).
+export const WRONG_DEVICE_PATH = '/vale-seade';
+
+// Where a navigation should go on a bound device: from the other child's pages
+// to the stop page (never straight into the bound child's page — Kaur 21.11:
+// the child should see that this is not their device and pick themselves).
 export function redirectForBoundDevice(pathname: string, binding: DeviceBinding | null): string | null {
   if (!binding || binding === 'both') return null;
   const page = childPageLearner(pathname);
   if (!page || page === binding) return null;
-  return `/${binding}`;
+  return `${WRONG_DEVICE_PATH}?laps=${page}`;
 }
 
 export const DEVICE_OTHER_CHILD_CODE = 'device_other_child';

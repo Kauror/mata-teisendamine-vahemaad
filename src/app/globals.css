@@ -1356,10 +1356,12 @@ body:has(.eluka-demo) .offline-status{bottom:calc(var(--eluka-hud, 90px) + 62px)
 .vocab-shell .vocab-weak-icon{width:28px;height:28px;border-radius:999px;font-size:16px}
 .vocab-unit-card[data-compact="true"]{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:8px 12px;border-radius:14px}
 .vocab-unit-card[data-compact="true"] .vocab-unit-head{display:contents}
-.vocab-unit-card[data-compact="true"] .vocab-unit-head h2{grid-column:1;font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vocab-unit-card[data-compact="true"] .vocab-unit-head h2{grid-column:1;font-size:16px;min-width:0;overflow-wrap:anywhere}
 .vocab-unit-card[data-compact="true"] .vocab-unit-status{grid-column:2;grid-row:1;padding:3px 8px;font-size:12px}
 .vocab-unit-card[data-compact="true"] .vocab-unit-meta,.vocab-unit-card[data-compact="true"] .vocab-unit-lock,.vocab-unit-card[data-compact="true"] .vocab-unit-actions{grid-column:1/-1;font-size:14px}
-.vocab-unit-card[data-compact="true"] .vocab-unit-actions{gap:12px 8px}
+.vocab-unit-card[data-compact="true"] .vocab-unit-actions{gap:12px 8px;margin-top:2px}
+.vocab-unit-card[data-compact="true"] .vocab-unit-meta{font-size:13px}
+.vocab-unit-card[data-compact="true"] .vocab-action-primary{box-shadow:none}
 .vocab-unit-card[data-compact="true"] .vocab-action{position:relative;min-height:32px;padding:0 10px;border-radius:999px;font-size:14px}
 .vocab-unit-card[data-compact="true"] .vocab-action::after{content:'';position:absolute;inset:-6px 0}
 .vocab-sprint-link{margin-top:6px}
@@ -2715,3 +2717,21 @@ a.pv-btn{display:inline-flex;align-items:center;justify-content:center;text-deco
 ul.parent-school-news{list-style:none;padding-left:0}
 .parent-school-group summary{cursor:pointer}
 .parent-school-meta{margin:0;color:#64748b;font-size:13px}
+
+/* Vale seade: a bound phone opened the other child's page. */
+.wrong-device-page{min-height:100dvh;display:grid;place-items:center;padding:16px}
+.wrong-device-card{width:min(420px,100%);background:#fff;border-radius:20px;border:var(--card-border);box-shadow:var(--card-shadow);padding:22px 18px;display:grid;gap:12px;text-align:center;color:#334155}
+.wrong-device-card h1{margin:0;font-family:var(--font-display);font-size:24px;color:#0b1b45}
+.wrong-device-card p{margin:0;font-size:16px;line-height:1.4}
+.wrong-device-icon{font-size:40px}
+.wrong-device-actions{display:grid;gap:8px}
+.wrong-device-primary,.wrong-device-secondary,.wrong-device-switch{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 16px;border-radius:14px;font-size:16px;font-weight:800;text-decoration:none;cursor:pointer}
+.wrong-device-primary{background:#2563eb;color:#fff;border:0}
+.wrong-device-secondary{background:#f1f5f9;color:#0b1b45;border:0}
+.wrong-device-switch{background:none;border:1px dashed #94a3b8;color:#475569;font-size:14px;min-height:44px}
+.wrong-device-form{display:grid;gap:8px;text-align:left}
+.wrong-device-form label{font-weight:800;font-size:14px;color:#0b1b45}
+.wrong-device-form input{min-height:48px;border-radius:12px;border:1px solid #cbd5e1;padding:0 12px;font-size:16px}
+.wrong-device-form button:disabled{opacity:.5;cursor:default}
+.wrong-device-card button{font-family:inherit}
+.wrong-device-error{color:#b91c1c;font-weight:700;font-size:14px}

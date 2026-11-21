@@ -100,7 +100,7 @@ const STATIC_LEARNING_EXERCISES: LearningExerciseCatalogEntry[] = [
   },
   {
     id: 'kiur.english.vocabulary',
-    title: 'Sõnavara',
+    title: 'English',
     learnerScope: ['kiur'],
     subject: 'inglise-keel',
     topic: 'sonavara',

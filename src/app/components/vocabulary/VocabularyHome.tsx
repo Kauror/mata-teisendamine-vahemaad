@@ -33,9 +33,10 @@ function lockExplanation(card: ChildUnitCard) {
   return 'See õppetükk avaneb hiljem.';
 }
 
-// The approved compact list (Harjutaja UI 18.10): the unit to work on is a
-// full card, passed and locked units are slim rows, and only the first
-// locked unit says why it is locked.
+// Every unit is a slim row (Kaur 21.11: the big cards with a stack of
+// full-size buttons wasted the phone screen): title and status on one line,
+// the word count, then small pill buttons with the next step highlighted.
+// Only the first locked unit says why it is locked.
 function firstLockedId(units: ChildUnitCard[]) {
   return units.find((card) => card.status === 'locked')?.id ?? null;
 }
@@ -75,7 +76,7 @@ function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boo
   }
 
   return (
-    <article className='vocab-unit-card' data-status={card.status} data-compact={(card.status === 'passed' && !actions.some((action) => action.primary)) || card.status === 'locked'} aria-labelledby={`unit-${card.id}`}>
+    <article className='vocab-unit-card' data-status={card.status} data-compact='true' aria-labelledby={`unit-${card.id}`}>
       <div className='vocab-unit-head'>
         <h2 id={`unit-${card.id}`}>{card.label}</h2>
         <span className='vocab-unit-status'>{unitTestStatus(card) ?? STATUS_LABEL[card.status]}</span>
@@ -116,12 +117,12 @@ export default function VocabularyHome() {
       <section className='practice-shell english-shell vocab-shell'>
         <div className='practice-top-row vocab-home-top'>
           <Link className='practice-back-button' href='/kiur'>← Kiur</Link>
-          <h1 className='vocab-home-title'>Inglise keel</h1>
+          <h1 className='vocab-home-title'>English</h1>
         </div>
 
         {failed ? (
           <div className='vocab-problem' role='alert'>
-            <p>Sõnavara vajab internetiühendust. Kontrolli ühendust ja proovi uuesti.</p>
+            <p>English vajab internetiühendust. Kontrolli ühendust ja proovi uuesti.</p>
             <button type='button' className='start-button' onClick={load}>Proovi uuesti</button>
           </div>
         ) : !data ? (
@@ -129,7 +130,7 @@ export default function VocabularyHome() {
         ) : (
           <>
             {!data.enabled ? (
-              <p className='vocab-empty'>Sõnavara ei ole praegu avatud.</p>
+              <p className='vocab-empty'>English ei ole praegu avatud.</p>
             ) : data.units.length === 0 ? (
               <p className='vocab-empty'>Õppetükke veel ei ole. Need ilmuvad siia, kui vanem on need lisanud.</p>
             ) : (

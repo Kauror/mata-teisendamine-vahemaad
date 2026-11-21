@@ -98,7 +98,7 @@ test('parent imports a unit test, Kiur answers and hands it in, parent approves'
 
   await authenticateFamily(page);
   await signInAsParent(page);
-  const libraryRow = page.locator('.learning-learner-group').filter({ hasText: 'Kiur' }).locator('.learning-compact-row').filter({ hasText: 'Sõnavara' });
+  const libraryRow = page.locator('.learning-learner-group').filter({ hasText: 'Kiur' }).locator('.learning-compact-row').filter({ hasText: 'English' });
   await libraryRow.getByRole('button', { name: 'Püsiv' }).click();
   await expect(libraryRow.getByRole('button', { name: 'Püsiv' })).toHaveAttribute('aria-pressed', 'true');
 

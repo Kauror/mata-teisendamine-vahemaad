@@ -22,7 +22,7 @@ async function openDevicePanel(page: Page) {
   }).toPass();
 }
 
-test('a phone bound to Kiur opens Kiur when Kirsi is tapped, and the parent sees it in the list', async ({ page }) => {
+test('a phone bound to Kiur stops at Kirsi, a parent can switch it, and the parent sees it in the list', async ({ page }) => {
   await authenticateFamily(page);
   await openDevicePanel(page);
   await page.getByRole('button', { name: 'Kiuri telefon' }).click();
@@ -30,14 +30,30 @@ test('a phone bound to Kiur opens Kiur when Kirsi is tapped, and the parent sees
   await expect(list).toContainText('Kiuri seade');
   await expect(list).toContainText('(see seade)');
   await expect(list).toContainText(/Kiur ✓ \d/);
-  await expect(list).toContainText('Kirsi: pole seotud');
 
   // A child's phone has no parent session: sign the parent out (the binding stays).
   await page.context().clearCookies({ name: 'parent_session' });
   await page.context().clearCookies({ name: 'harjutaja_peek' });
   await navigateStable(page, '/');
   await page.getByRole('link', { name: 'Kirsi', exact: true }).click();
-  await expect(page).toHaveURL(/\/kiur$/, { timeout: 20_000 });
+  // Not straight into Kiur's page: a stop page says whose device this is.
+  await expect(page).toHaveURL(/\/vale-seade\?laps=kirsi$/, { timeout: 20_000 });
+  await expect(page.getByRole('heading', { name: 'See on Kiuri seade' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ma olen Kiur →' })).toHaveAttribute('href', '/kiur');
+
+  // A wrong parent password changes nothing; the right one hands the device to Kirsi.
+  await page.getByRole('button', { name: 'Vaheta seadet (vanema parool)' }).click();
+  const password = page.getByLabel('Vanema parool');
+  await password.fill('vale-parool');
+  await page.getByRole('button', { name: 'Seo see seade lapsele Kirsi' }).click();
+  await expect(page.getByText('Vale parool.')).toBeVisible();
+  await password.fill('e2e-parent-password');
+  await page.getByRole('button', { name: 'Seo see seade lapsele Kirsi' }).click();
+  await expect(page).toHaveURL(/\/kirsi$/, { timeout: 20_000 });
+  // and now Kiur's page is the one that stops.
+  await page.goto('/kiur');
+  await expect(page).toHaveURL(/\/vale-seade\?laps=kiur$/);
+  await expect(page.getByRole('heading', { name: 'See on Kirsi seade' })).toBeVisible();
 
   // Removing it from the list ends the binding.
   await openDevicePanel(page);
