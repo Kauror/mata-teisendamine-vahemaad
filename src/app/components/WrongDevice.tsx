@@ -65,7 +65,7 @@ export default function WrongDevice({ owner, wanted }: { owner: Child | null; wa
             </button>
             {wanted && (
               <button type='button' className='wrong-device-secondary' disabled={busy || !password} onClick={(event) => switchTo(event, 'both')}>
-                Jagatud seade (mõlemad lapsed)
+                Jagatud seade (mõlemale)
               </button>
             )}
           </form>

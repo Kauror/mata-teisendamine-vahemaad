@@ -70,7 +70,7 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   await signInAsParent(page);
 
   // Enable the exercise for Kiur. It starts hidden.
-  const libraryRow = page.locator('.learning-learner-group').filter({ hasText: 'Kiur' }).locator('.learning-compact-row').filter({ hasText: 'Sõnavara' });
+  const libraryRow = page.locator('.learning-learner-group').filter({ hasText: 'Kiur' }).locator('.learning-compact-row').filter({ hasText: 'English' });
   await libraryRow.getByRole('button', { name: 'Püsiv' }).click();
   await expect(libraryRow.getByRole('button', { name: 'Püsiv' })).toHaveAttribute('aria-pressed', 'true');
 

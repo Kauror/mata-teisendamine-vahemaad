@@ -37,7 +37,7 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-const OFFLINE_MESSAGE = 'Sõnavara vajab internetiühendust. Kontrolli ühendust ja proovi uuesti.';
+const OFFLINE_MESSAGE = 'English vajab internetiühendust. Kontrolli ühendust ja proovi uuesti.';
 
 export function useVocabSession(start: { unitId: string | null; mode: VocabMode }) {
   const [view, setView] = useState<SessionView | null>(null);
