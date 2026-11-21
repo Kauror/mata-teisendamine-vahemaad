@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useState } from 'react';
 import type { ChildUnitCard, ChildVocabularyHome } from '@/lib/server/vocabulary/overview';
+import { activeUnitId } from '@/lib/vocabulary/activeUnit';
 import { VOCAB_ALL_PASSED_MESSAGE, VOCAB_HOME_ROUTE } from '@/lib/vocabulary/constants';
 
 type HomeData = ChildVocabularyHome & { sprintActive: boolean };
@@ -43,8 +44,9 @@ function firstLockedId(units: ChildUnitCard[]) {
   return units.find((card) => card.status === 'locked')?.id ?? null;
 }
 
-function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boolean }) {
-  const [open, setOpen] = useState(false);
+function UnitCard({ card, explainLock, active }: { card: ChildUnitCard; explainLock: boolean; active: boolean }) {
+  // The unit Kiur is on opens with every action showing (lib/vocabulary/activeUnit.ts).
+  const [open, setOpen] = useState(active);
   const moreId = useId();
   const base = `${VOCAB_HOME_ROUTE}/${card.id}`;
   const actions: Array<{ href: string; label: string; primary?: boolean }> = [];
@@ -83,7 +85,7 @@ function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boo
   const more = actions.filter((action) => action !== primary);
 
   return (
-    <article className='vocab-unit-card' data-status={card.status} data-compact='true' aria-labelledby={`unit-${card.id}`}>
+    <article className='vocab-unit-card' data-status={card.status} data-compact='true' data-active={active || undefined} aria-labelledby={`unit-${card.id}`}>
       <div className='vocab-unit-head'>
         <h2 id={`unit-${card.id}`}>{card.label}</h2>
         <span className='vocab-unit-status'>{unitTestStatus(card) ?? STATUS_LABEL[card.status]}</span>
@@ -159,7 +161,7 @@ export default function VocabularyHome() {
                   <p className='vocab-empty vocab-all-passed' role='status'>{VOCAB_ALL_PASSED_MESSAGE}</p>
                 ) : null}
                 <div className='vocab-unit-list'>
-                  {data.units.map((card) => <UnitCard key={card.id} card={card} explainLock={card.id === firstLockedId(data.units)} />)}
+                  {data.units.map((card) => <UnitCard key={card.id} card={card} explainLock={card.id === firstLockedId(data.units)} active={card.id === activeUnitId(data.units)} />)}
                 </div>
               </>
             )}

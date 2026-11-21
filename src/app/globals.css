@@ -1369,6 +1369,7 @@ body:has(.eluka-demo) .offline-status{bottom:calc(var(--eluka-hud, 90px) + 62px)
 .vocab-more[aria-expanded="true"]{background:var(--inner-bg)}
 .vocab-more:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
 .vocab-unit-actions[hidden]{display:none}
+.vocab-unit-card[data-active="true"]{box-shadow:0 0 0 2px #93c5fd,var(--card-shadow)}
 .vocab-unit-card[data-compact="true"] .vocab-action-primary{box-shadow:none}
 .vocab-unit-card[data-compact="true"] .vocab-action{position:relative;min-height:32px;padding:0 10px;border-radius:999px;font-size:14px}
 .vocab-unit-card[data-compact="true"] .vocab-action::after{content:'';position:absolute;inset:-6px 0}
