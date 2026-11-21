@@ -2687,7 +2687,15 @@ a.pv-btn{display:inline-flex;align-items:center;justify-content:center;text-deco
 
 /* Vanem → Seaded → See seade (per-device child binding) */
 .device-binding-card{display:grid;gap:10px}
-.device-binding-notice{margin:0;font-size:14px;line-height:1.4;color:#92400e;background:#fffbeb;box-shadow:0 0 0 1px #fcd34d}
+.device-binding-notice{margin:0;font-size:14px;line-height:1.4;color:#92400e;background:#fffbeb;box-shadow:0 0 0 1px #fcd34d;display:grid;gap:4px}
+.device-binding-notice p{margin:0}
+.device-binding-list{display:grid;gap:6px}
+.device-binding-list h3{margin:4px 0 0;font-size:15px}
+.device-binding-list ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.device-binding-list li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:12px;background:#f8fafc}
+.device-binding-list li>div{display:grid;gap:2px;min-width:0}
+.device-binding-list small{color:#64748b;font-size:12.5px;overflow-wrap:anywhere}
+.device-binding-this{color:#2563eb;font-weight:700;font-size:13px}
 
 /* Koolis tulemas: the child's coming tests and homework (Minu's school feed). */
 .school-agenda{background:#fff;border-radius:18px;border:var(--card-border);box-shadow:var(--card-shadow);min-width:0}

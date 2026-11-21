@@ -6,9 +6,12 @@ import { useParentApi } from './useParentApi';
 // "See seade": whose device is this? (src/lib/auth/deviceBinding.ts)
 // A phone bound to one child can act only for that child; a parent device
 // may act for both. Unbound devices keep working until "nõua sidumist" is on.
+// The server keeps a list of bound devices (src/lib/server/deviceRegistry.ts)
+// so the parent can see which phones are bound and remove one.
 
 type Binding = 'kiur' | 'kirsi' | 'both';
-type State = { binding: Binding | null; required: boolean };
+type Device = { id: string; binding: Binding; device: string; app: 'app' | 'browser' | 'unknown'; boundAt: string; lastSeenAt: string };
+type State = { binding: Binding | null; required: boolean; devices: Device[]; thisDevice: string | null };
 
 const OPTIONS: Array<{ value: Binding; label: string }> = [
   { value: 'kiur', label: 'Kiuri telefon' },
@@ -23,35 +26,73 @@ export function bindingLabel(binding: Binding | null) {
   return 'Sidumata';
 }
 
+const APP_LABEL: Record<Device['app'], string> = { app: 'avaekraani äpp', browser: 'brauser', unknown: '' };
+
+function when(iso: string) {
+  return new Date(iso).toLocaleString('et-EE', { timeZone: 'Europe/Tallinn', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function runsAsApp() {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
+// On iPhone/iPad the home-screen app and Safari keep separate cookies: a phone
+// bound in Safari is still unbound in the app the child actually uses.
+function iosBrowserTab() {
+  if (typeof navigator === 'undefined') return false;
+  return /iPhone|iPad/.test(navigator.userAgent) && !runsAsApp();
+}
+
+function normalise(value: Partial<State> | null): State | null {
+  if (!value) return null;
+  return { binding: value.binding ?? null, required: Boolean(value.required), devices: Array.isArray(value.devices) ? value.devices : [], thisDevice: value.thisDevice ?? null };
+}
+
 function useDeviceBinding() {
   const api = useParentApi();
   const [state, setState] = useState<State | null>(null);
   useEffect(() => {
     let cancelled = false;
     void api.getJson<State>('/api/parent/device-binding')
-      .then((value) => { if (!cancelled) setState(value); })
+      .then((value) => { if (!cancelled) setState(normalise(value)); })
       .catch(() => { if (!cancelled) setState(null); });
     return () => { cancelled = true; };
   }, [api]);
   return { api, state, setState };
 }
 
-// Shown on Täna while this device is unbound: binding is recommended.
+function childStatus(devices: Device[], child: 'kiur' | 'kirsi') {
+  const n = devices.filter((d) => d.binding === child).length;
+  const name = child === 'kiur' ? 'Kiur' : 'Kirsi';
+  return n > 0 ? `${name} ✓ ${n === 1 ? '1 seade' : `${n} seadet`}` : `${name}: pole seotud`;
+}
+
+// Täna: whether the children's phones are bound, until everything is in place.
 export function DeviceBindingNotice() {
   const { state } = useDeviceBinding();
-  if (!state || state.binding !== null) return null;
+  if (!state) return null;
+  const bothBound = (['kiur', 'kirsi'] as const).every((c) => state.devices.some((d) => d.binding === c));
+  if (bothBound && state.required && state.binding !== null) return null;
   return (
-    <p className='pv-card device-binding-notice' role='status'>
-      See seade pole lapsega seotud. Soovitame iga telefoni siduda: Seaded → „See seade“. Siis saab Kiuri telefon teha
-      tegevusi ainult Kiuri eest ja Kirsi telefon ainult Kirsi eest.
-    </p>
+    <div className='pv-card device-binding-notice' role='status'>
+      <p><strong>Telefonid:</strong> {childStatus(state.devices, 'kiur')} · {childStatus(state.devices, 'kirsi')} · nõua sidumist {state.required ? 'sees' : 'väljas'}</p>
+      {state.binding === null && <p>See seade pole seotud.</p>}
+      <p className='pv-hint'>
+        {bothBound
+          ? 'Kõik lapsed on seotud. Lülita Seaded → „See seade“ all sisse „Nõua sidumist“, siis ei saa sidumata seade laste eest midagi muuta.'
+          : 'Seo iga lapse telefon: ava lapse telefonis Harjutaja (iPhone’is avaekraani äpp, mitte Safari), Vanem → Seaded → „See seade“.'}
+      </p>
+    </div>
   );
 }
 
 export function DeviceBindingPanel() {
   const { api, state, setState } = useDeviceBinding();
+  const [iosTab, setIosTab] = useState(false);
+  useEffect(() => { setIosTab(iosBrowserTab()); }, []);
 
-  const save = useCallback((body: Partial<{ binding: Binding | null; required: boolean }>, done: string) => api.guarded(async () => {
+  const save = useCallback((body: Record<string, unknown>, done: string) => api.guarded(async () => {
     const response = await api.request('/api/parent/device-binding', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -62,7 +103,7 @@ export function DeviceBindingPanel() {
       api.setError(payload.message || 'Seadet ei saanud salvestada.');
       return;
     }
-    setState({ binding: payload.binding ?? null, required: Boolean(payload.required) });
+    setState(normalise(payload));
     api.setNotice(done);
   }), [api, setState]);
 
@@ -71,6 +112,11 @@ export function DeviceBindingPanel() {
   return (
     <section className='parent-card device-binding-card'>
       <p className='pv-hint'>See seade praegu: <strong>{bindingLabel(state.binding)}</strong></p>
+      {iosTab && (
+        <p className='offline-warning' role='alert'>
+          Oled Safaris. iPhone’is hoiab avaekraani Harjutaja äpp oma sidumist eraldi — seo telefon avaekraani äpis, mida laps kasutab.
+        </p>
+      )}
       <div className='pv-chips' role='group' aria-label='Kelle seade see on'>
         {OPTIONS.map((option) => (
           <button
@@ -78,7 +124,7 @@ export function DeviceBindingPanel() {
             type='button'
             className='pv-chip'
             aria-pressed={state.binding === option.value}
-            onClick={() => void save({ binding: option.value }, `Seade on nüüd: ${bindingLabel(option.value)}.`)}
+            onClick={() => void save({ binding: option.value, app: runsAsApp() }, `Seade on nüüd: ${bindingLabel(option.value)}.`)}
           >{option.label}</button>
         ))}
       </div>
@@ -89,6 +135,27 @@ export function DeviceBindingPanel() {
       {state.binding !== null && (
         <button type='button' className='pv-btn' data-k='no' onClick={() => void save({ binding: null }, 'Seade on sidumata.')}>Eemalda sidumine</button>
       )}
+
+      <div className='device-binding-list'>
+        <h3>Seotud seadmed</h3>
+        <p className='pv-hint'>{childStatus(state.devices, 'kiur')} · {childStatus(state.devices, 'kirsi')}</p>
+        {state.devices.length === 0 ? <p className='pv-hint'>Ühtegi seadet pole veel seotud (või seoti enne seda nimekirja — seo need uuesti).</p> : (
+          <ul>
+            {state.devices.map((device) => (
+              <li key={device.id}>
+                <div>
+                  <strong>{bindingLabel(device.binding)}</strong>
+                  {device.id === state.thisDevice && <span className='device-binding-this'> (see seade)</span>}
+                  <small>{[device.device, APP_LABEL[device.app]].filter(Boolean).join(', ')} · seotud {when(device.boundAt)} · viimati {when(device.lastSeenAt)}</small>
+                </div>
+                <button type='button' className='pv-btn' data-k='no' aria-label={`Eemalda ${bindingLabel(device.binding)} (${device.device})`}
+                  onClick={() => void save({ remove: device.id }, 'Seade on nimekirjast eemaldatud; selle sidumine enam ei kehti.')}>Eemalda</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <label className='parent-checkbox'>
         <input
           type='checkbox'

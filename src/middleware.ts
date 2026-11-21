@@ -76,13 +76,18 @@ async function applyDeviceBinding(request: NextRequest): Promise<{ redirect: str
   const bound = await verifyDeviceBindingToken(request.cookies.get(DEVICE_BINDING_COOKIE)?.value);
   if (!bound) return { redirect: null, refresh: null };
   const stale = Math.floor(Date.now() / 1000) - bound.issuedAt > DEVICE_BINDING_REFRESH_SECONDS;
-  // Only a real navigation is redirected. The service worker precaches both
-  // children's pages with fetch() (Sec-Fetch-Dest: empty), and a redirect there
-  // would fail its install and take offline use away from the bound phone.
-  const navigation = request.headers.get('sec-fetch-dest') === 'document';
+  // Only a navigation is redirected: a full page load (Sec-Fetch-Dest:
+  // document) or an in-app tap on a <Link>, which the Next.js router fetches in
+  // the background. Next strips its RSC header and _rsc query before
+  // middleware runs; what it leaves is Next-Url, which only the router sends.
+  // Without that, a tap on the other child's card on the home page opened that
+  // child's page (Kaur, 21.11). The service worker precaches both children's
+  // pages with a plain fetch() (neither signal), and a redirect there would
+  // fail its install and take offline use away from the bound phone.
+  const navigation = request.headers.get('sec-fetch-dest') === 'document' || request.headers.has('next-url');
   return {
     redirect: navigation ? redirectForBoundDevice(request.nextUrl.pathname, bound.binding) : null,
-    refresh: stale ? await signDeviceBinding(bound.binding) : null
+    refresh: stale ? await signDeviceBinding(bound.binding, Date.now(), bound.deviceId ?? undefined) : null
   };
 }
 

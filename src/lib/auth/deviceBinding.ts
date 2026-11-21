@@ -29,7 +29,13 @@ type DeviceBindingPayload = {
   binding: DeviceBinding;
   issuedAt: number;
   keyId: string;
+  // The device's row in the parent's list of bound devices
+  // (src/lib/server/deviceRegistry.ts). Missing on bindings made before the
+  // list existed; those keep working but are not listed.
+  deviceId?: string;
 };
+
+const DEVICE_ID = /^[A-Za-z0-9_-]{8,40}$/;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -38,7 +44,7 @@ export function isDeviceBinding(value: unknown): value is DeviceBinding {
   return value === 'kiur' || value === 'kirsi' || value === 'both';
 }
 
-export async function signDeviceBinding(binding: DeviceBinding, nowMs = Date.now()) {
+export async function signDeviceBinding(binding: DeviceBinding, nowMs = Date.now(), deviceId?: string) {
   const secret = currentSecret();
   if (!secret) throw new Error('APP_SESSION_SECRET_CURRENT is not configured.');
   const payload: DeviceBindingPayload = {
@@ -46,13 +52,14 @@ export async function signDeviceBinding(binding: DeviceBinding, nowMs = Date.now
     kind: 'device_binding',
     binding,
     issuedAt: Math.floor(nowMs / 1000),
-    keyId: await keyId(secret)
+    keyId: await keyId(secret),
+    ...(deviceId && DEVICE_ID.test(deviceId) ? { deviceId } : {})
   };
   const encoded = encodeBase64Url(encoder.encode(JSON.stringify(payload)));
   return `${encoded}.${encodeBase64Url(await hmac(secret, encoded))}`;
 }
 
-export async function verifyDeviceBindingToken(token: string | null | undefined): Promise<{ binding: DeviceBinding; issuedAt: number } | null> {
+export async function verifyDeviceBindingToken(token: string | null | undefined): Promise<{ binding: DeviceBinding; issuedAt: number; deviceId: string | null } | null> {
   if (!token || token.length > 1024) return null;
   const [encoded, signature, extra] = token.split('.');
   if (!encoded || !signature || extra) return null;
@@ -79,7 +86,8 @@ export async function verifyDeviceBindingToken(token: string | null | undefined)
     }
     const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
     if (await crypto.subtle.verify('HMAC', key, actual, encoder.encode(encoded))) {
-      return { binding: payload.binding, issuedAt: payload.issuedAt };
+      const deviceId = typeof payload.deviceId === 'string' && DEVICE_ID.test(payload.deviceId) ? payload.deviceId : null;
+      return { binding: payload.binding, issuedAt: payload.issuedAt, deviceId };
     }
   }
   return null;

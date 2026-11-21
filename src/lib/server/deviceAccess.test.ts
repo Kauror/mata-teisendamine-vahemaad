@@ -170,11 +170,20 @@ describe.each(routes)('$name', ({ call, fixedLearner }) => {
 });
 
 describe('pages of the other child on a bound device', () => {
-  async function navigate(path: string, binding: DeviceBinding | null, dest = 'document') {
+  async function navigate(path: string, binding: DeviceBinding | null, dest = 'document', extra: Record<string, string> = {}) {
     const family = await issueSession('family', { maxAgeSeconds: 60 });
     const cookie = [`${APP_ACCESS_COOKIE}=${family.token}`, await cookieFor(binding)].filter(Boolean).join('; ');
-    return middleware(new NextRequest(`https://example.test${path}`, { headers: { cookie, 'sec-fetch-dest': dest } }));
+    return middleware(new NextRequest(`https://example.test${path}`, { headers: { cookie, 'sec-fetch-dest': dest, ...extra } }));
   }
+
+  it('redirects an in-app tap (a Next.js RSC fetch) to the bound child too', async () => {
+    // Kaur 21.11: on Kiur's bound phone, tapping Kirsi's card on the home page
+    // opened Kirsi's page, because only full page loads were redirected.
+    // Next strips RSC: 1 before middleware; the router's Next-Url header stays.
+    const response = await navigate('/kirsi', 'kiur', 'empty', { 'next-url': '/' });
+    expect(response.status).toBe(307);
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/kiur');
+  });
 
   it('redirects a navigation to the bound child', async () => {
     const response = await navigate('/kirsi/pood', 'kiur');
