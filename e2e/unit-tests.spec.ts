@@ -161,7 +161,11 @@ test('parent imports a unit test, Kiur answers and hands it in, parent approves'
   // Kiur sees the grade.
   await page.context().addCookies([{ name: 'harjutaja_peek_off', value: '1', url: new URL(page.url()).origin }]);
   await navigateStable(page, '/kiur/inglise-keel');
-  await page.getByRole('link', { name: /Kontrolltöö: hinne 5/ }).first().click();
+  // The grade is on the unit's status chip; the graded test opens under "⋯".
+  const graded = page.locator('.vocab-unit-card').filter({ hasText: '✓ Hinne 5' }).first();
+  await expect(graded).toBeVisible();
+  await graded.getByRole('button', { name: /^Veel:/ }).click();
+  await graded.getByRole('link', { name: 'Vaata kontrolltööd' }).click();
   await expect(page.locator('.ut-grade strong')).toHaveText('5');
   await shot(page, `${browserName}-4-child-graded`);
 });

@@ -239,6 +239,8 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   await page.getByRole('link', { name: 'Tagasi õppetükkide juurde' }).click();
   await expect(firstCard.getByText('✓ Läbitud')).toBeVisible();
   await expect(secondCard.getByText('Uus')).toBeVisible();
+  // A passed unit shows only "⋯"; its other actions open under it.
+  await firstCard.getByRole('button', { name: /^Veel:/ }).click();
   await expect(firstCard.getByRole('link', { name: 'Tee test uuesti' })).toBeVisible();
 
   await firstCard.getByRole('link', { name: 'Korda eksitud sõnu' }).click();

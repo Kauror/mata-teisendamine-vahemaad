@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import type { ChildUnitCard, ChildVocabularyHome } from '@/lib/server/vocabulary/overview';
 import { VOCAB_ALL_PASSED_MESSAGE, VOCAB_HOME_ROUTE } from '@/lib/vocabulary/constants';
 
@@ -25,6 +25,7 @@ function unitTestStatus(card: ChildUnitCard) {
   if (state === 'in_progress') return '📝 Kontrolltöö pooleli';
   if (state === 'returned') return '✏️ Paranda kontrolltöö';
   if (state === 'submitted') return '⏳ Vanem vaatab üle';
+  if (state === 'passed' && card.unitTest?.grade) return `✓ Hinne ${card.unitTest.grade}`;
   return null;
 }
 
@@ -33,15 +34,18 @@ function lockExplanation(card: ChildUnitCard) {
   return 'See õppetükk avaneb hiljem.';
 }
 
-// Every unit is a slim row (Kaur 21.11: the big cards with a stack of
-// full-size buttons wasted the phone screen): title and status on one line,
-// the word count, then small pill buttons with the next step highlighted.
+// Every unit is two lines (Kaur 21.11: rows of three or four buttons per unit
+// still wasted the phone screen): title and status, then the word count, the
+// one next step and a "⋯" button that opens the other actions. A passed unit
+// with nothing to do shows only "⋯"; its grade is in the status chip.
 // Only the first locked unit says why it is locked.
 function firstLockedId(units: ChildUnitCard[]) {
   return units.find((card) => card.status === 'locked')?.id ?? null;
 }
 
 function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boolean }) {
+  const [open, setOpen] = useState(false);
+  const moreId = useId();
   const base = `${VOCAB_HOME_ROUTE}/${card.id}`;
   const actions: Array<{ href: string; label: string; primary?: boolean }> = [];
   if (card.status === 'new') actions.push({ href: `${base}/opi`, label: 'Alusta õppimist', primary: true });
@@ -69,11 +73,14 @@ function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boo
       if (unitTest.attemptId) actions.push({ href: view, label: `Eelmine kontrolltöö: hinne ${unitTest.grade ?? ''}`.trim() });
     }
     if (unitTest.state === 'submitted') actions.push({ href: view, label: 'Kontrolltöö ootab vanemat' });
-    if (unitTest.state === 'passed') actions.push({ href: view, label: `Kontrolltöö: hinne ${unitTest.grade ?? ''}`.trim() });
+    if (unitTest.state === 'passed') actions.push({ href: view, label: 'Vaata kontrolltööd' });
   }
   if (card.weakCount > 0 && card.status !== 'locked') {
     actions.push({ href: `${VOCAB_HOME_ROUTE}/korda?unit=${encodeURIComponent(card.id)}`, label: 'Korda eksitud sõnu' });
   }
+
+  const primary = actions.find((action) => action.primary) ?? null;
+  const more = actions.filter((action) => action !== primary);
 
   return (
     <article className='vocab-unit-card' data-status={card.status} data-compact='true' aria-labelledby={`unit-${card.id}`}>
@@ -81,16 +88,22 @@ function UnitCard({ card, explainLock }: { card: ChildUnitCard; explainLock: boo
         <h2 id={`unit-${card.id}`}>{card.label}</h2>
         <span className='vocab-unit-status'>{unitTestStatus(card) ?? STATUS_LABEL[card.status]}</span>
       </div>
-      <p className='vocab-unit-meta'>
-        {card.wordCount} sõna
-        {card.weakCount > 0 ? <> · {card.weakCount} sõna vajab kordamist</> : null}
-      </p>
+      <div className='vocab-unit-row'>
+        <p className='vocab-unit-meta'>
+          {card.wordCount} sõna
+          {card.weakCount > 0 ? <> · {card.weakCount} vajab kordamist</> : null}
+        </p>
+        {primary ? <Link className='vocab-action vocab-action-primary' href={primary.href}>{primary.label}</Link> : null}
+        {more.length > 0 ? (
+          <button type='button' className='vocab-more' aria-expanded={open} aria-controls={moreId} aria-label={`Veel: ${card.label}`} onClick={() => setOpen(!open)}>⋯</button>
+        ) : null}
+      </div>
       {card.status === 'locked' && explainLock ? <p className='vocab-unit-lock'>{lockExplanation(card)}</p> : null}
       {card.status === 'new_words' ? <p className='vocab-unit-lock'>{card.newWordsCount === 1 ? 'Õppetükki on lisandunud 1 uus sõna. Õpi see enne testi kaartidega läbi.' : `Õppetükki on lisandunud ${card.newWordsCount} uut sõna. Õpi need enne testi kaartidega läbi.`}</p> : null}
-      {actions.length > 0 ? (
-        <div className='vocab-unit-actions'>
-          {actions.map((action) => (
-            <Link key={action.label} className={action.primary ? 'vocab-action vocab-action-primary' : 'vocab-action'} href={action.href}>{action.label}</Link>
+      {more.length > 0 ? (
+        <div className='vocab-unit-actions' id={moreId} hidden={!open}>
+          {more.map((action) => (
+            <Link key={action.label} className='vocab-action' href={action.href}>{action.label}</Link>
           ))}
         </div>
       ) : null}
