@@ -145,10 +145,7 @@ export async function middleware(req: NextRequest) {
   }
   const device = await applyDeviceBinding(req);
   if (device.redirect) {
-    const url = req.nextUrl.clone();
-    url.pathname = device.redirect;
-    url.search = '';
-    return upgradeLegacyFamilySession(session, NextResponse.redirect(url));
+    return upgradeLegacyFamilySession(session, NextResponse.redirect(new URL(device.redirect, req.nextUrl.origin)));
   }
   const response = withBuildId(req, await applyParentPeekCookie(req, NextResponse.next()));
   if (device.refresh) response.cookies.set(DEVICE_BINDING_COOKIE, device.refresh, deviceBindingCookieOptions());

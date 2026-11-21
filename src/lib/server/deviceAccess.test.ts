@@ -64,8 +64,8 @@ describe('device binding decision', () => {
   });
 
   it('redirects only the other child pages on a bound device', () => {
-    expect(redirectForBoundDevice('/kirsi/pood', 'kiur')).toBe('/kiur');
-    expect(redirectForBoundDevice('/kiur', 'kirsi')).toBe('/kirsi');
+    expect(redirectForBoundDevice('/kirsi/pood', 'kiur')).toBe('/vale-seade?laps=kirsi');
+    expect(redirectForBoundDevice('/kiur', 'kirsi')).toBe('/vale-seade?laps=kiur');
     expect(redirectForBoundDevice('/kiur/pood', 'kiur')).toBeNull();
     expect(redirectForBoundDevice('/kirsi', 'both')).toBeNull();
     expect(redirectForBoundDevice('/kirsi', null)).toBeNull();
@@ -176,19 +176,19 @@ describe('pages of the other child on a bound device', () => {
     return middleware(new NextRequest(`https://example.test${path}`, { headers: { cookie, 'sec-fetch-dest': dest, ...extra } }));
   }
 
-  it('redirects an in-app tap (a Next.js RSC fetch) to the bound child too', async () => {
+  it('sends an in-app tap (a Next.js router fetch) to the stop page too', async () => {
     // Kaur 21.11: on Kiur's bound phone, tapping Kirsi's card on the home page
     // opened Kirsi's page, because only full page loads were redirected.
     // Next strips RSC: 1 before middleware; the router's Next-Url header stays.
     const response = await navigate('/kirsi', 'kiur', 'empty', { 'next-url': '/' });
     expect(response.status).toBe(307);
-    expect(new URL(response.headers.get('location')!).pathname).toBe('/kiur');
+    expect(new URL(response.headers.get('location')!).pathname + new URL(response.headers.get('location')!).search).toBe('/vale-seade?laps=kirsi');
   });
 
-  it('redirects a navigation to the bound child', async () => {
+  it('sends a navigation to the stop page, not into the bound child', async () => {
     const response = await navigate('/kirsi/pood', 'kiur');
     expect(response.status).toBe(307);
-    expect(new URL(response.headers.get('location')!).pathname).toBe('/kiur');
+    expect(new URL(response.headers.get('location')!).pathname + new URL(response.headers.get('location')!).search).toBe('/vale-seade?laps=kirsi');
   });
 
   it('leaves own pages, parent devices and service-worker precache fetches alone', async () => {
