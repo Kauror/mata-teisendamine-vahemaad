@@ -6,6 +6,7 @@ import YesterdayPointsPopup from '@/app/components/YesterdayPointsPopup';
 import ChildAvatarEasterEgg from '@/app/components/ChildAvatarEasterEgg';
 import ChildExerciseGrid from '@/app/components/ChildExerciseGrid';
 import ChildTimetableSection from '@/app/components/ChildTimetableSection';
+import SchoolAgenda from '@/app/components/SchoolAgenda';
 import KaardimangTile from '@/app/components/kaardimang/KaardimangTile';
 import { KAARDIMANG_CHILD_ENABLED, KAARDIMANG_PAGES } from '@/lib/kaardimang/api';
 import { ChildExerciseCard } from '@/lib/childExerciseCards';
@@ -54,6 +55,8 @@ export default function ChildHomeDashboard({
           identity={<ChildAvatarEasterEgg learner={child.learner} name={child.name} avatar={child.avatar} />}
           afterIdentity={<ChildTimetableSection learner={child.learner} />}
         />
+
+        <SchoolAgenda learner={child.learner} />
 
         <ChildExerciseGrid
           learner={child.learner}

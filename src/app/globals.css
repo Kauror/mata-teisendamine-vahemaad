@@ -2688,3 +2688,22 @@ a.pv-btn{display:inline-flex;align-items:center;justify-content:center;text-deco
 /* Vanem → Seaded → See seade (per-device child binding) */
 .device-binding-card{display:grid;gap:10px}
 .device-binding-notice{margin:0;font-size:14px;line-height:1.4;color:#92400e;background:#fffbeb;box-shadow:0 0 0 1px #fcd34d}
+
+/* Koolis tulemas: the child's coming tests and homework (Minu's school feed). */
+.school-agenda{background:#fff;border-radius:18px;border:var(--card-border);box-shadow:var(--card-shadow);min-width:0}
+.school-agenda-title{display:flex;align-items:center;min-height:48px;padding:0 14px;color:#0b1b45;font-family:var(--font-display);font-size:15px;font-weight:850;cursor:pointer;border-radius:18px;list-style:none}
+.school-agenda-title::-webkit-details-marker{display:none}
+.school-agenda-title:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+.school-agenda-list{list-style:none;margin:0;padding:0 14px 12px;display:grid;gap:8px}
+.school-agenda-list li{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:12px;background:#f8fafc;font-size:14px;line-height:1.35;color:#334155}
+.school-agenda-list li.is-test{background:#fff7ed}
+.school-agenda-list strong{display:block;color:#0b1b45;font-weight:800}
+.school-agenda-list p{margin:2px 0 0;overflow-wrap:anywhere}
+.parent-school-group{display:grid;gap:6px}
+.parent-school-group h3{margin:4px 0 0;font-size:15px}
+.parent-school-group ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px;line-height:1.35}
+.parent-school-group li{overflow-wrap:anywhere}
+.parent-school-group details p{margin:4px 0 0;white-space:pre-wrap;color:#475569}
+ul.parent-school-news{list-style:none;padding-left:0}
+.parent-school-group summary{cursor:pointer}
+.parent-school-meta{margin:0;color:#64748b;font-size:13px}

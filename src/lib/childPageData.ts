@@ -26,6 +26,12 @@ export function childDashboardUrl(learner: Learner) {
   return `/api/child-dashboard?learner=${learner}`;
 }
 
+// The child's coming tests and homework (Minu's school feed). Not preloaded:
+// it is below the fold and may be empty.
+export function schoolTasksUrl(learner: Learner) {
+  return `/api/school?learner=${learner}`;
+}
+
 // Options for react-dom's preload(): as="fetch" plus crossorigin="" so the
 // request mode matches a default fetch() and the browser can hand it over.
 export const CHILD_PAGE_DATA_PRELOAD = { as: 'fetch', crossOrigin: 'anonymous' } as const;

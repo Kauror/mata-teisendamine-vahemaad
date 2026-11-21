@@ -90,8 +90,16 @@ function requiresFamilyCsrf(pathname: string) {
   return pathname === '/api/parent/login' || pathname.startsWith('/api/offline/');
 }
 
+// Server-to-server push from Minu: authorised by its own bearer token in the
+// route (src/app/api/school-feed/route.ts), never by a browser cookie, so the
+// Origin check (CSRF) and the family session do not apply to it.
+const SCHOOL_FEED_PATH = '/api/school-feed';
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (pathname === SCHOOL_FEED_PATH) {
+    return req.method === 'POST' ? NextResponse.next() : NextResponse.json({ code: 'method_not_allowed' }, { status: 405 });
+  }
 
   if (isMutation(req) && !hasExactOrigin(req.headers.get('origin'))) {
     return NextResponse.json({ code: 'invalid_origin', message: 'Päringu päritolu ei sobi.' }, { status: 403 });
