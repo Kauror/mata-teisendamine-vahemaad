@@ -46,22 +46,61 @@ describe('/api/parent/device-binding', { timeout: 60_000 }, () => {
   it('binds this device with a signed HttpOnly cookie', async () => {
     const response = await bind({ binding: 'kirsi' });
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ binding: 'kirsi', required: false });
+    expect(await response.json()).toMatchObject({ binding: 'kirsi', required: false });
     const cookie = response.cookies.get(DEVICE_BINDING_COOKIE);
     expect(cookie?.httpOnly).toBe(true);
     expect((await verifyDeviceBindingToken(cookie?.value))?.binding).toBe('kirsi');
 
     const read = await GET(new NextRequest('https://example.test/api/parent/device-binding', { headers: { cookie: `${DEVICE_BINDING_COOKIE}=${cookie?.value}` } }));
-    expect(await read.json()).toEqual({ binding: 'kirsi', required: false });
+    expect(await read.json()).toMatchObject({ binding: 'kirsi', required: false });
   });
 
   it('unbinds, switches "nõua sidumist" and refuses unknown values', async () => {
     const unbound = await bind({ binding: null });
     expect(unbound.cookies.get(DEVICE_BINDING_COOKIE)?.value).toBe('');
-    expect(await (await bind({ required: true })).json()).toEqual({ binding: null, required: true });
+    expect(await (await bind({ required: true })).json()).toMatchObject({ binding: null, required: true });
     expect((await bind({ binding: 'kaur' })).status).toBe(400);
     expect((await bind({ required: 'yes' })).status).toBe(400);
     expect((await bind({})).status).toBe(400);
+  });
+});
+
+describe('the list of bound devices', { timeout: 60_000 }, () => {
+  const iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15';
+  const bindAs = (body: unknown, cookie = '') => POST(new NextRequest('https://example.test/api/parent/device-binding', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie, 'user-agent': iphone },
+    body: JSON.stringify(body)
+  }));
+  const cookieOf = (response: Response & { cookies: { get(name: string): { value: string } | undefined } }) =>
+    `${DEVICE_BINDING_COOKIE}=${response.cookies.get(DEVICE_BINDING_COOKIE)?.value}`;
+
+  it('lists each bound device with its child, kind and app, and rebinding keeps one row', async () => {
+    const first = await bindAs({ binding: 'kiur', app: true });
+    const body = await first.json();
+    expect(body.devices).toHaveLength(1);
+    expect(body.devices[0]).toMatchObject({ binding: 'kiur', device: 'iPhone', app: 'app' });
+    expect(body.thisDevice).toBe(body.devices[0].id);
+    const again = await (await bindAs({ binding: 'kirsi', app: true }, cookieOf(first))).json();
+    expect(again.devices).toHaveLength(1);
+    expect(again.devices[0]).toMatchObject({ id: body.devices[0].id, binding: 'kirsi' });
+  });
+
+  it('a device the parent removes from the list is no longer bound', async () => {
+    const kiurPhone = await bindAs({ binding: 'kiur', app: true });
+    const id = (await kiurPhone.json()).devices[0].id;
+    const cookie = cookieOf(kiurPhone);
+    const read = () => GET(new NextRequest('https://example.test/api/parent/device-binding', { headers: { cookie } }));
+    expect((await (await read()).json()).binding).toBe('kiur');
+    const removed = await (await bindAs({ remove: id })).json();
+    expect(removed.devices).toEqual([]);
+    expect((await (await read()).json()).binding).toBeNull();
+  });
+
+  it('unbinding takes the device off the list', async () => {
+    const phone = await bindAs({ binding: 'kirsi', app: false });
+    const after = await (await bindAs({ binding: null }, cookieOf(phone))).json();
+    expect(after.devices).toEqual([]);
   });
 });
 

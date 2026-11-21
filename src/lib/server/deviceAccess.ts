@@ -7,6 +7,7 @@ import {
   type ChildLearner,
   type DeviceBinding
 } from '@/lib/auth/deviceBinding';
+import { deviceStillListed } from '@/lib/server/deviceRegistry';
 
 // Server side of the per-device child binding (src/lib/auth/deviceBinding.ts).
 // Every child write route calls assertDeviceMayActAs with the learner it is
@@ -27,8 +28,18 @@ export function setDeviceBindingRequired(required: boolean) {
   `).run(DEVICE_BINDING_REQUIRED_KEY, required ? '1' : '0', new Date().toISOString());
 }
 
+export async function readDeviceToken(req: NextRequest) {
+  return verifyDeviceBindingToken(req.cookies.get(DEVICE_BINDING_COOKIE)?.value);
+}
+
+// The device's binding, or null when it has none or the parent removed it from
+// the list of bound devices (src/lib/server/deviceRegistry.ts). A binding made
+// before the list existed carries no device id and still counts.
 export async function readDeviceBinding(req: NextRequest): Promise<DeviceBinding | null> {
-  return (await verifyDeviceBindingToken(req.cookies.get(DEVICE_BINDING_COOKIE)?.value))?.binding ?? null;
+  const token = await readDeviceToken(req);
+  if (!token) return null;
+  if (token.deviceId && !deviceStillListed(token.deviceId)) return null;
+  return token.binding;
 }
 
 // The decision for every learner listed, for handlers with their own error type.
