@@ -80,7 +80,7 @@ export function createSaveGuard(onSavingChange: (saving: boolean) => void, onFai
 // The data a panel can show. A panel subscribes to the topics it reads and
 // re-fetches when one is invalidated; a mutation invalidates exactly the
 // topics whose numbers it changes (see PARENT_INVALIDATIONS).
-export type ParentTopic = 'dashboard' | 'heldRewards' | 'taskReviews' | 'monthly' | 'freeze' | 'weekly' | 'store' | 'library' | 'learning' | 'rewards' | 'today' | 'unitTests';
+export type ParentTopic = 'dashboard' | 'heldRewards' | 'taskReviews' | 'monthly' | 'freeze' | 'weekly' | 'store' | 'library' | 'learning' | 'rewards' | 'today' | 'unitTests' | 'school';
 
 export const PARENT_RESOURCE_URLS: Record<ParentTopic, string> = {
   dashboard: '/api/parent/dashboard',
@@ -94,7 +94,8 @@ export const PARENT_RESOURCE_URLS: Record<ParentTopic, string> = {
   learning: '/api/parent/learning-settings',
   rewards: '/api/parent/reward-rules',
   today: '/api/parent/today',
-  unitTests: '/api/parent/english-unit-tests'
+  unitTests: '/api/parent/english-unit-tests',
+  school: '/api/parent/school'
 };
 
 // Which panels' numbers each mutation changes. The dashboard holds the star

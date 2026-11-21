@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
-import { E2E_DB_FILE } from './e2e/config';
+import { createHash } from 'node:crypto';
+import { E2E_DB_FILE, E2E_SCHOOL_FEED_TOKEN } from './e2e/config';
 
 // Browser-level release evidence (RTM-006). Runs the app in a real Chromium and
 // WebKit against a dev server. Full offline / service-worker certification also
@@ -43,6 +44,7 @@ export default defineConfig({
       APP_ORIGIN: 'http://localhost:3000',
       APP_SESSION_SECRET_CURRENT: 'e2e-session-secret-with-at-least-thirty-two-bytes',
       APP_ACCESS_PIN_HASH: 'scrypt$v=1$N=16384,r=8,p=1$CmO5D6zhaeWjWLkyuNBXgw$V1f-JtGInwY1cCau3S2iS1PdwC2Uo_2XdYCgdqdyZQs',
+      SCHOOL_FEED_TOKEN_SHA256: createHash('sha256').update(E2E_SCHOOL_FEED_TOKEN).digest('hex'),
       PARENT_PASSWORD_HASH: 'scrypt$v=1$N=16384,r=8,p=1$vPQPNlFVAOE0K4jvsgU2eQ$Fj3ktEJSm6cG_BI2gTvaBAd36_36pbx7ke8Ewg6j86c'
     }
   }

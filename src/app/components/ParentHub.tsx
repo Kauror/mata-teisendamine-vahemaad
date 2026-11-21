@@ -13,6 +13,7 @@ import { LearningSettingsPanel } from '@/app/components/parent/LearningSettingsP
 import { LibraryPanel } from '@/app/components/parent/LibraryPanel';
 import { ParentAccordionSection } from '@/app/components/parent/ParentAccordionSection';
 import { RewardsPanel } from '@/app/components/parent/RewardsPanel';
+import { SchoolPanel } from '@/app/components/parent/SchoolPanel';
 import { StarsPanel } from '@/app/components/parent/StarsPanel';
 import { StorePanel } from '@/app/components/parent/StorePanel';
 import { TasksPanel } from '@/app/components/parent/TasksPanel';
@@ -29,7 +30,7 @@ const UnitTestsPanel = dynamic(() => import('@/app/components/parent/UnitTestsPa
 const KaardimangPanel = dynamic(() => import('@/app/components/kaardimang/KaardimangParentPanel'), { loading: loadingPanel });
 const OfflineReadiness = dynamic(() => import('@/app/components/offline/OfflineReadiness').then((module) => module.OfflineReadiness), { loading: loadingPanel });
 
-type ParentSectionId = 'stars' | 'weekly' | 'offline' | 'notice' | 'learning' | 'vocabulary' | 'unitTests' | 'textbook' | 'kaardimang' | 'password' | 'device' | 'rewards' | 'history' | 'eluka';
+type ParentSectionId = 'stars' | 'weekly' | 'school' | 'offline' | 'notice' | 'learning' | 'vocabulary' | 'unitTests' | 'textbook' | 'kaardimang' | 'password' | 'device' | 'rewards' | 'history' | 'eluka';
 type CountedSection = 'library' | 'textbook' | 'tasks' | 'store' | 'rewards' | 'history';
 
 // What a section header says before its panel has loaded its own data; the
@@ -134,6 +135,9 @@ function ParentHubView({ view, tab }: { view: ParentView; tab?: ParentHaldaTab }
               </ParentAccordionSection>
               <ParentAccordionSection title='Nädala kokkuvõte' summary='Viimased 7 päeva' {...section('weekly')}>
                 <WeeklyDigestPanel />
+              </ParentAccordionSection>
+              <ParentAccordionSection title='Kool' summary='Kontrolltööd, kodused ja teated eKoolist' {...section('school')}>
+                <SchoolPanel />
               </ParentAccordionSection>
             </div>
           </>
