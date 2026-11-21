@@ -239,6 +239,11 @@ test('parent imports units and Kiur studies, tests, passes and practises', async
   await page.getByRole('link', { name: 'Tagasi õppetükkide juurde' }).click();
   await expect(firstCard.getByText('✓ Läbitud')).toBeVisible();
   await expect(secondCard.getByText('Uus')).toBeVisible();
+  // One card is the active one (both browser projects share the database, so
+  // which one depends on the run); the passed unit is not it and stays closed.
+  await expect(page.locator('.vocab-unit-card[data-active="true"]')).toHaveCount(1);
+  await expect(firstCard).not.toHaveAttribute('data-active', 'true');
+  await expect(firstCard.getByRole('link', { name: 'Tee test uuesti' })).toBeHidden();
   // A passed unit shows only "⋯"; its other actions open under it.
   await firstCard.getByRole('button', { name: /^Veel:/ }).click();
   await expect(firstCard.getByRole('link', { name: 'Tee test uuesti' })).toBeVisible();
