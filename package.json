@@ -32,9 +32,9 @@
     "rewards:approve-held": "tsx scripts/approve-held-rewards.ts"
   },
   "dependencies": {
-    "better-sqlite3": "^11.8.1",
+    "better-sqlite3": "^13.2.0",
     "idb": "^8.0.3",
-    "next": "15.5.28",
+    "next": "16.4.6",
     "postcss": "8.5.26",
     "react": "19.0.0",
     "react-dom": "19.0.0",
@@ -47,12 +47,12 @@
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "d3-geo": "^3.1.1",
-    "eslint": "^9.17.0",
-    "eslint-config-next": "15.5.28",
+    "eslint": "^10.15.0",
+    "eslint-config-next": "16.4.6",
     "fake-indexeddb": "^6.0.1",
     "polygon-clipping": "^0.15.7",
-    "typescript": "5.8.2",
-    "vitest": "^4.1.10"
+    "typescript": "7.0.2",
+    "vitest": "^5.1.1"
   },
   "overrides": {
     "postcss": "8.5.26",
