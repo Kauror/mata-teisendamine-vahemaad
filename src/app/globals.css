@@ -2492,6 +2492,9 @@ a.pv-btn{display:inline-flex;align-items:center;justify-content:center;text-deco
   --km-marker:#1e3a8a; --km-marker-hit:rgba(255,255,255,.01);
   --km-pin:#0b1b45; --km-pin-answer:#dc2626; --km-pin-halo:#fff;
   --km-label:#0b1b45; --km-label-halo:rgba(255,255,255,.92);
+  /* Terrain picture under the shapes (MapView data-terrain): borders and veils drawn over relief. */
+  --km-terrain-sea:#0b2440; --km-terrain-border:rgba(255,255,255,.5); --km-terrain-border-target:rgba(255,255,255,.92); --km-terrain-veil:rgba(255,255,255,.2); --km-terrain-dim:rgba(255,255,255,.45);
+  --km-terrain-paint:.66; --km-peak:#ffffff; --km-peak-edge:#1f2937; --km-peak-label:#1f2937;
   --km-chip-on:#2563eb; --km-chip-on-ink:#fff;
   --km-map-max-height:68vh;
 }
@@ -2661,6 +2664,20 @@ a.pv-btn{display:inline-flex;align-items:center;justify-content:center;text-deco
 .km-pin[data-tone='answer']{fill:var(--km-pin-answer)}
 .km-label{fill:var(--km-label);stroke:var(--km-label-halo);paint-order:stroke;stroke-linejoin:round;text-anchor:middle;dominant-baseline:middle;font-family:var(--font-display);font-weight:800;pointer-events:none}
 .km-label[data-strong='true']{font-weight:900}
+/* Terrain (MapView.tsx): a NASA Blue Marble satellite picture, so the sea around the globe turns night blue and borders are drawn white. The picture shows through the land; target countries are clear, the rest under a light veil, and a painted country keeps its colour, see-through. */
+.km-terrain{pointer-events:none;opacity:0;transition:opacity .35s ease}
+.km-map[data-terrain='true'] .km-terrain{opacity:1}
+.km-map[data-terrain='true']{background:var(--km-terrain-sea)}
+.km-map[data-terrain='true'] .km-sea,.km-map[data-terrain='true'] .km-sphere{fill:var(--km-terrain-sea)}
+.km-map[data-terrain='true'] .km-feature:not([data-paint]){fill:var(--km-terrain-veil);stroke:var(--km-terrain-border)}
+.km-map[data-terrain='true'] .km-feature[data-role='t']:not([data-paint]),.km-map[data-terrain='true'][data-uniform='true'] .km-feature:not([data-paint]){fill:transparent;stroke:var(--km-terrain-border-target)}
+.km-map[data-terrain='true'] .km-feature[data-paint]{fill-opacity:var(--km-terrain-paint)}
+.km-map[data-terrain='true'] .km-feature[data-paint='dim']{fill:var(--km-terrain-dim);fill-opacity:1;stroke:var(--km-terrain-border)}
+.km-peaks{pointer-events:none}
+.km-peak{fill:var(--km-peak);stroke:var(--km-peak-edge);stroke-width:1.2;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.km-peak-label{fill:var(--km-peak-label);stroke:var(--km-label-halo);paint-order:stroke;stroke-linejoin:round;text-anchor:middle;dominant-baseline:middle;font-family:var(--font-display);font-weight:750;font-style:italic}
+@media (prefers-reduced-motion:reduce){.km-terrain{transition:none}}
+.km-credit{margin:-4px 0 0;font-size:12px;color:var(--tb-muted,#6b7280)}
 @media (max-width:560px){.km-head h1{font-size:26px}.km-prompt{font-size:19px}.km-option{font-size:15px}.km-big{font-size:16px;padding:0 10px}.km-resume{grid-template-columns:1fr}.km-page-map{padding:10px}.km-map{border-radius:var(--tb-radius-small)}}
 
 /* Eluka demo (parent area, Seaded → Eluka demo): the pet room preview. The
