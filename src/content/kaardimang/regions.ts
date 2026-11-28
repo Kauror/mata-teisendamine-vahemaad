@@ -244,6 +244,24 @@ export function seasPath(): string {
   return `kaardimang/seas/${SEAS_DATA_VERSION}/world-seas.json`;
 }
 
+// The terrain picture under each world map view (scripts/kaardimang/build-terrain.ts):
+// deserts, forests, ice and mountains instead of one flat land colour. Built
+// from the map files above, so a new DATA_VERSION needs a new terrain build.
+export const TERRAIN_VERSION = '2026-11-28.1';
+// The picture reaches this many map units past each edge of the view, as the
+// country shapes do (build-map-data.ts clips them 40 units outside it), so a
+// wide screen that shows that margin beside the map still shows terrain there.
+export const TERRAIN_PAD = 40;
+
+// The Eesti map has no terrain picture (it is all lowland at that scale).
+export function terrainUrl(id: string): string | null {
+  return id === 'estonia' ? null : `/kaardimang/terrain/${TERRAIN_VERSION}/${id}.webp`;
+}
+
+export function peaksUrl(): string {
+  return `/kaardimang/terrain/${TERRAIN_VERSION}/peaks.json`;
+}
+
 export function dataVersionOf(viewId: string): string {
   return viewId === 'estonia' ? ESTONIA_DATA_VERSION : DATA_VERSION;
 }

@@ -1,0 +1,19 @@
+{
+  "downloadedOn": "2026-11-28",
+  "files": {
+    "naturalEarth": {
+      "file": "HYP_HR_SR_W.tif",
+      "url": "https://naciscdn.org/naturalearth/10m/raster/HYP_HR_SR_W.zip",
+      "what": "Natural Earth II-style cross-blended hypsometric tints with shaded relief and water, 1:10m, 21600×10800 (the .tif inside the zip)",
+      "license": "Public domain, https://www.naturalearthdata.com/about/terms-of-use/",
+      "sha256": "da9dab6daf41a62b1f0066187d0539402278901ca8c4bd747cc01c3dff82c0cf"
+    },
+    "blueMarble": {
+      "file": "world.topo.bathy.200407.3x21600x10800.jpg",
+      "url": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography-bathymetry/july/world.topo.bathy.200407.3x21600x10800.jpg",
+      "what": "NASA Blue Marble Next Generation, July 2004 (northern summer: no snow over Estonia), with topography and bathymetry, 21600×10800",
+      "license": "NASA imagery, no copyright (credit NASA Earth Observatory), https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "sha256": "d225f1f35a6448a4d1d8f6de6e48f3433e470085b70a35800e64f384f269a7b0"
+    }
+  }
+}

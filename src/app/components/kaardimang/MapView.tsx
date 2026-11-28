@@ -2,6 +2,8 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import type { MapViewData, MapViewFeature } from '@/content/kaardimang/types';
+import { TERRAIN_PAD, peaksUrl, terrainUrl } from '@/content/kaardimang/regions';
+import type { PeaksOverlay } from '@/content/kaardimang/peaks';
 import { MARKER_MIN_HIT_PX, markerHitRadii } from './mapAnswers';
 import { MAX_ZOOM, TAP_SLOP_PX, isBase, mapFrame, panBy, toMap, zoomAround, zoomOf, type MapFrame, type ScreenBox, type ZoomView } from './mapZoom';
 
@@ -41,6 +43,39 @@ type Props = {
 
 const LABEL_PX = 12;
 const CHAR_PX = 6.6;
+const PEAK_PX = 10;
+
+// The terrain picture (deserts, forests, ice, relief) under the shapes. Until
+// it has loaded, or if it cannot load (offline, old cache), the map keeps its
+// flat colours: data-terrain is set only once the picture is there.
+function useTerrain(viewId: string) {
+  const href = terrainUrl(viewId);
+  const [loaded, setLoaded] = useState<string | null>(null);
+  return { href, ready: href !== null && loaded === href, onLoad: () => setLoaded(href) };
+}
+
+// The famous tops, one small file for all views, fetched once per page.
+let peaksPending: Promise<PeaksOverlay | null> | null = null;
+function loadPeaks(): Promise<PeaksOverlay | null> {
+  if (!peaksPending) {
+    peaksPending = fetch(peaksUrl())
+      .then((response) => (response.ok ? (response.json() as Promise<PeaksOverlay>) : null))
+      .catch(() => null);
+    void peaksPending.then((value) => { if (!value) peaksPending = null; });
+  }
+  return peaksPending;
+}
+
+function usePeaks(viewId: string, enabled: boolean) {
+  const [peaks, setPeaks] = useState<Array<[string, number, number]>>([]);
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let live = true;
+    void loadPeaks().then((overlay) => { if (live) setPeaks(overlay?.peaks[viewId] ?? []); });
+    return () => { live = false; };
+  }, [viewId, enabled]);
+  return enabled ? peaks : [];
+}
 
 function useUnitsPerPixel(ref: React.RefObject<SVGSVGElement | null>, viewW: number, viewH: number) {
   const [units, setUnits] = useState(1);
@@ -221,6 +256,7 @@ function placeLabels(labels: MapLabel[], units: number) {
   return placed;
 }
 
+
 const Land = memo(function Land({ features, paint, focusable, nameOf, interactive }: {
   features: MapViewFeature[];
   paint: Props['paint'];
@@ -257,6 +293,9 @@ export default function MapView({ data, ariaLabel, paint, areaPaint, showAreas, 
   const { view, zoom, atBase, wasDrag, handlers, zoomBy, reset } = useMapZoom(ref, frame);
   const units = useUnitsPerPixel(ref, view.w, view.h);
   const placed = useMemo(() => placeLabels(labels, units), [labels, units]);
+  const terrain = useTerrain(data.id);
+  // Famous tops as a small ▲ only: no names (Kaur, 28.11).
+  const peaks = usePeaks(data.id, terrain.ready);
   const tapRadii = useMemo(() => markerHitRadii(data.markers, units), [data.markers, units]);
   const interactive = Boolean(onPick);
 
@@ -286,7 +325,7 @@ export default function MapView({ data, ariaLabel, paint, areaPaint, showAreas, 
   };
 
   return (
-    <div className='km-map' data-interactive={interactive ? 'true' : 'false'} data-uniform={uniform ? 'true' : undefined}>
+    <div className='km-map' data-interactive={interactive ? 'true' : 'false'} data-uniform={uniform ? 'true' : undefined} data-terrain={terrain.ready ? 'true' : undefined}>
       <svg
         ref={ref}
         viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
@@ -298,6 +337,19 @@ export default function MapView({ data, ariaLabel, paint, areaPaint, showAreas, 
       >
         <rect className='km-sea' data-pick='sea' x={frame.bounds.x} y={frame.bounds.y} width={frame.bounds.w} height={frame.bounds.h} />
         {data.sphere ? <path className='km-sphere' data-pick='sea' d={data.sphere} /> : null}
+        {terrain.href ? (
+          <image
+            className='km-terrain'
+            href={terrain.href}
+            x={-TERRAIN_PAD}
+            y={-TERRAIN_PAD}
+            width={data.width + 2 * TERRAIN_PAD}
+            height={data.height + 2 * TERRAIN_PAD}
+            preserveAspectRatio='none'
+            onLoad={terrain.onLoad}
+            aria-hidden
+          />
+        ) : null}
         {data.areas.map((area, index) => (
           <path
             key={`${area.id}-${index}`}
@@ -313,6 +365,16 @@ export default function MapView({ data, ariaLabel, paint, areaPaint, showAreas, 
           />
         ))}
         <Land features={data.features} paint={paint} focusable={focusable} nameOf={nameOf} interactive={interactive} />
+        {peaks.length ? (
+          <g className='km-peaks' aria-hidden>
+            {peaks.map(([id, x, y]) => {
+              const r = PEAK_PX * units;
+              return (
+                <path key={id} data-peak={id} className='km-peak' d={`M${x} ${y - r * 0.6}L${x + r * 0.55} ${y + r * 0.4}L${x - r * 0.55} ${y + r * 0.4}Z`} />
+              );
+            })}
+          </g>
+        ) : null}
         <g className='km-markers'>
           {data.markers.map((marker) => {
             const tone = paint({ id: marker.id, wp: null, ct: null });
