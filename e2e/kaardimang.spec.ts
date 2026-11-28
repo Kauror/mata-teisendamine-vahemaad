@@ -208,9 +208,10 @@ test('Uuri names Egypt and Cairo in North Africa', async ({ page }) => {
   await openPart(page, 'Aafrika');
   await page.getByRole('button', { name: /^Põhja-Aafrika/ }).click();
   await page.getByRole('button', { name: /Uuri kaarti/ }).click();
-  // The satellite picture loads under the shapes, with Toubkal's ▲ and its name (Uuri names peaks).
+  // The satellite picture loads under the shapes, with Toubkal's ▲ and no mountain names.
   await expect(page.locator('.km-map[data-terrain="true"]')).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('.km-peak-label', { hasText: /^Toubkal 4167 m$/ })).toHaveCount(1);
+  await expect(page.locator('.km-peak[data-peak="toubkal"]')).toHaveCount(1);
+  await expect(page.locator('.km-map text', { hasText: 'Toubkal' })).toHaveCount(0);
   await expect(page.locator('.km-credit')).toContainText('NASA');
   await pick(page, '.km-feature[data-id="EGY"]');
   await expect(page.locator('.km-info h2')).toContainText('Egiptus');

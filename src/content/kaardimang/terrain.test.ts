@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { CATALOG } from '@/content/kaardimang/catalog';
 import { MAP_VIEWS, TERRAIN_PAD, TERRAIN_VERSION, mapPath, peaksUrl, terrainUrl } from '@/content/kaardimang/regions';
 import { PEAKS, PEAK_BY_ID, type PeaksOverlay } from '@/content/kaardimang/peaks';
 import type { MapViewData } from '@/content/kaardimang/types';
@@ -56,10 +55,5 @@ describe('Kaardimäng terrain', () => {
     const nepal = data.labels.NPL;
     expect(nepal).toBeDefined();
     expect(Math.hypot(x - nepal[0], y - nepal[1])).toBeLessThan(nepal[2]);
-  });
-
-  it('never names a country with a peak, so a ▲ label cannot give an answer away', () => {
-    const names = new Set(CATALOG.countries.flatMap((country) => [country.nameEt, ...country.capitals.map((capital) => capital.nameEt)]));
-    for (const peak of PEAKS) expect(names.has(peak.nameEt), peak.id).toBe(false);
   });
 });

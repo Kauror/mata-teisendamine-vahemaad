@@ -149,9 +149,8 @@ export default function ExploreMode({ view, map, title }: { view: MapViewDef; ma
         focusable={(id) => Boolean(findCountry(id) || findCounty(id)) || id === 'ATA' || id === 'south-pole'}
         nameOf={nameOf}
         onPick={onPick}
-        peakNames='always'
       />
-      {estonia ? null : <p className='km-credit'>Satelliidipilt: NASA Blue Marble. ▲ on kuulus mäetipp ja selle kõrgus.</p>}
+      {estonia ? null : <p className='km-credit'>Satelliidipilt: NASA Blue Marble. ▲ on kuulus mäetipp.</p>}
       {selection ? <InfoCard selection={selection} view={view} /> : <p className='km-feedback'>{estonia ? 'Puuduta kaardil maakonda, et näha selle nime ja keskust.' : `Puuduta kaardil riiki või kohta, et näha selle nime${view.kind === 'antarctica' ? '' : ' ja pealinna'}.`}</p>}
       {listed.length ? (
         <details className='km-card km-list'>

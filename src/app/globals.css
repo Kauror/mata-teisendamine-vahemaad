@@ -2494,7 +2494,7 @@ a.pv-btn{display:inline-flex;align-items:center;justify-content:center;text-deco
   --km-label:#0b1b45; --km-label-halo:rgba(255,255,255,.92);
   /* Terrain picture under the shapes (MapView data-terrain): borders and veils drawn over relief. */
   --km-terrain-sea:#0b2440; --km-terrain-border:rgba(255,255,255,.5); --km-terrain-border-target:rgba(255,255,255,.92); --km-terrain-veil:rgba(255,255,255,.2); --km-terrain-dim:rgba(255,255,255,.45);
-  --km-terrain-paint:.66; --km-peak:#ffffff; --km-peak-edge:#1f2937; --km-peak-label:#1f2937;
+  --km-terrain-paint:.66; --km-peak:#ffffff; --km-peak-edge:#1f2937;
   --km-chip-on:#2563eb; --km-chip-on-ink:#fff;
   --km-map-max-height:68vh;
 }
@@ -2675,7 +2675,6 @@ a.pv-btn{display:inline-flex;align-items:center;justify-content:center;text-deco
 .km-map[data-terrain='true'] .km-feature[data-paint='dim']{fill:var(--km-terrain-dim);fill-opacity:1;stroke:var(--km-terrain-border)}
 .km-peaks{pointer-events:none}
 .km-peak{fill:var(--km-peak);stroke:var(--km-peak-edge);stroke-width:1.2;stroke-linejoin:round;vector-effect:non-scaling-stroke}
-.km-peak-label{fill:var(--km-peak-label);stroke:var(--km-label-halo);paint-order:stroke;stroke-linejoin:round;text-anchor:middle;dominant-baseline:middle;font-family:var(--font-display);font-weight:750;font-style:italic}
 @media (prefers-reduced-motion:reduce){.km-terrain{transition:none}}
 .km-credit{margin:-4px 0 0;font-size:12px;color:var(--tb-muted,#6b7280)}
 @media (max-width:560px){.km-head h1{font-size:26px}.km-prompt{font-size:19px}.km-option{font-size:15px}.km-big{font-size:16px;padding:0 10px}.km-resume{grid-template-columns:1fr}.km-page-map{padding:10px}.km-map{border-radius:var(--tb-radius-small)}}

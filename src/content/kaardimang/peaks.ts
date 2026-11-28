@@ -1,6 +1,6 @@
-// Famous mountain tops drawn on the Kaardimäng maps (a small ▲ and, where
-// there is room, the name and height). Decoration only: never a question,
-// never tappable, so a name here can never give an answer away.
+// Famous mountain tops drawn on the Kaardimäng maps as a small ▲, without
+// names (Kaur, 28.11). Decoration only: never a question, never tappable.
+// Names and heights stay here so the list can be checked.
 //
 // Heights in metres from the national surveys or the latest accepted
 // measurement (Everest 2020, Mont Blanc 2021). `world`: also shown on the
